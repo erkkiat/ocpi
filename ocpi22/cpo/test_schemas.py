@@ -70,21 +70,18 @@ def invalid_type(location_data):
 
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
@@ -93,7 +90,6 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "SWE"
 
@@ -113,6 +109,12 @@ def test_location_in_schema_invalid_parking_type_raises_value_error(location_dat
     location_data["parking_type"] = "INVALID"
     with pytest.raises(ValidationError):
         LocationIn(**location_data)
+
+
+def test_location_in_roaming_enabled_field_is_optional(location_data):
+    location_data.pop("roaming_enabled")
+    location = LocationIn(**location_data)
+    assert location.roaming_enabled is True
 
 
 def test_evse_schema_valid_data(evse_data):
