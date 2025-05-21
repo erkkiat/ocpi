@@ -1306,9 +1306,11 @@ def update_location(request, location: LocationIn):
             )
             status_code = status.HTTP_201_CREATED
 
-        location_out = LocationOut.from_orm(saved_location)
-        result = location_out.dict(exclude_none=True)
+        saved_location = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
+            saved_location
+        )
+        location_out = LocationOut.from_orm(saved_location).dict(exclude_none=True)
 
-        return status_code, result
+        return status_code, location_out
     except ValidationError as e:
         return 400, Error(message=str(e.detail))
