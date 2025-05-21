@@ -28,7 +28,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
-from ocpi22.cpo.schemas import LocationIn, Error
+from ocpi22.cpo.schemas import LocationIn, Error, LocationOut
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
@@ -1279,7 +1279,7 @@ location_service = LocationService()
 
 @api.put(
     "/",
-    response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error},
+    response={200: LocationOut, 201: LocationOut, 403: Error, 400: Error},
     tags=["Location"],
 )
 def update_location(request, location: LocationIn):
@@ -1306,6 +1306,9 @@ def update_location(request, location: LocationIn):
             )
             status_code = status.HTTP_201_CREATED
 
-        return status_code, LocationIn.from_orm(saved_location)
+        location_out = LocationOut.from_orm(saved_location)
+        result = location_out.dict(exclude_none=True)
+
+        return status_code, result
     except ValidationError as e:
         return 400, Error(message=str(e.detail))
