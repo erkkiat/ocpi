@@ -209,7 +209,8 @@ class LocationIn(BaseSchema):
     energy_mix: Optional[List[EnergyMix]] = None
     last_updated: datetime
     roaming_enabled: Optional[bool] = Field(
-        ..., description="Indicates whether to share the location with roaming partners"
+        True,
+        description="Indicates whether to share the location with roaming partners",
     )
 
 
