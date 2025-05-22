@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from ninja import Schema, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import ConfigDict, NonNegativeInt, StringConstraints, AfterValidator
 from pydantic_extra_types.coordinate import Latitude, Longitude
@@ -133,7 +133,9 @@ class EVSE(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
-    evse_id: Annotated[str, StringConstraints(min_length=7, max_length=48)]
+    evse_id: Optional[
+        Annotated[str, StringConstraints(min_length=7, max_length=48)]
+    ] = None
     status: EVSEStatus
     status_schedule: Optional[List[StatusSchedule]] = None
     capabilities: Optional[List[OCPICapability]] = None
@@ -148,7 +150,10 @@ class EVSE(BaseSchema):
     directions: Optional[List[DisplayText]] = None
     parking_restrictions: Optional[List[ParkingRestriction]] = None
     images: Optional[List[OCPIImage]] = None
-    last_updated: datetime
+    last_updated: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp when this Evse was last updated",
+    )
 
 
 def validate_country(value):
@@ -194,8 +199,8 @@ class LocationIn(BaseSchema):
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
     related_locations: Optional[List[AdditionalGeoLocation]] = None
     parking_type: Optional[ParkingChoices] = None
-    evses: List[EVSE] = Field(
-        ..., description="List of EVSEs available at this location"
+    evses: Optional[List[EVSE]] = Field(
+        None, description="List of EVSEs available at this location"
     )
     directions: Optional[List[DisplayText]] = None
     operator: Optional[BusinessDetails] = None
@@ -207,7 +212,10 @@ class LocationIn(BaseSchema):
     charging_when_closed: Optional[bool] = False
     images: Optional[List[OCPIImage]] = None
     energy_mix: Optional[List[EnergyMix]] = None
-    last_updated: datetime
+    last_updated: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp when this Location was last updated",
+    )
     roaming_enabled: Optional[bool] = Field(
         True,
         description="Indicates whether to share the location with roaming partners",

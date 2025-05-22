@@ -115,3 +115,30 @@ def location_example(ocpi_master):
     )
 
     return data
+
+
+@pytest.fixture
+def location_example_with_evse_evse_id_none(location_example):
+    location_example.update(
+        {
+            "evses": [
+                {
+                    "uid": "EVSE-1",
+                    "status": "AVAILABLE",
+                    "connectors": [
+                        {
+                            "id": "1",
+                            "standard": "IEC_62196_T2",
+                            "power_type": "AC_3_PHASE",
+                            "format": "SOCKET",
+                            "max_voltage": 10000,
+                            "max_amperage": 50,
+                            "last_updated": "2024-07-16T08:20:20Z",
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    return location_example
