@@ -1,7 +1,7 @@
 import time
 import uuid
 from http import HTTPStatus
-from json import JSONDecodeError
+from orjson import JSONDecodeError
 from logging import getLogger
 
 import orjson
