@@ -133,7 +133,7 @@ class LocationService:
     def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
         for evse in location["evses"]:
             for connector in evse["connectors"]:
-                if connector["tariff_ids"]:
+                if connector.get("tariff_ids"):
                     solid_tariff_ids = []
                     for tariff_id in connector["tariff_ids"]:
                         solid_tariff_external_id = self.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid(
