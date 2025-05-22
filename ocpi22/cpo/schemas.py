@@ -178,7 +178,7 @@ class LocationIn(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
-    publish: Optional[bool] = True
+    publish: bool
     publish_allowed_to: Optional[List[PublishTokenType]] = None
     name: Optional[Annotated[str, StringConstraints(min_length=1, max_length=255)]] = (
         None

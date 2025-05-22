@@ -4093,36 +4093,18 @@ class TestSolidLocation:
 
     @pytest.mark.django_db
     def test_evse_id_is_generated_if_not_provided(
-        self, authenticated_user_client, ocpi_master, location_example
+        self,
+        authenticated_user_client,
+        ocpi_master,
+        location_example_with_evse_evse_id_none,
     ):
-        location_example.update(
-            {
-                "evses": [
-                    {
-                        "uid": "EVSE-1",
-                        "status": "AVAILABLE",
-                        "connectors": [
-                            {
-                                "id": "1",
-                                "standard": "IEC_62196_T2",
-                                "power_type": "AC_3_PHASE",
-                                "format": "SOCKET",
-                                "max_voltage": 10000,
-                                "max_amperage": 50,
-                                "last_updated": "2024-07-16T08:20:20Z",
-                            }
-                        ],
-                    }
-                ]
-            }
-        )
-
         url = reverse("cpo:update_location")
-
-        response = authenticated_user_client.put(url, location_example, format="json")
+        response = authenticated_user_client.put(
+            url, location_example_with_evse_evse_id_none, format="json"
+        )
 
         assert response.status_code == 201
         assert (
             response.json()["evses"][0]["evse_id"]
-            == f'{location_example["country_code"]}*{location_example["party_id"]}*E{location_example["evses"][0]["uid"]}'
+            == f'{location_example_with_evse_evse_id_none["country_code"]}*{location_example_with_evse_evse_id_none["party_id"]}*E{location_example_with_evse_evse_id_none["evses"][0]["uid"]}'
         )
