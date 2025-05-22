@@ -133,7 +133,9 @@ class EVSE(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
-    evse_id: Annotated[str, StringConstraints(min_length=7, max_length=48)]
+    evse_id: Optional[
+        Annotated[str, StringConstraints(min_length=7, max_length=48)]
+    ] = None
     status: EVSEStatus
     status_schedule: Optional[List[StatusSchedule]] = None
     capabilities: Optional[List[OCPICapability]] = None
