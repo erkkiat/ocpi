@@ -181,7 +181,7 @@ def test_connector_schema_none_power_type_raises_validation_error(connector_data
         Connector(**connector_data)
 
 
-def test_regular_hours_and_exceptional_openings_closings_is_not_mandatory_when_twentyfourseven_is_true():
+def test_regular_hours_and_exceptional_openings_closings_are_not_mandatory_when_twentyfourseven_is_true():
     opening_times = OpeningTimes(twentyfourseven=True)
     assert opening_times.regular_hours is None
 
