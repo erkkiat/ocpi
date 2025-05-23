@@ -186,7 +186,7 @@ def test_regular_hours_and_exceptional_openings_closings_is_not_mandatory_when_t
     assert opening_times.regular_hours is None
 
 
-def test_regular_hours_is_mandatory_when_twentyfourseven_is_false():
+def test_regular_hours_is_not_none_when_twentyfourseven_is_false_returns_opening_times_successfully():
     opening_times = OpeningTimes(
         twentyfourseven=False,
         regular_hours=[
@@ -198,6 +198,8 @@ def test_regular_hours_is_mandatory_when_twentyfourseven_is_false():
     assert opening_times.regular_hours is not None
     assert len(opening_times.regular_hours) == 1
 
+
+def test_regular_hours_none_when_twentyfourseven_is_false_raises_validation_error():
     with pytest.raises(ValidationError) as exc_info:
         OpeningTimes(
             twentyfourseven=False,
@@ -209,6 +211,8 @@ def test_regular_hours_is_mandatory_when_twentyfourseven_is_false():
     error_msg = str(exc_info.value)
     assert "regular_hours is required when twentyfourseven is False" in error_msg
 
+
+def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_error():
     with pytest.raises(ValidationError) as exc_info:
         OpeningTimes(
             twentyfourseven=False,
