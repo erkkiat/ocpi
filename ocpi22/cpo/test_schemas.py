@@ -1,9 +1,17 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
 
-from ocpi22.cpo.schemas import LocationIn, EVSE, Connector
+from ocpi22.cpo.schemas import (
+    LocationIn,
+    EVSE,
+    Connector,
+    OpeningTimes,
+    ExceptionalPeriod,
+    RegularHours,
+)
 from ocpi22.test_tariff_location_and_evse import load_example
 
 
@@ -173,3 +181,65 @@ def test_connector_schema_none_power_type_raises_validation_error(connector_data
     connector_data.pop("power_type")
     with pytest.raises(ValidationError):
         Connector(**connector_data)
+
+
+def test_twentyfourseven_true_no_regular_hours():
+    opening_times = OpeningTimes(
+        twentyfourseven=True, exceptional_openings=None, exceptional_closings=None
+    )
+    assert opening_times.regular_hours is None
+
+
+def test_twentyfourseven_false_with_regular_hours():
+    opening_times = OpeningTimes(
+        twentyfourseven=False,
+        regular_hours=[
+            RegularHours(weekday=1, period_begin="08:00", period_end="20:00")
+        ],
+        exceptional_openings=None,
+        exceptional_closings=None,
+    )
+    assert opening_times.regular_hours is not None
+    assert len(opening_times.regular_hours) == 1
+
+
+def test_twentyfourseven_false_no_regular_hours():
+    with pytest.raises(ValidationError) as exc_info:
+        OpeningTimes(
+            twentyfourseven=False,
+            regular_hours=None,
+            exceptional_openings=None,
+            exceptional_closings=None,
+        )
+
+    error_msg = str(exc_info.value)
+    assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_twentyfourseven_false_empty_regular_hours():
+    with pytest.raises(ValidationError) as exc_info:
+        OpeningTimes(
+            twentyfourseven=False,
+            regular_hours=[],
+            exceptional_openings=None,
+            exceptional_closings=None,
+        )
+
+    error_msg = str(exc_info.value)
+    assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_with_exceptional_openings_and_closings():
+    exceptional_period = ExceptionalPeriod(
+        period_begin=datetime(2023, 1, 1, 8, 0, 0, tzinfo=ZoneInfo("UTC")),
+        period_end=datetime(2023, 1, 1, 20, 0, 0, tzinfo=ZoneInfo("UTC")),
+    )
+
+    opening_times = OpeningTimes(
+        twentyfourseven=True,
+        exceptional_openings=[exceptional_period],
+        exceptional_closings=[exceptional_period],
+    )
+    assert opening_times.regular_hours is None
+    assert len(opening_times.exceptional_openings) == 1
+    assert len(opening_times.exceptional_closings) == 1
