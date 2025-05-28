@@ -381,7 +381,7 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "json",
-            "level": "info",
+            "level": "INFO",
         },
     },
     "root": {
@@ -398,7 +398,7 @@ LOGGING = {
             "propagate": True,
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
-            "level": "INFO",  # or DEBUG for dev
+            "level": "INFO",
             "propagate": True,
         },
     },
