@@ -374,14 +374,14 @@ LOGGING = {
     "formatters": {
         "json": {
             "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "json",  # Logs in JSON format
+            "formatter": "json",
+            "level": "info",
         },
     },
     "root": {
@@ -390,19 +390,16 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["console"],
             "level": "INFO",
-            "propagate": False,
+            "propagate": True,
         },
-        "__main__": {  # Main module logger
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
+        "ocpi22.cpo.mqtt.mqtt_subscriber": {
+            "level": "INFO",  # or DEBUG for dev
+            "propagate": True,
         },
     },
 }
