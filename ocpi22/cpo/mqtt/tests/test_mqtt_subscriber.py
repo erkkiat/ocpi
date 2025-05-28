@@ -1,4 +1,3 @@
-import logging
 import os
 from datetime import datetime
 from unittest.mock import patch, MagicMock
@@ -7,7 +6,7 @@ import pytest
 import paho.mqtt.client as mqtt
 import pytz
 from orjson import orjson
-from paho.mqtt.enums import CallbackAPIVersion
+from paho.mqtt.client import MQTTv311 as CallbackAPIVersion
 
 from ocpi22.cpo.mqtt import mqtt_subscriber
 from ocpi22.cpo.mqtt.mqtt_subscriber import (
@@ -119,7 +118,7 @@ class TestMqttSubscriber:
                 client = configure_client(mock_client_id)
                 mock_mqtt_client.assert_called_once_with(
                     client_id=mock_client_id,
-                    callback_api_version=CallbackAPIVersion.VERSION2,
+                    callback_api_version=CallbackAPIVersion,
                 )
                 mock_client_instance.username_pw_set.assert_called_once_with(
                     mock_username, mock_password
@@ -160,7 +159,6 @@ class TestMqttSubscriber:
                 assert client == mock_client
 
     def test_subscribe_success(self, caplog):
-        caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.mqtt_subscriber")
         mock_client = MagicMock(spec=mqtt.Client)
         mock_client.subscribe.return_value = (mqtt.MQTT_ERR_SUCCESS, 1)
         _subscribe(mock_client, "test/topic")
@@ -169,11 +167,16 @@ class TestMqttSubscriber:
         assert "Successfully subscribed to test/topic" in caplog.text
 
     def test_subscribe_failure(self, caplog):
-        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.mqtt_subscriber")
-
         mock_client = MagicMock(spec=mqtt.Client)
         mock_client.subscribe.return_value = (mqtt.MQTT_ERR_NO_CONN, 1)
         _subscribe(mock_client, "test/topic")
 
         mock_client.subscribe.assert_called_once_with("test/topic")
         assert "Failed to subscribe to test/topic with error code 4" in caplog.text
+
+    def test_subscribe_invalid_topic(self, caplog):
+        mock_client = MagicMock(spec=mqtt.Client)
+        mock_client.subscribe.return_value = (mqtt.MQTT_ERR_INVAL, 1)
+        _subscribe(mock_client, "invalid/topic")
+        mock_client.subscribe.assert_called_once_with("invalid/topic")
+        assert "Failed to subscribe to invalid/topic with error code 3" in caplog.text
