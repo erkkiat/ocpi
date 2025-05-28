@@ -195,12 +195,10 @@ class MQTTClientSingleton:
 
 # Legacy functions for backward compatibility
 def configure_client(client_id):
-    """Legacy function - now uses singleton"""
     return MQTTClientSingleton().get_client()
 
 
 def connect_client(retries=5, delay=5):
-    """Legacy function - now uses singleton"""
     return MQTTClientSingleton().get_client()
 
 
