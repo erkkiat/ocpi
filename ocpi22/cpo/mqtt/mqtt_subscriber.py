@@ -185,6 +185,25 @@ class MQTTClientSingleton:
                         "Failed to connect to MQTT broker after retries."
                     ) from e
 
+    def start_client(self, loop_forever=True):
+        client = self.get_client()
+        if loop_forever:
+            logger.info("Starting mqtt subscriber in the loop")
+            client.loop_forever()
+        else:
+            client.loop_start()
+
+    def stop_client(self):
+        with self._lock:
+            if self.client:
+                self.client.loop_stop()
+                self.client.disconnect()
+                self.client = None
+                logger.info("MQTT client stopped and disconnected")
+
+    def is_connected(self):
+        return self.client is not None and self.client.is_connected()
+
     def reset_client(self):
         with self._lock:
             if self.client:
@@ -215,7 +234,7 @@ def start_client(client, loop_forever=True):
 
 
 def stop_and_disconnect(client):
-    MQTTClientSingleton().reset_client()
+    MQTTClientSingleton().stop_client()
 
 
 if __name__ == "__main__":
@@ -224,5 +243,13 @@ if __name__ == "__main__":
 
     loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
     mqtt_singleton = MQTTClientSingleton()
-    mqtt_client = mqtt_singleton.get_client()
-    start_client(mqtt_client, loop_forever)
+
+    try:
+        mqtt_singleton.start_client(loop_forever)
+    except KeyboardInterrupt:
+        logger.info("Shutting down MQTT client...")
+        mqtt_singleton.stop_client()
+    except Exception as e:
+        logger.error(f"Error running MQTT client: {e}")
+        mqtt_singleton.stop_client()
+        raise
