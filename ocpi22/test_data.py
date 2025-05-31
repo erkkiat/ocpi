@@ -1309,6 +1309,7 @@ class TokenAuthorizationData:
         )
     ]
 
+    # Todo: Hubject authorize, construct this structure based on the Hubject response
     authorization_response = {
         "data": {
             "allowed": "ALLOWED",
