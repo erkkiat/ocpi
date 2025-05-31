@@ -17,6 +17,7 @@ from pydantic import (
     constr,
     RootModel,
     field_validator,
+    model_validator,
 )
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
@@ -52,7 +53,7 @@ class AuthorizationStatus(Enum):
     NotAuthorized = "NotAuthorized"
 
 
-class MeterValueInBetween(BaseModel):
+class MeterValueInBetweenClass(BaseModel):
     meterValues: Optional[List[float]] = None
 
 
@@ -734,7 +735,7 @@ class ERoamingPushPricingProductData(BaseModel):
     PricingProductData: PricingProductData
 
 
-class RFIDMifareFamilyIdentification(BaseModel):
+class RFIDMifareFamilyIdentificationClass(BaseModel):
     UID: UID
 
 
@@ -752,8 +753,10 @@ class RFIDIdentification(BaseModel):
     )
 
 
-class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification]
+class IdentificationClass(BaseModel):
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(default=None)
+    )
     # RFIDIdentification: Optional[RFIDIdentification] = Field(default=None)
     # QRCodeIdentification: Optional[QRCodeIdentification] = Field(default=None)
     # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = Field(default=None)
@@ -856,11 +859,13 @@ class EvseDataRecord(BaseModel):
 
 
 class AuthorizationStopIdentification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification] = None
-    RFIDIdentification: Optional[RFIDIdentification] = None
-    QRCodeIdentification: Optional[QRCodeIdentification] = None
-    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
-    RemoteIdentification: Optional[RemoteIdentification] = None
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(default=None)
+    )
+    # RFIDIdentification: Optional[RFIDIdentification] = None
+    # QRCodeIdentification: Optional[QRCodeIdentification] = None
+    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
+    # RemoteIdentification: Optional[RemoteIdentification] = None
 
 
 class ERoamingAuthorizationStart(BaseModel):
@@ -901,7 +906,7 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     )
     ProviderID: ProviderID
     EvseID: EvseID
-    Identification: Identification
+    Identification: IdentificationClass
     PartnerProductID: Optional[ProductID] = None
     Duration: Optional[conint(ge=1, le=99)] = Field(
         None, description="Duration of reservation in minutes", examples=[10]
@@ -920,7 +925,7 @@ class ERoamingAuthorizeRemoteStart(BaseModel):
     )
     ProviderID: ProviderID
     EvseID: EvseID
-    Identification: Identification
+    Identification: IdentificationClass
     PartnerProductID: Optional[ProductID] = None
 
 
@@ -936,7 +941,7 @@ class ERoamingAuthorizeStart(BaseModel):
     )
     OperatorID: OperatorID
     EvseID: Optional[EvseID] = None
-    Identification: Identification
+    Identification: IdentificationClass
     PartnerProductID: Optional[ProductID] = None
 
 
@@ -952,7 +957,7 @@ class ERoamingAuthorizeStop(BaseModel):
     )
     OperatorID: OperatorID
     EvseID: Optional[EvseID] = None
-    Identification: Identification
+    Identification: IdentificationClass
 
 
 class ERoamingChargeDetailRecord(BaseModel):
@@ -967,7 +972,7 @@ class ERoamingChargeDetailRecord(BaseModel):
     )
     PartnerProductID: Optional[ProductID] = None
     EvseID: EvseID
-    Identification: Identification
+    Identification: IdentificationClass
     ChargingStart: datetime = Field(
         ..., description="The date and time at which the charging process started."
     )
@@ -988,7 +993,7 @@ class ERoamingChargeDetailRecord(BaseModel):
     MeterValueEnd: Optional[float] = Field(
         None, description="The ending meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
+    MeterValueInBetween: Optional[MeterValueInBetweenClass]
     ConsumedEnergy: float = Field(
         ...,
         description="The difference between MeterValueEnd and MeterValueStart in kWh.",
@@ -1003,7 +1008,7 @@ class ERoamingChargeDetailRecord(BaseModel):
 
 
 class ERoamingChargingNotificationEnd(BaseModel):
-    Type: ChargingNotificationType
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
@@ -1013,13 +1018,13 @@ class ERoamingChargingNotificationEnd(BaseModel):
         None,
         description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    Identification: Optional[Identification] = None
+    Identification: Optional[IdentificationClass] = None
     EvseID: EvseID
     ChargingStart: Optional[datetime] = Field(
         None, description="The date and time at which the charging process started."
     )
     ChargingEnd: datetime = Field(
-        ..., description="The date and time at which the charging process stoped."
+        ..., description="The date and time at which the charging process stopped."
     )
     SessionStart: Optional[datetime] = Field(
         None,
@@ -1027,7 +1032,7 @@ class ERoamingChargingNotificationEnd(BaseModel):
     )
     SessionEnd: Optional[datetime] = Field(
         None,
-        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
+        description="The date and time at which the session ended, e.g. swipe of RFID or cable disconnected.",
     )
     ConsumedEnergy: Optional[float] = Field(
         None,
@@ -1039,13 +1044,69 @@ class ERoamingChargingNotificationEnd(BaseModel):
     MeterValueEnd: Optional[float] = Field(
         None, description="The ending meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
+    MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
     OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
     PenaltyTimeStart: Optional[datetime] = Field(
         None,
         description="The date and time at which the penalty time start after the grace period.",
     )
+
+    @model_validator(mode="after")
+    def validate_charging_notification_end(self):
+        """Validate ERoamingChargingNotificationEnd fields"""
+        for field_name, field_value in [
+            ("MeterValueStart", self.MeterValueStart),
+            ("MeterValueEnd", self.MeterValueEnd),
+            ("ConsumedEnergy", self.ConsumedEnergy),
+        ]:
+            if field_value is not None and field_value < 0:
+                raise ValueError(f"{field_name} cannot be negative")
+
+        if (
+            self.MeterValueStart is not None
+            and self.MeterValueEnd is not None
+            and self.ConsumedEnergy is not None
+        ):
+            expected_consumed = self.MeterValueEnd - self.MeterValueStart
+            # Allow small tolerance for floating point differences
+            if abs(self.ConsumedEnergy - expected_consumed) > 0.001:
+                raise ValueError(
+                    f"ConsumedEnergy ({self.ConsumedEnergy}) doesn't match "
+                    f"meter difference ({expected_consumed})"
+                )
+
+        if self.ChargingStart is not None and self.ChargingStart > self.ChargingEnd:
+            raise ValueError("ChargingStart cannot be after ChargingEnd")
+
+        if (
+            self.SessionStart is not None
+            and self.SessionEnd is not None
+            and self.SessionStart > self.SessionEnd
+        ):
+            raise ValueError("SessionStart cannot be after SessionEnd")
+
+        if (
+            self.SessionStart is not None
+            and self.ChargingStart is not None
+            and self.SessionStart > self.ChargingStart
+        ):
+            raise ValueError("SessionStart should be before or equal to ChargingStart")
+
+        if (
+            self.ChargingEnd is not None
+            and self.SessionEnd is not None
+            and self.ChargingEnd > self.SessionEnd
+        ):
+            raise ValueError("ChargingEnd should be before or equal to SessionEnd")
+
+        if (
+            self.PenaltyTimeStart is not None
+            and self.PenaltyTimeStart <= self.ChargingEnd
+        ):
+            raise ValueError("PenaltyTimeStart should be after ChargingEnd")
+
+        return self
 
 
 class ERoamingChargingNotificationError(BaseModel):
@@ -1059,7 +1120,7 @@ class ERoamingChargingNotificationError(BaseModel):
         None,
         description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    Identification: Optional[Identification] = None
+    Identification: Optional[IdentificationClass] = None
     OperatorID: OperatorID
     EvseID: EvseID
     ErrorType: ErrorType
@@ -1070,7 +1131,7 @@ class ERoamingChargingNotificationError(BaseModel):
 
 
 class ERoamingChargingNotificationProgress(BaseModel):
-    Type: ChargingNotificationType
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
@@ -1080,7 +1141,7 @@ class ERoamingChargingNotificationProgress(BaseModel):
         None,
         description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    Identification: Optional[Identification] = None
+    Identification: Optional[IdentificationClass] = None
     EvseID: EvseID
     ChargingStart: datetime = Field(
         ..., description="The date and time at which the charging process started."
@@ -1104,13 +1165,32 @@ class ERoamingChargingNotificationProgress(BaseModel):
     MeterValueStart: Optional[float] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
+    MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
     OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
 
+    @model_validator(mode="after")
+    def validate_charging_notification_progress(self):
+        """Validate ERoamingChargingNotificationProgress fields"""
+        if self.ChargingDuration is None and self.ConsumedEnergyProgress is None:
+            raise ValueError(
+                "Either ChargingDuration or ConsumedEnergyProgress must be provided"
+            )
+
+        if self.EventOccurred <= self.ChargingStart:
+            raise ValueError("EventOccurred must be after ChargingStart")
+
+        if self.ConsumedEnergyProgress is not None and self.ConsumedEnergyProgress < 0:
+            raise ValueError("ConsumedEnergyProgress cannot be negative")
+
+        if self.MeterValueStart is not None and self.MeterValueStart < 0:
+            raise ValueError("MeterValueStart cannot be negative")
+
+        return self
+
 
 class ERoamingChargingNotificationStart(BaseModel):
-    Type: ChargingNotificationType
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
@@ -1120,7 +1200,7 @@ class ERoamingChargingNotificationStart(BaseModel):
         None,
         description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    Identification: Optional[Identification] = None
+    Identification: Optional[IdentificationClass] = None
     EvseID: EvseID
     ChargingStart: datetime = Field(
         ..., description="The date and time at which the charging process started."
@@ -1134,6 +1214,17 @@ class ERoamingChargingNotificationStart(BaseModel):
     )
     OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
+
+    @model_validator(mode="after")
+    def validate_charging_notification_start(self):
+        """Validate ERoamingChargingNotificationStart fields"""
+        if self.MeterValueStart is not None and self.MeterValueStart < 0:
+            raise ValueError("MeterValueStart cannot be negative")
+
+        if self.SessionStart is not None and self.SessionStart > self.ChargingStart:
+            raise ValueError("SessionStart cannot be after ChargingStart")
+
+        return self
 
 
 class OperatorEvseData(BaseModel):

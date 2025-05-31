@@ -19,9 +19,9 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
-    Identification,
+    IdentificationClass,
     UID,
-    RFIDMifareFamilyIdentification,
+    RFIDMifareFamilyIdentificationClass,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -42,6 +42,41 @@ from util import with_trailing_slash
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def validate_meter_values(
+    meter_start: float = None, meter_end: float = None, consumed_energy: float = None
+):
+    """
+    Utility function to validate meter values and energy consumption.
+
+    Args:
+        meter_start: Starting meter value in kWh
+        meter_end: Ending meter value in kWh
+        consumed_energy: Total consumed energy in kWh
+
+    Raises:
+        ValueError: If validation fails
+    """
+    for field_name, field_value in [
+        ("MeterValueStart", meter_start),
+        ("MeterValueEnd", meter_end),
+        ("ConsumedEnergy", consumed_energy),
+    ]:
+        if field_value is not None and field_value < 0:
+            raise ValueError(f"{field_name} cannot be negative")
+
+    if (
+        meter_start is not None
+        and meter_end is not None
+        and consumed_energy is not None
+    ):
+        expected_consumed = meter_end - meter_start
+        if abs(consumed_energy - expected_consumed) > 0.001:
+            raise ValueError(
+                f"ConsumedEnergy ({consumed_energy}) doesn't match "
+                f"meter difference ({expected_consumed})"
+            )
 
 
 async def map_oicp_authorization_response_to_ocpi_221(
@@ -203,9 +238,9 @@ class HubjectService:
         try:
             payload = ERoamingAuthorizeStart(
                 OperatorID=OperatorID(root=operator_id),
-                Identification=Identification(
-                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
-                        UID=UID(root=token_id)
+                Identification=IdentificationClass(
+                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root="7568290FFF765F")
                     )
                 ),
             )
