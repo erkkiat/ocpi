@@ -9,27 +9,30 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
-from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
-    ERoamingAuthorizeStart,
+    PricingProductData,
+    ERoamingPushPricingProductData,
     OperatorID,
+    ERoamingAuthorizeStart,
     Identification,
     UID,
     RFIDMifareFamilyIdentification,
-    PricingProductData,
-    ERoamingPushPricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
+from ocpi22.cpo.mqtt.schemas import CachedSession
+from ocpi22.cpo.session_cache import store_session_cache
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.routing import Route
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
@@ -41,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def map_oicp_authorization_response_to_ocpi_221(
+async def map_oicp_authorization_response_to_ocpi_221(
     oicp_response: dict | None, token_id: str
 ) -> dict | None:
     if not oicp_response:
@@ -52,12 +55,16 @@ def map_oicp_authorization_response_to_ocpi_221(
     status_ok = bool(status_code == "000")
 
     if authorization_status and status_ok and country_code and party_id:
+        hubject_session_id = oicp_response.get("SessionID")
+        emp_partner_session_id = oicp_response.get("EMPPartnerSessionID")
         data = {
             "allowed": {"Authorized": "ALLOWED"}.get(
                 authorization_status, "NOT_ALLOWED"
             ),
-            "authorization_reference": "HUBJECT",
-            "hubject_session_id": oicp_response.get("SessionID"),
+            "authorization_reference": emp_partner_session_id or hubject_session_id,
+            "hubject_session_id": hubject_session_id,
+            "emp_partner_session_id": emp_partner_session_id,
+            "cpo_partner_session_id": oicp_response.get("CPOPartnerSessionID"),
             "token": {
                 "contract_id": "N/A",
                 "country_code": country_code,
@@ -204,20 +211,26 @@ class HubjectService:
             )
             payload_dict = payload.model_dump(exclude_none=True)
 
-            response = HubjectService.client.post(url, json=payload_dict)
+            response = HubjectService.client.post(
+                url, json=payload_dict, headers={"accept": "application/json"}
+            )
 
             ocpi_master = None
-            if response.status_code == status.HTTP_200_OK:
+            if response.status_code == 200:
+                party = Party.from_str(response.json().get("ProviderID", "*"))
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response.json().get("ProviderID", "*")),
+                    party=party,
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
 
+            mapped_response = await map_oicp_authorization_response_to_ocpi_221(
+                response.json(), token_id
+            )
             return (
                 response.status_code,
-                map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
+                mapped_response,
                 ocpi_master,
             )
 
@@ -316,3 +329,14 @@ class HubjectService:
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
+
+    @staticmethod
+    def save_to_session_cache(session: Session) -> None:
+        """Save a cached session to the Redis store for quick access (mainly by process_meter_values)"""
+        cached_session = CachedSession(
+            session_id=session.uid,
+            kwh=session.kwh,
+            timestamp=session.last_updated,
+            route_to_msp=Route(is_hubject=True),
+        )
+        store_session_cache(cached_session)

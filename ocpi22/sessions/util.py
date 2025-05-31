@@ -152,6 +152,9 @@ def create_session(
         billed_to=billed_to,
         credentials=credentials,
         ocpi_master=location.ocpi_master,
+        hubject_session_id=kwargs.get("hubject_session_id", None),
+        emp_partner_session_id=kwargs.get("emp_partner_session_id", None),
+        cpo_partner_session_id=kwargs.get("cpo_partner_session_id", None),
     )
     params.update(kwargs)
     params.pop("expiry_date", None)  # Todo: Finish implementing reservations
