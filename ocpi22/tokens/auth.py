@@ -93,6 +93,13 @@ class TokenAuthorization:
     billed_to: str = ""
     ocpi_master: CredentialsRole = None
     status_text: str = ""
+    hubject_session_id: str = ""
+    emp_partner_session_id: str = ""
+    cpo_partner_session_id: str = ""
+
+    @property
+    def is_via_hubject(self) -> bool:
+        return bool(self.hubject_session_id)
 
     @staticmethod
     def get_token_owner(token) -> Party:

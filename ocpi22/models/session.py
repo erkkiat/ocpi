@@ -77,6 +77,26 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
+    # Hubject OICP fields
+    hubject_session_id = models.CharField(
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name=_("Hubject session ID"),
+    )
+    emp_partner_session_id = models.CharField(
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name=_("EMP partner session ID"),
+    )
+    cpo_partner_session_id = models.CharField(
+        max_length=settings.HUBJECT_MAX_ID_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name=_("CPO partner session ID"),
+    )
+
     reservation_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
