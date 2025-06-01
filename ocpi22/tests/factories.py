@@ -501,8 +501,8 @@ class CdrFactory(factory.Factory):
     cdr_location_latitude = "47.662249"
     cdr_location_longitude = "9.360922"
     cdr_location_name = "Location A"
-    cdr_location_evse_uid = "EVSE-123"
-    cdr_location_evse_id = f"{str(ocpi_master)}*E{cdr_location_evse_uid}"[:48]
+    cdr_location_evse_uid = "EVSE123"
+    cdr_location_evse_id = f"FI*CPO*E{cdr_location_evse_uid}"[:48]
     cdr_location_connector_id = "1"
     cdr_location_connector_standard = "IEC_62196_T2"
     cdr_location_connector_format = "CABLE"
@@ -564,6 +564,9 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         business_details__name="Test CPO",
     )
     uid = "SESSION-12345"
+    cpo_partner_session_id = "CPOSESSION1"
+    emp_partner_session_id = "EMSPSESSION1"
+    hubject_session_id = "f98efba4-02d8-4fa0-b810-9a9d50d2c527"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     start_kwh = 0.0
