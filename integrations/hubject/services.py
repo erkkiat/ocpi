@@ -17,6 +17,7 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
@@ -195,6 +196,45 @@ class HubjectService:
             response = HubjectService.client.post(full_load_url, json=payload_json)
             if response.status_code == 200:
                 return response.json()
+            else:
+                return {
+                    "success": False,
+                    "errorType": "HTTP Error",
+                    "error": f"{response.status_code} : {response.text}",
+                }
+        except PydanticSerializationError as e:
+            logger.exception("Pydantic validation failed")
+            return {
+                "success": False,
+                "errorType": "Pydantic validation failed",
+                "error": str(e),
+            }
+
+    @staticmethod
+    def post_eroaming_charge_detail_record(
+        operator_id: str, cdr: Cdr | None, session_id=None, retries=3
+    ) -> dict:
+        full_load_url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            f"cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
+        )
+        if cdr is None and session_id is not None:
+            cdr = Cdr.objects.filter(session_id=session_id).first()
+        try:
+            payload = (
+                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
+                    cdr
+                )
+            )
+            payload_json = payload.model_dump(mode="json")
+
+            response = HubjectService.client.post(full_load_url, json=payload_json)
+            if response.status_code == 200:
+                return response.json()
+            if response.status_code >= 500 and retries > 0:
+                HubjectService.post_eroaming_charge_detail_record(
+                    operator_id, cdr, retries=retries - 1
+                )
             else:
                 return {
                     "success": False,
