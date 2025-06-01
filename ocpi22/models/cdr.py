@@ -326,6 +326,12 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
         cdr.send_updates()
 
+        from integrations.hubject.services import HubjectService
+
+        HubjectService.post_eroaming_charge_detail_record(
+            cdr.ocpi_master.party_str(), cdr
+        )
+
         return cdr
 
     def send_updates(self, data=None, method="post", path_components=[]) -> None:

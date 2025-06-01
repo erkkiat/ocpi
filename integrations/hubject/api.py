@@ -57,3 +57,16 @@ def start_pricing_product_full_load(request) -> dict:
         )
     except SolidTariff.DoesNotExist:
         return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
+
+
+@api.post("/cdr/", url_name="hubject-cdr", response=Dict)
+def send_charge_detail_record(request, session_id: str) -> dict:
+    if session_id is None:
+        return {"success": False, "message": "Session ID is required."}
+
+    return hubject_service.post_eroaming_charge_detail_record(
+        get_our_identity(OcpiRolesEnum.CPO.value),
+        cdr=None,
+        session_id=session_id,
+        retries=0,
+    )
