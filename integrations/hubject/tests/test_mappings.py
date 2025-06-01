@@ -424,6 +424,17 @@ class TestMappings:
         )
         assert result == pricing_product_data_successful_result
 
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_charge_detail_record_with_valid_data(
+        self, ocpi_cdr, expected_eroaming_cdr
+    ):
+        eroaming = (
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+        )
+        assert eroaming.model_dump() == expected_eroaming_cdr
+
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
             "ActionType": ActionType.insert,
