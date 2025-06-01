@@ -35,9 +35,20 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     AdditionalReference,
     AdditionalReferenceChoice,
+    ERoamingChargeDetailRecord,
+    OperatorID,
+    ProviderID,
+    Identification,
+    UID,
+    ProductID,
+    RFIDMifareFamilyIdentification,
 )
 from ocpi22.choices import OCPICapability
+from ocpi22.cpo.api import applying_tariff_element
+from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
 
 
@@ -548,3 +559,74 @@ class SolidToHubjectConverter:
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
+
+    def convert_cdr_to_eroaming_charging_detail_record(
+        self, cdr: Cdr
+    ) -> ERoamingChargeDetailRecord:
+        if cdr.total_energy > 1000:
+            raise ValidationError("Total energy must not exceed 1000 kWh.")
+
+        if cdr.start_date_time >= cdr.end_date_time:
+            raise ValidationError(
+                "ChargingStart time must be earlier than ChargingEnd time."
+            )
+
+        if cdr.end_date_time > datetime.now(pytz.utc):
+            raise ValidationError("ChargingEnd time must not be in the future.")
+
+        session = Session.objects.filter(uid__iexact=cdr.session_id).first()
+
+        msp_party_str = cdr.billed_to.party_str()
+        operator_party_str = cdr.ocpi_master.party_str()
+
+        if session.stop_kwh <= session.start_kwh:
+            raise ValidationError("MeterValueEnd must be greater than MeterValueStart.")
+
+        if cdr.total_energy < 0:
+            raise ValidationError("ConsumedEnergy must not be negative.")
+        current_tariff_element = applying_tariff_element(session)
+        solid_tariff = SolidTariffRepository.get_by_ocpi_tariff_id(
+            current_tariff_element.tariff.uid
+        )
+        partner_product_id = None
+        if solid_tariff:
+            partner_product_id = self.get_pricing_product_id(
+                solid_tariff.external_id,
+                HubjectPriceComponent.KWH,
+                operator_party_str,
+                msp_party_str,
+            )
+
+        eroaming_cdr = ERoamingChargeDetailRecord(
+            SessionID=session.hubject_session_id,
+            CPOPartnerSessionID=session.cpo_partner_session_id,
+            EMPPartnerSessionID=session.emp_partner_session_id,
+            # TODO: Need to confirm with Mike what is required for PartnerProductID.
+            PartnerProductID=ProductID(root=partner_product_id)
+            if partner_product_id
+            else None,
+            EvseID=EvseID(root=cdr.cdr_location_evse_id),
+            Identification=Identification(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+                    UID=UID(root=session.token_id)
+                ),
+                RFIDIdentification=None,
+                QRCodeIdentification=None,
+                PlugAndChargeIdentification=None,
+                RemoteIdentification=None,
+            ),
+            ChargingStart=cdr.start_date_time,
+            ChargingEnd=cdr.end_date_time,
+            SessionStart=cdr.start_date_time,
+            SessionEnd=cdr.end_date_time,
+            MeterValueStart=session.start_kwh,
+            MeterValueEnd=session.stop_kwh,
+            MeterValueInBetween=None,
+            ConsumedEnergy=cdr.total_energy,
+            SignedMeteringValues=None,
+            CalibrationLawVerificationInfo=None,
+            HubOperatorID=OperatorID(root=operator_party_str),
+            HubProviderID=ProviderID(root=msp_party_str),
+        )
+
+        return eroaming_cdr
