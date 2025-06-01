@@ -628,13 +628,20 @@ def pricing_product_data_successful_result():
 
 
 @pytest.fixture
-def ocpi_cdr():
+def session_for_cdr():
     cdr_token = CdrTokenFactory(uid="AACDEFFE123456")
-    session = OCPISessionFactory(
+
+    return OCPISessionFactory(
         uid="Session123",
         cdr_token=cdr_token,
     )
-    cdr = CdrFactory(session_id=session.uid, cdr_location_evse_uid="EVSECONVERT")
+
+
+@pytest.fixture
+def ocpi_cdr(session_for_cdr):
+    cdr = CdrFactory(
+        session_id=session_for_cdr.uid, cdr_location_evse_uid="EVSECONVERT"
+    )
 
     return cdr
 

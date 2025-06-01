@@ -1,5 +1,7 @@
 import doctest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from unittest import mock
+from unittest.mock import patch
 
 import pytest
 import pytz
@@ -434,6 +436,102 @@ class TestMappings:
             )
         )
         assert eroaming.model_dump() == expected_eroaming_cdr
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_total_energy_exceeds_1000(
+        self, ocpi_cdr
+    ):
+        ocpi_cdr.total_energy = 1001
+
+        with pytest.raises(
+            ValidationError, match="Total energy must not exceed 1000 kWh."
+        ):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_start_time_gt_end_time(
+        self, ocpi_cdr
+    ):
+        ocpi_cdr.start_date_time = datetime.now(pytz.utc)
+        ocpi_cdr.end_date_time = datetime.now(pytz.utc) - timedelta(hours=1)
+
+        with pytest.raises(
+            ValidationError,
+            match="ChargingStart time must be earlier than ChargingEnd time.",
+        ):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_end_time_in_future(
+        self, ocpi_cdr
+    ):
+        ocpi_cdr.end_date_time = datetime.now(pytz.utc) + timedelta(hours=1)
+
+        with pytest.raises(
+            ValidationError, match="ChargingEnd time must not be in the future."
+        ):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_meter_value_end_lt_meter_value_start(
+        self, ocpi_cdr
+    ):
+        with patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
+            mock_session = mock.MagicMock()
+            mock_session.start_kwh = 10
+            mock_session.stop_kwh = 5
+            mock_filter.return_value.first.return_value = mock_session
+
+            with pytest.raises(
+                ValidationError,
+                match="MeterValueEnd must be greater than MeterValueStart.",
+            ):
+                self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                    ocpi_cdr
+                )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_negative_energy(
+        self, ocpi_cdr
+    ):
+        ocpi_cdr.total_energy = -1
+
+        with pytest.raises(
+            ValidationError, match="ConsumedEnergy must not be negative."
+        ):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_external_calibration_without_signed_values(
+        self, ocpi_cdr, session_for_cdr
+    ):
+        with mock.patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
+            mock_filter.return_value.first.return_value = session_for_cdr
+
+            with mock.patch.object(
+                self._ocpi_2_oicp_converter, "_convert_to_evse_data_record"
+            ) as mock_convert_to_evse_data_record:
+                mock_evse_data = mock.MagicMock()
+                mock_evse_data.CalibrationLawDataAvailability = (
+                    CalibrationLawDataAvailability.External
+                )
+                mock_convert_to_evse_data_record.return_value = mock_evse_data
+
+                with pytest.raises(
+                    ValidationError,
+                    match="SignedMeteringValues must be provided when CalibrationLawDataAvailability is External.",
+                ):
+                    self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                        ocpi_cdr
+                    )
 
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {

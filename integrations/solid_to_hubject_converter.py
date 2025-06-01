@@ -629,4 +629,17 @@ class SolidToHubjectConverter:
             HubProviderID=ProviderID(root=msp_party_str),
         )
 
+        evse_data_record = self._convert_to_evse_data_record(
+            session.evse, session.location
+        )
+
+        if (
+            evse_data_record.CalibrationLawDataAvailability
+            == CalibrationLawDataAvailability.External
+        ):
+            if eroaming_cdr.SignedMeteringValues is None:
+                raise ValidationError(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
+                )
+
         return eroaming_cdr
