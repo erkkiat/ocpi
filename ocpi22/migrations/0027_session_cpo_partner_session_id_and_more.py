@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ocpi22', '0025_remove_solidtariff_archived_and_more'),
+        ('ocpi22', '0026_location_roaming_enabled'),
     ]
 
     operations = [
