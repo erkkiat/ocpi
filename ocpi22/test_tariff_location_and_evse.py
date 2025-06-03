@@ -39,7 +39,6 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
-from ocpi22.cpo.schemas import LocationIn, GeoLocation, EVSE, Connector as ConnectorIn
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
@@ -50,8 +49,6 @@ from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
 from ocpi22.tests.factories import (
     TariffFactory,
-    CredentialsRoleFactory,
-    SolidTariffFactory,
     LocationFactory,
 )
 from ocpiconnector.testutil import (
@@ -3992,86 +3989,6 @@ class TokenAuthorizationTests(BetterTestCase):
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
 
 
-@pytest.fixture
-def ocpi_master():
-    get_our_credentialsrole.cache_clear()
-    get_credentialsrole.cache_clear()
-
-    return CredentialsRoleFactory(country_code="FI", party_id="CPO")
-
-
-@pytest.fixture
-def tariffs(ocpi_master):
-    t11 = TariffFactory(uid="11", ocpi_master=ocpi_master)
-    t12 = TariffFactory(uid="12", ocpi_master=ocpi_master)
-    t13 = TariffFactory(uid="13", ocpi_master=ocpi_master)
-
-    SolidTariffFactory(
-        external_id="11", operator=ocpi_master, msp=None, ocpi_tariff=t11
-    )
-    SolidTariffFactory(
-        external_id="12", operator=ocpi_master, msp=None, ocpi_tariff=t12
-    )
-    SolidTariffFactory(
-        external_id="13", operator=ocpi_master, msp=None, ocpi_tariff=t13
-    )
-
-
-@pytest.fixture()
-def connector_in():
-    connector = ConnectorIn(
-        id="1",
-        standard="IEC_62196_T2",
-        format="SOCKET",
-        power_type="AC_3_PHASE",
-        max_voltage=400,
-        max_amperage=32,
-        last_updated=datetime.now(pytz.utc),
-        tariff_ids=["11", "12"],
-    )
-    return connector
-
-
-@pytest.fixture()
-def rome_location_in(connector_in):
-    evse = EVSE(
-        uid="ROME01EVSE01",
-        evse_id="FI*CPO*EROME01EVSE01",
-        status="AVAILABLE",
-        connectors=[],
-        last_updated=datetime.now(pytz.utc),
-    )
-
-    evse.connectors.append(connector_in)
-
-    location = LocationIn(
-        country_code="IT",
-        party_id="CPO",
-        id="ROME01",
-        publish=True,
-        address="Via del Corso 123",
-        city="Rome",
-        postal_code="00100",
-        country="ITA",
-        coordinates=GeoLocation(latitude=41.9028, longitude=12.4964),
-        evses=[],
-        last_updated=datetime.now(pytz.utc),
-        time_zone="Europe/Rome",
-    )
-    location.evses.append(evse)
-
-    return location
-
-
-@pytest.fixture
-def location_data(ocpi_master):
-    data = load_example("data/examples/location_example.json")
-    data["country_code"] = ocpi_master.country_code
-    data["party_id"] = ocpi_master.party_id
-
-    return data
-
-
 class TestSolidLocation:
     @pytest.mark.parametrize(
         "api_client, expected_status_code",
@@ -4098,12 +4015,12 @@ class TestSolidLocation:
         request,
         ocpi_master,
         tariffs,
-        location_data,
+        location_example,
     ):
         url = reverse("cpo:update_location")
         client = request.getfixturevalue(api_client)
 
-        response = client.put(url, location_data, format="json")
+        response = client.put(url, location_example, format="json")
 
         print(response.json())
 
@@ -4116,11 +4033,11 @@ class TestSolidLocation:
         authenticated_user_client,
         ocpi_master,
         tariffs,
-        location_data,
+        location_example,
     ):
         url = reverse("cpo:update_location")
 
-        response = authenticated_user_client.put(url, location_data, format="json")
+        response = authenticated_user_client.put(url, location_example, format="json")
 
         assert response.status_code == 201
         mock_post_process.assert_called_once()
@@ -4133,24 +4050,24 @@ class TestSolidLocation:
         authenticated_user_client,
         ocpi_master,
         tariffs,
-        location_data,
+        location_example,
     ):
         url = reverse("cpo:update_location")
 
-        LocationFactory(uid=location_data["id"], ocpi_master=ocpi_master)
+        LocationFactory(uid=location_example["id"], ocpi_master=ocpi_master)
 
-        response = authenticated_user_client.put(url, location_data, format="json")
+        response = authenticated_user_client.put(url, location_example, format="json")
 
         assert response.status_code == 200
         assert mock_post_process.call_count == 1
 
     def test_put_location_with_invalid_data_returns_422(
-        self, authenticated_user_client, ocpi_master, location_data
+        self, authenticated_user_client, ocpi_master, location_example
     ):
         url = reverse("cpo:update_location")
-        location_data.pop("country_code")
+        location_example.pop("country_code")
 
-        response = authenticated_user_client.put(url, location_data, format="json")
+        response = authenticated_user_client.put(url, location_example, format="json")
 
         assert response.status_code == 422
 
@@ -4159,7 +4076,10 @@ class TestSolidLocation:
         location_service = LocationService()
         updated_location = location_service.update_tariff_in_payload(rome_location_in)
 
-        assert updated_location.evses[0].connectors[0].tariff_ids == ["11", "12"]
+        assert updated_location.evses[0].connectors[0].tariff_ids == [
+            "OCPI_TARIFF_11",
+            "OCPI_TARIFF_12",
+        ]
 
     @pytest.mark.django_db
     def test_update_tariff_in_payload_missing_tariff(self, rome_location_in):
@@ -4170,3 +4090,21 @@ class TestSolidLocation:
             assert "SolidTariff with external_id invalid_tariff not found" in str(
                 exc_info.value
             )
+
+    @pytest.mark.django_db
+    def test_evse_id_is_generated_if_not_provided(
+        self,
+        authenticated_user_client,
+        ocpi_master,
+        location_example_with_evse_evse_id_none,
+    ):
+        url = reverse("cpo:update_location")
+        response = authenticated_user_client.put(
+            url, location_example_with_evse_evse_id_none, format="json"
+        )
+
+        assert response.status_code == 201
+        assert (
+            response.json()["evses"][0]["evse_id"]
+            == f'{location_example_with_evse_evse_id_none["country_code"]}*{location_example_with_evse_evse_id_none["party_id"]}*E{location_example_with_evse_evse_id_none["evses"][0]["uid"]}'
+        )
