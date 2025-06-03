@@ -32,13 +32,16 @@ class SolidTariffService:
 
         self._set_missing_fields(validated_data)
 
-        solid_tariff = SolidTariff.objects.get_if_exists(**validated_data)
-        if solid_tariff:
-            return solid_tariff
+        duplicate_solid_tariff = SolidTariff.objects.get_if_exists(**validated_data)
 
         old_solid_tariff = self.solid_tariff_repository.get_latest_with_external_id(
             validated_data["external_id"]
         )
+
+        if duplicate_solid_tariff:
+            if duplicate_solid_tariff.pk == old_solid_tariff.pk:
+                duplicate_solid_tariff.ocpi_tariff.post_process_after_update_or_create()
+                return duplicate_solid_tariff
 
         saved_solid_tariff = self._create_new_tariff(
             validated_data,
