@@ -230,7 +230,7 @@ class HubjectService:
         response = HubjectService.client.post(url, json=payload_json)
         if response.status_code == 200:
             return response.json()
-        if response.status_code >= 500:
+        elif response.status_code >= 500:
             retry_policy = dict(max_retries=retries, interval_start=5)
             if settings.BACKGROUND_SEND:
                 send_hubject_request.apply_async(

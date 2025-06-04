@@ -223,16 +223,32 @@ def send_hubject_request(
     if self.request.is_eager:
         return response
     env = os.environ["ENV"]
+    retry_count = self.request.retries
     if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        logger.warning(
+            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+        )
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
     if response.status_code >= 500 and env == "production":
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
+        logger.warning(
+            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+        )
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
+
+    return (
+        response.json()
+        if response.status_code < 300
+        else {
+            "success": False,
+            "errorType": "HTTP Error",
+            "error": f"{response.status_code} : {response.text}",
+            "retry_count": retry_count,
+        }
+    )
 
 
 @shared_task(max_retries=2, retry_backoff=2)

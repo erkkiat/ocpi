@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 import pytz
@@ -880,3 +880,90 @@ class TestOICPDynamicPricingService:
                 ),
             ],
         )
+
+
+class TestPostEroamingChargeDetailRecord:
+    @pytest.fixture
+    def cdr_successful_response(self):
+        return {"Result": "OK"}
+
+    @pytest.fixture
+    def cdr_unsuccessful_response(self):
+        return {
+            "success": False,
+            "errorType": "Hubject server Error",
+            "error": "Hubject server returned 500. Retrying...",
+        }
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_with_valid_data_returns_successful_hubject_response(
+        self, ocpi_cdr, cdr_successful_response
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
+            json=cdr_successful_response,
+            status=200,
+        )
+
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, ocpi_cdr
+        )
+        assert result == cdr_successful_response
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_hubject_returns_status_code_400(self, ocpi_cdr):
+        operator_id = "FI*CPO"
+
+        bad_request_response = {"message": "Bad Request"}
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
+            json=bad_request_response,
+            status=400,
+        )
+
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, ocpi_cdr
+        )
+        assert not result["success"]
+        assert result["errorType"] == "HTTP Error"
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_tries_for_status_code_500(
+        self, ocpi_cdr, cdr_unsuccessful_response, monkeypatch
+    ):
+        monkeypatch.setattr("django.conf.settings.BACKGROUND_SEND", False)
+
+        with patch("integrations.hubject.services.send_hubject_request") as mock_send:
+            mock_send.return_value = {
+                "success": False,
+                "errorType": "HTTP Error",
+                "error": "500 : Server error",
+                "retry_count": 2,
+            }
+
+            operator_id = "FI*CPO"
+            url = f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record"
+
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_response.text = "Server error"
+            mock_response.json.return_value = {"error": "Server error"}
+
+            with patch(
+                "integrations.hubject.services.HubjectService.client.post",
+                return_value=mock_response,
+            ):
+                HubjectService.post_eroaming_charge_detail_record(operator_id, ocpi_cdr)
+
+                mock_send.assert_called_once()
+                args = mock_send.call_args[0]
+                assert len(args) >= 3
+                assert args[1] == url
+                assert args[2] == "post"
