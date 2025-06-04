@@ -24,6 +24,7 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
+from ocpi22.tasks import send_hubject_request
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -214,37 +215,37 @@ class HubjectService:
     def post_eroaming_charge_detail_record(
         operator_id: str, cdr: Cdr | None, session_id=None, retries=3
     ) -> dict:
-        full_load_url = urljoin(
+        url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
             f"cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
         )
         if cdr is None and session_id is not None:
             cdr = Cdr.objects.filter(session_id=session_id).first()
-        try:
-            payload = (
-                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
-                    cdr
-                )
-            )
-            payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, json=payload_json)
-            if response.status_code == 200:
-                return response.json()
-            if response.status_code >= 500 and retries > 0:
-                HubjectService.post_eroaming_charge_detail_record(
-                    operator_id, cdr, retries=retries - 1
+        payload = (
+            HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(cdr)
+        )
+        payload_json = payload.model_dump(mode="json")
+
+        response = HubjectService.client.post(url, json=payload_json)
+        if response.status_code == 200:
+            return response.json()
+        if response.status_code >= 500:
+            retry_policy = dict(max_retries=retries, interval_start=5)
+            if settings.BACKGROUND_SEND:
+                send_hubject_request.apply_async(
+                    payload_json, url, "post", retry=True, retry_policy=retry_policy
                 )
             else:
-                return {
-                    "success": False,
-                    "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
-                }
-        except PydanticSerializationError as e:
-            logger.exception("Pydantic validation failed")
+                send_hubject_request(payload_json, url, "post")
             return {
                 "success": False,
-                "errorType": "Pydantic validation failed",
-                "error": str(e),
+                "errorType": "Hubject server Error",
+                "error": f"Hubject server returned {response.status_code}. Retrying...",
+            }
+        else:
+            return {
+                "success": False,
+                "errorType": "HTTP Error",
+                "error": f"{response.status_code} : {response.text}",
             }
