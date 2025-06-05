@@ -605,7 +605,7 @@ class SolidToHubjectConverter:
             PartnerProductID=ProductID(root=partner_product_id)
             if partner_product_id
             else None,
-            EvseID=EvseID(root=cdr.cdr_location_evse_id),
+            EvseID=EvseID(root=cdr.evse_id),
             Identification=Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
                     UID=UID(root=session.token_id)

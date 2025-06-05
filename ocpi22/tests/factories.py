@@ -484,11 +484,11 @@ class CdrFactory(factory.Factory):
             self.tariffs.add(TariffFactory())
 
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
-    uid = "UID-12345"
+    uid = "UID12345"
     start_date_time = datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC)
     end_date_time = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
-    session_id = "SESSION-123"
-    cdr_token_uid = "TOKEN-123"
+    session_id = "SESSION123"
+    cdr_token_uid = "TOKEN123"
     cdr_token_type = "RFID"
     cdr_token_contract_id = "CONTRACT-123"
     auth_method = "WHITELIST"
@@ -527,7 +527,7 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
         role="EMSP",
         business_details__name="Test MSP",
     )
-    uid = "CDRTOKEN-12345"
+    uid = "AABBC123"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
 
@@ -536,7 +536,7 @@ class CdrLocationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CdrLocation
 
-    uid = "LOC-12345"
+    uid = "LOC12345"
     name = "Location A"
     address = "Alfred Nobellaan 22 App 150Z"
     city = "Harelbeke"
@@ -563,7 +563,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         role="CPO",
         business_details__name="Test CPO",
     )
-    uid = "SESSION-12345"
+    uid = "SESSION12345"
     cpo_partner_session_id = "CPOSESSION1"
     emp_partner_session_id = "EMSPSESSION1"
     hubject_session_id = "f98efba4-02d8-4fa0-b810-9a9d50d2c527"
