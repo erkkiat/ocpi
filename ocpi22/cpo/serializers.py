@@ -13,7 +13,7 @@ from ocpi22.choices import (
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.cpo.util import _find_our_evse
-from ocpi22.models import enum
+from ocpi22.models import enums
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -311,7 +311,7 @@ class CpoOutboundWebhookSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Optional reference to the authorization given by the eMSP",
     )
-    auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
+    auth_method = serializers.ChoiceField(choices=enums.AUTH_METHOD_CHOICES)
     from_party = serializers.CharField(
         help_text="The ID of the party sending the command"
     )
@@ -522,7 +522,7 @@ class CPOAuthorizationResponseSerializer(serializers.Serializer):
         max_length=5,
         help_text="The identifier of the eMSP that is responsible for paying for the session",
     )
-    auth_method = serializers.ChoiceField(choices=enum.AUTH_METHOD_CHOICES)
+    auth_method = serializers.ChoiceField(choices=enums.AUTH_METHOD_CHOICES)
     session_id = serializers.CharField(max_length=settings.OCPI_22_MAX_UID_LENGTH)
 
     @staticmethod

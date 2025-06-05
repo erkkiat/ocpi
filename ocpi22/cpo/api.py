@@ -31,7 +31,7 @@ from custom_ninja_api import CustomNinjaAPI
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
-from ocpi22.models import enum
+from ocpi22.models import enums
 from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
@@ -654,10 +654,10 @@ class ChargePointViewSet(FlowchartViewSet):
                     messages.info(
                         request,
                         {
-                            enum.AuthMethodChoices.COMMAND: "This Session is based on an authorization which was "
+                            enums.AuthMethodChoices.COMMAND: "This Session is based on an authorization which was "
                             f"implied when receiving the remote command from MSP {session.billed_to}.",
-                            enum.AuthMethodChoices.AUTH_REQUEST: f"This Session was authorized by {session.billed_to}.",
-                            enum.AuthMethodChoices.WHITELIST: "No authorization was requested from an MSP, because the Token "
+                            enums.AuthMethodChoices.AUTH_REQUEST: f"This Session was authorized by {session.billed_to}.",
+                            enums.AuthMethodChoices.WHITELIST: "No authorization was requested from an MSP, because the Token "
                             "is whitelisted and hence no authorization is to be done.",
                         }.get(session.auth_method, ""),
                     )
@@ -819,9 +819,9 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
 
                     extra_information = {
-                        enum.AuthMethodChoices.COMMAND: "<div>This session was started by using the MSP mobile application, "
+                        enums.AuthMethodChoices.COMMAND: "<div>This session was started by using the MSP mobile application, "
                         "but the flow is mostly the same with RFID token charging.</div>",
-                        enum.AuthMethodChoices.AUTH_REQUEST: "<div>This session was started by using an RFID token, "
+                        enums.AuthMethodChoices.AUTH_REQUEST: "<div>This session was started by using an RFID token, "
                         "but the flow is mostly the same when the driver starts the charging session "
                         "using an MSP mobile application.</div>",
                     }.get(session.auth_method, "")

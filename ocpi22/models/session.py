@@ -28,7 +28,7 @@ from ocpi22.choices import (
     TOKEN_TYPE_CHOICES,
 )
 from ocpi22.locations.serializers import TariffField
-from ocpi22.models import enum
+from ocpi22.models import enums
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import Tariff, PriceComponent, TariffElement
@@ -201,7 +201,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     auth_method = models.CharField(
         max_length=12,
-        choices=enum.AUTH_METHOD_CHOICES,
+        choices=enums.AUTH_METHOD_CHOICES,
         verbose_name="Authentication method",
     )
 

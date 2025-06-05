@@ -18,7 +18,7 @@ from rest_framework.response import Response
 
 from ocpi22.commands.cpo_simulator import start_simulated_session
 from ocpi22.decorators import requires_sender_role
-from ocpi22.models import enum
+from ocpi22.models import enums
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.dataclasses import AdhocToken
@@ -152,7 +152,7 @@ class CommandsViewSet(GenericViewSet):
             dict(
                 ad_hoc_token=AdhocToken.from_dict(token),
                 billed_to=billed_to.get_party(),
-                authorization_method=enum.AuthMethodChoices.COMMAND,
+                authorization_method=enums.AuthMethodChoices.COMMAND,
                 credentials=request.credentials,
                 connector_id=connector_id,
                 ocpi_master=billed_to,
@@ -320,7 +320,7 @@ class CommandsViewSet(GenericViewSet):
                 authorization_reference=session.authorization_reference
                 if session
                 else authorization_reference,
-                auth_method=enum.AuthMethodChoices.COMMAND,
+                auth_method=enums.AuthMethodChoices.COMMAND,
                 from_party=request.ocpi_party.party_str(),  # HUB or eMSP
                 evse_id=evse_uid,
                 connector_id=connector_id,

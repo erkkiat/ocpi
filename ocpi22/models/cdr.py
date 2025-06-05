@@ -10,7 +10,7 @@ from django.dispatch import receiver
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
-from ocpi22.models import enum
+from ocpi22.models import enums
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session, ChargingPeriodSerializer
@@ -97,7 +97,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     auth_method = models.CharField(
         max_length=12,
-        choices=enum.AUTH_METHOD_CHOICES,
+        choices=enums.AUTH_METHOD_CHOICES,
         verbose_name=_("Authentication method"),
     )
 
