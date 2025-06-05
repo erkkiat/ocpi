@@ -159,6 +159,22 @@ class TestHubjectApi:
 
 
 @pytest.mark.django_db
+def test_send_charge_detail_record_returns_401_for_unauthenticated_user(
+    client, ocpi_cdr
+):
+    url = f"/api/hubject/2.3/cdr/?session_id={ocpi_cdr.session_id}/"
+    with patch(
+        "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+    ) as mock_post:
+        mock_post.return_value = {
+            "success": True,
+            "message": "Response from hubject APIs",
+        }
+        response = client.post(url)
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
 def test_send_charge_detail_record_success(authenticated_user_client, ocpi_cdr):
     url = f"/api/hubject/2.3/cdr/?session_id={ocpi_cdr.session_id}/"
     with patch(
