@@ -42,7 +42,7 @@ from rest_framework import status
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
-from ocpi22.models import enums
+from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
@@ -1225,7 +1225,7 @@ class CdrTests(TestCase):
             cdr_token_uid="TOKEN1",
             cdr_token_type="RFID",
             cdr_token_contract_id="CONTRACT1",
-            auth_method=enums.AuthMethodChoices.COMMAND,
+            auth_method=enum.AuthMethodChoices.COMMAND,
             authorization_reference="1234567890",
             location=location,
             evse=evse,

@@ -16,7 +16,7 @@ from ocpi22.choices import (
     EndpointRoleEnum,
 )
 from ocpi22.credentials.util import find_endpoints_by_roles
-from ocpi22.models import enums
+from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
@@ -260,7 +260,7 @@ def authorize_with_msps_sync(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
                     responding_party=responding_party,
-                    auth_method=enums.AuthMethodChoices.AUTH_REQUEST,
+                    auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
                     billed_to=ocpi_master.get_party(),
                     ocpi_master=ocpi_master,
                 )

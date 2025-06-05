@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from ocpi22.models import enums
+from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.tokens.token_async import authorize_with_msps_sync
 from ocpi22.choices import (
@@ -269,7 +269,7 @@ def _authorize_token(
             allowed=Token.ALLOWED,
             token=token,
             info=MessageTexts.get("TOKEN_ACCEPTED"),
-            auth_method=enums.AuthMethodChoices.WHITELIST,
+            auth_method=enum.AuthMethodChoices.WHITELIST,
             billed_to=str(token.get_party()),
             ocpi_master=token.ocpi_master,
         )

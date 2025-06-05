@@ -12,7 +12,7 @@ from rest_framework.generics import get_object_or_404
 
 from typing import TYPE_CHECKING
 
-from ocpi22.models import enums
+from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.dataclasses import AdhocToken
 
@@ -115,7 +115,7 @@ def create_session(
             authorization.authorization_reference,
         )
     else:
-        authorization_method = authorization_method or enums.AuthMethodChoices.COMMAND
+        authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
     from ocpi22.models.credentials import CredentialsRole
 
