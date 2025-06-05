@@ -25,7 +25,7 @@ from ocpi22.choices import (
 )
 from ocpi22.messages import messages
 from ocpi22.models.session import Session
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route, Route
 from ocpiconnector.party import Party

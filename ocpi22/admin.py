@@ -26,7 +26,7 @@ from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.partners import (

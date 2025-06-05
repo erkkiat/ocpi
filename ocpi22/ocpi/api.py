@@ -52,7 +52,7 @@ from ocpi22.models.credentials import (
 from ocpi22.models.location import Location
 from ocpi22.models.tariff import Tariff
 from ocpi22.models.session import Session
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.models.cdr import Cdr
 from ocpi22.util import (
     OCPIVersioning,

@@ -19,7 +19,7 @@ from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enums
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context

@@ -2,7 +2,7 @@ import pytest
 from rest_framework.request import Request
 from rest_framework.test import APIRequestFactory
 
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.ocpi.util import OCPIPaginationAndHeaders
 
 

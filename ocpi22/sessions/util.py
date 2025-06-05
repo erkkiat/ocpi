@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid

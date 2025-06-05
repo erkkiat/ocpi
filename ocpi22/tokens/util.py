@@ -2,7 +2,7 @@ from typing import Union, OrderedDict
 
 from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 

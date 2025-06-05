@@ -12,7 +12,7 @@ from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.image import OCPIImage
 from ocpi22.models.location import Connector, Evse, Location
 from ocpi22.models.tariff import Tariff
-from ocpi22.models.tokens import Token
+from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.serializers.hours import HoursSerializer
