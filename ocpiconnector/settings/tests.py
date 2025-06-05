@@ -41,10 +41,3 @@ LOGGING = TEST_LOGGING
 REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = [  # noqa
     "rest_framework.renderers.JSONRenderer",
 ]
-
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
-
-# in-memory broker for tests
-CELERY_BROKER_URL = "memory://"
-CELERY_RESULT_BACKEND = "cache+memory://"
