@@ -44,7 +44,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         except ValueError:
             pytest.fail("last_updated field is not in the correct date format")
 
-    def test_mapping_with_different_authorization_status(self):
+    def test_mapping_with_different_authorization_status_results_in_not_allowed(self):
         """Test mapping with a different authorization status than 'Authorized'"""
         token_id = "TEST123456"
         oicp_response = {
@@ -61,7 +61,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["authorization_reference"] == "HUBJECT"
         assert result["data"]["hubject_session_id"] == "HUBJECT-SESSION-1234"
 
-    def test_mapping_with_complex_provider_id(self):
+    def test_mapping_with_complex_provider_id_succeeds(self):
         """Test mapping with a more complex ProviderID format"""
         token_id = "TEST123456"
         oicp_response = {
@@ -78,7 +78,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["token"]["party_id"] == "COMPLEX123"
         assert result["data"]["token"]["issuer"] == "DE*COMPLEX123"
 
-    def test_mapping_with_failed_status_code(self):
+    def test_mapping_with_failed_status_code_succeeds(self):
         """Test mapping with a non-success status code"""
         token_id = "TEST123456"
         oicp_response = {
@@ -89,9 +89,11 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         }
 
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-        assert result is None
+        assert result["data"]["authorization_reference"] == "HUBJECT"
+        assert result["data"]["hubject_session_id"] == "HUBJECT-SESSION-1234"
+        assert result["data"]["allowed"] == "ALLOWED"
 
-    def test_mapping_with_missing_authorization_status(self):
+    def test_mapping_with_missing_authorization_status_fails(self):
         """Test mapping when AuthorizationStatus is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -104,7 +106,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
         assert result is None
 
-    def test_mapping_with_missing_status_code(self):
+    def test_mapping_with_missing_status_code_succeeds(self):
         """Test mapping when StatusCode is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -115,9 +117,11 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         }
 
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-        assert result is None
+        assert result["data"]["authorization_reference"] == "HUBJECT"
+        assert result["data"]["hubject_session_id"] == "HUBJECT-SESSION-1234"
+        assert result["data"]["allowed"] == "ALLOWED"
 
-    def test_mapping_with_missing_provider_id(self):
+    def test_mapping_with_missing_provider_id_fails(self):
         """Test mapping when ProviderID is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -127,11 +131,10 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        assert (
-            map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id) is None
-        )
+        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        assert result is None
 
-    def test_mapping_with_empty_response(self):
+    def test_mapping_with_empty_response_results_in_not_allowed(self):
         """Test mapping with an empty response"""
         token_id = "TEST123456"
         oicp_response = {}
@@ -139,7 +142,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
         assert result is None
 
-    def test_mapping_with_null_response(self):
+    def test_mapping_with_null_response_results_in_not_allowed(self):
         """Test mapping with a None response"""
         token_id = "TEST123456"
         oicp_response = None

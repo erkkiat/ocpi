@@ -48,10 +48,8 @@ def map_oicp_authorization_response_to_ocpi_221(
         return None
     authorization_status = oicp_response.get("AuthorizationStatus")
     country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
-    status_code = oicp_response.get("StatusCode", {}).get("Code")
-    status_ok = bool(status_code == "000")
 
-    if authorization_status and status_ok and country_code and party_id:
+    if authorization_status and country_code and party_id:
         data = {
             "allowed": {"Authorized": "ALLOWED"}.get(
                 authorization_status, "NOT_ALLOWED"
@@ -75,10 +73,6 @@ def map_oicp_authorization_response_to_ocpi_221(
             },
         }
         return {"data": data}
-
-    logger.info(
-        f"Hubject authorization failed with status code {status_code} and authorization status {authorization_status}"
-    )
     return None
 
 
@@ -188,10 +182,7 @@ class HubjectService:
     async def post_authorize_request(
         operator_id: str, token_id: str
     ) -> tuple[Any, dict | None, Any]:
-        url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"charging/v21/operators/{operator_id}/authorize/start",
-        )
+        url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
         try:
             payload = ERoamingAuthorizeStart(
@@ -206,8 +197,11 @@ class HubjectService:
 
             response = HubjectService.client.post(url, json=payload_dict)
 
+            logging.info(response)
+            status_code = response.get("StatusCode", {}).get("Code")
+
             ocpi_master = None
-            if response.status_code == status.HTTP_200_OK:
+            if response.status_code == status.HTTP_200_OK and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
                     party=Party.from_str(response.json().get("ProviderID", "*")),

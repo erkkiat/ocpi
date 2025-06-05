@@ -896,8 +896,6 @@ def test_map_oicp_authorization_response_to_ocpi_221_success():
 
     result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
 
-    assert result is not None
-    assert "data" in result
     data = result["data"]
     assert data["allowed"] == "ALLOWED"
     assert data["authorization_reference"] == "HUBJECT"
@@ -908,7 +906,7 @@ def test_map_oicp_authorization_response_to_ocpi_221_success():
     assert data["token"]["issuer"] == "FI*MSP"
 
 
-def test_map_oicp_authorization_response_to_ocpi_221_failure():
+def test_map_oicp_authorization_response_to_ocpi_221_results_in_not_allowed():
     token_id = "TEST123456"
     oicp_response = {
         "AuthorizationStatus": "NotAuthorized",
@@ -918,7 +916,9 @@ def test_map_oicp_authorization_response_to_ocpi_221_failure():
     }
 
     result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-    assert result is None
+    assert result["data"]["allowed"] == "NOT_ALLOWED"
+    assert result["data"]["authorization_reference"] == "HUBJECT"
+    assert result["data"]["hubject_session_id"] == "HUBJECT-SESSION-1234"
 
 
 def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
