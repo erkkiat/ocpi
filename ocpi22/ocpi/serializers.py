@@ -27,7 +27,7 @@ from ocpi22.models.session import (
     TotalCostSerializer,
 )
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.serializers.util import (
     SerializerCleanedUp,

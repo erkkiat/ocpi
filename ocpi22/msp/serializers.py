@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 from ocpi22.choices import AuthorizationEnum
 from util import default_error_messages
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.ocpi.serializers import (
     SessionSerializer,
     StrictEvseUidSerializer,

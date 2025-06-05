@@ -9,7 +9,7 @@ from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Location
 from ocpi22.choices import EndpointRoleEnum
 from ocpi22.models.tariff import Tariff
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.tasks import pull_objects
 from ocpiconnector.ocpi_identities import get_our_country_code, get_our_party_id
 

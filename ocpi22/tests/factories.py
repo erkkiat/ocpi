@@ -43,7 +43,7 @@ from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 
 fake = Faker()
 

@@ -93,7 +93,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, TariffElement, PriceComponent
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.ocpi.util import OCPIResponse, Ocpi, OcpiModule
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.pull import schedule_full_update

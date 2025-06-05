@@ -70,7 +70,7 @@ from ocpi22.models.tariff import TariffElement
 from ocpi22.util import command_store, clear_empty
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.serializers import CdrSerializer, InvoicingCallbackSerializer
 from ocpi22.ocpi.util import options_message

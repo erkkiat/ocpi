@@ -30,7 +30,7 @@ def ocpi_exception_handler(func):
     def wrapper(*args, **kwargs):
         from ocpi22.models.location import Evse, Location, Connector
         from ocpi22.models.session import Session
-        from ocpi22.models.token import Token
+        from ocpi22.models.tokens import Token
         from ocpi22.models.tariff import Tariff
 
         EXCEPTION_MAPPINGS = {

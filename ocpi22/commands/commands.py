@@ -48,7 +48,7 @@ from ocpi22.cpo.serializers import (
 )
 from ocpi22.models.location import Evse, Location
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
+from ocpi22.models.tokens import Token
 from ocpi22.routing import find_route, Route
 from ocpi22.sessions.util import create_session
 from ocpi22.ocpi.util import (
