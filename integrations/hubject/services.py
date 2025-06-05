@@ -215,14 +215,42 @@ class HubjectService:
                 ocpi_master,
             )
 
-        except (ValueError, OSError, RuntimeError):
-            logger.exception("Authorization error with Hubject")
+        except ValueError as ve:
+            logger.exception("ValueError during authorization with Hubject: %s", ve)
             return (
                 404,
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Error",
+                    "status_message": "Invalid data provided",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
+        except OSError as oe:
+            logger.exception("OSError during authorization with Hubject: %s", oe)
+            return (
+                404,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Network error occurred",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
+        except RuntimeError as re:
+            logger.exception("RuntimeError during authorization with Hubject: %s", re)
+            return (
+                404,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Unexpected runtime error",
                     "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
                     ),
