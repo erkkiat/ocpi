@@ -38,6 +38,9 @@ def get_our_roles(source: dict = None) -> list:
     >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
     BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://localhost'))
     [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'HUB'}]
+    >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
+    BUSINESS_NAME='Test'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': None}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': None}, 'party_id': 'HUB'}]
 
     @param source: For testing purposes, you can set the source for role settings
     @return: a list of roles formatted for Credentials registration
@@ -46,7 +49,7 @@ def get_our_roles(source: dict = None) -> list:
     source = source or os.environ
     roles = []
     business_name = source.get("BUSINESS_NAME", "N/A")
-    website = source.get("BUSINESS_WEBSITE", "")
+    website = source.get("BUSINESS_WEBSITE", None)
 
     for role in ROLE_OPTIONS:
         country_code, party_id = source.get(role, "*").split("*")

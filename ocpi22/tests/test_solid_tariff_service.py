@@ -1,3 +1,4 @@
+import copy
 from unittest.mock import patch
 
 import pytest
@@ -135,7 +136,7 @@ def test_create_raises_exception_on_invalid_data(solid_tariff_service_instance):
 
 
 @pytest.mark.django_db
-def test_create_returns_same_object_if_exists(
+def test_user_sending_same_tariff_as_latest_does_not_create_a_new_tariff(
     smp1_msp1_solid_tariff_with_all_records,
     solid_tariff_service_instance,
     smp1_solid_tariff_validated_json,
@@ -146,6 +147,30 @@ def test_create_returns_same_object_if_exists(
         solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
 
         mock_create_new_tariff.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_user_sending_same_tariff_as_expired_does_create_a_new_tariff(
+    smp1_msp1_solid_tariff_with_all_records,
+    solid_tariff_service_instance,
+    smp1_solid_tariff_validated_json,
+):
+    # Original is modified after create method, therefore keeping copies to replicate same scenario
+    original_solid_tariff_copy = copy.deepcopy(smp1_solid_tariff_validated_json)
+
+    new_solid_tariff = copy.deepcopy(smp1_solid_tariff_validated_json)
+    new_solid_tariff["price_per_kwh"] = 0.99
+
+    solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
+
+    solid_tariff_service_instance.create(new_solid_tariff)
+
+    with patch.object(
+        solid_tariff_service_instance, "_create_new_tariff"
+    ) as mock_create_new_tariff:
+        solid_tariff_service_instance.create(original_solid_tariff_copy)
+
+        mock_create_new_tariff.assert_called()
 
 
 @pytest.mark.django_db
