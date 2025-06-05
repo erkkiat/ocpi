@@ -1,7 +1,7 @@
 from typing import Dict
 
 from custom_ninja_api import CustomNinjaAPI
-from integrations.hubject.schemas import PricingProductData, ActionType
+from integrations.hubject.schemas import PricingProductData, ActionType, HubjectCDRError
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.tariff import SolidTariff
@@ -59,14 +59,33 @@ def start_pricing_product_full_load(request) -> dict:
         return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
 
 
-@api.post("/cdr/", url_name="hubject-cdr", response=Dict)
-def send_charge_detail_record(request, session_id: str) -> dict:
+@api.post(
+    "/cdr/",
+    url_name="hubject-cdr",
+    response={
+        200: dict,
+        400: HubjectCDRError,
+        503: HubjectCDRError,
+    },
+)
+def send_charge_detail_record(request, session_id: str):
     if session_id is None:
         return {"success": False, "message": "Session ID is required."}
 
-    return hubject_service.post_eroaming_charge_detail_record(
+    result = HubjectService.post_eroaming_charge_detail_record(
         get_our_identity(OcpiRolesEnum.CPO.value),
         cdr=None,
         session_id=session_id,
         retries=0,
     )
+
+    if not result.get("success", False) and result.get("errorType") == "Invalid Input":
+        return 400, HubjectCDRError(**result)
+    elif (
+        not result.get("success", False)
+        and result.get("errorType") == "Hubject server Error"
+        or result.get("errorType") == "HTTP Error"
+    ):
+        return 503, HubjectCDRError(**result)
+    else:
+        return 200, result

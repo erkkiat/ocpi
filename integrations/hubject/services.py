@@ -215,12 +215,26 @@ class HubjectService:
     def post_eroaming_charge_detail_record(
         operator_id: str, cdr: Cdr | None, session_id=None, retries=3
     ) -> dict:
+        if cdr is None:
+            if session_id is None:
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": "Either CDR or session_id must be provided.",
+                }
+
+            cdr = Cdr.objects.filter(session_id=session_id).first()
+            if cdr is None:
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": f"No CDR found for session_id {session_id}.",
+                }
+
         url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
             f"cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
         )
-        if cdr is None and session_id is not None:
-            cdr = Cdr.objects.filter(session_id=session_id).first()
 
         payload = (
             HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(cdr)
@@ -230,7 +244,7 @@ class HubjectService:
         response = HubjectService.client.post(url, json=payload_json)
         if response.status_code == 200:
             return response.json()
-        elif response.status_code >= 500:
+        elif response.status_code >= 500 and retries > 0:
             retry_policy = dict(max_retries=retries, interval_start=5)
             if settings.BACKGROUND_SEND:
                 send_hubject_request.apply_async(
