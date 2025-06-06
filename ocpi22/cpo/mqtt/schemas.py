@@ -45,6 +45,40 @@ class EvseStatusUpdate(BaseModel):
         }
 
 
+class TokenAuthorizationRequest(BaseModel):
+    request_id: str = Field(
+        ..., description="Unique identifier for this authorization request"
+    )
+    token_uid: str = Field(..., description="Token UID to authorize")
+    location_id: Optional[str] = Field(
+        None, description="Optional location ID where charging is requested"
+    )
+    correlation_id: Optional[str] = Field(
+        None, description="Optional correlation ID for tracking purposes"
+    )
+
+
+class TokenAuthorizationResponse(BaseModel):
+    request_id: str = Field(..., description="The request ID from the original request")
+    token_uid: str = Field(..., description="Token UID that was authorized")
+    allowed: str = Field(
+        ...,
+        description="Authorization result: ALLOWED, NOT_ALLOWED, BLOCKED, EXPIRED, NO_CREDIT",
+    )
+    authorization_reference: Optional[str] = Field(
+        None, description="Reference for this authorization"
+    )
+    responding_party: Optional[str] = Field(
+        None, description="Party that provided the authorization"
+    )
+    status_text: Optional[str] = Field(
+        None, description="Human readable status message"
+    )
+    correlation_id: Optional[str] = Field(
+        None, description="Optional correlation ID for tracking purposes"
+    )
+
+
 @dataclass
 class CachedSession:
     session_id: str
