@@ -44,7 +44,6 @@ from integrations.hubject.schemas import (
     RFIDMifareFamilyIdentification,
 )
 from ocpi22.choices import OCPICapability
-from ocpi22.cpo.api import applying_tariff_element
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Evse, Connector
@@ -563,6 +562,8 @@ class SolidToHubjectConverter:
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: Cdr
     ) -> ERoamingChargeDetailRecord:
+        from ocpi22.cpo.api import applying_tariff_element
+
         if cdr.total_energy > 1000:
             raise ValidationError("Total energy must not exceed 1000 kWh.")
 

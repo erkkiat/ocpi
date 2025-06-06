@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ocpi22', '0026_location_roaming_enabled'),
+        ('ocpi22', '0027_alter_businessdetails_website'),
     ]
 
     operations = [
