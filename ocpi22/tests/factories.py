@@ -527,7 +527,7 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
         role="EMSP",
         business_details__name="Test MSP",
     )
-    uid = "AABBC123"
+    uid = "ABCABCDE123456"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
 
