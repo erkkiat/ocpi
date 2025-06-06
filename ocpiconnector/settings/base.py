@@ -8,6 +8,7 @@ from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
+from ocpiconnector.settings.infra_services import CustomJsonFormatter
 
 setup_sentry()
 
@@ -373,7 +374,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "()": CustomJsonFormatter,
             "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
