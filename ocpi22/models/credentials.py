@@ -332,7 +332,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
     role = models.CharField(max_length=5, choices=ROLE_CHOICES, verbose_name=_("Role"))
 
     roaming_protocol = models.CharField(
-        max_length=8,
+        max_length=4,
         choices=choices.ROAMING_PROTOCOL_CHOICES,
         default=choices.RoamingProtocol.OCPI.name,
         verbose_name=_("Roaming protocol"),

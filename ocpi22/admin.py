@@ -787,7 +787,6 @@ class CredentialsAdmin(SolidModelAdmin):
     list_display = [
         "name",
         "party_str",
-        "roaming_protocol",
         "valid",
         "responding",
         "last_update",
