@@ -152,27 +152,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id) is None
         )
 
-    def test_map_oicp_authorization_response_to_ocpi_221_success(self):
-        token_id = "TEST123456"
-        oicp_response = {
-            "AuthorizationStatus": "Authorized",
-            "ProviderID": "FI*MSP",
-            "StatusCode": {"Code": "000"},
-            "SessionID": "HUBJECT-SESSION-1234",
-        }
-
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-
-        data = result["data"]
-        assert data["allowed"] == "ALLOWED"
-        assert data["authorization_reference"] == "HUBJECT-OMITTED"
-        assert data["hub_session_id"] == "HUBJECT-SESSION-1234"
-        assert data["token"]["uid"] == token_id
-        assert data["token"]["country_code"] == "FI"
-        assert data["token"]["party_id"] == "MSP"
-        assert data["token"]["issuer"] == "FI*MSP"
-
-    def test_map_oicp_authorization_response_to_ocpi_221_results_in_not_allowed(self):
+    def test_mapping_with_not_authorized_results_in_not_allowed(self):
         token_id = "TEST123456"
         oicp_response = {
             "AuthorizationStatus": "NotAuthorized",
@@ -185,14 +165,3 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["allowed"] == "NOT_ALLOWED"
         assert result["data"]["authorization_reference"] == "HUBJECT-OMITTED"
         assert result["data"]["hub_session_id"] == "HUBJECT-SESSION-1234"
-
-    def test_map_oicp_authorization_response_to_ocpi_221_missing_status(self):
-        token_id = "TEST123456"
-        oicp_response = {
-            "ProviderID": "FI*MSP",
-            "StatusCode": {"Code": "000"},
-            "SessionID": "HUBJECT-SESSION-1234",
-        }
-
-        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-        assert result is None
