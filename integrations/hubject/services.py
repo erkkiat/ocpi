@@ -54,8 +54,11 @@ def map_oicp_authorization_response_to_ocpi_221(
             "allowed": {"Authorized": "ALLOWED"}.get(
                 authorization_status, "NOT_ALLOWED"
             ),
-            "authorization_reference": "HUBJECT",
-            "hubject_session_id": oicp_response.get("SessionID"),
+            "authorization_reference": oicp_response.get(
+                "EMPPartnerSessionID", "HUBJECT-OMITTED"
+            ),
+            "hub_session_id": oicp_response.get("SessionID"),
+            "responding_party": "DE*ICE",
             "token": {
                 "contract_id": "N/A",
                 "country_code": country_code,
@@ -73,6 +76,7 @@ def map_oicp_authorization_response_to_ocpi_221(
             },
         }
         return {"data": data}
+    logger.error("Invalid OICP response.", oicp_response)
     return None
 
 
@@ -212,7 +216,7 @@ class HubjectService:
             return (
                 response.status_code,
                 map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
-                ocpi_master,
+                ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
 
         except ValueError as ve:

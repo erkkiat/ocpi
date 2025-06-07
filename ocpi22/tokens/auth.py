@@ -93,13 +93,7 @@ class TokenAuthorization:
     billed_to: str = ""
     ocpi_master: CredentialsRole = None
     status_text: str = ""
-    hubject_session_id: str = ""
-    emp_partner_session_id: str = ""
-    cpo_partner_session_id: str = ""
-
-    @property
-    def is_via_hubject(self) -> bool:
-        return bool(self.hubject_session_id)
+    hub_session_id: str = ""
 
     @staticmethod
     def get_token_owner(token) -> Party:
@@ -202,7 +196,9 @@ def authorize_token(
                         TokenType.AD_HOC_USER,
                         session.billed_to,
                     ),
-                    responding_party=session.billed_to.party_str(),
+                    responding_party=session.route_through.party_str()
+                    if session.route_through
+                    else session.billed_to.party_str(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
