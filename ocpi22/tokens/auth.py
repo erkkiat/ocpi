@@ -196,9 +196,7 @@ def authorize_token(
                         TokenType.AD_HOC_USER,
                         session.billed_to,
                     ),
-                    responding_party=session.route_through.party_str()
-                    if session.route_through
-                    else session.billed_to.party_str(),
+                    responding_party=session.billed_to.party_str(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
