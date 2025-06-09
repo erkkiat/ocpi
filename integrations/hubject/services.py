@@ -58,7 +58,7 @@ def map_oicp_authorization_response_to_ocpi_221(
                 "EMPPartnerSessionID", "HUBJECT-OMITTED"
             ),
             "hub_session_id": oicp_response.get("SessionID"),
-            "responding_party": "DE*ICE",
+            "responding_party": settings.HUBJECT_OPERATOR_ID,
             "token": {
                 "contract_id": "N/A",
                 "country_code": country_code,
