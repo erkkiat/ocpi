@@ -24,13 +24,13 @@ def evse(db):
 
 
 @pytest.fixture
-def token():
-    return TokenFactory(uid="SOME_TOKEN_UID")
+def ocpi_master():
+    return CredentialsRoleFactory(country_code="US", party_id="TST", role="CPO")
 
 
 @pytest.fixture
-def ocpi_master():
-    return CredentialsRoleFactory(country_code="US", party_id="TST", role="CPO")
+def token(ocpi_master):
+    return TokenFactory(uid="SOME_TOKEN_UID", ocpi_master=ocpi_master)
 
 
 def make_request(evse, token_data, payload=None):
