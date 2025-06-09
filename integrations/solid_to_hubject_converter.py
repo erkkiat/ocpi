@@ -76,15 +76,10 @@ class SolidToHubjectConverter:
             deltaType=None,
             lastUpdate=evse.last_updated,
             EvseID=self.get_evse_id(evse.evse_id),
-            # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
-            # todo : ChargingStationID missing in ocpi22
-            ChargingStationId=None,
-            # todo : HardwareManufacturer missing in ocpi22
+            ChargingStationId=location.uid,
             HardwareManufacturer=None,
-            # todo : ChargingStationImage missing in ocpi22
             ChargingStationImage=None,
-            # todo : SubOperatorName missing in ocpi22
             SubOperatorName=None,
             Address=Address(
                 Country=location.country,
@@ -92,10 +87,10 @@ class SolidToHubjectConverter:
                 Street=street,
                 PostalCode=location.postal_code,
                 HouseNum=house_number,
-                # todo : Floor missing in ocpi22,
-                # todo : Region missing in ocpi22,
+                Floor=None,
+                Region=None,
                 ParkingFacility=True if location.parking_type else False,
-                # todo : ParkingSpot missing in ocpi22,
+                ParkingSpot=None,
                 TimeZone=self.get_timezone(location.time_zone),
             ),
             GeoCoordinates=GeoCoordinates(
@@ -109,30 +104,21 @@ class SolidToHubjectConverter:
             Plugs=self.get_distinct_plugs(evse.connectors.all()),
             DynamicPowerLevel=None,
             ChargingFacilities=self.get_charging_facilities(evse.connectors.all()),
-            # todo : RenewableEnergy check with smappee, default to False
             RenewableEnergy=False,
-            # todo : EnergySource missing in ocpi22 location model, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnergySource=None,
-            # todo : EnvironmentalImpact missing in ocpi22, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnvironmentalImpact=None,
-            # todo : CalibrationLawDataAvailability missing in ocpi22, required, defaulted to Local
             CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
-            # todo : MaxCapacity missing in ocpi22,
             MaxCapacity=None,
-            # todo : PaymentOptions missing in ocpi22,
             PaymentOptions=self.get_payment_options(evse.capabilities),
             ValueAddedServices=self.get_value_added_services_list(evse.capabilities),
-            # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
             AccessibilityLocation=self.get_accessibility_locations(
                 location.parking_type
             ),
-            # todo : HotlinePhoneNumber missing in ocpi22, we have msp phone not CPO.
             HotlinePhoneNumber=settings.HOTLINE,
-            # todo : AdditionalInfo missing in ocpi22,
-            # todo : ChargingStationLocationReference missing in ocpi22,
-            # todo : ChargingStationNames missing in ocpi22
+            AdditionalInfo=None,
+            ChargingStationLocationReference=None,
             ChargingStationNames=[
                 InfoTextType(lang="en", value=location.name if location.name else "")
             ],
