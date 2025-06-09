@@ -2,7 +2,10 @@ from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
+from functools import wraps
 
+from django.db import close_old_connections
+from django.db.utils import OperationalError as DjangoOperationalError
 from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
@@ -10,6 +13,24 @@ from ocpi22.models.session import Session
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+
+def ensure_db_connection(func):
+    """Decorator to handle database connection errors in MQTT message processing"""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except DjangoOperationalError as e:
+            if "server has gone away" in str(e).lower() or "2006" in str(e):
+                logger.warning("Database connection lost, reconnecting...")
+                close_old_connections()
+                return func(*args, **kwargs)
+            else:
+                raise
+
+    return wrapper
 
 
 def _decode_message(message):
@@ -20,6 +41,7 @@ def _decode_message(message):
         return None
 
 
+@ensure_db_connection
 def process_meter_values_data(message) -> None:
     decoded_meter_message = _decode_message(message)
     if not decoded_meter_message:
@@ -35,11 +57,14 @@ def process_meter_values_data(message) -> None:
         process_meter_values(request=None, session=session, **kwargs)
     except OperationalError:
         logger.exception("Celery operational error")
+    except DjangoOperationalError:
+        raise
     except Exception:
         logger.exception("An unexpected error occurred")
     return
 
 
+@ensure_db_connection
 def process_status_update_data(message) -> None:
     decoded_evse_message = _decode_message(message)
     if not decoded_evse_message:

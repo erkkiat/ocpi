@@ -317,6 +317,7 @@ class LocationAdmin(SolidNestedModelAdmin):
                     ("state", "country"),
                     ("latitude", "longitude", "time_zone"),
                     "publish",
+                    "roaming_enabled",
                 )
             ),
         ),
@@ -327,6 +328,7 @@ class LocationAdmin(SolidNestedModelAdmin):
         "party_long",
         "uid",
         "publish",
+        "roaming_enabled",
         "name",
         "street_address",
         "evse_list",

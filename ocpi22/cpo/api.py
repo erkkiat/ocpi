@@ -23,12 +23,9 @@ from typing import Union, Optional
 
 import redis
 from django.conf import settings
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import routers, status, mixins
+from rest_framework import routers, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import LimitOffsetPagination
 
 from custom_ninja_api import CustomNinjaAPI
 from ocpi22.cpo.schemas import LocationIn, Error
@@ -48,7 +45,6 @@ from util import (
     RedisStore,
     markdown_escape,
 )
-from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
 from ocpi22.commands.serializers import (
@@ -62,7 +58,6 @@ from ocpi22.cpo.serializers import (
     MeterValuesSerializer,
     StartTransactionSerializer,
     StopTransactionSerializer,
-    EvseSerializer,
     CPOStartWebhookSerializer,
     CPOStopWebhookSerializer,
     CPOReserveNowWebhookSerializer,
@@ -99,81 +94,6 @@ pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 logger = getLogger(__name__)
-
-
-class CpoEvseViewSet(
-    mixins.RetrieveModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.DestroyModelMixin,
-    mixins.ListModelMixin,
-    GenericViewSet,
-):
-    """
-    This is an optimised subset of the EVSE information available in the system.
-    """
-
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["status"]
-    pagination_class = LimitOffsetPagination
-    permission_classes = [IsAdminUser]
-
-    @staticmethod
-    def put(request, evse_id=None):
-        if not evse_id:
-            evse_id = request.data["uid"]
-        evse = Evse.objects.get(uid__iexact=evse_id)
-        serializer = EvseSerializer(
-            evse, data=request.data, context={"version": request.version}
-        )
-        if serializer.is_valid():
-            location = serializer.save()
-            location.send_updates()
-            return Response(serializer.data)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(
-        methods=["GET", "PATCH"],
-        detail=False,
-        url_path="(?P<evse_id>[^/.]+)",
-        url_name="by-id",
-    )
-    def evse_by_id(self, request, evse_id) -> Response:
-        """
-        This URL is used for sending charger status updates to the Connector using the PATCH method.
-        Status updates should be real time, so that the eMSPs can show the accurate availability to their customers.
-
-        You can try the status update by changing the status
-        in the input box below and clicking the "PATCH" button.
-
-        See OPTIONS for a detailed API schema.
-
-        """
-        evse = get_object_or_404(Evse, uid=evse_id)
-
-        if request.method == "GET":
-            serializer = EvseSerializer(evse, context={"version": request.version})
-            return Response(serializer.data)
-
-        elif request.method == "PATCH":
-            serializer = EvseSerializer(
-                evse,
-                data=request.data,
-                partial=True,
-                context={"version": request.version},
-            )
-            if serializer.is_valid():
-                evse: Evse = serializer.save()
-                evse.location.send_updates()
-                return Response(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    queryset = Evse.objects.all().order_by("created")
-    serializer_class = EvseSerializer
-    lookup_field = "evse_id"
 
 
 def close_active_sessions_for_evse(evse_uid: str):

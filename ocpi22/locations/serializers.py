@@ -301,6 +301,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
             "charging_when_closed",
             "time_zone",
             "last_updated",
+            "roaming_enabled",
         ]
 
     lookup_field = "uid"
