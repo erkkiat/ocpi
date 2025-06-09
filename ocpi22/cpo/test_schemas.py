@@ -4,9 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from ocpi22.cpo.schemas import (
-    LocationIn,
-    EVSE,
-    Connector,
+    SolidLocation,
+    SolidEvse,
+    SolidConnector,
     OpeningTimes,
     RegularHours,
 )
@@ -76,19 +76,19 @@ def invalid_type(location_data):
 
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
-    location = LocationIn(**data)
+    location = SolidLocation(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
-    location = LocationIn(**data)
+    location = SolidLocation(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
-    location = LocationIn(**data)
+    location = SolidLocation(**data)
     assert location.country == "BEL"
 
 
@@ -96,89 +96,89 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
-    location = LocationIn(**data)
+    location = SolidLocation(**data)
     assert location.country == "SWE"
 
 
 def test_location_in_schema_invalid_country_raises_value_error(invalid_country):
     with pytest.raises(ValueError, match="INVALID is not a valid country"):
-        LocationIn(**invalid_country)
+        SolidLocation(**invalid_country)
 
 
 def test_location_in_schema_none_country_raises_validation_error(location_data):
     location_data.pop("country")
     with pytest.raises(ValidationError):
-        LocationIn(**location_data)
+        SolidLocation(**location_data)
 
 
 def test_location_in_schema_invalid_parking_type_raises_value_error(location_data):
     location_data["parking_type"] = "INVALID"
     with pytest.raises(ValidationError):
-        LocationIn(**location_data)
+        SolidLocation(**location_data)
 
 
 def test_location_in_roaming_enabled_field_is_optional(location_data):
     location_data.pop("roaming_enabled")
-    location = LocationIn(**location_data)
+    location = SolidLocation(**location_data)
     assert location.roaming_enabled is True
 
 
 def test_evse_schema_valid_data(evse_data):
-    evse = EVSE(**evse_data)
+    evse = SolidEvse(**evse_data)
     assert evse.evse_id == evse_data["evse_id"]
 
 
 def test_evse_schema_invalid_status_raises_value_error(evse_data):
     evse_data["status"] = "INVALID"
     with pytest.raises(ValidationError):
-        EVSE(**evse_data)
+        SolidEvse(**evse_data)
 
 
 def test_evse_schema_none_status_raises_validation_error(evse_data):
     evse_data.pop("status")
     with pytest.raises(ValidationError):
-        EVSE(**evse_data)
+        SolidEvse(**evse_data)
 
 
 def test_connector_schema_valid_data(connector_data):
-    connector = Connector(**connector_data)
+    connector = SolidConnector(**connector_data)
     assert connector.uid == connector_data["id"]
 
 
 def test_connector_schema_invalid_standard_raises_value_error(connector_data):
     connector_data["standard"] = "INVALID"
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_connector_schema_none_standard_raises_validation_error(connector_data):
     connector_data.pop("standard")
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_connector_schema_invalid_format_raises_value_error(connector_data):
     connector_data["format"] = "INVALID"
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_connector_schema_none_format_raises_validation_error(connector_data):
     connector_data.pop("format")
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_connector_schema_invalid_power_type_raises_value_error(connector_data):
     connector_data["power_type"] = "INVALID"
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_connector_schema_none_power_type_raises_validation_error(connector_data):
     connector_data.pop("power_type")
     with pytest.raises(ValidationError):
-        Connector(**connector_data)
+        SolidConnector(**connector_data)
 
 
 def test_regular_hours_and_exceptional_openings_closings_are_not_mandatory_when_twentyfourseven_is_true():

@@ -138,7 +138,7 @@ class GeoLocation(BaseSchema):
     longitude: Longitude
 
 
-class Connector(BaseSchema):
+class SolidConnector(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
@@ -153,7 +153,7 @@ class Connector(BaseSchema):
     terms_and_conditions: Optional[str] = None
 
 
-class EVSE(BaseSchema):
+class SolidEvse(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
@@ -163,7 +163,7 @@ class EVSE(BaseSchema):
     status: EVSEStatus
     status_schedule: Optional[List[StatusSchedule]] = None
     capabilities: Optional[List[OCPICapability]] = None
-    connectors: List[Connector] = Field(
+    connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
     floor_level: Optional[Annotated[str, StringConstraints(max_length=4)]] = None
@@ -225,7 +225,7 @@ def validate_time_zone(value):
     return value
 
 
-class LocationIn(BaseSchema):
+class SolidLocation(BaseSchema):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
     )
@@ -256,7 +256,7 @@ class LocationIn(BaseSchema):
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
     related_locations: Optional[List[AdditionalGeoLocation]] = None
     parking_type: Optional[ParkingChoices] = None
-    evses: Optional[List[EVSE]] = Field(
+    evses: Optional[List[SolidEvse]] = Field(
         None, description="List of EVSEs available at this location"
     )
     directions: Optional[List[DisplayText]] = None
