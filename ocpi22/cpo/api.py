@@ -515,9 +515,6 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
-                        assert (
-                            authorization.ocpi_master
-                        ), f"No OCPI Master found: {authorization.ocpi_master}"
                         session = create_session(
                             credentials=getattr(
                                 authorization.ocpi_master, "credentials", None
@@ -571,10 +568,10 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except (ObjectDoesNotExist, ValueError, OSError) as e:
-            logger.exception("Exception in CPO authorize()")
+            logger.exception("Exception in CPO authorize()", extra={"error": str(e)})
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
-            messages.info(  # what is this ?
+            messages.info(
                 request,
                 "Seems that the ID for the EVSE or the Token was not quite correct. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '
