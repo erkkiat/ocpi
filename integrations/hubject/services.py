@@ -76,7 +76,7 @@ def map_oicp_authorization_response_to_ocpi_221(
             },
         }
         return {"data": data}
-    logger.error("Invalid OICP response.", oicp_response)
+    logger.error("Invalid OICP response: %s", oicp_response)
     return None
 
 
