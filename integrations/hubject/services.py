@@ -78,7 +78,7 @@ def map_oicp_authorization_response_to_ocpi_221(
         return {"data": data}
     logger.error(
         f"Invalid OICP response from {settings.HUBJECT_OPERATOR_ID}.",
-        extra={"response": oicp_response},
+        extra={"response_data": oicp_response},
     )
     return None
 
