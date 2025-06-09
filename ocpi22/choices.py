@@ -546,6 +546,6 @@ class RoamingProtocol(Enum):
         return self.value
 
 
-ROAMING_PROTOCOL_CHOICES = (
+ROAMING_PROTOCOL_CHOICES = [
     (protocol.name, protocol.value) for protocol in RoamingProtocol
-)
+]
