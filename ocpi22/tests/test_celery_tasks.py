@@ -35,10 +35,8 @@ class TestSendHubjectRequest:
             match=[matchers.json_params_matcher(payload_json)],
         )
 
-        result = send_hubject_request.delay(
-            payload_json, TestSendHubjectRequest.HUBJECT_URL
-        )
-        assert result.get() == {"success": True}
+        result = send_hubject_request(payload_json, TestSendHubjectRequest.HUBJECT_URL)
+        assert result == {"success": True}
 
     def test_send_hubject_request_unsupported_method(self, mock_client, payload_json):
         mock_client.session.invalid_method = None
@@ -65,7 +63,7 @@ class TestSendHubjectRequest:
 
         with patch("celery.app.task.Task.request") as mock_request:
             mock_request.is_eager = True
-            send_hubject_request.delay(
+            send_hubject_request(
                 payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
             )
 
