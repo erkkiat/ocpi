@@ -89,7 +89,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.HUB_ID_MAX_LENGTH,
         blank=True,
         null=True,
-        verbose_name=_("Hubject session ID"),
+        verbose_name=_("Hub session ID"),
     )
     reservation_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,

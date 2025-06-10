@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='session',
             name='hub_session_id',
-            field=models.CharField(blank=True, max_length=36, null=True, verbose_name='Hubject session ID'),
+            field=models.CharField(blank=True, max_length=36, null=True, verbose_name='Hub session ID'),
         ),
         migrations.AddField(
             model_name='session',

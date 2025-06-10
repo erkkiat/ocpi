@@ -2,7 +2,9 @@ import pytest
 from datetime import datetime
 from django.conf import settings
 
-from integrations.hubject.services import map_oicp_authorization_response_to_ocpi_221
+from integrations.hubject.oicp_to_ocpi_converter import (
+    map_oicp_authorization_response_to_ocpi_221,
+)
 
 
 class TestMapOICPAuthorizationResponseToOCPI221:
