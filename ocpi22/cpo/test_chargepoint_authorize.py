@@ -10,7 +10,7 @@ from ocpi22.tests.factories import (
     EvseFactory,
     TokenFactory,
     CredentialsFactory,
-    CredentialsRoleFactory,
+    CredentialsRoleFactoryWithoutCredentials,
 )
 from ocpi22.tokens.auth import TokenAuthorization, AuthorizationEnum
 from ocpiconnector.testutil import OCPIAPIRequestFactory
@@ -25,7 +25,9 @@ def evse(db):
 
 @pytest.fixture
 def ocpi_master():
-    return CredentialsRoleFactory(country_code="US", party_id="TST", role="CPO")
+    return CredentialsRoleFactoryWithoutCredentials(
+        country_code="US", party_id="TST", role="EMSP"
+    )
 
 
 @pytest.fixture

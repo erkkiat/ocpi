@@ -103,6 +103,16 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     valid = True
 
 
+class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CredentialsRole
+
+    role = "CPO"
+    business_details = factory.SubFactory(BusinessDetailsFactory)
+    country_code = "FI"
+    party_id = "CPO"
+
+
 class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CredentialsRole
