@@ -93,6 +93,7 @@ class TokenAuthorization:
     billed_to: str = ""
     ocpi_master: CredentialsRole = None
     status_text: str = ""
+    hub_session_id: str = ""
 
     @staticmethod
     def get_token_owner(token) -> Party:
