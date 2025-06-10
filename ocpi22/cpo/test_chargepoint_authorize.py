@@ -111,7 +111,6 @@ def test_authorize_missing_ocpi_master_logs_error(monkeypatch, evse, token, capl
         "ocpi22.cpo.api.authorize_token", lambda token, location, request=None: auth
     )
     request = make_request(evse, token.uid)
-    request.data["evse"] = evse.uid
     response = ChargePointViewSet().authorize(request)
     assert response.status_code == 404, response.data
     assert "Exception in CPO authorize()" in caplog.records[0].message, caplog.records[
