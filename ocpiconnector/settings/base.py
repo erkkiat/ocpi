@@ -398,6 +398,11 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
+        "ocpiconnector.logging_middleware": {
+            "level": "INFO",
+            "propagate": False,
+            "handlers": ["console"],
+        },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
             "propagate": True,
