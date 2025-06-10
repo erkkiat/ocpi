@@ -107,6 +107,7 @@ class SolidToHubjectConverter:
             RenewableEnergy=False,
             EnergySource=None,
             EnvironmentalImpact=None,
+            # TODO if country is Germany, then we need to set the CalibrationLawDataAvailability to Local
             CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
             MaxCapacity=None,
