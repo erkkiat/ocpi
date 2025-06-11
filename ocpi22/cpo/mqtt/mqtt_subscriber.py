@@ -82,25 +82,25 @@ def get_broker_and_port():
 
 
 # Get topics after Django setup
-meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
-status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
-authorize_topic = get_topic("SMAPPEE_AUTHORIZE_TOPIC")
+METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
 
 
 def on_message(client, userdata, message):
-    if meter_topic.split("/")[-1] in message.topic:
+    if METER_TOPIC.split("/")[-1] in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
         logger.info(
             f"Processed meter value message {message.payload} on topic {message.topic}"
         )
-    elif status_topic.split("/")[-1] in message.topic:
+    elif STATUS_TOPIC.split("/")[-1] in message.topic:
         logger.info("Received status update message")
         process_status_update_data(message)
         logger.info(
             f"Processed status update message {message.payload} on topic {message.topic}"
         )
-    elif authorize_topic.split("/")["-1"] in message.topic:
+    elif AUTH_REQUEST_TOPIC.split("/")["-1"] in message.topic:
         logger.info("Received authorize message")
         process_authorize_data(message)
     else:
@@ -111,9 +111,9 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         logger.info("Connected successfully to the broker.")
-        _subscribe(client, meter_topic)
-        _subscribe(client, status_topic)
-        logger.info(f"Subscribed to [{meter_topic}] and [{status_topic}]")
+        _subscribe(client, METER_TOPIC)
+        _subscribe(client, STATUS_TOPIC)
+        logger.info(f"Subscribed to [{METER_TOPIC}] and [{STATUS_TOPIC}]")
     else:
         logger.error(f"Failed to connect, return code {rc}")
 
