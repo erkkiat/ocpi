@@ -1,4 +1,3 @@
-import json
 import os
 
 from kombu.exceptions import OperationalError
@@ -135,28 +134,36 @@ def process_authorize_data(message):
     return
 
 
-def get_not_allowed_json_message(
-    token_auth_message: TokenAuthorizationMessageIn,
-) -> str:
+def _publish_auth_response(payload: TokenAuthorizationResponse) -> None:
+    client = MQTTClientSingleton().get_client()
+    topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
+    try:
+        client.publish(topic, payload=payload.model_dump_json(exclude_unset=True))
+    except Exception:
+        logger.exception("Failed to publish MQTT message")
+    return
+
+
+def _publish_not_allowed_auth_response(correlation_id: str):
     not_allowed_message = TokenAuthorizationResponse(
         allowed=AuthorizationEnum.NOT_ALLOWED,
-        correlation_id=token_auth_message.correlation_id,
+        correlation_id=correlation_id,
+        session_id=None,
     )
-    return not_allowed_message.model_dump_json(exclude_unset=True)
+    _publish_auth_response(not_allowed_message)
+    return
 
 
 def _authorize_and_publish(
-    token_auth_message: TokenAuthorizationMessageIn, topic_name: str, message: str
+    token_auth_message: TokenAuthorizationMessageIn, message: str
 ):
-    client = MQTTClientSingleton().get_client()
     evse = find_our_evse(token_auth_message.evse_id)
-    NOT_ALLOWED_MESSAGE = get_not_allowed_json_message(token_auth_message)
     if not evse:
         logger.error(
             f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.id}' not found",
             extra={"mqtt_message": message},
         )
-        client.publish(topic_name, payload=NOT_ALLOWED_MESSAGE)
+        _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
 
     token: str | Token = (
@@ -168,21 +175,20 @@ def _authorize_and_publish(
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
             )
-            client.publish(topic_name, payload=json.dumps(NOT_ALLOWED_MESSAGE))
-
+            _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         session = create_and_save_session(authorization, evse)
-        allowed_response = TokenAuthorizationResponse(
+        allowed_message = TokenAuthorizationResponse(
             allowed=AuthorizationEnum(authorization.allowed),
             correlation_id=token_auth_message.correlation_id,
             session_id=session.uid,
         )
-        client.publish(topic_name, allowed_response.model_dump_json())
+        _publish_auth_response(allowed_message)
     except Exception:
         logger.exception(
             "Mqtt authorization failed miserably for auth message",
             extra={"mqtt_message": message},
         )
-        client.publish(topic_name, payload=json.dumps(NOT_ALLOWED_MESSAGE))
+        _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
 
 
