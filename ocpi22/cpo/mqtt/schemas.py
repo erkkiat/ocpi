@@ -45,10 +45,7 @@ class EvseStatusUpdate(BaseModel):
         }
 
 
-class TokenAuthorizationRequest(BaseModel):
-    request_id: str = Field(
-        ..., description="Unique identifier for this authorization request"
-    )
+class TokenAuthorizationSchema(BaseModel):
     token_uid: str = Field(..., description="Token UID to authorize")
     location_id: Optional[str] = Field(
         None, description="Optional location ID where charging is requested"
@@ -58,7 +55,7 @@ class TokenAuthorizationRequest(BaseModel):
     )
 
 
-class TokenAuthorizationResponse(BaseModel):
+class TokenAuthorizationResponseSchema(BaseModel):
     request_id: str = Field(..., description="The request ID from the original request")
     token_uid: str = Field(..., description="Token UID that was authorized")
     allowed: str = Field(

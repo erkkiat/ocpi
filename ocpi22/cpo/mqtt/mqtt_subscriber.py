@@ -42,6 +42,7 @@ setup_django()
 from ocpi22.cpo.mqtt.services import (  # noqa
     process_meter_values_data,  # noqa
     process_status_update_data,  # noqa
+    process_authorize_data,  # noqa
 )  # noqa
 
 
@@ -83,6 +84,7 @@ def get_broker_and_port():
 # Get topics after Django setup
 meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
 status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+authorize_topic = get_topic("SMAPPEE_AUTHORIZE_TOPIC")
 
 
 def on_message(client, userdata, message):
@@ -98,6 +100,9 @@ def on_message(client, userdata, message):
         logger.info(
             f"Processed status update message {message.payload} on topic {message.topic}"
         )
+    elif authorize_topic.split("/")["-1"] in message.topic:
+        logger.info("Received authorize message")
+        process_authorize_data(message)
     else:
         logger.error(f"Unknown topic {message.topic}")
         return

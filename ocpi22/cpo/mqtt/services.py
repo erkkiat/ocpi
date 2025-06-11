@@ -7,7 +7,11 @@ from functools import wraps
 from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
 from ocpi22.cpo.api import process_meter_values
-from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
+from ocpi22.cpo.mqtt.schemas import (
+    MeterValues,
+    EvseStatusUpdate,
+    TokenAuthorizationSchema,
+)
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
 
@@ -87,3 +91,20 @@ def process_status_update_data(message) -> None:
     except Exception:
         logger.exception("An unexpected error occurred")
     return
+
+
+@ensure_db_connection
+def process_authorize_data(message):
+    decoded_evse_message = _decode_message(message)
+    if not decoded_evse_message:
+        return
+
+    try:
+        token_schema = TokenAuthorizationSchema.model_validate_json(  # noqa
+            decoded_evse_message
+        )
+    except ValidationError:
+        logger.exception(f"Failed to parse {message.topic} message")
+        return
+
+    # TODO initiate authorization here
