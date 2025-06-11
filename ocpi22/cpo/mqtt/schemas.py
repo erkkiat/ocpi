@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, RootModel
 
-from ocpi22.choices import OcppStatusChoices
+from ocpi22.choices import OcppStatusChoices, AuthorizationEnum
 from ocpi22.routing import Route
 
 
@@ -45,35 +45,19 @@ class EvseStatusUpdate(BaseModel):
         }
 
 
-class TokenAuthorizationSchema(BaseModel):
-    token_uid: str = Field(..., description="Token UID to authorize")
-    location_id: Optional[str] = Field(
-        None, description="Optional location ID where charging is requested"
-    )
-    correlation_id: Optional[str] = Field(
-        None, description="Optional correlation ID for tracking purposes"
-    )
+class TokenAuthorizationMessageIn(BaseModel):
+    token_id: str
+    evse_id: str
+    correlation_id: str
 
 
-class TokenAuthorizationResponseSchema(BaseModel):
-    request_id: str = Field(..., description="The request ID from the original request")
-    token_uid: str = Field(..., description="Token UID that was authorized")
-    allowed: str = Field(
-        ...,
-        description="Authorization result: ALLOWED, NOT_ALLOWED, BLOCKED, EXPIRED, NO_CREDIT",
-    )
-    authorization_reference: Optional[str] = Field(
-        None, description="Reference for this authorization"
-    )
-    responding_party: Optional[str] = Field(
-        None, description="Party that provided the authorization"
-    )
-    status_text: Optional[str] = Field(
-        None, description="Human readable status message"
-    )
-    correlation_id: Optional[str] = Field(
-        None, description="Optional correlation ID for tracking purposes"
-    )
+class TokenAuthorizationResponse(BaseModel):
+    allowed: AuthorizationEnum
+    session_id: str | None
+    correlation_id: str
+
+    class Config:
+        use_enum_values = True
 
 
 @dataclass
