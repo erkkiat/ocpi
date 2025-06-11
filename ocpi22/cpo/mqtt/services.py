@@ -1,3 +1,6 @@
+import json
+import os
+
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
@@ -6,14 +9,25 @@ from functools import wraps
 
 from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
+
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.cpo.api import process_meter_values
+from ocpi22.cpo.mqtt.mqtt_subscriber import MQTTClientSingleton
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
     EvseStatusUpdate,
-    TokenAuthorizationSchema,
+    TokenAuthorizationMessageIn,
+    TokenAuthorizationResponse,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
+from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.util import find_our_evse
+from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.sessions.util import create_session
+from ocpi22.tokens.auth import TokenAuthorization, authorize_token
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -93,18 +107,109 @@ def process_status_update_data(message) -> None:
     return
 
 
+def _get_auth_topic_name(topi_env_ar: str):
+    topic = os.getenv(topi_env_ar)
+    if topic and "$share" in topic:
+        return "/".join(topic.split("/")[2:])
+    else:
+        return "servicelocation/roaming/authresponse"
+
+
+def _find_token_by_uid(token_id):
+    return Token.objects.filter(uid__iexact=token_id)
+
+
 @ensure_db_connection
 def process_authorize_data(message):
     decoded_evse_message = _decode_message(message)
     if not decoded_evse_message:
         return
-
     try:
-        token_schema = TokenAuthorizationSchema.model_validate_json(  # noqa
+        token_auth_message = TokenAuthorizationMessageIn.model_validate_json(  # noqa
             decoded_evse_message
         )
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
+    _authorize_and_publish(token_auth_message)
+    return
 
-    # TODO initiate authorization here
+
+def get_not_allowed_json_message(
+    token_auth_message: TokenAuthorizationMessageIn,
+) -> str:
+    not_allowed_message = TokenAuthorizationResponse(
+        allowed=AuthorizationEnum.NOT_ALLOWED,
+        correlation_id=token_auth_message.correlation_id,
+    )
+    return not_allowed_message.model_dump_json(exclude_unset=True)
+
+
+def _authorize_and_publish(
+    token_auth_message: TokenAuthorizationMessageIn, topic_name: str, message: str
+):
+    client = MQTTClientSingleton().get_client()
+    evse = find_our_evse(token_auth_message.evse_id)
+    NOT_ALLOWED_MESSAGE = get_not_allowed_json_message(token_auth_message)
+    if not evse:
+        logger.error(
+            f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.id}' not found",
+            extra={"mqtt_message": message},
+        )
+        client.publish(topic_name, payload=NOT_ALLOWED_MESSAGE)
+        return
+
+    token: str | Token = (
+        _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
+    )
+    try:
+        authorization: TokenAuthorization = authorize_token(token, evse)
+        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
+            logger.warning(
+                f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
+            )
+            client.publish(topic_name, payload=json.dumps(NOT_ALLOWED_MESSAGE))
+
+        session = create_and_save_session(authorization, evse)
+        allowed_response = TokenAuthorizationResponse(
+            allowed=AuthorizationEnum(authorization.allowed),
+            correlation_id=token_auth_message.correlation_id,
+            session_id=session.uid,
+        )
+        client.publish(topic_name, allowed_response.model_dump_json())
+    except Exception:
+        logger.exception(
+            "Mqtt authorization failed miserably for auth message",
+            extra={"mqtt_message": message},
+        )
+        client.publish(topic_name, payload=json.dumps(NOT_ALLOWED_MESSAGE))
+        return
+
+
+def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Session:
+    token_dict = authorization.token
+    ad_hoc_token = AdhocToken(
+        uid=token_dict.get("uid"),
+        valid=token_dict.get("valid"),
+        billed_to=authorization.get_token_party(),
+        type=token_dict.get("type"),
+        ocpi_master=authorization.ocpi_master,
+        contract_id=authorization.token.get("contract_id", "-"),
+    )
+    session = create_session(
+        credentials=authorization.ocpi_master.credentials,
+        authorization_reference=authorization.authorization_reference,
+        authorization_method=authorization.auth_method,
+        billed_to=authorization.ocpi_master,
+        ad_hoc_token=ad_hoc_token,
+        status=Session.PENDING,
+        evse_uid=evse.uid,
+        connector_id=None,
+        location_id=evse.location.uid,
+        ocpi_master=authorization.ocpi_master,
+    )
+    save_to_session_cache(
+        credentialsrole=authorization.ocpi_master,
+        session=session,
+    )
+    return session
