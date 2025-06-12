@@ -212,7 +212,7 @@ def send_hubject_request(
     from integrations.hubject.services import HubjectService
 
     request_session = HubjectService.client.session
-    function = getattr(request_session, method.lower())
+    function = getattr(request_session, method.lower(), None)
     if not function:
         raise NotImplementedError(
             f"Method {method} is not supported for send_hubject_request"
