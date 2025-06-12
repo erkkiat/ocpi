@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max
 
+from generic.countries import COUNTRIES_ISO_3
 from integrations.hubject.schemas import (
     OperatorEvseData,
     EvseDataRecord,
@@ -71,6 +72,9 @@ class SolidToHubjectConverter:
         street, house_number = self.get_address_components(
             location.address, location.country
         )
+        germany = next(
+            (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
+        )
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
@@ -107,8 +111,9 @@ class SolidToHubjectConverter:
             RenewableEnergy=False,
             EnergySource=None,
             EnvironmentalImpact=None,
-            # TODO if country is Germany, then we need to set the CalibrationLawDataAvailability to Local
-            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+            CalibrationLawDataAvailability=location.country == germany
+            if CalibrationLawDataAvailability.Local
+            else CalibrationLawDataAvailability.Not_Available,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
             MaxCapacity=None,
             PaymentOptions=self.get_payment_options(evse.capabilities),
@@ -138,7 +143,7 @@ class SolidToHubjectConverter:
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
             IsHubjectCompatible=False,
-            DynamicInfoAvailable=DynamicInfoAvailable.false,
+            DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
 
     def get_evse_id(self, evse_id: str) -> EvseID:
@@ -392,6 +397,7 @@ class SolidToHubjectConverter:
 
         mapping = {
             OCPICapability.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
+            OCPICapability.REMOTE_START_STOP_CAPABLE: AuthenticationMode.REMOTE,
         }
         return mapping.get(capability)
 
