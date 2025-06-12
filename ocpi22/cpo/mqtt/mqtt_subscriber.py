@@ -113,7 +113,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
         logger.info("Connected successfully to the broker.")
         _subscribe(client, METER_TOPIC)
         _subscribe(client, STATUS_TOPIC)
-        logger.info(f"Subscribed to [{METER_TOPIC}] and [{STATUS_TOPIC}]")
+        _subscribe(client, AUTH_REQUEST_TOPIC)
+        logger.info(f"Subscribed to [{METER_TOPIC}], [{STATUS_TOPIC}], and [{AUTH_REQUEST_TOPIC}]")
     else:
         logger.error(f"Failed to connect, return code {rc}")
 
