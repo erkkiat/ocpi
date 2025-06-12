@@ -160,7 +160,7 @@ def _authorize_and_publish(
     evse = find_our_evse(token_auth_message.evse_id)
     if not evse:
         logger.error(
-            f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.id}' not found",
+            f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found",
             extra={"mqtt_message": message},
         )
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
