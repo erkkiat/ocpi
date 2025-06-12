@@ -115,7 +115,7 @@ def _get_auth_topic_name(topi_env_ar: str):
 
 
 def _find_token_by_uid(token_id):
-    return Token.objects.filter(uid__iexact=token_id)
+    return Token.objects.filter(uid__iexact=token_id).first()
 
 
 @ensure_db_connection
