@@ -56,7 +56,7 @@ class TestMqttSubscriber:
         self, smappee_status_update_message, db, celery_app, celery_worker
     ):
         with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.process_status_update_data"
+            "ocpi22.cpo.mqtt.mqtt_handler.process_status_update_data"
         ) as mock_process_status_update_data:
             on_message(None, None, smappee_status_update_message)
             mock_process_status_update_data.assert_called_once_with(
@@ -315,17 +315,19 @@ class TestOnConnect:
     def test_on_connect_success(self, caplog):
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        with patch("ocpi22.cpo.mqtt.mqtt_subscriber._subscribe") as mock_subscribe:
-            with patch("ocpi22.cpo.mqtt.mqtt_subscriber.meter_topic", "meter/topic"):
-                with patch(
-                    "ocpi22.cpo.mqtt.mqtt_subscriber.status_topic", "status/topic"
-                ):
-                    on_connect(client, None, None, 0)
+        with patch("ocpi22.cpo.mqtt.mqtt_handler._subscribe") as mock_subscribe:
+            with patch("ocpi22.cpo.mqtt.mqtt_handler.METER_TOPIC", "meter/topic"):
+                with patch("ocpi22.cpo.mqtt.mqtt_handler.STATUS_TOPIC", "status/topic"):
+                    with patch(
+                        "ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", "auth/topic"
+                    ):
+                        on_connect(client, None, None, 0)
 
-                    assert "Connected successfully to the broker" in caplog.text
-                    assert mock_subscribe.call_count == 2
-                    mock_subscribe.assert_any_call(client, "meter/topic")
-                    mock_subscribe.assert_any_call(client, "status/topic")
+                        assert "Connected successfully to the broker" in caplog.text
+                        assert mock_subscribe.call_count == 3  # All three topics
+                        mock_subscribe.assert_any_call(client, "meter/topic")
+                        mock_subscribe.assert_any_call(client, "status/topic")
+                        mock_subscribe.assert_any_call(client, "auth/topic")
 
     def test_on_connect_failure(self, caplog):
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
@@ -343,11 +345,12 @@ class TestOnMessage:
 
         mock_message = MockMessage("unknown/completely/different")
 
-        with patch("ocpi22.cpo.mqtt.mqtt_subscriber.meter_topic", "meter/values"):
-            with patch(
-                "ocpi22.cpo.mqtt.mqtt_subscriber.status_topic", "status/updates"
-            ):
-                result = on_message(None, None, mock_message)
+        with patch("ocpi22.cpo.mqtt.mqtt_handler.METER_TOPIC", "meter/values"):
+            with patch("ocpi22.cpo.mqtt.mqtt_handler.STATUS_TOPIC", "status/updates"):
+                with patch(
+                    "ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", "auth/requests"
+                ):
+                    result = on_message(None, None, mock_message)
 
-                assert result is None
-                assert "Unknown topic unknown/completely/different" in caplog.text
+                    assert result is None
+                    assert "Unknown topic unknown/completely/different" in caplog.text

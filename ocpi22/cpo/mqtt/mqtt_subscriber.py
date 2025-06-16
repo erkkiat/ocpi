@@ -5,6 +5,8 @@ from logging import getLogger
 import django
 from dotenv import load_dotenv
 
+from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
+
 logger = getLogger(__name__)
 
 
@@ -36,7 +38,6 @@ setup_django()
 if __name__ == "__main__":
     logger = getLogger(__name__)
     from ocpiconnector.settings.base import env_bool  # noqa
-    from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
 
     loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
     mqtt_singleton = MQTTClientSingleton()
