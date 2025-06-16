@@ -8,18 +8,11 @@ import pytz
 from orjson import orjson
 from paho.mqtt.client import CallbackAPIVersion
 
-from ocpi22.cpo.mqtt.mqtt_subscriber import (
-    stop_and_disconnect,
-    connect_client,
-    on_message,
+from ocpi22.cpo.mqtt.mqtt_handler import on_message, get_topic, _subscribe, on_connect
+from ocpi22.cpo.mqtt.mqtt_client import (
+    MQTTClientSingleton,
     get_broker_username_password,
     get_broker_and_port,
-    configure_client,
-    on_connect,
-    start_client,
-    _subscribe,
-    get_topic,
-    MQTTClientSingleton,
 )
 from ocpi22.tests.factories import OCPISessionFactory
 
@@ -122,58 +115,6 @@ class TestMqttSubscriber:
         monkeypatch.delenv("MQTT_PORT", raising=False)
         with pytest.raises(ValueError):
             get_broker_and_port()
-
-    def test_configure_client_legacy_wrapper(self):
-        mock_client_id = "test_client_id"
-
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_client = MagicMock()
-            mock_singleton_instance.get_client.return_value = mock_client
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            result = configure_client(mock_client_id)
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.get_client.assert_called_once()
-            assert result == mock_client
-
-    def test_start_client_with_loop_forever_behavior(self, mqtt_client):
-        with patch.object(mqtt_client, "loop_forever") as mock_loop_forever:
-            start_client(mqtt_client, True)
-            mock_loop_forever.assert_called_once()
-
-    def test_legacy_stop_and_disconnect_calls_singleton(self):
-        mock_client = MagicMock(spec=mqtt.Client)
-
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            stop_and_disconnect(mock_client)
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.stop_client.assert_called_once()
-
-    def test_connect_client_legacy_wrapper_returns_the_connected_client(self):
-        """Test that legacy connect_client function returns a client from singleton"""
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_client = MagicMock()
-            mock_singleton_instance.get_client.return_value = mock_client
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            result = connect_client()
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.get_client.assert_called_once()
-            assert result == mock_client
 
     def test_subscribe_success(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:

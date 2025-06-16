@@ -1,0 +1,67 @@
+import os
+from logging import getLogger
+
+from paho.mqtt.client import MQTT_ERR_SUCCESS
+
+from ocpi22.cpo.mqtt.services import (  # noqa
+    process_meter_values_data,  # noqa
+    process_status_update_data,  # noqa
+    process_authorize_data,  # noqa
+)  # noqa
+
+logger = getLogger(__name__)
+
+
+def _subscribe(client, topic):
+    result, mid = client.subscribe(topic)
+    if result != MQTT_ERR_SUCCESS:
+        logger.error(f"Failed to subscribe to {topic} with error code {result}")
+    else:
+        logger.info(f"Successfully subscribed to {topic}")
+
+
+def get_topic(topic_env_var):
+    topic = os.getenv(topic_env_var)
+    if not topic:
+        raise ValueError(f"{topic_env_var} is not set in the environment variables")
+    return topic
+
+
+# Get topics after Django setup
+METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
+
+
+def on_message(client, userdata, message):
+    if METER_TOPIC.split("/")[-1] in message.topic:
+        logger.info("Received meter value message")
+        process_meter_values_data(message)
+        logger.info(
+            f"Processed meter value message {message.payload} on topic {message.topic}"
+        )
+    elif STATUS_TOPIC.split("/")[-1] in message.topic:
+        logger.info("Received status update message")
+        process_status_update_data(message)
+        logger.info(
+            f"Processed status update message {message.payload} on topic {message.topic}"
+        )
+    elif AUTH_REQUEST_TOPIC.split("/")[-1] in message.topic:
+        logger.info("Received authorize message")
+        process_authorize_data(message)
+    else:
+        logger.error(f"Unknown topic {message.topic}")
+        return
+
+
+def on_connect(client, userdata, flags, rc, properties=None):
+    if rc == 0:
+        logger.info("Connected successfully to the broker.")
+        _subscribe(client, METER_TOPIC)
+        _subscribe(client, STATUS_TOPIC)
+        _subscribe(client, AUTH_REQUEST_TOPIC)
+        logger.info(
+            f"Subscribed to [{METER_TOPIC}], [{STATUS_TOPIC}], and [{AUTH_REQUEST_TOPIC}]"
+        )
+    else:
+        logger.error(f"Failed to connect, return code {rc}")

@@ -1,5 +1,3 @@
-import os
-
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
@@ -11,7 +9,7 @@ from django.db.utils import OperationalError as DjangoOperationalError
 
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.cpo.api import process_meter_values
-from ocpi22.cpo.mqtt.mqtt_subscriber import MQTTClientSingleton
+from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
     EvseStatusUpdate,
@@ -106,14 +104,6 @@ def process_status_update_data(message) -> None:
     return
 
 
-def _get_auth_topic_name(topi_env_ar: str):
-    topic = os.getenv(topi_env_ar)
-    if topic and "$share" in topic:
-        return "/".join(topic.split("/")[2:])
-    else:
-        return "servicelocation/roaming/authresponse"
-
-
 def _find_token_by_uid(token_id):
     return Token.objects.filter(uid__iexact=token_id).first()
 
@@ -130,17 +120,7 @@ def process_authorize_data(message):
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
-    _authorize_and_publish(token_auth_message)
-    return
-
-
-def _publish_auth_response(payload: TokenAuthorizationResponse) -> None:
-    client = MQTTClientSingleton().get_client()
-    topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
-    try:
-        client.publish(topic, payload=payload.model_dump_json(exclude_unset=True))
-    except Exception:
-        logger.exception("Failed to publish MQTT message")
+    _authorize_and_publish(token_auth_message, message)
     return
 
 
@@ -150,7 +130,7 @@ def _publish_not_allowed_auth_response(correlation_id: str):
         correlation_id=correlation_id,
         session_id=None,
     )
-    _publish_auth_response(not_allowed_message)
+    publish_auth_response(not_allowed_message)
     return
 
 
@@ -182,7 +162,7 @@ def _authorize_and_publish(
             correlation_id=token_auth_message.correlation_id,
             session_id=session.uid,
         )
-        _publish_auth_response(allowed_message)
+        publish_auth_response(allowed_message)
     except Exception:
         logger.exception(
             "Mqtt authorization failed miserably for auth message",

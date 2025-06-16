@@ -74,6 +74,7 @@ from rest_framework.generics import get_object_or_404  # noqa
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
 from ocpi22.cpo.mqtt.custom_orjson_serializer import orjson_serializer  # noqa
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache  # noqa
+from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
 from ocpi22.locations.services import EvseServices  # noqa
 from ocpi22.models.location import Evse  # noqa
 from ocpi22.models.session import Session  # noqa
@@ -108,4 +109,15 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
     evse.send_status_updates()
+    return
+
+
+@shared_task
+def publish_mqtt_message(topic: str, payload: str):
+    try:
+        client = MQTTClientSingleton().get_client()
+        client.publish(topic, payload)
+        logger.info(f"Published message to topic: {topic}")
+    except Exception:
+        logger.exception(f"Failed to publish to topic {topic}")
     return
