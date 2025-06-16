@@ -15,6 +15,7 @@ from ocpi22.cpo.mqtt.services import (
     _decode_message,
     process_meter_values_data,
     process_status_update_data,
+    _find_token_by_uid,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
@@ -24,6 +25,7 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
     TariffFactory,
+    TokenFactory,
 )
 from ocpiconnector.party import Party
 
@@ -315,3 +317,16 @@ class TestMqttServices:
                 mock_save_and_send_evse_status_updates_task.assert_called_once_with(
                     kwargs=message_dict, expires=35
                 )
+
+
+class TestAuthorizeDataOverMqtt:
+    @pytest.mark.django_db
+    def test_find_token_by_uid_returns_none_when_no_token_exists(self):
+        result = _find_token_by_uid("NONEXISTENT_TOKEN")
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_find_token_by_uid_returns_token_when_exact_match_exists(self):
+        token = TokenFactory(uid="RANDOMGIBERISH9898")
+        result = _find_token_by_uid("RANDOMGIBERISH9898")
+        assert result == token
