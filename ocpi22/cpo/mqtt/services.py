@@ -156,6 +156,7 @@ def _authorize_and_publish(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
             )
             _publish_not_allowed_auth_response(token_auth_message.correlation_id)
+            return
         session = create_and_save_session(authorization, evse)
         allowed_message = TokenAuthorizationResponse(
             allowed=AuthorizationEnum(authorization.allowed),
@@ -170,6 +171,7 @@ def _authorize_and_publish(
         )
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
+    return
 
 
 def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Session:
