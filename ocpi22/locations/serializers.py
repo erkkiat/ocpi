@@ -354,6 +354,9 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 setattr(evse, key, value)
         if evse.location != location:
             evse.location = location
+            logger.info(
+                f"Moved evse {evse.uid} from {evse.location.uid} to {location.uid}"
+            )
         evse.save()
 
     @staticmethod
