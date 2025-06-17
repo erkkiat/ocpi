@@ -27,13 +27,11 @@ def get_topic(topic_env_var):
     return topic
 
 
-# Get topics after Django setup
-METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
-STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
-AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
-
-
 def on_message(client, userdata, message):
+    METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+    STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+    AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
+
     if METER_TOPIC.split("/")[-1] in message.topic:
         logger.info("Received meter value message")
         process_meter_values_data(message)
@@ -55,6 +53,9 @@ def on_message(client, userdata, message):
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
+    METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
+    STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
+    AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
     if rc == 0:
         logger.info("Connected successfully to the broker.")
         _subscribe(client, METER_TOPIC)
