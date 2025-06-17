@@ -22,6 +22,7 @@ from ocpi22.choices import (
     TokenType,
     get_language,
     EndpointRoleEnum,
+    OcpiRolesEnum,
 )
 from ocpi22.messages import messages
 from ocpi22.models.session import Session
@@ -196,7 +197,9 @@ def authorize_token(
                         TokenType.AD_HOC_USER,
                         session.billed_to,
                     ),
-                    responding_party=session.billed_to.party_str(),
+                    responding_party=session.credentials.get_party_for_role(
+                        OcpiRolesEnum.EMSP
+                    ),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),

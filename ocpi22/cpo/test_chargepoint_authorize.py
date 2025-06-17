@@ -11,6 +11,7 @@ from ocpi22.tests.factories import (
     TokenFactory,
     CredentialsFactory,
     CredentialsRoleFactoryWithoutCredentials,
+    CredentialsRoleFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization, AuthorizationEnum
 from ocpiconnector.testutil import OCPIAPIRequestFactory
@@ -28,6 +29,13 @@ def ocpi_master():
     return CredentialsRoleFactoryWithoutCredentials(
         country_code="US", party_id="TST", role="EMSP"
     )
+
+
+@pytest.fixture
+def gireve_credentials():
+    return CredentialsRoleFactory(
+        country_code="FR", party_id="007", role="HUB", business_details__name="Gireve"
+    ).credentials
 
 
 @pytest.fixture
@@ -52,11 +60,11 @@ def make_request(evse, token_data, payload=None):
     return request
 
 
-def test_authorize_positive(monkeypatch, evse, token, ocpi_master):
+def test_authorize_positive(monkeypatch, evse, token, ocpi_master, gireve_credentials):
     auth = TokenAuthorization(
         allowed=AuthorizationEnum.ALLOWED,
         token=token,
-        responding_party="DE*ICE",
+        responding_party="FR*007",
         authorization_reference="REF123",
         auth_method="AUTH_REQUEST",
         billed_to="FR*TST",
@@ -73,8 +81,29 @@ def test_authorize_positive(monkeypatch, evse, token, ocpi_master):
     assert data["token"] == token.uid
     assert data["authorization_reference"] == "REF123"
     assert data["session_id"] is not None
-    session = Session.objects.filter(authorization_reference="REF123")
-    assert session.count() == 1
+    session = Session.objects.get(authorization_reference="REF123")
+    assert session.credentials == gireve_credentials
+
+
+def test_authorize_with_non_existent_credentialsrole_fails(
+    monkeypatch, evse, token, ocpi_master
+):
+    auth = TokenAuthorization(
+        allowed=AuthorizationEnum.ALLOWED,
+        token=token,
+        responding_party="DE*ICE",
+        authorization_reference="REF123",
+        auth_method="AUTH_REQUEST",
+        billed_to="FR*TST",
+        ocpi_master=ocpi_master,
+    )
+    monkeypatch.setattr(
+        "ocpi22.cpo.api.authorize_token", lambda token, location, request=None: auth
+    )
+    request = make_request(evse, token.uid)
+    response = ChargePointViewSet().authorize(request)
+    assert response.status_code == 404, response.data
+    assert "DE*ICE not found" in response.data["status_message"], response.data
 
 
 def test_authorize_disallowed(monkeypatch, evse, token):
@@ -103,7 +132,7 @@ def test_authorize_missing_ocpi_master_logs_error(monkeypatch, evse, token, capl
     auth = TokenAuthorization(
         allowed=AuthorizationEnum.ALLOWED,
         token=token,
-        responding_party="DE*ICE",
+        responding_party="FR*007",
         authorization_reference="REF123",
         auth_method="AUTH_REQUEST",
         billed_to="FR*TST",

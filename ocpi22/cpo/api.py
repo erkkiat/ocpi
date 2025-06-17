@@ -5,6 +5,7 @@ from functools import reduce
 from logging import getLogger
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import ProgrammingError
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
@@ -32,7 +33,7 @@ from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
-from ocpi22.ocpi.auth import NinjaBasicAuth
+from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -88,7 +89,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
-from ocpiconnector.party import party_from_str
+from ocpiconnector.party import party_from_str, Party
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -515,10 +516,24 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
+                        if (
+                            len(authorization.responding_party) < 6
+                            or "*" not in authorization.responding_party
+                        ):
+                            raise ProgrammingError(
+                                f"TokenAuthorization: responding party is `{authorization.responding_party}`, "
+                                "but the information is needed in format `CC*PID` for routing the session updates."
+                            )
+                        route_through_party = Party.from_str(
+                            authorization.responding_party
+                        )
+                        route_through = get_credentialsrole(party=route_through_party)
+                        if not route_through:
+                            raise ValueError(
+                                f"CredentialsRole for {authorization.responding_party} not found in the database."
+                            )
                         session = create_session(
-                            credentials=getattr(
-                                authorization.ocpi_master, "credentials", None
-                            ),
+                            credentials=route_through.credentials,
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
                             billed_to=authorization.ocpi_master,
@@ -527,10 +542,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             evse_uid=evse.uid,
                             connector_id=None,
                             location_id=evse.location.uid,
-                            ocpi_master=authorization.ocpi_master,
                         )
                         save_to_session_cache(
-                            credentialsrole=authorization.ocpi_master,
+                            credentialsrole=route_through,
                             session=session,
                             token=token,
                         )
