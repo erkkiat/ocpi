@@ -22,9 +22,12 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     ProviderIDAsterisk,
     HubjectDefaultTariff,
+    On,
+    OpeningTimes,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.choices import OCPICapability
+from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
+from ocpi22.cpo.schemas import RegularHours
 from ocpi22.models.location import Connector
 from ocpi22.tests.factories import LocationFactory, EvseFactory
 
@@ -593,3 +596,151 @@ class TestMappings:
                 ],
             },
         }
+
+
+@pytest.fixture
+def weekday_regular_hours():
+    return [
+        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        for weekday in range(1, 6)
+    ]
+
+
+@pytest.fixture
+def weekend_regular_hours():
+    return [
+        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        for weekday in range(6, 8)
+    ]
+
+
+@pytest.fixture
+def everyday_regular_hours():
+    return [
+        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        for weekday in range(1, 8)
+    ]
+
+
+@pytest.fixture
+def monday_to_wednesday_regular_hours():
+    return [
+        RegularHours(weekday=1, period_begin="00:00", period_end="00:00"),
+        RegularHours(weekday=2, period_begin="10:30", period_end="17:20"),
+        RegularHours(weekday=3, period_begin="09:15", period_end="16:00"),
+    ]
+
+
+@pytest.fixture
+def monday_regular_hours():
+    return [
+        RegularHours(weekday=1, period_begin="00:00", period_end="06:00"),
+        RegularHours(weekday=1, period_begin="06:30", period_end="12:20"),
+        RegularHours(weekday=1, period_begin="12:30", period_end="20:00"),
+    ]
+
+
+def test_get_weekday_from_number():
+    assert WEEKDAY_CHOICES.from_number(1) == WEEKDAY_CHOICES.Monday
+    assert WEEKDAY_CHOICES.from_number(2) == WEEKDAY_CHOICES.Tuesday
+    assert WEEKDAY_CHOICES.from_number(3) == WEEKDAY_CHOICES.Wednesday
+    assert WEEKDAY_CHOICES.from_number(4) == WEEKDAY_CHOICES.Thursday
+    assert WEEKDAY_CHOICES.from_number(5) == WEEKDAY_CHOICES.Friday
+    assert WEEKDAY_CHOICES.from_number(6) == WEEKDAY_CHOICES.Saturday
+    assert WEEKDAY_CHOICES.from_number(7) == WEEKDAY_CHOICES.Sunday
+    assert WEEKDAY_CHOICES.from_number(8) is None
+
+
+@pytest.mark.parametrize(
+    "regular_hours_fixture, expected_on, expected_count, description",
+    [
+        ("weekday_regular_hours", On.Workdays, 1, "weekdays"),
+        ("weekend_regular_hours", On.Weekend, 1, "weekends"),
+        ("everyday_regular_hours", On.Everyday, 1, "everyday"),
+    ],
+)
+def test_map_regular_hours_to_opening_times(
+    regular_hours_fixture, expected_on, expected_count, description, request
+):
+    regular_hours = request.getfixturevalue(regular_hours_fixture)
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+            regular_hours
+        )
+    )
+
+    assert (
+        len(opening_times) == expected_count
+    ), f"There should be just {expected_count} opening times for {description}."
+    assert opening_times[0].on == expected_on
+    assert (
+        opening_times[0].Period[0].begin == "00:00"
+    ), "Period begin should be '00:00'."
+    assert opening_times[0].Period[0].end == "00:00", "Period end should be '00:00'."
+
+
+def test_map_regular_hours_to_opening_times_from_monday_to_wednesday_returns_3_opening_times(
+    monday_to_wednesday_regular_hours,
+):
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+            monday_to_wednesday_regular_hours
+        )
+    )
+
+    expected_times = {
+        On.Monday: {"begin": "00:00", "end": "00:00"},
+        On.Tuesday: {"begin": "10:30", "end": "17:20"},
+        On.Wednesday: {"begin": "09:15", "end": "16:00"},
+    }
+
+    assert (
+        len(opening_times) == 3
+    ), "There should be just 3 opening times for Monday to Wednesday."
+
+    for ot in opening_times:
+        assert ot.on in expected_times, f"{ot.on} is not in the expected opening times."
+        expected_begin = expected_times[ot.on]["begin"]
+        expected_end = expected_times[ot.on]["end"]
+
+        assert (
+            ot.Period[0].begin == expected_begin
+        ), f"Period begin for {ot.on} should be '{expected_begin}'."
+        assert (
+            ot.Period[0].end == expected_end
+        ), f"Period end for {ot.on} should be '{expected_end}'."
+
+        del expected_times[ot.on]
+
+    assert not expected_times, "Not all expected opening times were found."
+
+
+def test_map_regular_hours_with_multiple_periods_for_monday_returns_one_opening_time(
+    monday_regular_hours,
+):
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+            monday_regular_hours
+        )
+    )
+
+    assert len(opening_times) == 1, "There should be one opening time entry for Monday"
+    assert opening_times[0].on == On.Monday, "The opening time should be for Monday"
+
+    periods = opening_times[0].Period
+    assert len(periods) == 3, "There should be three periods for Monday"
+
+    expected_periods = [
+        {"begin": "00:00", "end": "06:00"},
+        {"begin": "06:30", "end": "12:20"},
+        {"begin": "12:30", "end": "20:00"},
+    ]
+
+    for i, period in enumerate(periods):
+        expected = expected_periods[i]
+        assert (
+            period.begin == expected["begin"]
+        ), f"Period {i} begin should be '{expected['begin']}'"
+        assert (
+            period.end == expected["end"]
+        ), f"Period {i} end should be '{expected['end']}'"

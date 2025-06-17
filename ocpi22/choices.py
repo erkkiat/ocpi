@@ -533,3 +533,25 @@ class EnergySourceCategory(Enum):
     SOLAR = "SOLAR"
     WIND = "WIND"
     WATER = "WATER"
+
+
+class WEEKDAY_CHOICES(Enum):
+    Monday = 1
+    Tuesday = 2
+    Wednesday = 3
+    Thursday = 4
+    Friday = 5
+    Saturday = 6
+    Sunday = 7
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def from_number(cls, number: int) -> Optional["WEEKDAY_CHOICES"]:
+        return next((day for day in cls if day.value == number), None)
+
+
+Everyday = {1, 2, 3, 4, 5, 6, 7}
+Workdays = {1, 2, 3, 4, 5}
+Weekend = {6, 7}

@@ -1,5 +1,6 @@
 import functools
 import re
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
@@ -36,8 +37,13 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     AdditionalReference,
     AdditionalReferenceChoice,
+    PeriodItem,
+    OpeningTimes as HubjectOpeningTimes,
+    On,
 )
-from ocpi22.choices import OCPICapability
+from ocpi22 import choices
+from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
+from ocpi22.cpo.schemas import OpeningTimes, RegularHours
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
 
@@ -75,6 +81,7 @@ class SolidToHubjectConverter:
         germany = next(
             (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
         )
+        hours = location.opening_times
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
@@ -136,12 +143,14 @@ class SolidToHubjectConverter:
                 ),
                 DegreeMinuteSeconds=None,
             ),
-            # todo : IsOpen24Hours usage of the charging when closed does not directly map to OCIP,
-            IsOpen24Hours=location.charging_when_closed,
-            # todo : OpeningTimes will be implemented later,
-            OpeningTimes=None,
-            # todo : HubOperatorID missing in ocpi22,
-            # todo : ClearinghouseID missing in ocpi22,
+            IsOpen24Hours=hours.twentyfourseven if hours else False,
+            OpeningTimes=self.map_regular_hours_to_opening_times(
+                hours.regular_hours.all()
+            )
+            if not hours.twentyfourseven
+            else None,
+            HubOperatorID=None,
+            ClearinghouseID=None,
             IsHubjectCompatible=False,
             DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
@@ -541,3 +550,56 @@ class SolidToHubjectConverter:
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
+
+    def map_regular_hours_to_opening_times(
+        self, regular_hours: list[RegularHours]
+    ) -> list[OpeningTimes] | None:
+        def _label_from_days(day_list):
+            day_set = set(day_list)
+            if len(day_set) == 1:
+                return WEEKDAY_CHOICES.from_number(day_set.pop()).name
+            if day_set == choices.Everyday:
+                return "Everyday"
+            elif day_set == choices.Workdays:
+                return "Workdays"
+            elif day_set == choices.Weekend:
+                return "Weekend"
+            else:
+                return [WEEKDAY_CHOICES.from_number(d) for d in sorted(day_set)]
+
+        def _group_the_weekdays_by_time_period(
+            regular_hours: list[RegularHours],
+        ) -> dict[str, list[str]]:
+            grouped_slots = defaultdict(list)
+
+            for rh in regular_hours:
+                time_slot = f"{datetime.strptime(rh.period_begin, '%H:%M').strftime('%H:%M')}-{datetime.strptime(rh.period_end, '%H:%M').strftime('%H:%M')}"
+                grouped_slots[time_slot].append(rh.weekday)
+            return dict(grouped_slots)
+
+        periods_list_per_workday = defaultdict(list)
+        for period, weekdays in _group_the_weekdays_by_time_period(
+            regular_hours
+        ).items():
+            weekday_names = _label_from_days(weekdays)
+            if isinstance(weekday_names, list):
+                for wd in weekday_names:
+                    periods_list_per_workday[wd].append(period)
+            else:
+                periods_list_per_workday[weekday_names].append(period)
+
+        opening_times = []
+        for weekday, periods in periods_list_per_workday.items():
+            opening_hour = HubjectOpeningTimes(
+                Period=[
+                    PeriodItem(
+                        begin=period.split("-")[0],
+                        end=period.split("-")[1],
+                    )
+                    for period in periods
+                ],
+                on=On.get_day_from_str(weekday),
+            )
+            opening_times.append(opening_hour)
+
+        return opening_times
