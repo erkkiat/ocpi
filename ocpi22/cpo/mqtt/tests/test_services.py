@@ -10,12 +10,17 @@ import time_machine
 from kombu.exceptions import OperationalError
 
 from ocpi22.cpo.api import process_meter_values
-from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
+from ocpi22.cpo.mqtt.schemas import (
+    MeterValues,
+    EvseStatusUpdate,
+    TokenAuthorizationMessageIn,
+)
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
     process_meter_values_data,
     process_status_update_data,
     _find_token_by_uid,
+    process_authorize_data,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
@@ -330,3 +335,56 @@ class TestAuthorizeDataOverMqtt:
         token = TokenFactory(uid="RANDOMGIBERISH9898")
         result = _find_token_by_uid("RANDOMGIBERISH9898")
         assert result == token
+
+
+class TestProcessAuthorizeData:
+    def test_process_authorize_data_exits_early_if_decode_message_fails(
+        self, auth_request_message
+    ):
+        auth_request_message.payload = b"\x80"
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services._decode_message", return_value=None
+            ) as mock_decode_message,
+            patch(
+                "ocpi22.cpo.mqtt.services._authorize_and_publish"
+            ) as mock_authorize_and_publish,
+        ):
+            result = process_authorize_data(auth_request_message)
+
+            mock_decode_message.assert_called_once_with(auth_request_message)
+            mock_authorize_and_publish.assert_not_called()
+            assert result is None
+
+    def test_process_authorize_data_returns_none_when_data_validation_fails(
+        self, auth_request_message, caplog
+    ):
+        auth_request_message.payload = b'{"invalid_data": "some_value"}'
+        result = process_authorize_data(auth_request_message)
+
+        assert result is None
+        assert any(
+            f"Failed to parse {auth_request_message.topic} message" in record.message
+            for record in caplog.records
+        )
+
+    def test_process_authorize_data_calls_authorize_and_publish_when_validation_succeeds(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        expected_token_auth = TokenAuthorizationMessageIn.model_validate(
+            decoded_message
+        )
+
+        with patch(
+            "ocpi22.cpo.mqtt.services._authorize_and_publish"
+        ) as mock_authorize_and_publish:
+            result = process_authorize_data(auth_request_message)
+
+            mock_authorize_and_publish.assert_called_once()
+            call_args = mock_authorize_and_publish.call_args[0]
+            assert call_args[0].token_id == expected_token_auth.token_id
+            assert call_args[0].evse_id == expected_token_auth.evse_id
+            assert call_args[0].correlation_id == expected_token_auth.correlation_id
+            assert call_args[1] == auth_request_message
+            assert result is None

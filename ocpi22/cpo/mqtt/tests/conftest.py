@@ -74,3 +74,24 @@ def smappee_meter_message_from_wouter(smappee_meter_topic):
     message.qos = 1
     message.retain = False
     return message
+
+
+@pytest.fixture
+def auth_request_topic():
+    return os.getenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/request/topic")
+
+
+@pytest.fixture
+def auth_request_message(auth_request_topic):
+    message = MQTTMessage()
+    message.topic = auth_request_topic.encode("utf-8")
+    message.payload = orjson.dumps(
+        {
+            "token_id": "TEST_TOKEN_123",
+            "evse_id": "TEST_EVSE_456",
+            "correlation_id": "CORR_ID_789",
+        }
+    )
+    message.qos = 1
+    message.retain = False
+    return message
