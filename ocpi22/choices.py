@@ -533,3 +533,13 @@ class EnergySourceCategory(Enum):
     SOLAR = "SOLAR"
     WIND = "WIND"
     WATER = "WATER"
+
+
+class RoamingProtocol(Enum):
+    OCPI = "Open Charge Point Interface"
+    OICP = "Open InterCharge Protocol"
+
+
+ROAMING_PROTOCOL_CHOICES = [
+    (protocol.name, protocol.value) for protocol in RoamingProtocol
+]

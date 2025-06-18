@@ -12,6 +12,9 @@ from pydantic_core import PydanticSerializationError
 from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.oicp_to_ocpi_converter import (
+    map_oicp_authorization_response_to_ocpi_221,
+)
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
@@ -41,41 +44,6 @@ from ocpi22.tasks import send_hubject_request
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-
-def map_oicp_authorization_response_to_ocpi_221(
-    oicp_response: dict | None, token_id: str
-) -> dict | None:
-    if not oicp_response:
-        return None
-    authorization_status = oicp_response.get("AuthorizationStatus")
-    country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
-
-    if authorization_status and country_code and party_id:
-        data = {
-            "allowed": {"Authorized": "ALLOWED"}.get(
-                authorization_status, "NOT_ALLOWED"
-            ),
-            "authorization_reference": "HUBJECT",
-            "hubject_session_id": oicp_response.get("SessionID"),
-            "token": {
-                "contract_id": "N/A",
-                "country_code": country_code,
-                "party_id": party_id,
-                "default_profile_type": "REGULAR",
-                "issuer": f"{country_code}*{party_id}",
-                "language": settings.LANGUAGE_CODE.upper(),
-                "type": "RFID",
-                "uid": token_id,
-                "valid": True,
-                "whitelist": "NEVER",
-                "last_updated": datetime.now(pytz.utc).strftime(
-                    settings.OCPI_DATE_FORMAT
-                ),
-            },
-        }
-        return {"data": data}
-    return None
 
 
 class HubjectService:
@@ -214,7 +182,7 @@ class HubjectService:
             return (
                 response.status_code,
                 map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
-                ocpi_master,
+                ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
 
         except ValueError as ve:
