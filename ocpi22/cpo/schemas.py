@@ -278,7 +278,7 @@ class SolidLocation(BaseSchema):
         description="Indicates whether to share the location with roaming partners",
     )
 
-    charging_station_names: List[InfoTextType] = Field(
+    charging_station_names: Optional[List[InfoTextType]] = Field(
         None,
         description="Name of the location in languages other than english, if available.",
     )
