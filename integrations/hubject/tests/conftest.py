@@ -651,7 +651,7 @@ def ocpi_cdr(session_for_cdr):
 @pytest.fixture
 def expected_eroaming_cdr():
     return {
-        "CPOPartnerSessionID": "CPOSESSION1",
+        "CPOPartnerSessionID": "Session123",
         "CalibrationLawVerificationInfo": None,
         "ChargingEnd": datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC),
         "ChargingStart": datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),

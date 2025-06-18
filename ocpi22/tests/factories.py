@@ -564,9 +564,8 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         business_details__name="Test CPO",
     )
     uid = "SESSION12345"
-    cpo_partner_session_id = "CPOSESSION1"
-    emp_partner_session_id = "EMSPSESSION1"
-    hubject_session_id = "f98efba4-02d8-4fa0-b810-9a9d50d2c527"
+    reservation_id = "EMSPSESSION1"
+    hub_session_id = "f98efba4-02d8-4fa0-b810-9a9d50d2c527"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     start_kwh = 0.0

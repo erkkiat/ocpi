@@ -599,9 +599,9 @@ class SolidToHubjectConverter:
             )
 
         eroaming_cdr = ERoamingChargeDetailRecord(
-            SessionID=session.hubject_session_id,
-            CPOPartnerSessionID=session.cpo_partner_session_id,
-            EMPPartnerSessionID=session.emp_partner_session_id,
+            SessionID=session.hub_session_id,
+            CPOPartnerSessionID=session.uid,
+            EMPPartnerSessionID=session.reservation_id,
             # TODO: Need to confirm with Mike what is required for PartnerProductID.
             PartnerProductID=ProductID(root=partner_product_id)
             if partner_product_id
