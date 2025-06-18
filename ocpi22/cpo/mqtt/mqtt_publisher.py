@@ -3,6 +3,7 @@ from logging import getLogger
 
 from pydantic import ValidationError
 
+from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
 from ocpi22.cpo.mqtt.schemas import TokenAuthorizationResponse
 
 logger = getLogger(__name__)
@@ -17,15 +18,17 @@ def _get_auth_topic_name(topi_env_ar: str):
 
 
 def publish_auth_response(payload: TokenAuthorizationResponse):
-    # This is still hacky, because of process_authorize_data importing publisher
-    from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
-
     topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
+    client = MQTTClientSingleton().get_client()
     try:
-        payload = payload.model_dump_json(exclude_unset=True)
+        body = payload.model_dump_json(exclude_unset=True)
     except ValidationError:
-        MQTTClientSingleton().get_client().publish(topic, payload)
+        logger.exception("Failed serializing MQTT auth payload")
         return
+
+    try:
+        info = client.publish(topic, body)
+        if info.rc != 0:
+            logger.error("MQTT publish failed with result code %s", info.rc)
     except Exception:
-        logger.exception("Publishing auth response failed miserably")
-        return
+        logger.exception("Failed to publish auth response to MQTT")
