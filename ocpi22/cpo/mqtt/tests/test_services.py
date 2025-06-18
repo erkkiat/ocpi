@@ -161,7 +161,7 @@ class TestMqttServices:
                             [
                                 ("country_code", "FI"),
                                 ("party_id", "MSP"),
-                                ("uid", "CDRTOKEN-12345"),
+                                ("uid", "ABCABCDE123456"),
                                 ("type", "RFID"),
                                 ("contract_id", "CONTRACT-12345"),
                             ]

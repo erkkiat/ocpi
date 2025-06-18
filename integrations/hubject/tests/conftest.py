@@ -44,6 +44,7 @@ from ocpi22.tests.factories import (
     CdrTokenFactory,
     OCPISessionFactory,
     CdrFactory,
+    CdrLocationFactory,
 )
 
 
@@ -639,9 +640,10 @@ def session_for_cdr():
 
 @pytest.fixture
 def ocpi_cdr(session_for_cdr):
-    cdr = CdrFactory(
-        session_id=session_for_cdr.uid, cdr_location_evse_uid="EVSECONVERT"
+    cdr_location = CdrLocationFactory(
+        evse_uid="EVSECONVERT", evse_id="FI*CPO*EEVSECONVERT"
     )
+    cdr = CdrFactory(session_id=session_for_cdr.uid, cdr_location=cdr_location)
 
     return cdr
 
@@ -649,13 +651,13 @@ def ocpi_cdr(session_for_cdr):
 @pytest.fixture
 def expected_eroaming_cdr():
     return {
-        "CPOPartnerSessionID": "CPOSESSION1",
+        "CPOPartnerSessionID": "Session123",
         "CalibrationLawVerificationInfo": None,
         "ChargingEnd": datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC),
         "ChargingStart": datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),
         "ConsumedEnergy": 1.1,
         "EMPPartnerSessionID": "EMSPSESSION1",
-        "EvseID": "FI*CPO*EEVSE123",
+        "EvseID": "FI*CPO*EEVSECONVERT",
         "HubOperatorID": "FI*CPO",
         "HubProviderID": "FI*MSP",
         "Identification": {
