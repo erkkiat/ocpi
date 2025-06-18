@@ -57,7 +57,7 @@ sequenceDiagram
         CPO->>SolidRoam: call "authorize" endpoint
         SolidRoam->>SolidRoam: Do we already have a cached authorization?
         SolidRoam-->>CPO: Cached authorization response
-        SolidRoam->>Gireve: OCPI Authorize
+        SolidRoam->>Gireve: OCPI Authorize (async)
         Gireve->>MSP: OCPI Authorize
         MSP->>MSP: Generate authorization_reference
         MSP->>Gireve: Authorization response

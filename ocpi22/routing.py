@@ -34,7 +34,7 @@ class Route:
     token_base64: str = ""
     alive: bool = True
     direct: bool = False
-    version: OCPIVersion = ""
+    version: OCPIVersion = OCPIVersion("2.2.1")
     to: Party = Party("", "")
     is_hubject: bool = False
 

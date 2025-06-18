@@ -114,6 +114,21 @@ class EvseStatus(Enum):
 
 
 class EvcoID(RootModel):
+    """
+    Electric Vehicle Contract Identifier (EvcoID) used in the context of electric vehicle charging infrastructure.
+
+    The EvcoID is a unique identifier used to identify a specific contract or account associated with an electric vehicle.
+    It is used for authentication and authorization purposes when an electric vehicle connects to a charging station.
+
+    The EvcoID supports both ISO and DIN standards:
+    - ISO: The instance part MUST be eight characters long and MUST be provided with a prepended “C”. The optional separating character MUST be “-”.
+    - DIN: The instance part MUST be six characters long. The optional separating character can either be “*” or “-”.
+
+    Examples:
+    - ISO: “DE-8EO-CAet5e4XY-3”, “DE8EOCAet5e43X1”
+    - DIN: “DE*8EO*Aet5e4*3”, “DE-8EO-Aet5e4-3”, “DE8EOAet5e43”
+    """
+
     root: str = Field(
         ...,
         pattern=r"^(([A-Za-z]{2}\-?[A-Za-z0-9]{3}\-?C[A-Za-z0-9]{8}\-?[\d|A-Za-z])|([A-Za-z]{2}[\*|\-]?[A-Za-z0-9]{3}[\*|\-]?[A-Za-z0-9]{6}[\*|\-]?[\d|X]))$",
@@ -738,11 +753,11 @@ class RFIDIdentification(BaseModel):
 
 
 class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification]
-    RFIDIdentification: Optional[RFIDIdentification]
-    QRCodeIdentification: Optional[QRCodeIdentification]
-    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
-    RemoteIdentification: Optional[RemoteIdentification]
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification] = None
+    RFIDIdentification: Optional[RFIDIdentification] = None
+    QRCodeIdentification: Optional[QRCodeIdentification] = None
+    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
+    RemoteIdentification: Optional[RemoteIdentification] = None
 
 
 class EvseDataRecord(BaseModel):
