@@ -9,12 +9,11 @@ from ocpi22.cpo.mqtt.schemas import TokenAuthorizationResponse
 logger = getLogger(__name__)
 
 
-def _get_auth_topic_name(topi_env_ar: str):
-    topic = os.getenv(topi_env_ar)
-    if topic and "$share" in topic:
-        return "/".join(topic.split("/")[2:])
-    else:
-        return "servicelocation/roaming/authresponse"
+def _get_auth_topic_name(topic_env_var: str):
+    topic = os.getenv(topic_env_var, "servicelocation/roaming/authresponse")
+    if topic.startswith("$share/"):
+        return topic.split("/", 2)[2]
+    return topic
 
 
 def publish_auth_response(payload: TokenAuthorizationResponse):
