@@ -16,7 +16,7 @@ def _get_auth_topic_name(topic_env_var: str):
 
 
 def publish_auth_response(payload: TokenAuthorizationResponse):
-    # This import is haciy bit because of the circular import on services, handler and subscriber
+    # This import is hacky bit because of the circular import on services, handler and subscriber
     from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton  # noqa
 
     topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
