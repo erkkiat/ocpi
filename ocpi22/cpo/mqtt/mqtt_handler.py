@@ -1,4 +1,5 @@
 import os
+from distutils.util import strtobool
 from logging import getLogger
 
 from paho.mqtt.client import MQTT_ERR_SUCCESS
@@ -45,6 +46,12 @@ def on_message(client, userdata, message):
             f"Processed status update message {message.payload} on topic {message.topic}"
         )
     elif AUTH_REQUEST_TOPIC.split("/")[-1] in message.topic:
+        enable_mqtt_authorize = strtobool(os.getenv("ENABLE_MQTT_AUTHORIZE", "False"))
+        if not enable_mqtt_authorize:
+            logger.warning(
+                f"Authorizing over mqtt is not enabled for {os.getenv('ENV')}, please use http authorize instead"
+            )
+            return
         logger.info("Received authorize message")
         process_authorize_data(message)
     else:
