@@ -69,6 +69,74 @@ class TestOnMessageAuthRequest:
 
             assert "Received authorize message" in caplog.text
 
+    @pytest.mark.parametrize(
+        "mqtt_authorize,env_name",
+        [
+            ("True", "development"),
+            ("true", "test"),
+            ("1", "staging"),
+        ],
+    )
+    def test_on_message_processes_authorize_when_mqtt_authorize_enabled(
+        self, auth_request_message, caplog, monkeypatch, mqtt_authorize, env_name
+    ):
+        monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", mqtt_authorize)
+        monkeypatch.setenv("ENV", env_name)
+
+        with patch(
+            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+        ) as mock_process_authorize:
+            result = on_message(None, None, auth_request_message)
+
+            mock_process_authorize.assert_called_once_with(auth_request_message)
+            assert "Received authorize message" in caplog.text
+            assert result is None
+
+    @pytest.mark.parametrize(
+        "mqtt_authorize,env_name",
+        [
+            ("False", "production"),
+            ("false", "development"),
+            ("0", "test"),
+            ("", "staging"),
+        ],
+    )
+    def test_on_message_returns_early_when_mqtt_authorize_disabled(
+        self, auth_request_message, caplog, monkeypatch, mqtt_authorize, env_name
+    ):
+        monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", mqtt_authorize)
+        monkeypatch.setenv("ENV", env_name)
+
+        with patch(
+            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+        ) as mock_process_authorize:
+            result = on_message(None, None, auth_request_message)
+
+            mock_process_authorize.assert_not_called()
+            assert (
+                f"Authorizing over mqtt is not enabled for {env_name}, please use http authorize instead"
+                in caplog.text
+            )
+            assert result is None
+
+    def test_on_message_mqtt_authorize_missing_env_var_defaults_to_disabled(
+        self, auth_request_message, caplog, monkeypatch
+    ):
+        monkeypatch.setenv("ENV", "production")
+        monkeypatch.delenv("ENABLE_MQTT_AUTHORIZE", raising=False)
+
+        with patch(
+            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+        ) as mock_process_authorize:
+            result = on_message(None, None, auth_request_message)
+
+            mock_process_authorize.assert_not_called()
+            assert (
+                "Authorizing over mqtt is not enabled for production, please use http authorize instead"
+                in caplog.text
+            )
+            assert result is None
+
 
 class TestOnMessageUnknownTopicEdgeCases:
     def test_on_message_returns_none_for_empty_topic(
