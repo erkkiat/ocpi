@@ -94,7 +94,7 @@ class MQTTClientSingleton:
         else:
             client.loop_start()
 
-    def stop_client(self):
+    def reset_client(self):
         with self._lock:
             if self.client:
                 self.client.loop_stop()
@@ -104,13 +104,6 @@ class MQTTClientSingleton:
 
     def is_connected(self):
         return self.client is not None and self.client.is_connected()
-
-    def reset_client(self):
-        with self._lock:
-            if self.client:
-                self.client.loop_stop()
-                self.client.disconnect()
-                self.client = None
 
 
 def get_broker_username_password():

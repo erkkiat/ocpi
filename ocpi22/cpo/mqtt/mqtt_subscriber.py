@@ -46,8 +46,8 @@ if __name__ == "__main__":
         mqtt_singleton.start_client(loop_forever)
     except KeyboardInterrupt:
         logger.info("Shutting down MQTT client...")
-        mqtt_singleton.stop_client()
+        mqtt_singleton.reset_client()
     except Exception as e:
         logger.error(f"Error running MQTT client: {e}")
-        mqtt_singleton.stop_client()
+        mqtt_singleton.reset_client()
         raise

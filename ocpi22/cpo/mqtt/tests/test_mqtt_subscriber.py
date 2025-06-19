@@ -228,13 +228,12 @@ class TestMQTTClientSingleton:
         instance.start_client(loop_forever=False)
         # Just verify no exception was raised
 
-    def test_stop_client_succeeds(self):
+    def test_reset_client_succeeds(self):
         instance = MQTTClientSingleton()
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         instance.client = client
 
-        # These methods are safe to call on a real client
-        instance.stop_client()
+        instance.reset_client()
         assert instance.client is None
 
     def test_is_connected_returns_true_with_connected_client(self):
@@ -257,14 +256,6 @@ class TestMQTTClientSingleton:
     def test_is_connected_returns_false_when_no_client(self):
         instance = MQTTClientSingleton()
         assert instance.is_connected() is False
-
-    def test_reset_client_succeeds(self):
-        instance = MQTTClientSingleton()
-        client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-        instance.client = client
-
-        instance.reset_client()
-        assert instance.client is None
 
     def test_configure_ssl(self):
         instance = MQTTClientSingleton()
