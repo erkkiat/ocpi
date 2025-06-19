@@ -110,7 +110,7 @@ class TestPublishAuthResponse:
 
             mock_client.publish.assert_called_once_with(
                 "test/auth/topic",
-                '{"allowed":"NOT_ALLOWED","session_id":null,"correlation_id":"corr-789"}',
+                '{"allowed":"NOT_ALLOWED","correlation_id":"corr-789"}',
             )
 
     @patch("ocpi22.cpo.mqtt.mqtt_client.MQTTClientSingleton")
