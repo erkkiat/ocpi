@@ -5,10 +5,15 @@ from paho.mqtt.client import MQTTMessage
 from ocpi22.cpo.mqtt.mqtt_handler import on_message
 
 
+@pytest.fixture
+def enable_mqtt_authorize(monkeypatch):
+    monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", True)
+
+
 class TestOnMessageAuthRequest:
     @pytest.mark.django_db
     def test_on_message_calls_process_authorize_data_when_auth_topic_matches(
-        self, auth_request_message, caplog
+        self, enable_mqtt_authorize, auth_request_message, caplog
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
@@ -18,7 +23,7 @@ class TestOnMessageAuthRequest:
             assert "Received authorize message" in caplog.text
 
     def test_on_message_handles_auth_topic_with_partial_match(
-        self, smappee_auth_request_topic, caplog
+        self, enable_mqtt_authorize, smappee_auth_request_topic, caplog
     ):
         message = MQTTMessage()
         message.topic = "smappee/site/123/auth/request/456".encode("utf-8")
@@ -57,7 +62,7 @@ class TestOnMessageAuthRequest:
             assert result is None
 
     def test_on_message_authorize_handles_process_authorize_data_exception(
-        self, auth_request_message, caplog
+        self, enable_mqtt_authorize, auth_request_message, caplog
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
