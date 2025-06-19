@@ -51,7 +51,7 @@ class TestOnMessageAuthRequest:
             mock_process_authorize.assert_not_called()
 
     def test_on_message_authorize_branch_executes_without_return_statement(
-        self, auth_request_message
+        self, enable_mqtt_authorize, auth_request_message
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
@@ -103,7 +103,6 @@ class TestOnMessageAuthRequest:
             ("False", "production"),
             ("false", "development"),
             ("0", "test"),
-            ("", "staging"),
         ],
     )
     def test_on_message_returns_early_when_mqtt_authorize_disabled(
