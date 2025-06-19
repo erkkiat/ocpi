@@ -22,7 +22,7 @@ def publish_auth_response(payload: TokenAuthorizationResponse):
     topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
     client = MQTTClientSingleton().get_client()
     try:
-        body = payload.model_dump_json(exclude_unset=True)
+        body = payload.model_dump_json(exclude_none=True)
     except ValidationError:
         logger.exception("Failed serializing MQTT auth payload")
         return

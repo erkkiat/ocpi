@@ -229,4 +229,4 @@ class TestPublishAuthResponse:
 
         publish_auth_response(payload)
 
-        payload.model_dump_json.assert_called_once_with(exclude_unset=True)
+        payload.model_dump_json.assert_called_once_with(exclude_none=True)

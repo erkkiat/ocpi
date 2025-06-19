@@ -53,7 +53,7 @@ class TokenAuthorizationMessageIn(BaseModel):
 
 class TokenAuthorizationResponse(BaseModel):
     allowed: AuthorizationEnum
-    session_id: str | None
+    session_id: str | None = None
     correlation_id: str
 
     class Config:
