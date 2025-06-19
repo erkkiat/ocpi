@@ -3,6 +3,10 @@ import pytest
 from paho.mqtt.client import MQTTMessage
 
 from ocpi22.cpo.mqtt.mqtt_handler import on_message
+from ocpi22.tests.factories import OCPISessionFactory
+from orjson import orjson
+from datetime import datetime
+import pytz
 
 
 @pytest.fixture
@@ -289,11 +293,6 @@ class TestOnMessage:
 
     @pytest.mark.django_db
     def test_on_message_calls_process_meter_values(self, smappee_meter_message):
-        from ocpi22.tests.factories import OCPISessionFactory
-        from orjson import orjson
-        from datetime import datetime
-        import pytz
-
         session = OCPISessionFactory(
             uid=orjson.loads(smappee_meter_message.payload)["session_id"]
         )
