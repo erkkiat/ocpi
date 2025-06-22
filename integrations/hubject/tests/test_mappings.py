@@ -28,6 +28,7 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapability
 from ocpi22.models.location import Connector
+from ocpi22.models.session import Session
 from ocpi22.tests.factories import LocationFactory, EvseFactory
 
 
@@ -504,6 +505,19 @@ class TestMappings:
 
         with pytest.raises(
             ValidationError, match="ConsumedEnergy must not be negative."
+        ):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_session_not_found(
+        self, ocpi_cdr
+    ):
+        Session.objects.all().delete()
+
+        with pytest.raises(
+            ValidationError, match=f"No session found for ID {ocpi_cdr.session_id}"
         ):
             self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                 ocpi_cdr

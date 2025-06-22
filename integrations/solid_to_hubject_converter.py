@@ -577,6 +577,9 @@ class SolidToHubjectConverter:
 
         session = Session.objects.filter(uid__iexact=cdr.session_id).first()
 
+        if not session:
+            raise ValidationError(f"No session found for ID {cdr.session_id}")
+
         msp_party_str = cdr.billed_to.party_str()
         operator_party_str = cdr.ocpi_master.party_str()
 
