@@ -564,30 +564,13 @@ class SolidToHubjectConverter:
     ) -> ERoamingChargeDetailRecord:
         from ocpi22.cpo.api import applying_tariff_element
 
-        if cdr.total_energy > 1000:
-            raise ValidationError("Total energy must not exceed 1000 kWh.")
-
-        if cdr.start_date_time >= cdr.end_date_time:
-            raise ValidationError(
-                "ChargingStart time must be earlier than ChargingEnd time."
-            )
-
-        if cdr.end_date_time > datetime.now(pytz.utc):
-            raise ValidationError("ChargingEnd time must not be in the future.")
-
         session = Session.objects.filter(uid__iexact=cdr.session_id).first()
-
-        if not session:
-            raise ValidationError(f"No session found for ID {cdr.session_id}")
 
         msp_party_str = cdr.billed_to.party_str()
         operator_party_str = cdr.ocpi_master.party_str()
 
-        if session.stop_kwh <= session.start_kwh:
-            raise ValidationError("MeterValueEnd must be greater than MeterValueStart.")
+        self.validate_ocpi_cdr_data(cdr, session)
 
-        if cdr.total_energy < 0:
-            raise ValidationError("ConsumedEnergy must not be negative.")
         current_tariff_element = applying_tariff_element(session)
         solid_tariff = SolidTariffRepository.get_by_ocpi_tariff_id(
             current_tariff_element.tariff.uid
@@ -605,7 +588,6 @@ class SolidToHubjectConverter:
             SessionID=session.hub_session_id,
             CPOPartnerSessionID=session.uid,
             EMPPartnerSessionID=session.reservation_id,
-            # TODO: Need to confirm with Mike what is required for PartnerProductID.
             PartnerProductID=ProductID(root=partner_product_id)
             if partner_product_id
             else None,
@@ -647,3 +629,32 @@ class SolidToHubjectConverter:
                 )
 
         return eroaming_cdr
+
+    def validate_ocpi_cdr_data(self, cdr: Cdr, session: Optional[Session] = None):
+        def validate_start_end_date_time():
+            if cdr.start_date_time >= cdr.end_date_time:
+                raise ValidationError(
+                    "ChargingStart time must be earlier than ChargingEnd time."
+                )
+
+            if cdr.end_date_time > datetime.now(pytz.utc):
+                raise ValidationError("ChargingEnd time must not be in the future.")
+
+        def validate_total_energy():
+            if cdr.total_energy < 0:
+                raise ValidationError("ConsumedEnergy must not be negative.")
+            if cdr.total_energy > 1000:
+                raise ValidationError("Total energy must not exceed 1000 kWh.")
+
+        def validate_kwh():
+            if not session:
+                raise ValidationError(f"No session found for ID {cdr.session_id}")
+
+            if session.stop_kwh <= session.start_kwh:
+                raise ValidationError(
+                    "MeterValueEnd must be greater than MeterValueStart."
+                )
+
+        validate_start_end_date_time()
+        validate_total_energy()
+        validate_kwh()
