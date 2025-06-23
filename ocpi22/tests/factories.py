@@ -502,7 +502,11 @@ class CdrFactory(factory.Factory):
     cdr_location_longitude = "9.360922"
     cdr_location_name = "Location A"
     cdr_location_evse_uid = "EVSE123"
-    cdr_location_evse_id = f"FI*CPO*E{cdr_location_evse_uid}"[:48]
+    cdr_location_evse_id = factory.LazyAttribute(
+        lambda obj: f"{obj.ocpi_master.country_code}*{obj.ocpi_master.party_id}*E{obj.cdr_location_evse_uid}"[
+            :48
+        ]
+    )
     cdr_location_connector_id = "1"
     cdr_location_connector_standard = "IEC_62196_T2"
     cdr_location_connector_format = "CABLE"
