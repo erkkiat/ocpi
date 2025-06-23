@@ -535,6 +535,16 @@ class EnergySourceCategory(Enum):
     WATER = "WATER"
 
 
+class RoamingProtocol(Enum):
+    OCPI = "Open Charge Point Interface"
+    OICP = "Open InterCharge Protocol"
+
+
+ROAMING_PROTOCOL_CHOICES = [
+    (protocol.name, protocol.value) for protocol in RoamingProtocol
+]
+
+
 class WEEKDAY_CHOICES(Enum):
     Monday = 1
     Tuesday = 2

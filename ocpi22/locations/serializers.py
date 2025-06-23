@@ -352,8 +352,12 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
         for key, value in data.items():
             if key not in {"uid", "evse_id"}:
                 setattr(evse, key, value)
-        if evse.location != location:
+        existing_location = evse.location
+        if existing_location != location:
             evse.location = location
+            logger.info(
+                f"Moved evse {evse.uid} from {existing_location.uid} to {location.uid}"
+            )
         evse.save()
 
     @staticmethod

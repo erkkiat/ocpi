@@ -8,6 +8,7 @@ from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
+from ocpiconnector.settings.infra_services import CustomJsonFormatter
 
 setup_sentry()
 
@@ -373,7 +374,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "()": CustomJsonFormatter,
             "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
@@ -396,6 +397,11 @@ LOGGING = {
         "django.request": {
             "level": "INFO",
             "propagate": True,
+        },
+        "ocpiconnector.logging_middleware": {
+            "level": "INFO",
+            "propagate": False,
+            "handlers": ["console"],
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
@@ -490,6 +496,8 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
+HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
+HUB_ID_MAX_LENGTH = 36
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
