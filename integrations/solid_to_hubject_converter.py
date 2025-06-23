@@ -121,8 +121,8 @@ class SolidToHubjectConverter:
             RenewableEnergy=False,
             EnergySource=None,
             EnvironmentalImpact=None,
-            CalibrationLawDataAvailability=location.country == germany
-            if CalibrationLawDataAvailability.Local
+            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local
+            if location.country == germany
             else CalibrationLawDataAvailability.Not_Available,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
             MaxCapacity=None,
