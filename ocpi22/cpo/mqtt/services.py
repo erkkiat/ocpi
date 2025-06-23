@@ -150,7 +150,7 @@ def _authorize_and_publish(
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )
     try:
-        authorization: TokenAuthorization = authorize_token(token, evse)
+        authorization: TokenAuthorization = authorize_token(token, evse.location)
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
