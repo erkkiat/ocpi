@@ -584,7 +584,7 @@ class TestAuthorizeAndPublish:
                 token_auth_message.correlation_id
             )
             assert any(
-                "Mqtt authorization failed miserably for auth message" in record.message
+                "MQTT authorization failed miserably for auth message" in record.message
                 for record in caplog.records
             )
 

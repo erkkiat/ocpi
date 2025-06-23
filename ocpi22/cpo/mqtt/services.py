@@ -166,7 +166,7 @@ def _authorize_and_publish(
         publish_auth_response(allowed_message)
     except Exception:
         logger.exception(
-            "Mqtt authorization failed miserably for auth message",
+            "MQTT authorization failed miserably for auth message",
             extra={"mqtt_message": message},
         )
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
