@@ -185,22 +185,23 @@ class TestOnMessageUnknownTopicEdgeCases:
                     mock_status.assert_not_called()
                     mock_auth.assert_not_called()
 
-    def test_on_message_unknown_topic_with_similar_but_not_matching_patterns(
-        self, mqtt_topics_setup, mqtt_message, caplog
-    ):
-        test_cases = [
+    @pytest.mark.parametrize(
+        "topic",
+        [
             "completely/different",
             "another/unknown/topic",
             "random/topic/here",
             "test/something/else",
-        ]
+        ],
+    )
+    def test_on_message_unknown_topic_with_similar_but_not_matching_patterns(
+        self, mqtt_topics_setup, mqtt_message, caplog, topic
+    ):
+        message = mqtt_message(topic)
+        result = on_message(None, None, message)
 
-        for topic in test_cases:
-            message = mqtt_message(topic)
-            result = on_message(None, None, message)
-
-            assert result is None
-            assert f"Unknown topic {topic}" in caplog.text
+        assert result is None
+        assert f"Unknown topic {topic}" in caplog.text
 
     @pytest.mark.parametrize(
         "topic",
