@@ -11,21 +11,15 @@ from pydantic import (
     StringConstraints,
     AfterValidator,
     model_validator,
-    UrlConstraints,
-    NonNegativeFloat,
 )
-from pydantic_core import Url
 from pydantic_extra_types.coordinate import Latitude, Longitude
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing_extensions import Annotated
 
 from generic import countries
 from integrations.hubject.schemas import (
-    InfoTextType,
     CalibrationLawDataAvailability,
-    PaymentOption,
     Accessibility,
-    AccessibilityLocation,
 )
 from ocpi22.choices import (
     OCPICapability,
@@ -178,33 +172,6 @@ class SolidEvse(BaseSchema):
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when this Evse was last updated",
     )
-    charging_pool_id: Optional[
-        Annotated[
-            str,
-            StringConstraints(
-                pattern=r"([A-Za-z]{2}\*?[A-Za-z0-9]{3}\*?P[A-Za-z0-9\*]{1,30})"
-            ),
-        ]
-    ] = Field(
-        None,
-        description="EVSE charging pool ID, which is an ID indicating the evse group (if applicable)",
-        examples=["IT*123*P456AB789"],
-    )
-
-    hardware_manufacturer: Optional[
-        Annotated[str, StringConstraints(max_length=50)]
-    ] = None
-    evse_image_url: Optional[
-        Annotated[
-            Url,
-            UrlConstraints(max_length=200, allowed_schemes=["http", "https"]),
-        ]
-    ] = None
-    parking_spot: Optional[Annotated[str, StringConstraints(max_length=5)]] = None
-    max_capacity: Optional[NonNegativeInt] = Field(
-        None,
-        description="Maximum capacity of the EVSE in kWh.",
-    )
     is_dynamic_info_available: Optional[bool] = Field(
         False,
         description="Indicates whether dynamic information is available from this EVSE.",
@@ -241,8 +208,6 @@ class SolidLocation(BaseSchema):
     address: Annotated[
         str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
     ] = Field(...)
-    floor_level: Optional[Annotated[str, StringConstraints(max_length=5)]] = None
-    region: Optional[Annotated[str, StringConstraints(max_length=50)]] = None
     city: Annotated[
         str, StringConstraints(max_length=settings.OCPI_22_MAX_ADDRESS_LENGTH)
     ]
@@ -261,7 +226,6 @@ class SolidLocation(BaseSchema):
     )
     directions: Optional[List[DisplayText]] = None
     operator: Optional[BusinessDetails] = None
-    suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
     facilities: Optional[List[OCPIFacility]] = None
     time_zone: Annotated[str, AfterValidator(validate_time_zone)]
@@ -277,43 +241,20 @@ class SolidLocation(BaseSchema):
         True,
         description="Indicates whether to share the location with roaming partners",
     )
-
-    charging_station_names: Optional[List[InfoTextType]] = Field(
-        None,
-        description="Name of the location in languages other than english, if available.",
-    )
-    sub_operator_name: Optional[Annotated[str, StringConstraints(max_length=100)]] = (
-        None
-    )
     is_green_energy: Optional[bool] = Field(
         False,
         description="Indicates whether the location only uses renewable energy sources.",
     )
-    energy_sources: Optional[List[EnergySource]] = Field(
-        None, description="List of energy sources used at this location."
-    )
-
-    co2_emission: Optional[Annotated[NonNegativeFloat, Field(le=99999.0)]] = Field(
-        None, description="CO2 emissions of energy source in grams per kWh."
-    )
-    nuclear_waste: Optional[Annotated[NonNegativeFloat, Field(le=99999.0)]] = Field(
-        None, description="Nuclear waster of energy source in grams per kWh."
-    )
     calibration_law_data_availability: Optional[CalibrationLawDataAvailability] = Field(
         CalibrationLawDataAvailability.Local
     )
-    payment_options: Optional[List[PaymentOption]] = Field(
-        None, description="List of payment options available at this location."
-    )
+    # payment_options: Optional[List[PaymentOption]] = Field(
+    #     None, description="List of payment options available at this location."
+    # )
     accessibility: Optional[List[Accessibility]] = Field(
         None, description="Specifies how the charging station can be accessed."
     )
-    accessibility_location: Optional[List[AccessibilityLocation]] = Field(None)
     hotline_phone_number: Optional[PhoneNumber] = None
-    additional_info_texts: Optional[List[InfoTextType]] = Field(
-        None, description="Additional information texts for the location."
-    )
-    location_references: Optional[InfoTextType] = None
     is_hubject_compatible: Optional[bool] = Field(
         False, description="Indicates whether the location is compatible with Hubject."
     )
