@@ -19,7 +19,7 @@ def publish_auth_response(payload: TokenAuthorizationResponse) -> None:
     # This import is hacky bit because of the circular import on services, handler and subscriber
     from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton  # noqa
 
-    topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE")
+    topic = _get_auth_topic_name("SMAPPEE_AUTH_RESPONSE_TOPIC")
     client = MQTTClientSingleton().get_client()
     try:
         body = payload.model_dump_json(exclude_none=True)
