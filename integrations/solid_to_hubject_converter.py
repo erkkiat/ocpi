@@ -81,6 +81,7 @@ class SolidToHubjectConverter:
         germany = next(
             (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
         )
+        germany_code = germany[0] if germany else None
         if hasattr(location, "opening_times"):
             hours = location.opening_times
         else:
@@ -122,7 +123,7 @@ class SolidToHubjectConverter:
             EnergySource=None,
             EnvironmentalImpact=None,
             CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local
-            if location.country == germany
+            if location.country == germany_code
             else CalibrationLawDataAvailability.Not_Available,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
             MaxCapacity=None,

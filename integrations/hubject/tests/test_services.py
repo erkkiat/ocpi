@@ -214,7 +214,9 @@ class TestHubjectService:
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert result == self.expected_berlin_emsdetten_op_evse_data_record()
+        assert result == self.expected_berlin_emsdetten_op_evse_data_record(
+            berlin2_location.uid, emsdetten2_location.uid
+        )
 
     def test_get_evse_full_load(
         self,
@@ -477,7 +479,7 @@ class TestHubjectService:
         result = self.__hubject_service.get_evse_full_load_payload(party)
         assert result is None
 
-    def expected_berlin_op_evse_data_record(self):
+    def expected_berlin_op_evse_data_record(self, location_id):
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),
             OperatorName="Smappee Pvt Ltd",
@@ -489,7 +491,7 @@ class TestHubjectService:
                     ),
                     EvseID=EvseID(root="FI*CPO*EBERLINEVSEUID"),
                     ChargingPoolID=None,
-                    ChargingStationId=None,
+                    ChargingStationId=location_id,
                     ChargingStationNames=[
                         InfoTextType(lang="en", value="Berlin Location")
                     ],
@@ -551,12 +553,12 @@ class TestHubjectService:
                     HubOperatorID=None,
                     ClearinghouseID=None,
                     IsHubjectCompatible=False,
-                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    DynamicInfoAvailable=DynamicInfoAvailable.true,
                 )
             ],
         )
 
-    def expected_emsdetten_op_evse_data_record(self):
+    def expected_emsdetten_op_evse_data_record(self, location_id):
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),
             OperatorName="Smappee Pvt Ltd",
@@ -568,7 +570,7 @@ class TestHubjectService:
                     ),
                     EvseID=EvseID(root="FI*CPO*EEEMSDETTENEVSEUID"),
                     ChargingPoolID=None,
-                    ChargingStationId=None,
+                    ChargingStationId=location_id,
                     ChargingStationNames=[
                         InfoTextType(lang="en", value="Emsdetten Location")
                     ],
@@ -630,18 +632,20 @@ class TestHubjectService:
                     HubOperatorID=None,
                     ClearinghouseID=None,
                     IsHubjectCompatible=False,
-                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    DynamicInfoAvailable=DynamicInfoAvailable.true,
                 )
             ],
         )
 
-    def expected_berlin_emsdetten_op_evse_data_record(self):
-        berlin_evse_data_record = (
-            self.expected_berlin_op_evse_data_record().EvseDataRecord[0]
-        )
-        emsdetten_evse_data_record = (
-            self.expected_emsdetten_op_evse_data_record().EvseDataRecord[0]
-        )
+    def expected_berlin_emsdetten_op_evse_data_record(
+        self, berlin_location_id, emsdetten_location_id
+    ):
+        berlin_evse_data_record = self.expected_berlin_op_evse_data_record(
+            berlin_location_id
+        ).EvseDataRecord[0]
+        emsdetten_evse_data_record = self.expected_emsdetten_op_evse_data_record(
+            emsdetten_location_id
+        ).EvseDataRecord[0]
         return OperatorEvseData(
             OperatorID=OperatorID(root="DE*SMP"),
             OperatorName="Smappee Pvt Ltd",

@@ -226,6 +226,7 @@ class SolidLocation(BaseSchema):
     )
     directions: Optional[List[DisplayText]] = None
     operator: Optional[BusinessDetails] = None
+    suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
     facilities: Optional[List[OCPIFacility]] = None
     time_zone: Annotated[str, AfterValidator(validate_time_zone)]

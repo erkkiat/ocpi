@@ -236,7 +236,9 @@ class TestMappings:
     @pytest.mark.django_db
     def test_map_location_to_eroaming_push_evse_data(self, helsinki2_location):
         evse_id = helsinki2_location.evses.first().evse_id
-        expected_data = self.expected_helsinki_eroaming_push_evse_data(evse_id)
+        expected_data = self.expected_helsinki_eroaming_push_evse_data(
+            evse_id, helsinki2_location.uid
+        )
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
@@ -262,7 +264,9 @@ class TestMappings:
         assert berlin2_location.evses.count() == 1
         assert (
             berlin_hubject_evse_data.model_dump()
-            == self.expected_berlin_eroaming_push_evse_data(evse_id)
+            == self.expected_berlin_eroaming_push_evse_data(
+                evse_id, berlin2_location.uid
+            )
         ), "The mapped OCPI Location data does not match the expected OICP data."
 
     def test_french_address(self):
@@ -427,7 +431,7 @@ class TestMappings:
         )
         assert result == pricing_product_data_successful_result
 
-    def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
+    def expected_helsinki_eroaming_push_evse_data(self, evse_id: str, location_id: str):
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -451,7 +455,7 @@ class TestMappings:
                             "TimeZone": get_timezone_offset("Europe/Helsinki"),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
-                        "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
+                        "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Not_Available,
                         "ChargingFacilities": [
                             {
                                 "Amperage": 16,
@@ -462,14 +466,14 @@ class TestMappings:
                             }
                         ],
                         "ChargingPoolID": None,
-                        "ChargingStationId": None,
                         "ChargingStationImage": None,
                         "ChargingStationLocationReference": None,
                         "ChargingStationNames": [
                             {"lang": "en", "value": "Helsinki Supercharger"}
                         ],
                         "ClearinghouseID": None,
-                        "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                        "ChargingStationId": location_id,
+                        "DynamicInfoAvailable": DynamicInfoAvailable.true,
                         "DynamicPowerLevel": None,
                         "EnergySource": None,
                         "EnvironmentalImpact": None,
@@ -511,7 +515,7 @@ class TestMappings:
             },
         }
 
-    def expected_berlin_eroaming_push_evse_data(self, evse_id: str):
+    def expected_berlin_eroaming_push_evse_data(self, evse_id: str, location_id: str):
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -548,14 +552,14 @@ class TestMappings:
                             }
                         ],
                         "ChargingPoolID": None,
-                        "ChargingStationId": None,
+                        "ChargingStationId": location_id,
                         "ChargingStationImage": None,
                         "ChargingStationLocationReference": None,
                         "ChargingStationNames": [
                             {"lang": "en", "value": "Berlin Location"}
                         ],
                         "ClearinghouseID": None,
-                        "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                        "DynamicInfoAvailable": DynamicInfoAvailable.true,
                         "DynamicPowerLevel": None,
                         "EnergySource": None,
                         "EnvironmentalImpact": None,
