@@ -8,14 +8,14 @@ from ocpi22.cpo.mqtt.schemas import TokenAuthorizationResponse
 logger = getLogger(__name__)
 
 
-def _get_auth_topic_name(topic_env_var: str):
+def _get_auth_topic_name(topic_env_var: str) -> str:
     topic = os.getenv(topic_env_var, "servicelocation/roaming/authresponse")
     if topic.startswith("$share/"):
         return topic.split("/", 2)[2]
     return topic
 
 
-def publish_auth_response(payload: TokenAuthorizationResponse):
+def publish_auth_response(payload: TokenAuthorizationResponse) -> None:
     # This import is hacky bit because of the circular import on services, handler and subscriber
     from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton  # noqa
 
@@ -33,3 +33,4 @@ def publish_auth_response(payload: TokenAuthorizationResponse):
             logger.error("MQTT publish failed with result code %s", info.rc)
     except Exception:
         logger.exception("Failed to publish auth response to MQTT")
+    return

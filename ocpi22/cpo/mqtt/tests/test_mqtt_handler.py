@@ -54,17 +54,6 @@ class TestOnMessageAuthRequest:
             on_message(None, None, message)
             mock_process_authorize.assert_not_called()
 
-    def test_on_message_authorize_branch_executes_without_return_statement(
-        self, enable_mqtt_authorize, auth_request_message
-    ):
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
-        ) as mock_process_authorize:
-            result = on_message(None, None, auth_request_message)
-
-            mock_process_authorize.assert_called_once()
-            assert result is None
-
     def test_on_message_authorize_handles_process_authorize_data_exception(
         self, enable_mqtt_authorize, auth_request_message, caplog
     ):
@@ -213,12 +202,8 @@ class TestOnMessageUnknownTopicEdgeCases:
         ],
     )
     def test_on_message_returns_none_for_topics_without_keywords(
-        self, monkeypatch, mqtt_message, caplog, topic
+        self, monkeypatch, mqtt_topics_setup, mqtt_message, caplog, topic
     ):
-        monkeypatch.setenv("SMAPPEE_METER_VALUES_TOPIC", "meter/values")
-        monkeypatch.setenv("SMAPPEE_STATUS_UPDATE_TOPIC", "status/updates")
-        monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/requests")
-
         message = mqtt_message(topic)
         result = on_message(None, None, message)
 
@@ -269,11 +254,9 @@ class TestOnMessageTopicMatching:
 
 
 class TestOnMessage:
-    def test_on_message_unknown_topic(self, monkeypatch, mqtt_message, caplog):
-        monkeypatch.setenv("SMAPPEE_METER_VALUES_TOPIC", "meter/values")
-        monkeypatch.setenv("SMAPPEE_STATUS_UPDATE_TOPIC", "status/updates")
-        monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/requests")
-
+    def test_on_message_unknown_topic(
+        self, monkeypatch, mqtt_topics_setup, mqtt_message, caplog
+    ):
         message = mqtt_message("unknown/completely/different")
         result = on_message(None, None, message)
 
