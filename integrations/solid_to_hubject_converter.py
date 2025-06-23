@@ -81,7 +81,10 @@ class SolidToHubjectConverter:
         germany = next(
             (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
         )
-        hours = location.opening_times
+        if hasattr(location, "opening_times"):
+            hours = location.opening_times
+        else:
+            hours = None
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
@@ -143,11 +146,11 @@ class SolidToHubjectConverter:
                 ),
                 DegreeMinuteSeconds=None,
             ),
-            IsOpen24Hours=hours.twentyfourseven if hours else False,
+            IsOpen24Hours=hours.twentyfourseven if hours else True,
             OpeningTimes=self.map_regular_hours_to_opening_times(
                 hours.regular_hours.all()
             )
-            if not hours.twentyfourseven
+            if hours and not hours.twentyfourseven
             else None,
             HubOperatorID=None,
             ClearinghouseID=None,
