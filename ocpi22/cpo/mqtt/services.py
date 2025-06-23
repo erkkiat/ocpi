@@ -81,11 +81,11 @@ def process_meter_values_data(message) -> None:
 
 @ensure_db_connection
 def process_status_update_data(message) -> None:
-    decoded_evse_message = _decode_message(message)
-    if not decoded_evse_message:
+    decoded_message = _decode_message(message)
+    if not decoded_message:
         return
     try:
-        evse_schema = EvseStatusUpdate.model_validate_json(decoded_evse_message)
+        evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
         return
@@ -110,12 +110,12 @@ def _find_token_by_uid(token_id):
 
 @ensure_db_connection
 def process_authorize_data(message):
-    decoded_evse_message = _decode_message(message)
-    if not decoded_evse_message:
+    decoded_message = _decode_message(message)
+    if not decoded_message:
         return
     try:
         token_auth_message = TokenAuthorizationMessageIn.model_validate_json(  # noqa
-            decoded_evse_message
+            decoded_message
         )
     except ValidationError:
         logger.exception(f"Failed to parse {message.topic} message")
