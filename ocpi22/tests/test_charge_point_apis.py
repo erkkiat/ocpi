@@ -5,6 +5,7 @@ import time_machine
 from django.urls import reverse
 
 from ocpi22.choices import MessageTexts, AuthorizationEnum
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     EvseFactory,
     TokenFactory,
@@ -270,6 +271,7 @@ class TestChargePointAPI:
         never_token,
         authorize_never_token_success_response,
     ):
+        get_credentialsrole.cache_clear()
         request_body = {"evse_id": available_evse.uid, "token_id": never_token.uid}
         with patch(
             "ocpi22.tokens.auth.authorize_with_msps_sync"

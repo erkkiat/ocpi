@@ -5,7 +5,6 @@ from functools import reduce
 from logging import getLogger
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import ProgrammingError
 from django.urls import reverse_lazy
 from django.utils.datetime_safe import datetime
 
@@ -516,18 +515,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
-                        if (
-                            len(authorization.responding_party) < 6
-                            or "*" not in authorization.responding_party
-                        ):
-                            raise ProgrammingError(
-                                f"TokenAuthorization: responding party is `{authorization.responding_party}`, "
-                                "but the information is needed in format `CC*PID` for routing the session updates."
-                            )
-                        route_through_party = Party.from_str(
-                            authorization.responding_party
+                        route_through = get_credentialsrole(
+                            party=Party.from_str(authorization.responding_party)
                         )
-                        route_through = get_credentialsrole(party=route_through_party)
                         if not route_through:
                             raise ValueError(
                                 f"CredentialsRole for {authorization.responding_party} not found in the database."
