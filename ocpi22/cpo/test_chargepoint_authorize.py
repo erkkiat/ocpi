@@ -34,7 +34,7 @@ def ocpi_master():
 @pytest.fixture
 def gireve_credentials():
     return CredentialsRoleFactory(
-        country_code="FR", party_id="007", role="HUB", business_details__name="Gireve"
+        country_code="FR", party_id="107", role="HUB", business_details__name="Gireve"
     ).credentials
 
 
@@ -64,10 +64,10 @@ def test_authorize_positive(monkeypatch, evse, token, ocpi_master, gireve_creden
     auth = TokenAuthorization(
         allowed=AuthorizationEnum.ALLOWED,
         token=token,
-        responding_party="FR*007",
+        responding_party="FR*107",
         authorization_reference="REF123",
         auth_method="AUTH_REQUEST",
-        billed_to="FR*TST",
+        billed_to="US*TST",
         ocpi_master=ocpi_master,
     )
     monkeypatch.setattr(
@@ -108,8 +108,7 @@ def test_authorize_with_non_existent_credentialsrole_fails(
 
 def test_authorize_disallowed(monkeypatch, evse, token):
     auth = TokenAuthorization(
-        allowed=AuthorizationEnum.NOT_ALLOWED,
-        token=token,
+        allowed=AuthorizationEnum.NOT_ALLOWED, token=token, responding_party="FR*107"
     )
     monkeypatch.setattr(
         "ocpi22.cpo.api.authorize_token", lambda token, location, request=None: auth

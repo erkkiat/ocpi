@@ -77,14 +77,12 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
-    route_through = (
-        models.ForeignKey(  # Credentials is the field currently in use for this purpose
-            "ocpi22.CredentialsRole",
-            related_name="sessions_route_through",
-            on_delete=models.PROTECT,
-            null=True,
-            verbose_name=_("Route through"),
-        )
+    route_through = models.ForeignKey(  # Not in use yet, Session.credentials is the field currently in use for this purpose
+        "ocpi22.CredentialsRole",
+        related_name="sessions_route_through",
+        on_delete=models.PROTECT,
+        null=True,
+        verbose_name=_("Route through"),
     )
 
     hub_session_id = models.CharField(
