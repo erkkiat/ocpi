@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional
 
 import cachetools
@@ -546,13 +546,13 @@ ROAMING_PROTOCOL_CHOICES = [
 
 
 class WEEKDAY_CHOICES(Enum):
-    Monday = 1
-    Tuesday = 2
-    Wednesday = 3
-    Thursday = 4
-    Friday = 5
-    Saturday = 6
-    Sunday = 7
+    Monday = auto()
+    Tuesday = auto()
+    Wednesday = auto()
+    Thursday = auto()
+    Friday = auto()
+    Saturday = auto()
+    Sunday = auto()
 
     def __str__(self):
         return self.name
