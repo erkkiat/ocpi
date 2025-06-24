@@ -199,7 +199,7 @@ def authorize_token(
                     ),
                     responding_party=session.credentials.get_party_for_role(
                         OcpiRolesEnum.EMSP
-                    ),
+                    ).party_str(),
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
