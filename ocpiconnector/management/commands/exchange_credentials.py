@@ -6,7 +6,7 @@ import cachetools
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 import os
 
 from django.conf import settings
@@ -36,8 +36,11 @@ def get_our_roles(source: dict = None) -> list:
 
     >>> from util import reverse, HashableDict
     >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
-    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://example.com'))
-    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://example.com'}, 'party_id': 'HUB'}]
+    BUSINESS_NAME='Test', BUSINESS_WEBSITE='http://localhost'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': 'http://localhost'}, 'party_id': 'HUB'}]
+    >>> get_our_roles(source=HashableDict(CPO='FI*EON', HUB='FI*HUB', \
+    BUSINESS_NAME='Test'))
+    [{'role': 'CPO', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': None}, 'party_id': 'EON'}, {'role': 'HUB', 'country_code': 'FI', 'business_details': {'name': 'Test', 'website': None}, 'party_id': 'HUB'}]
 
     @param source: For testing purposes, you can set the source for role settings
     @return: a list of roles formatted for Credentials registration
@@ -46,7 +49,7 @@ def get_our_roles(source: dict = None) -> list:
     source = source or os.environ
     roles = []
     business_name = source.get("BUSINESS_NAME", "N/A")
-    website = source.get("BUSINESS_WEBSITE", "")
+    website = source.get("BUSINESS_WEBSITE", None)
 
     for role in ROLE_OPTIONS:
         country_code, party_id = source.get(role, "*").split("*")
@@ -63,8 +66,8 @@ def get_our_roles(source: dict = None) -> list:
     # Todo: Support multi-country CPOs / eMSPs
 
 
-def select_version(url, token) -> str:
-    versions_response = ocpi_credentials_get(url, token)
+def select_version(url, token, credentials_id=None) -> str:
+    versions_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     if versions_response.status_code == 200:
         data = versions_response.json()
         serializer = VersionsSerializer(data=data)
@@ -87,8 +90,8 @@ def select_version(url, token) -> str:
     return version_url
 
 
-def get_endpoints(url, token):
-    endpoints_response = ocpi_credentials_get(url, token)
+def get_endpoints(url, token, credentials_id=None) -> dict:
+    endpoints_response = ocpi_credentials_get(url, token, credentials_id=credentials_id)
     data = endpoints_response.json()
     endpoints = data.get("data", data)
     endpoints_str = ", ".join(set([e["identifier"] for e in endpoints["endpoints"]]))
@@ -175,7 +178,11 @@ class Command(BaseCommand):
                 )
 
             credentials_response = ocpi_credentials_post(
-                url, token_a_base64, json=data_to_send, timeout=15
+                url,
+                token_a_base64,
+                json=data_to_send,
+                timeout=15,
+                credentials_id=credentials.id,
             )
             if credentials_response.status_code not in (
                 status.HTTP_200_OK,
@@ -195,6 +202,7 @@ class Command(BaseCommand):
                 if credentials:
                     credentials.reset()
                 raise OCPIProtocolError(msg)
+            credentials.disable_token_a_if_applicable()
             return True
 
         except (JSONDecodeError, NotAuthenticated) as e:

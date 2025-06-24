@@ -6,27 +6,106 @@ on:
       - published  # Triggered when a release is manually published via the GitHub UI
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Manual Release
-    runs-on: ubuntu-latest
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest-m
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff Linting
+        run: ruff check .
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest-m
+    needs: lint
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
     env:
-      ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Extract Tag and Release Info
-        id: release_info
-        run: |
-          echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          echo "RELEASE_BODY=${{ github.event.release.body }}" >> $GITHUB_ENV
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
 
-      - name: Log Release Info
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
         run: |
-          echo "Tag Name: ${{ env.RELEASE_TAG }}"
-          echo "Release Notes: ${{ env.RELEASE_BODY }}"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-cov
+
+      - name: Run Pytest
+        run: pytest
+
+  build-and-deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest-m
+    needs: test
+
+    env:
+      ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Fetch Release Tag
+        id: fetch_release
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: No release tag found"
+            exit 1
+          fi
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Enable BuildKit
+        run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -40,27 +119,39 @@ jobs:
 
       - name: Build and Push Docker Images
         run: |
-          IMAGE_TAG=${{ env.RELEASE_TAG }}
-          repo_url="$ECR_REPO_URL/solidroam-$service-f1"
-          full_image_url_with_tag="$repo_url:$IMAGE_TAG"
-
           for service in django-app mqtt-subscriber celery-mqtt celery-django; do
-              echo "Building multi-architecture image for $service with tag: $IMAGE_TAG"
-              docker buildx build --platform linux/arm64 -t "$full_image_url_with_tag" -f ./Dockerfile --push .
-              echo "Pushed $service:$IMAGE_TAG to ECR farm $FARM."
+              repo_url="$ECR_REPO_URL/solidroam-$service-f1"
+              full_image_url_with_tag="$repo_url:$RELEASE_TAG"
+
+              echo "Building multi-architecture image for $service with tag: $RELEASE_TAG"
+
+              docker buildx build --platform linux/arm64 \
+                -t "$full_image_url_with_tag" \
+                -f ./Dockerfile --push .
+
+              echo "Pushed $service:$RELEASE_TAG to ECR."
           done
 
-  publish-release:
-    name: Publish Release After Successful Deployment
-    runs-on: ubuntu-latest
+  tag-and-release:
+    name: Finalize GitHub Release
+    runs-on: ubuntu-latest-m
     needs: build-and-deploy
+    permissions:
+      contents: write
+      pull-requests: read
 
     steps:
-      - name: Publish the Draft Release
-        uses: actions/create-release@v1
+      - name: Checkout Code
+        uses: actions/checkout@v3
         with:
-          tag_name: ${{ github.event.release.tag_name }}
-          release_name: "Release ${{ github.event.release.tag_name }}"
-          body: ${{ github.event.release.body }}
-          draft: false  # Change from draft to published
-          prerelease: false
+          fetch-depth: 0
+
+      - name: Update Release Drafter Draft
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub Release
+        run: gh release edit "${{ github.event.release.tag_name }}" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from humanize import naturaltime
 
 import widgets
-from ocpi22.choices import OcpiRolesEnum, OCPIFacilityEnum, OCPICapabilityEnum
+from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
 from django.utils.html import format_html
 from nested_admin.nested import (
     NestedModelAdmin,
@@ -21,7 +21,6 @@ from nested_admin.nested import (
 )
 
 from ocpi22.models.cdr import Cdr
-from ocpi22.models.dynamic_price import DynamicPrice
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
@@ -59,7 +58,8 @@ class AdminUtilityMixin:
 class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.post_process_after_update_or_create()
+        if hasattr(obj, "post_process_after_update_or_create"):
+            obj.post_process_after_update_or_create()
 
 
 class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):
@@ -229,7 +229,7 @@ class ConnectorInline(NestedStackedInline):
 
 class LocationAdminForm(forms.ModelForm):
     facilities = forms.MultipleChoiceField(
-        choices=OCPIFacilityEnum.choices,
+        choices=OCPIFacility.choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
@@ -241,7 +241,7 @@ class LocationAdminForm(forms.ModelForm):
 
 class EvseAdminForm(forms.ModelForm):
     capabilities = forms.MultipleChoiceField(
-        choices=OCPICapabilityEnum.choices,
+        choices=OCPICapability.choices,
         widget=forms.CheckboxSelectMultiple,
         required=False,
     )
@@ -317,6 +317,7 @@ class LocationAdmin(SolidNestedModelAdmin):
                     ("state", "country"),
                     ("latitude", "longitude", "time_zone"),
                     "publish",
+                    "roaming_enabled",
                 )
             ),
         ),
@@ -327,6 +328,7 @@ class LocationAdmin(SolidNestedModelAdmin):
         "party_long",
         "uid",
         "publish",
+        "roaming_enabled",
         "name",
         "street_address",
         "evse_list",
@@ -634,7 +636,23 @@ class SessionAdmin(SolidNestedModelAdmin):
         return super().response_post_save_change(request, obj)
 
 
+class TariffAdminForm(forms.ModelForm):
+    def clean_uid(self):
+        uid = self.cleaned_data.get("uid")
+        ocpi_master = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        tariff: Tariff = Tariff.objects.filter(
+            uid__iexact=str(uid), ocpi_master=ocpi_master, archived=False
+        )
+        if tariff.exists():
+            raise ValidationError(
+                _("Tariff with this UID already exists"), code="invalid"
+            )
+        return uid
+
+
 class TariffAdmin(SolidNestedModelAdmin):
+    form = TariffAdminForm
+
     class ElementsInline(NestedStackedInline):
         class PriceComponentsInline(NestedTabularInline):
             model = PriceComponent
@@ -643,13 +661,7 @@ class TariffAdmin(SolidNestedModelAdmin):
             formfield_overrides = widgets.formfield_overrides
 
             def has_change_permission(self, request, obj=None) -> bool:
-                if obj and hasattr(obj, "tariff"):
-                    obj = obj.tariff
-                return (
-                    (not obj or obj.is_ours())
-                    or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-                    and super().has_change_permission(request, obj)
-                )
+                return False
 
             def has_add_permission(self, request, obj=None) -> bool:
                 return (
@@ -680,9 +692,7 @@ class TariffAdmin(SolidNestedModelAdmin):
         ]
 
         def has_change_permission(self, request, obj=None) -> bool:
-            return (
-                (not obj or obj.is_ours()) or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-            ) and super().has_change_permission(request, obj)
+            return False
 
         def has_add_permission(self, request, obj=None) -> bool:
             return (
@@ -737,17 +747,16 @@ class TariffAdmin(SolidNestedModelAdmin):
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return (
-            (obj and obj.is_ours())
-            or settings.ALLOW_ADMIN_DELETE_AND_CHANGE
-            and super().has_change_permission(request, obj)
-        )
+        return False
 
     def has_add_permission(self, request) -> bool:
         return (
             Tariff.ocpi_object_owner in ocpi_identities
             and super().has_add_permission(request)
         )
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return False
 
     def save_model(self, request, obj, form, change):
         """Since the admin is saving the object, it's ours, so let's fill out the needed fields"""
@@ -775,7 +784,14 @@ class CredentialsAdmin(SolidModelAdmin):
         model = Endpoint
 
     model = Credentials
-    list_display = ["name", "party_str", "valid", "responding", "last_update"]
+    list_display = [
+        "name",
+        "party_str",
+        "valid",
+        "responding",
+        "last_update",
+        "allowed_locations",
+    ]
     readonly_fields = [
         "theirs_base64",
         "ours_base64",
@@ -856,15 +872,6 @@ class DefaultTariffsAdmin(SolidModelAdmin):
     autocomplete_fields = ["tariffs"]
 
     formfield_overrides = widgets.formfield_overrides
-
-
-@admin.register(DynamicPrice)
-class DynamicPriceAdmin(SolidModelAdmin):
-    model = DynamicPrice
-    ordering = ["-start_datetime"]
-    list_display = ["dynamic_price_source", "price", "start_datetime", "end_datetime"]
-    list_filter = ["dynamic_price_source"]
-    search_fields = ["dynamic_price_source"]
 
 
 # admin.site.unregister(User)

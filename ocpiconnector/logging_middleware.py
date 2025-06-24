@@ -1,9 +1,11 @@
 import time
 import uuid
 from http import HTTPStatus
+from orjson import JSONDecodeError
 from logging import getLogger
 
 import orjson
+import sentry_sdk
 from django.utils.deprecation import MiddlewareMixin
 
 
@@ -41,8 +43,8 @@ class LoggingMiddleware(MiddlewareMixin):
         return response
 
     def process_exception(self, request, exception):
-        self.logger.info("This is the exception", exc_info=exception)
         self.exception = exception
+        sentry_sdk.capture_exception(exception)
         return None
 
     def get_response_data(self, response, processing_time):
@@ -64,7 +66,8 @@ class LoggingMiddleware(MiddlewareMixin):
 
     def clean_auth_headers(self, request):
         """
-        Cleans sensitive headers while logging others as is.
+        Masks sensitive headers partially while logging others as is.
+        Shows first 4 and last 4 characters of the value, masks the middle.
         """
         sensitive_headers = {
             "authorization",
@@ -82,13 +85,16 @@ class LoggingMiddleware(MiddlewareMixin):
         headers = request.headers
         cleaned_headers = {}
 
-        for key, value in headers.items():
-            # Mask sensitive headers
-            if key.lower() in sensitive_headers:
-                cleaned_headers[key] = "*******"
-            else:
-                cleaned_headers[key] = value  # Log other headers as is
+        def partial_mask(value, show_start=4, show_end=4):
+            if not isinstance(value, str) or len(value) <= (show_start + show_end):
+                return "*" * len(value)
+            return f"{value[:show_start]}****{value[-show_end:]}"
 
+        for key, value in headers.items():
+            if key.lower() in sensitive_headers:
+                cleaned_headers[key] = partial_mask(value)
+            else:
+                cleaned_headers[key] = value
         return cleaned_headers
 
     def get_cleaned_payload(self, request):
@@ -96,7 +102,10 @@ class LoggingMiddleware(MiddlewareMixin):
             payload = request.body.decode("utf-8")
             if "token" in payload:
                 return "**"
-            payload_dict = orjson.loads(payload)
+            try:
+                payload_dict = orjson.loads(payload)
+            except JSONDecodeError:
+                return None
             if "password" in payload_dict:
                 payload_dict["password"] = "**"
             return payload_dict

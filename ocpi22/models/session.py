@@ -8,7 +8,7 @@ from django.utils.datetime_safe import datetime
 from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from decimal import Decimal
 from typing import Union, Optional
 
@@ -27,6 +27,7 @@ from ocpi22.choices import (
     CdrDimensionEnum,
     TOKEN_TYPE_CHOICES,
 )
+from ocpi22.locations.serializers import TariffField
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.location import Location, Evse, Connector
@@ -76,6 +77,20 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
+    route_through = models.ForeignKey(
+        "ocpi22.CredentialsRole",
+        related_name="sessions_route_through",
+        on_delete=models.PROTECT,
+        null=True,
+        verbose_name=_("Route through"),
+    )
+
+    hub_session_id = models.CharField(
+        max_length=settings.HUB_ID_MAX_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name=_("Hub session ID"),
+    )
     reservation_id = models.CharField(
         max_length=settings.OCPI_22_MAX_UID_LENGTH,
         blank=True,
@@ -588,24 +603,18 @@ class CdrDimensionSerializer(serializers.ModelSerializer):
         fields = ("type", "volume")
 
 
-class TariffIdSerializer(serializers.Serializer):
-    def to_representation(self, instance):
-        if isinstance(instance, Tariff):
-            return instance.uid
-        else:
-            return instance
+class ChargingPeriodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChargingPeriod
+        fields = ("start_date_time", "tariff_id", "dimensions")
+
+    start_date_time = UTCDateTimeField(required=False)
+    tariff_id = TariffField(required=False, source="tariff")
+    dimensions = CdrDimensionSerializer(many=True)
 
     def to_internal_value(self, data):
-        tariff = Tariff.get_if_exists(uid=data, archived=False)
-        if not tariff:
-            raise serializers.ValidationError(f"Tariff with UID {data} not found")
-        return tariff
-
-
-class ChargingPeriodSerializer(serializers.Serializer):
-    start_date_time = UTCDateTimeField(required=False)
-    tariff_id = TariffIdSerializer(required=False, source="tariff")
-    dimensions = CdrDimensionSerializer(many=True)
+        self.tariff_id = data
+        return super().to_internal_value(data)
 
 
 class TotalCostSerializer(SerializerCleanedUp):

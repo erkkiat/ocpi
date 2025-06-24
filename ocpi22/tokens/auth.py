@@ -3,7 +3,7 @@ from django.utils.datetime_safe import datetime
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
 
-import ocpi22.logging as logging
+import ocpi22.ocpi_logging as logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Optional, Union, OrderedDict
@@ -93,6 +93,7 @@ class TokenAuthorization:
     billed_to: str = ""
     ocpi_master: CredentialsRole = None
     status_text: str = ""
+    hub_session_id: str = ""
 
     @staticmethod
     def get_token_owner(token) -> Party:
@@ -190,7 +191,6 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        True,
                         session.billed_to,
                         token,
                         TokenType.AD_HOC_USER,

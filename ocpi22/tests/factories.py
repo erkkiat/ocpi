@@ -35,6 +35,7 @@ from integrations.hubject.schemas import (
     ERoamingPushEVSEPricing,
     EVSEPricingItem,
 )
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -44,6 +45,7 @@ from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
+from ocpi22.models.token import Token
 
 fake = Faker()
 
@@ -54,7 +56,9 @@ class UserFactory(factory.django.DjangoModelFactory):
 
     username = "SolidRoamUser"
     email = "user@solidroam.com"
-    password = factory.PostGenerationMethodCall("set_password", "test.user")
+    password = factory.PostGenerationMethodCall(
+        "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
+    )
 
 
 class StaffUserFactory(UserFactory):
@@ -70,8 +74,8 @@ class OCPIImageFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = OCPIImage
 
-    url = "https://example.com/image.jpg"
-    thumbnail = "https://example.com/thumbnail.jpg"
+    url = "https://localhost/image.jpg"
+    thumbnail = "https://localhost/thumbnail.jpg"
     category = OCPIImageCategory.OPERATOR
     image_type = "jpeg"
     width = 800
@@ -111,6 +115,29 @@ class CredentialsRoleFactory(factory.django.DjangoModelFactory):
     party_id = "CPO"
     credentials = factory.SubFactory(CredentialsFactory)
 
+    @factory.post_generation
+    def add_endpoints(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for endpoint in extracted:
+                EndpointFactory(credentials_role=self, **endpoint)
+        else:
+            for endpoint in OcpiModuleEnum:
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.SENDER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
+                EndpointFactory(
+                    credentials=self.credentials,
+                    identifier=endpoint.value,
+                    role=EndpointRoleEnum.RECEIVER.value,
+                    url=f"https://localhost/ocpi/{endpoint.value.lower()}",
+                )
+
 
 class EndpointFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -140,6 +167,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
     parking_type = "ON_STREET"
+    roaming_enabled = True
 
 
 class EvseFactory(factory.django.DjangoModelFactory):
@@ -201,7 +229,9 @@ class TariffFactory(factory.django.DjangoModelFactory):
     min_price_incl_vat = 0.2
     max_price_excl_vat = 0.8
     max_price_incl_vat = 0.9
-    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    ocpi_master = factory.SubFactory(
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
+    )
 
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -216,11 +246,11 @@ class ConnectorFactory(factory.django.DjangoModelFactory):
     evse = factory.SubFactory(EvseFactory)
     standard = "IEC_62196_T2"
     format = "CABLE"
-    power_type = ["AC_3_PHASE"]
+    power_type = "AC_3_PHASE"
     max_voltage = 400
     max_amperage = 32
     max_electric_power = 22
-    terms_and_conditions = "https://smappee.com/terms-and-conditions/"
+    terms_and_conditions = "https://localhost/terms-and-conditions/"
     last_updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     updated = factory.Faker("date_time", tzinfo=pytz.UTC)
     created = factory.Faker("date_time", tzinfo=pytz.UTC)
@@ -440,15 +470,15 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     price_per_min = 0.3
     price_flat = 0.3
     vat_percentage = 0.2
-    archived = False
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
     )
     operator = factory.SubFactory(
-        CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
+        CredentialsRoleFactory, role="CPO", country_code="FI", party_id="MSP"
     )
+    ocpi_tariff = factory.SubFactory(TariffFactory)
 
-    last_updated_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created_at = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
 
 
@@ -557,7 +587,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     uid = "SESSION-12345"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
-    start_kwh = 100.0
+    start_kwh = 0.0
     stop_kwh = 120.0
     cdr_token = factory.SubFactory(CdrTokenFactory)
     billed_to = factory.LazyAttribute(lambda obj: obj.cdr_token.ocpi_master)
@@ -571,3 +601,25 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
     total_cost_incl_vat = 12.0
     status = Session.ACTIVE
     last_updated = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
+    credentials = factory.LazyAttribute(lambda obj: obj.ocpi_master.credentials)
+
+
+class TokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Token
+
+    ocpi_master = factory.SubFactory(CredentialsRoleFactory)
+    uid = "TOKEN1"
+    type = "RFID"
+    contract_id = factory.Faker("uuid4")
+    visual_number = "045736789864"
+    issuer = factory.Faker("company")
+    group_id = factory.Faker("uuid4")
+    valid = True
+    whitelist = Token.ALLOWED
+    language = "EN"
+    default_profile_type = "REGULAR"
+    last_updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
+    customer = factory.SubFactory(UserFactory)

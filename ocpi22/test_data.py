@@ -10,13 +10,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "BestCompany.EU", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": None},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "BestCompany.EU", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": None},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
@@ -40,9 +40,13 @@ class CredentialsData:
         "theirs": "9e80a9c4-28be-11e9-b210-d663bd873d93",
         "token_a": "",
         "updated": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "valid": True,
         "version": "221",
+        "allowed_locations": [],
+        "client_certificate_name": "",
+        "private_key_name": "",
+        "ca_certificate_name": "",
     }
 
     expected_versions_response = {
@@ -81,7 +85,7 @@ class CredentialsData:
 
     example = {
         "token": "9e80a9c4-28be-11e9-b210-d663bd873d93",
-        "url": "https://ocpi.example.com/versions/",
+        "url": "https://localhost/versions/",
         "roles": [
             {
                 "role": "CPO",
@@ -89,8 +93,8 @@ class CredentialsData:
                 "country_code": "NL",
                 "business_details": {"name": "Example Operator"},
                 "logo": {
-                    "url": "https://example.com/img/logo.jpg",
-                    "thumbnail": "https://example.com/img/logo_thumb.jpg",
+                    "url": "https://localhost/img/logo.jpg",
+                    "thumbnail": "https://localhost/img/logo_thumb.jpg",
                     "category": "OPERATOR",
                     "type": "jpeg",
                     "width": 512,
@@ -108,6 +112,77 @@ class CredentialsData:
 
     ocpi_endpoints_response = {
         "version": "2.2",
+        "endpoints": [
+            {
+                "identifier": "credentials",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/credentials",
+            },
+            {
+                "identifier": "credentials",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/credentials",
+            },
+            {
+                "identifier": "locations",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/locations",
+            },
+            {
+                "identifier": "locations",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/locations",
+            },
+            {
+                "identifier": "tokens",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tokens",
+            },
+            {
+                "identifier": "tokens",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tokens",
+            },
+            {
+                "identifier": "tariffs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs",
+            },
+            {
+                "identifier": "tariffs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/tariffs",
+            },
+            {
+                "identifier": "sessions",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/sessions",
+            },
+            {
+                "identifier": "sessions",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/sessions",
+            },
+            {
+                "identifier": "cdrs",
+                "role": "SENDER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs",
+            },
+            {
+                "identifier": "cdrs",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/cdrs",
+            },
+            {
+                "identifier": "commands",
+                "role": "RECEIVER",
+                "url": "http://localhost/ocpi/2.2.1/commands",
+            },
+        ],
+    }
+
+    ocpi_endpoints_response_221 = {
+        "version": "2.2.1",
         "endpoints": [
             {
                 "identifier": "credentials",
@@ -1233,31 +1308,6 @@ class TokenAuthorizationData:
             timeout=28,
         )
     ]
-
-    authorization_response = {
-        "data": {
-            "allowed": "ALLOWED",
-            "authorization_reference": "FI*MSP*A*MOCK-1",
-            "token": {
-                "country_code": "DE",
-                "party_id": "TNM",
-                "uid": "EKI1",
-                "type": "RFID",
-                "contract_id": "DE8ACC12E46L89",
-                "visual_number": "DF000-2001-8999-1",
-                "issuer": "TheNewMotion",
-                "group_id": "DF000-2001-8999",
-                "valid": True,
-                "whitelist": "ALLOWED",
-                "language": "IT",
-                "default_profile_type": "GREEN",
-                "last_updated": "2018-12-10T17:25:10Z",
-            },
-        },
-        "status_code": 1000,
-        "status_message": "Success",
-        "timestamp": "2022-01-01T12:00:00Z",
-    }
 
     invalid_token = {
         "data": {

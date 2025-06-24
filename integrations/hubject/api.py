@@ -1,13 +1,18 @@
 from typing import Dict
-from ninja import NinjaAPI
 
+from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import PricingProductData, ActionType
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.models.tariff import SolidTariff
+from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
 
-api = NinjaAPI()
+api = CustomNinjaAPI(
+    auth=NinjaBasicAuth(),
+    urls_namespace="hubject-api",
+)
 hubject_service = HubjectService()
 
 
@@ -50,11 +55,8 @@ def start_pricing_product_full_load(request) -> dict:
         return hubject_service.post_pricing_products_full_load(
             get_our_identity(OcpiRolesEnum.CPO.value), payload
         )
-    except Exception:
-        return {
-            "success": False,
-            "message": "PricingProducts full load failed",
-        }
+    except SolidTariff.DoesNotExist:
+        return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
 
 
 @api.post(

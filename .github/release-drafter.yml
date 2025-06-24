@@ -1,0 +1,47 @@
+name-template: 'v$RESOLVED_VERSION 😎'
+tag-template: 'v$RESOLVED_VERSION'
+categories:
+  - title: 💥 Breaking changes
+    labels:
+      - breaking-change
+  - title: 🚀 New features and improvements
+    labels:
+      - enhancement
+      - feature
+  - title: 🐛 Bug fixes
+    labels:
+      - bug
+      - fix
+  - title: 📦 Dependency updates
+    labels:
+      - dependencies
+    collapse-after: 15
+  - title: 📝 Documentation updates
+    labels:
+      - documentation
+  - title: 👻 Maintenance
+    labels:
+      - chore
+      - maintenance
+      - tech
+      - refactor
+  - title: 🚦 Tests
+    labels:
+      - test
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+exclude-labels:
+  - 'skip-changelog'
+exclude-title: '(?i)production update'
+version-resolver:
+  major:
+    labels: [ 'major', 'breaking-change' ]  # If PR has 'major', bump major (e.g., v1.0.0 → v2.0.0)
+  minor:
+    labels: [ 'feature', 'enhancement' ]  # Bumps minor (e.g., v1.2.0 → v1.3.0)
+  patch:
+    labels: [ 'bug', 'fix' ]  # Bumps patch (e.g., v1.2.3 → v1.2.4)
+  default: patch  # Default bump if no labels match
+
+template: |
+  ## What’s Changed
+
+  $CHANGES

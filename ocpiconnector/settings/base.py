@@ -1,6 +1,6 @@
 # Django settings for ocpiconnector project.
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from distutils.util import strtobool
 
 from corsheaders.defaults import default_headers
@@ -8,6 +8,7 @@ from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
+from ocpiconnector.settings.infra_services import CustomJsonFormatter
 
 setup_sentry()
 
@@ -40,11 +41,6 @@ PERFORMANCE_TEST = env_bool("PERFORMANCE_TEST", False)
 CPO_SIMULATOR = env_bool("CPO_SIMULATOR", False)
 
 ALLOW_ADMIN_DELETE_AND_CHANGE = env_bool("ALLOW_ADMIN_DELETE_AND_CHANGE", False)
-
-# Complete expiration of access at 00:00 on the specified date
-expires_on_str = os.environ.get("EXPIRES_ON")
-EXPIRES_ON = datetime.strptime(expires_on_str, "%Y-%m-%d") if expires_on_str else None
-WARN_BEFORE_DAYS = 3
 
 APPEND_SLASH = False  # Accept requests with no trailing slash
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Allow more than 1000 fields in POST requests
@@ -103,8 +99,6 @@ OCPI_SPECIFICATION_URL = "https://github.com/ocpi/ocpi/blob/release-2.2-bugfixes
 OCPI_22_MAX_ADDRESS_LENGTH = 45
 OCPI_22_MAX_TIME_ZONE_LENGTH = 64
 OCPI_22_MAX_UID_LENGTH = 36
-
-PUBLIC_VIEWS = ["user-register"]
 
 HOTLINE = os.environ.get("HOTLINE", "+3256380211")
 
@@ -297,16 +291,13 @@ MIDDLEWARE = [
     "django.middleware.locale.LocaleMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "ocpi22.middleware.UserActivityMiddleware",
     "ocpi22.middleware.OCPI221HeadersMiddleware",
     "ocpiconnector.logging_middleware.LoggingMiddleware",
+    "axes.middleware.AxesMiddleware",
 ]
 
 if "MOESIF_APPLICATION_ID" in os.environ:
     MIDDLEWARE.append("moesifdjango.middleware.moesif_middleware")
-
-if EXPIRES_ON:
-    MIDDLEWARE.append("ocpi22.middleware.EnabledUntilMiddleware")
 
 if os.environ.get("DEBUG_MIDDLEWARE") in TRUE_OPTIONS:
     MIDDLEWARE.append("ocpi22.middleware.DebugMiddleware")
@@ -341,6 +332,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "ninja_jwt",
     "ninja_extra",
+    "axes",
 ]
 
 CORS_ORIGIN_ALLOW_ALL = env_bool("CORS_ALLOW_ALL_ORIGINS", False)
@@ -382,15 +374,15 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "()": CustomJsonFormatter,
+            "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "json",  # Logs in JSON format
+            "formatter": "json",
+            "level": "INFO",
         },
     },
     "root": {
@@ -399,19 +391,21 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "ocpiconnector.logging_middleware": {
             "level": "INFO",
             "propagate": False,
-        },
-        "__main__": {  # Main module logger
             "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
+        },
+        "ocpi22.cpo.mqtt.mqtt_subscriber": {
+            "level": "INFO",
+            "propagate": True,
         },
     },
 }
@@ -502,6 +496,8 @@ CRISPY_TEMPLATE_PACK = "bootstrap4"
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
+HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
+HUB_ID_MAX_LENGTH = 36
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
@@ -513,3 +509,12 @@ MQTT_PORT = os.getenv("MQTT_PORT", 1883)
 DEFAULT_OICP_PRICE = os.environ.get("DEFAULT_OICP_PRICE")
 DEFAULT_OICP_CURRENCY = os.environ.get("DEFAULT_OICP_CURRENCY")
 DEFAULT_OICP_PRICE_REFERENCE = os.environ.get("DEFAULT_OICP_PRICE_REFERENCE")
+
+AXES_FAILURE_LIMIT = 3
+AXES_COOLOFF_TIME = lambda request: timedelta(minutes=5)  # noqa
+AXES_LOCKOUT_PARAMETERS = [
+    "username",
+]
+AXES_ENABLE_ADMIN = True
+
+NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")

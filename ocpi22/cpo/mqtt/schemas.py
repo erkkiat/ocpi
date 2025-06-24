@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, RootModel
 
-from ocpi22.choices import OcppStatusChoices
+from ocpi22.choices import OcppStatusChoices, AuthorizationEnum
 from ocpi22.routing import Route
 
 
@@ -20,7 +20,7 @@ class MeterValues(BaseModel):
     kwh: float = Field(..., description="The metered energy in kWh.")
     soc: Optional[float] = Field(None, description="The state of charge in percentage.")
     power: Optional[float] = Field(None, description="The power in kW.")
-    timestamp: str = Field(..., description="The timestamp of the meter value.")
+    timestamp: datetime = Field(..., description="The timestamp of the meter value.")
 
 
 class EvseStatus(str, Enum):
@@ -43,6 +43,21 @@ class EvseStatusUpdate(BaseModel):
         json_encoders = {
             EvseStatus: lambda v: v.value,  # Convert Enum to its value
         }
+
+
+class TokenAuthorizationMessageIn(BaseModel):
+    token_id: str
+    evse_id: str
+    correlation_id: str
+
+
+class TokenAuthorizationResponse(BaseModel):
+    allowed: AuthorizationEnum
+    session_id: str | None = None
+    correlation_id: str
+
+    class Config:
+        use_enum_values = True
 
 
 @dataclass

@@ -18,6 +18,18 @@ def smappee_meter_topic():
 
 
 @pytest.fixture
+def smappee_auth_request_topic(monkeypatch):
+    monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "smappee/auth/request")
+
+
+@pytest.fixture
+def mqtt_topics_setup(monkeypatch):
+    monkeypatch.setenv("SMAPPEE_METER_VALUES_TOPIC", "meter/values")
+    monkeypatch.setenv("SMAPPEE_STATUS_UPDATE_TOPIC", "status/updates")
+    monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/requests")
+
+
+@pytest.fixture
 def location_hki(db):
     return LocationFactory()
 
@@ -51,9 +63,65 @@ def smappee_meter_message(smappee_meter_topic):
             "kwh": 1.1,
             "soc": 1.1,
             "power": 2.2,
-            "timestamp": "2022-02-22T22:22:22",
+            "timestamp": "2022-02-22T22:22:22+00:00",
         }
     )
     message.qos = 1
     message.retain = False
     return message
+
+
+@pytest.fixture
+def smappee_meter_message_from_wouter(smappee_meter_topic):
+    message = MQTTMessage()
+    message.topic = smappee_meter_topic.encode("utf-8")
+    message.payload = orjson.dumps(
+        {
+            "session_id": "BE*SMP*S*5F6AA9AEF106482C9F8BE8F258D",
+            "kwh": 125.0,
+            "power": 22.0,
+            "timestamp": "2024-12-23T15:38:51.940979+00:00",
+        }
+    )
+    message.qos = 1
+    message.retain = False
+    return message
+
+
+@pytest.fixture
+def auth_request_topic():
+    return os.getenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/request/topic")
+
+
+@pytest.fixture
+def auth_request_message(auth_request_topic):
+    message = MQTTMessage()
+    message.topic = auth_request_topic.encode("utf-8")
+    message.payload = orjson.dumps(
+        {
+            "token_id": "TEST_TOKEN_123",
+            "evse_id": "TEST_EVSE_456",
+            "correlation_id": "CORR_ID_789",
+        }
+    )
+    message.qos = 1
+    message.retain = False
+    return message
+
+
+@pytest.fixture
+def mqtt_message():
+    def _create_message(topic, payload=None):
+        message = MQTTMessage()
+        message.topic = topic.encode("utf-8") if isinstance(topic, str) else topic
+        if payload:
+            message.payload = (
+                payload.encode("utf-8") if isinstance(payload, str) else payload
+            )
+        else:
+            message.payload = b'{"test": "data"}'
+        message.qos = 1
+        message.retain = False
+        return message
+
+    return _create_message

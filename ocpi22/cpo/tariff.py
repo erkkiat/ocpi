@@ -9,11 +9,15 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.serializers import SolidTariffSerializer
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import Tariff, SolidTariff
-from ocpi22.ocpi.util import IsModificationAllowed
+from ocpi22.ocpi.util import (
+    IsModificationAllowed,
+    HasSolidTariffDeletePermission,
+)
 from ocpiconnector.exceptions import MspNotFoundError
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpiconnector.party import Party
@@ -22,7 +26,6 @@ from ocpiconnector.party import Party
 class SolidTariffViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     GenericViewSet,
 ):
@@ -36,12 +39,16 @@ class SolidTariffViewSet(
 
     """
 
-    queryset = SolidTariff.objects.filter(archived=False).order_by("external_id")
+    queryset = SolidTariff.objects.all().order_by("external_id")
     serializer_class = SolidTariffSerializer
     pagination_class = LimitOffsetPagination
     lookup_field = "external_id"
     service = SolidTariffService()
-    permission_classes = [IsAuthenticated, IsModificationAllowed]
+    permission_classes = [
+        IsAuthenticated,
+        IsModificationAllowed,
+        HasSolidTariffDeletePermission,
+    ]
 
     def list(self, request, *args, **kwargs):
         serializer = SolidTariffSerializer(
@@ -49,14 +56,12 @@ class SolidTariffViewSet(
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(
+    def put(
         self, request, external_id=None, country_code=None, party_id=None
     ) -> Response:
         try:
             data = request.data
-            data = data.get(
-                "data", data
-            )  # Is the actual data on the top level or one level lower?
+            data = data.get("data", data)
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
 
             serializer = SolidTariffSerializer(
@@ -67,11 +72,9 @@ class SolidTariffViewSet(
                 },
             )
             if serializer.is_valid():
-                solid_tariff, created = serializer.save(ocpi_master=our_role)
-                if created:
-                    # TODO: At the moment solid tariff does not have the link to ocpi tariff. This is coming on the next PR
-                    # solid_tariff.ocpi_tariff.send_updates()
-                    pass
+                validated_data = serializer.validated_data
+                validated_data["ocpi_master"] = our_role
+                solid_tariff = self.service.create(validated_data)
                 http_status = (
                     status.HTTP_200_OK if solid_tariff else status.HTTP_201_CREATED
                 )
@@ -79,8 +82,9 @@ class SolidTariffViewSet(
                     self.get_response_data(
                         model_to_dict(
                             solid_tariff,
-                            exclude=["id", "operator", "archived"],
-                        )
+                            exclude=["id", "operator"],
+                        ),
+                        solid_tariff.ocpi_tariff,
                     ),
                     status=http_status,
                 )
@@ -101,7 +105,7 @@ class SolidTariffViewSet(
     ) -> Response:
         try:
             our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
-            msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
+            msp = Party(country_code, party_id).get_role_if_exists()
             if msp is None:
                 raise MspNotFoundError(f"No MSP found for {country_code}*{party_id}")
             if external_id is None:
@@ -130,30 +134,6 @@ class SolidTariffViewSet(
                 )
                 return Response(serializer.data)
 
-            serializer = SolidTariffSerializer(
-                solid_tariff,
-                data=request.data,
-                partial=False,
-                context={"request": request},
-            )
-            if serializer.is_valid():
-                tariff, solid_tariff = serializer.save(ocpi_master=our_role)
-                serializer = SolidTariffSerializer(
-                    SolidTariff.objects.get(
-                        external_id=external_id, archived=False, msp=msp
-                    )
-                )
-                return Response(
-                    self.get_response_data(
-                        model_to_dict(
-                            solid_tariff, exclude=["id", "operator", "archived"]
-                        )
-                    ),
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except (
             IntegrityError,
             AssertionError,
@@ -173,43 +153,30 @@ class SolidTariffViewSet(
     def get_by_msp_id(self, request, country_code, party_id):
         return self.get_by_msp_id_and_external_id(request, None, country_code, party_id)
 
-    @action(
-        methods=["DELETE"],
-        detail=False,
-        url_path="(?P<country_code>[^/.]+)/(?P<party_id>[^/.]+)/(?P<external_id>[^/.]+)",
-    )
-    def delete_by_msp_and_external_id(
-        self, request, country_code, party_id, external_id
-    ):
-        msp = Party.from_str(f"{country_code}*{party_id}").get_role_if_exists()
-        if not msp:
-            return Response(
-                {"status": str(f"Partner {country_code}*{party_id} is not found")},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        self.service.delete_by_msp_and_external_id(msp, external_id)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(
-        methods=["DELETE"],
-        detail=False,
-        url_path="(?P<external_id>[^/.]+)",
-    )
-    def delete_by_external_id(self, request, external_id):
-        _deleted = self.service.delete_by_external_id(external_id)
-
-        if _deleted:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(status=status.HTTP_404_NOT_FOUND)
-
     @staticmethod
     def get_object(uid=None) -> Tariff:
         # Needed for OPTIONS to work in list view, could just return None
         if uid:
             return get_object_or_404(Tariff, uid=uid)
 
-    def get_response_data(self, data: dict):
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a SolidTariff by external_id.
+        This overrides the default retrieve behavior to properly handle SolidTariff lookups.
+        """
+        external_id = kwargs.get(self.lookup_field)
+
+        solid_tariff = SolidTariffRepository().get_latest_with_external_id(external_id)
+        if solid_tariff:
+            serializer = self.get_serializer(solid_tariff)
+            return Response(serializer.data)
+        return Response(
+            {"status_message": f"No tariff found with external_id: {external_id}"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def get_response_data(self, data: dict, tariff: Tariff) -> dict:
+        data["ocpi_tariff"] = tariff.uid
         msp = data["msp"]
         if not msp:
             del data["msp"]

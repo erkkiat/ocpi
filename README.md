@@ -1,9 +1,9 @@
 # ocpiconnector
 
-The OCPI Connector provides a simple restful API for connecting an existing EV platforms
+The OCPI Connector provides a simple restful API and some MQTT topics for connecting an existing EV platform
 to roaming partners and networks. The API is proprietary and the result of three years of work with
 multiple MSPs and CPOs. The API was built on the Open Charge Point Interface (OCPI) standard,
-but it accommodates OCPI as well.
+but it accommodates OICP as well.
 
 ## Development Setup
 * Clone the repository

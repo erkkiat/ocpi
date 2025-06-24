@@ -46,9 +46,13 @@ from integrations.hubject.schemas import (
     HubjectDefaultTariff,
     HubjectPriceComponent,
 )
-from integrations.hubject.services import HubjectService
+from integrations.hubject.services import (
+    HubjectService,
+)
+from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location
+from ocpi22.models.tariff import SolidTariff
 from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
@@ -485,7 +489,7 @@ class TestHubjectService:
                     lastUpdate=datetime(
                         2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="FI*CPO*Eberlinevseuid"),
+                    EvseID=EvseID(root="FI*CPO*EBERLINEVSEUID"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[
@@ -504,7 +508,7 @@ class TestHubjectService:
                         Region=None,
                         ParkingFacility=True,
                         ParkingSpot=None,
-                        TimeZone="UTC+01:00",
+                        TimeZone=get_timezone_offset("Europe/Berlin"),
                     ),
                     GeoCoordinates=GeoCoordinates(
                         Google=None,
@@ -564,7 +568,7 @@ class TestHubjectService:
                     lastUpdate=datetime(
                         2024, 9, 22, 12, 30, 30, 0, tzinfo=timezone.utc
                     ),
-                    EvseID=EvseID(root="FI*CPO*EEemsdettenevseuid"),
+                    EvseID=EvseID(root="FI*CPO*EEEMSDETTENEVSEUID"),
                     ChargingPoolID=None,
                     ChargingStationId=None,
                     ChargingStationNames=[
@@ -583,7 +587,7 @@ class TestHubjectService:
                         Region=None,
                         ParkingFacility=True,
                         ParkingSpot=None,
-                        TimeZone="UTC+01:00",
+                        TimeZone=get_timezone_offset("Europe/Berlin"),
                     ),
                     GeoCoordinates=GeoCoordinates(
                         Google=None,
@@ -708,7 +712,7 @@ class TestOICPDynamicPricingService:
 
     @patch("ocpi22.models.tariff.SolidTariff.objects.filter", name="mock_solid_tariffs")
     @pytest.mark.django_db
-    def test_get_all_pricing_products_with_no_solid_tariffs_raises_value_error(
+    def test_get_all_pricing_products_with_no_solid_tariffs_raises_does_not_exists_error(
         self, mock_solid_tariffs, monkeypatch, msp_de_ice
     ):
         mock_solid_tariffs.return_value = []
@@ -716,7 +720,7 @@ class TestOICPDynamicPricingService:
             f"No SolidTariffs found for {str(get_our_party(OcpiRolesEnum.CPO))}"
         )
 
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
+        with pytest.raises(SolidTariff.DoesNotExist, match=re.escape(expected_message)):
             self.hubject_service.get_all_pricing_products(
                 get_our_party(OcpiRolesEnum.CPO)
             )

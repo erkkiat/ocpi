@@ -6,9 +6,12 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
+from aiohttp import ClientError
 from asgiref.sync import sync_to_async
+from django.db import close_old_connections
+from rest_framework import status
 
-
+from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -17,10 +20,13 @@ from ocpi22.choices import (
 )
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
+from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
+from ocpi22.ssl_services import load_ssl_context
+from ocpi22.tasks import get_cert_from_env
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
@@ -34,19 +40,25 @@ if TYPE_CHECKING:
     ...
 
 
-async def post_request(session, url, data, ocpi_master, headers=None) -> (int, dict):
+async def post_request(
+    session, url, data, ocpi_master, headers=None, ssl_context=None
+) -> (int, dict):
     headers = headers or {}
-    headers.update({"Content-Type": "application/json", "Accept:": "application/json"})
-    async with session.post(url, json=data, headers=headers) as response:
-        status = response.status
-        try:
-            json_data = await response.json()
-        except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            logger.error(f"Cannot decode JSON response from url {url}")
-            json_data = None
+    response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+    headers.update({"Content-Type": "application/json", "Accept": "application/json"})
+    try:
+        response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        response_status = response.status
+        json_data = await response.json()
+    except (aiohttp.ContentTypeError, json.JSONDecodeError):
+        logger.error(f"Cannot decode JSON response from url {url}")
+        json_data = None
+    except ClientError:
+        logger.error(f"Cannot connect to {url} for token authorization")
+        return 0, None, None
 
-        logger.info("Response from %s status: %s", url, status, extra=json_data)
-        return status, json_data, ocpi_master
+    logger.info("Response from %s status: %s", url, response_status, extra=json_data)
+    return response_status, json_data, ocpi_master
 
 
 def process_task_result(successful_task):
@@ -72,6 +84,32 @@ def process_task_result(successful_task):
     return None
 
 
+def _get_credentials_by_id(credential_id):
+    close_old_connections()
+    return Credentials.objects.filter(id=credential_id).first()
+
+
+async def create_ssl_context(credential_id):
+    logger.info(f"Creating SSL context for credentials {credential_id}")
+    credentials = await sync_to_async(_get_credentials_by_id, thread_sensitive=True)(
+        credential_id
+    )
+
+    if not credentials:
+        logger.warning(
+            f"No credentials found for {credential_id}, skipping ssl context creation"
+        )
+        return None
+
+    ca_cert = get_cert_from_env(credentials.ca_certificate_name)
+    private_key = get_cert_from_env(credentials.private_key_name)
+    client_cert = get_cert_from_env(credentials.client_certificate_name)
+
+    return load_ssl_context(
+        client_cert=client_cert, private_key=private_key, ca_cert=ca_cert
+    )
+
+
 async def authorize_with_msps(token: Union[str, Token], data, parties):
     """
     Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
@@ -85,30 +123,65 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
+    # Prefetch credential roles before async operations
+    async def prefetch_roles():
+        roles = []
+        for _, _, country_code, party_id, credentials in parties:
+            # Prefetch the role in a synchronous context
+            role = await sync_to_async(
+                lambda creds, cc, pid: creds.roles.filter(
+                    country_code__iexact=cc, party_id__iexact=pid
+                ).first(),
+                thread_sensitive=True,
+            )(credentials, country_code, party_id)
+            roles.append(role)
+        return roles
+
     result = None
     pending_tasks = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
     # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+    ssl_contexts = await asyncio.gather(
+        *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
+    )
+    # Get all roles up front
+    prefetched_roles = await prefetch_roles()
 
     async with aiohttp.ClientSession() as session:
         tasks = [
             asyncio.create_task(
                 post_request(
                     session=session,
+                    ssl_context=ssl_context,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=await sync_to_async(credentials.get_role)(
-                        Party(country_code, party_id)
-                    ),
+                    ocpi_master=role,  # Use prefetched role instead of async lookup
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
                 ),
-                name=str(Party(country_code, party_id)),
+                name=f"{country_code}*{party_id}",
             )
-            for url, token_base64, country_code, party_id, credentials in parties
+            for (
+                url,
+                token_base64,
+                country_code,
+                party_id,
+                _,  # credentials not needed anymore
+            ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
+
+        tasks.append(
+            # Do SSL context per request, Hubject/Gireve separately
+            asyncio.create_task(
+                HubjectService().post_authorize_request(
+                    operator_id=str(sender),
+                    token_id=token_id,
+                ),
+                name="Hubject",
+            )
+        )
 
         while tasks:
             done_tasks, pending_tasks = await asyncio.wait(
@@ -120,9 +193,12 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 try:
                     result = process_task_result(task)
                     if result:
-                        break
+                        break  # For loop
                 except Exception:
                     logger.exception(f"Task {task.get_name()} failed")
+
+            if result:
+                break  # While loop
 
             if not pending_tasks:
                 # No more tasks pending_tasks, break the loop
@@ -132,7 +208,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
         for task in pending_tasks:
-            logger.info(f"Cancelling task {task.get_name()}", task.cancel())
+            logger.debug(f"Cancelling task {task.get_name()}", task.cancel())
 
         return result
 

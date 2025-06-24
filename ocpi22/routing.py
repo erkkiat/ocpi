@@ -27,15 +27,16 @@ logger = getLogger(__name__)
 
 @dataclass
 class Route:
-    # The OCPI route information
-    url: str
-    identifier: OcpiModuleEnum
-    credentials_id: int
-    token_base64: str
-    alive: bool
-    direct: bool
-    version: OCPIVersion
-    to: Party  # For example BE*SMP
+    # The OCPI/Hubject route information
+    url: str = ""
+    identifier: OcpiModuleEnum = OcpiModuleEnum.SESSIONS
+    credentials_id: int = 0
+    token_base64: str = ""
+    alive: bool = True
+    direct: bool = False
+    version: OCPIVersion = OCPIVersion("2.2.1")
+    to: Party = Party("", "")
+    is_hubject: bool = False
 
     @property
     def through_hub(self) -> bool:
@@ -109,7 +110,9 @@ def find_route_from_credentials(
             version=OCPIVersion(credentials.version),
             to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
         )  # Todo: How to figure out the role, or is it relevant?
-    error_text = f"Endpoint `{ocpi_module.value}` not found for party {credentials}"
+    error_text = (
+        f"Endpoint `{ocpi_module.value}` {role} not found for party {credentials}"
+    )
     raise ValueError(error_text)
 
 
@@ -196,9 +199,9 @@ def is_a_command_url(url: str) -> bool:
     """
     Check if the provided URL contains any of the Command URLs as segments
 
-    >>> is_a_command_url('https://example.com/ocpi/2.2.1/commands/START_SESSION/123')
+    >>> is_a_command_url('https://localhost/ocpi/2.2.1/commands/START_SESSION/123')
     True
-    >>> is_a_command_url('https://example.com/ocpi/2.2.1/commands/NOT_A_COMMAND/123')
+    >>> is_a_command_url('https://localhost/ocpi/2.2.1/commands/NOT_A_COMMAND/123')
     False
     """
     return any(map(lambda u: u in url, get_all_command_urls()))

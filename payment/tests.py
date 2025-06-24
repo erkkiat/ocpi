@@ -22,7 +22,7 @@ api_factory = APIRequestFactory()
 
 class PaymentTests(TestCase):
     def setUp(self) -> None:
-        self.testuser = User.objects.create_user("test", "test@anon.example.com")
+        self.testuser = User.objects.create_user("test", "test@localhost")
 
     def test_add_card(self):
         try:

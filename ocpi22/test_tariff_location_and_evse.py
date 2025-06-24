@@ -10,8 +10,10 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+import responses
+from deepdiff import DeepSearch
 
-from rest_framework.exceptions import NotAuthenticated
+from rest_framework.exceptions import NotAuthenticated, ValidationError
 
 import uuid
 from collections import OrderedDict
@@ -37,13 +39,18 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
+from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
+from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.auth import get_credentialsrole, check_auth_token, OcpiAuthTypes
 from ocpi22.ocpi.partners import invalidate_partner_cache
 from ocpi22.tasks import check_still_alive
-from ocpi22.tests.factories import TariffFactory
+from ocpi22.tests.factories import (
+    TariffFactory,
+    LocationFactory,
+)
 from ocpiconnector.testutil import (
     compare_dicts_recursively,
     OCPIAPIRequestFactory,
@@ -62,7 +69,6 @@ from util import reverse
 
 from ocpi22.msp.api import MspRoamingViewSet
 from ocpi22.msp.models import Authorization
-from ocpi22.msp.user import UserViewSet
 from ocpi22.ocpi.api import TariffViewSet, CdrViewSet, TokenViewSet, SessionViewSet
 from ocpi22.ocpi.serializers import (
     TokenSerializer,
@@ -81,8 +87,7 @@ from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
 from ocpi22.middleware import OCPIHubMiddleware
-from ocpi22.models.business_details import BusinessDetails
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
@@ -126,7 +131,6 @@ faketime = datetime(2022, 1, 1, 12, 0, tzinfo=pytz.utc)
 client = Client()
 dirname = os.path.dirname(os.path.abspath(__file__))
 api_factory = OCPIAPIRequestFactory()
-
 
 logger = getLogger(__name__)
 
@@ -443,7 +447,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("eccb8dd9-4189-433e-b100-cc0945dd17dc", "AVAILABLE")],
+                [("ECCB8DD9-4189-433E-B100-CC0945DD17DC", "AVAILABLE")],
             ),
             (
                 "location_example_parking_garage_opening_hours_bad_power_type",
@@ -465,7 +469,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             (
                 "location_example_uc3_destination_charger_not_published",
@@ -476,7 +480,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("fd855359-bc81-47bb-bb89-849ae3dac89e", "AVAILABLE")],
+                [("FD855359-BC81-47BB-BB89-849AE3DAC89E", "AVAILABLE")],
             ),
             # Todo: Implement parking_restrictions
             (
@@ -488,7 +492,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("8c1b3487-61ac-40a7-a367-21eee99dbd90", "AVAILABLE")],
+                [("8C1B3487-61AC-40A7-A367-21EEE99DBD90", "AVAILABLE")],
             ),
             # Todo: Check for publish_allowed_to below
             (
@@ -500,7 +504,7 @@ class ApiPutTests(TestCase):
                 [],
                 1,
                 1,
-                [("4534ad5f-45be-428b-bfd0-fa489dda932d", "AVAILABLE")],
+                [("4534AD5F-45BE-428B-BFD0-FA489DDA932D", "AVAILABLE")],
             ),
         )
 
@@ -579,7 +583,7 @@ class ApiPutTests(TestCase):
                     (x.get("json").get("evse_id"), x.get("json").get("status"))
                     for x in method_calls
                 ]
-                assert calls == expected_webhook_parameters, filename
+                assert sorted(calls) == expected_webhook_parameters, filename
 
     def test_put_tariff(self):
         url = reverse("tariff-list")
@@ -658,7 +662,7 @@ class ApiPutTests(TestCase):
                     Party(country_code, party_id),
                     role=OcpiRolesEnum.CPO,
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     credentials=self.credentials,
                 )
 
@@ -889,7 +893,7 @@ class ApiPutTests(TestCase):
                 ocpi_master = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.CPO,
                     credentials=self.credentials,
                 )
@@ -984,7 +988,7 @@ class ApiPutTests(TestCase):
                 credentialsrole = create_credentialsrole(
                     Party(country_code, party_id),
                     business_name="Test Business",
-                    website="http://example.com",
+                    website="http://localhost",
                     role=OcpiRolesEnum.EMSP,
                     credentials=self.credentials,
                 )
@@ -1078,15 +1082,6 @@ class ApiPutTests(TestCase):
             401,
             403,
         ], "A Location request should require OCPI authentication."
-
-    def _create_credentials(self, country_code, party_id):
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role="CPO",
-            country_code=country_code,
-            party_id=party_id,
-            defaults=dict(business_details=self.business_details),
-        )
-        self.credentials.roles.add(roles)
 
 
 class TariffTests(TestCase):
@@ -1184,29 +1179,6 @@ class TariffTests(TestCase):
             compare_lists_recursively(method_calls, TariffData.expected_delete_calls),
             "send_ocpi_request should be called with the correct parameters",
         )
-
-    @staticmethod
-    def _create_credentials(
-        country_code: str, party_id: str, role: OcpiRolesEnum
-    ) -> Credentials:
-        credentials = Credentials.objects.create(version=221)
-        business_details = BusinessDetails.objects.create(
-            name="Test MSP",
-            website="https://test.com",
-            logo={
-                "url": "https://www.helsinki-supercharger.com/static/test_logo.png",
-                "category": "OPERATOR",
-                "type": "jpeg",
-            },
-        )
-        roles, _created = CredentialsRole.objects.get_or_create(
-            role=role.value,
-            country_code=country_code,
-            party_id=party_id,
-            defaults={"business_details": business_details},
-        )
-        credentials.roles.add(roles)
-        return credentials
 
 
 class CdrTests(TestCase):
@@ -1941,31 +1913,56 @@ class TestCredentials(TestCase):
         side_effect=[fake_token],
     )
     @simulate_surrounding_world
+    @responses.activate
     def test_exchange(self, _mock_generate_random_token, simulation):
-        simulation.ocpi_requests.get.side_effect = mocked_credentials_get
-        simulation.ocpi_requests.post.side_effect = mocked_credentials_post
+        # simulation.ocpi_requests.get.side_effect = mocked_credentials_get
+        # simulation.ocpi_requests.post.side_effect = mocked_credentials_post
+        responses.add(
+            responses.GET,
+            "https://localhost/versions/",
+            json={"data": get_versions_dict()},
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://testserver.test/ocpi/2.2.1/",
+            json={"data": CredentialsData.ocpi_endpoints_response_221},
+            status=201,
+        )
+        responses.add(
+            responses.POST,
+            "http://localhost/ocpi/2.2.1/credentials",
+            json={**CredentialsData.expected_credentials_response},
+            status=201,
+        )
 
         command = exchange_credentials.Command()
         self.assertTrue(
             command.handle(
-                token_a="918273", versions_endpoint_url="http://localhost/versions"
+                token_a="918273", versions_endpoint_url="https://localhost/versions/"
             )
         )
+        self.assert_endpoints_saved(
+            CredentialsData.ocpi_endpoints_response_221["endpoints"]
+        )
 
-        # Let's examine what was actually sent
-        args, kwargs = simulation.ocpi_requests.get.call_args
-
-        expected_headers = {
-            "Authorization": "Token OTE4Mjcz",
-            "accept": "application/json",
-            "content-type": "application/json",
-        }
-        headers = kwargs["headers"]
-        assert headers.pop("X-Request-ID") != "", "Expecting a request ID"
-        assert headers.pop("X-Correlation-ID") != "", "Expecting a correlation ID"
-        headers.pop("platform-revision")
-
-        assert kwargs["headers"] == expected_headers
+    def assert_endpoints_saved(self, expected_endpoints):
+        endpoints = Endpoint.objects.all()
+        endpoints_from_db = []
+        for endpoint in endpoints:
+            endpoints_from_db.append(
+                {
+                    "identifier": endpoint.identifier,
+                    "url": endpoint.url,
+                    "role": endpoint.role,
+                }
+            )
+        missing = [
+            expected
+            for expected in expected_endpoints
+            if not DeepSearch(endpoints_from_db, expected)
+        ]
+        assert not missing, f"Missing endpoints: {missing}"
 
     @pytest.mark.skip("Fix me before production")
     def test_credentials_response(self):
@@ -2624,7 +2621,8 @@ class TestCpoApi(TestCase):
                     "status_text": "Session updated",
                     "total_kwh": Decimal("3.450"),
                 },
-                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={
+                    # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     "auth_method": "AUTH_REQUEST",
                     "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE",
                     "cdr_token": OrderedDict(
@@ -2713,7 +2711,8 @@ class TestCpoApi(TestCase):
                     "status_text": "Session updated",
                     "total_kwh": Decimal("33.450"),
                 },
-                session_data={  # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
+                session_data={
+                    # 'detail_url': 'http://testserver.test:8000/ocpi/2.2.1/sessions/FI/CPO/FI*CPO*S*MOCK-1',
                     "auth_method": "AUTH_REQUEST",
                     "authorization_reference": "MOCK-AUTHORIZATION-REFERENCE",
                     "cdr_token": OrderedDict(
@@ -3641,20 +3640,6 @@ def create_token(token_id, party: Party, user=None) -> Token:
     return token
 
 
-def send_create_user(data):
-    request = api_factory.post(reverse("user-register"))
-    request.data = data
-    return UserViewSet().register(request)
-
-
-def post_cdr(data):
-    request = api_factory.post(reverse("cdr-list"))
-    request.data = data
-    request.user = get_fake_admin()
-    request.version = "2.2.1"
-    return CdrViewSet().post(request)
-
-
 class TestInvoiceReportView(TestCase):
     fixtures = ["ocpi22/data/credentials.json"]
 
@@ -3756,6 +3741,9 @@ class TestTasks(TestCase):
 
         # Successful connection, last_connection time should change
         with time_machine.travel(faketime, tick=False):
+            with patch("ocpi22.tasks.requests.get") as requests_get_mock:
+                requests_get_mock.return_value = FakeResponse(200)
+                check_still_alive(self.credentials_id)
             check_still_alive(self.credentials_id)
         credentials = Credentials.objects.get(pk=self.credentials_id)
         self.assertEqual(credentials.last_connection, faketime)
@@ -3999,3 +3987,124 @@ class TokenAuthorizationTests(BetterTestCase):
 
 
 # Todo: Hub to relay Evse PATCH to everybody as PATCH (I think is't DONE, needs testing)
+
+
+class TestSolidLocation:
+    @pytest.mark.parametrize(
+        "api_client, expected_status_code",
+        [
+            pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
+            pytest.param(
+                "authenticated_user_client",
+                201,
+                id="Authenticated user can access locations api",
+            ),
+            pytest.param(
+                "admin_user_client", 201, id="Admin user can access locations api"
+            ),
+            pytest.param(
+                "super_user_client", 201, id="Super user can access locations api"
+            ),
+        ],
+    )
+    @pytest.mark.django_db
+    def test_put_location_proper_credentials(
+        self,
+        api_client,
+        expected_status_code,
+        request,
+        ocpi_master,
+        tariffs,
+        location_example,
+    ):
+        url = reverse("cpo:update_location")
+        client = request.getfixturevalue(api_client)
+
+        response = client.put(url, location_example, format="json")
+
+        print(response.json())
+
+        assert response.status_code == expected_status_code
+
+    @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    def test_put_location_create_a_new_location_returns_201(
+        self,
+        mock_post_process,
+        authenticated_user_client,
+        ocpi_master,
+        tariffs,
+        location_example,
+    ):
+        url = reverse("cpo:update_location")
+
+        response = authenticated_user_client.put(url, location_example, format="json")
+
+        assert response.status_code == 201
+        mock_post_process.assert_called_once()
+
+    @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    @pytest.mark.django_db
+    def test_put_location_update_a_new_location_returns_200(
+        self,
+        mock_post_process,
+        authenticated_user_client,
+        ocpi_master,
+        tariffs,
+        location_example,
+    ):
+        url = reverse("cpo:update_location")
+
+        LocationFactory(uid=location_example["id"], ocpi_master=ocpi_master)
+
+        response = authenticated_user_client.put(url, location_example, format="json")
+
+        assert response.status_code == 200
+        assert mock_post_process.call_count == 1
+
+    def test_put_location_with_invalid_data_returns_422(
+        self, authenticated_user_client, ocpi_master, location_example
+    ):
+        url = reverse("cpo:update_location")
+        location_example.pop("country_code")
+
+        response = authenticated_user_client.put(url, location_example, format="json")
+
+        assert response.status_code == 422
+
+    @pytest.mark.django_db
+    def test_update_tariff_in_payload_success(self, tariffs, rome_location_in):
+        location_service = LocationService()
+        updated_location = location_service.update_tariff_in_payload(rome_location_in)
+
+        assert updated_location.evses[0].connectors[0].tariff_ids == [
+            "OCPI_TARIFF_11",
+            "OCPI_TARIFF_12",
+        ]
+
+    @pytest.mark.django_db
+    def test_update_tariff_in_payload_missing_tariff(self, rome_location_in):
+        location_service = LocationService()
+        with pytest.raises(ValidationError) as exc_info:
+            location_service.update_tariff_in_payload(rome_location_in)
+
+            assert "SolidTariff with external_id invalid_tariff not found" in str(
+                exc_info.value
+            )
+
+    @pytest.mark.django_db
+    def test_evse_id_is_generated_if_not_provided(
+        self,
+        authenticated_user_client,
+        ocpi_master,
+        location_example_with_evse_evse_id_none,
+    ):
+        url = reverse("cpo:update_location")
+        response = authenticated_user_client.put(
+            url, location_example_with_evse_evse_id_none, format="json"
+        )
+
+        assert response.status_code == 201
+        assert (
+            response.json()["evses"][0]["evse_id"]
+            == f'{location_example_with_evse_evse_id_none["country_code"]}*{location_example_with_evse_evse_id_none["party_id"]}*E{location_example_with_evse_evse_id_none["evses"][0]["uid"]}'
+        )

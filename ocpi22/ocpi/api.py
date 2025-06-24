@@ -1,5 +1,3 @@
-from urllib.parse import urljoin
-
 from logging import getLogger
 from django.conf import settings
 from django.db.models import ProtectedError
@@ -20,25 +18,20 @@ from ocpi22.decorators import (
     requires_credentialsrole,
     requires_last_updated,
 )
-from ocpi22.routing import find_route
-from ocpi22.tasks import send_ocpi_request
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from util import reverse, with_trailing_slash
+from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.choices import (
     MessageTexts,
     get_language,
     AuthorizationEnum,
-    OcpiModuleEnum,
     OcpiRolesEnum,
-    EndpointRoleEnum,
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
 from ocpi22.webhooks import send_to_webhook
-from ocpi22.msp.account import update_balance
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -84,10 +77,8 @@ from ocpiconnector.management.commands.exchange_credentials import (
 )
 from ocpiconnector.ocpi_identities import (
     ocpi_platform,
-    get_our_party,
     get_our_credentialsrole,
 )
-from ocpiconnector.party import Party
 
 logger = getLogger(__name__)
 
@@ -401,9 +392,6 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
             cdr = serializer.save(ocpi_master=request.credentialsrole)
             # cdr.tariffs.set(tariff_list)
             cdr.send_hub_updates()
-            if ocpi_platform.is_emsp:
-                update_balance(cdr)
-                # capture_reservation(cdr)
             url = build_absolute_uri(cdr.get_absolute_url())
             return OCPIResponse(
                 serializer.data,
@@ -486,8 +474,12 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         credentials.save()
 
         token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
-        versions_url = select_version(credentials.url, token_base64)
-        endpoints = get_endpoints(versions_url, token_base64)
+        versions_url = select_version(
+            credentials.url, token_base64, credentials_id=credentials.id
+        )
+        endpoints = get_endpoints(
+            versions_url, token_base64, credentials_id=credentials.id
+        )
         store_endpoints_for_party(credentials, endpoints)
         data = make_my_credentials_dict(request, our_token=credentials.ours)
         serializer = CredentialsSerializer(
@@ -504,6 +496,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
+        credentials.disable_token_a_if_applicable()
         return OCPIResponse(data, http_status=status.HTTP_201_CREATED)
 
     @ocpi_exception_handler
@@ -522,8 +515,12 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
         credentials.save()
 
         token_base64 = credentials.theirs_base64()  # CREDENTIALS_TOKEN_B
-        versions_url = select_version(credentials.url, token_base64)
-        endpoints = get_endpoints(versions_url, token_base64)
+        versions_url = select_version(
+            credentials.url, token_base64, credentials_id=credentials.id
+        )
+        endpoints = get_endpoints(
+            versions_url, token_base64, credentials_id=credentials.id
+        )
         store_endpoints_for_party(credentials, endpoints)
         data = make_my_credentials_dict(request, our_token=credentials.ours)
         serializer = CredentialsSerializer(
@@ -541,6 +538,7 @@ class CredentialsViewSet(mixins.ListModelMixin, GenericViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
+        credentials.disable_token_a_if_applicable()
         return OCPIResponse(data)
 
 
@@ -689,32 +687,6 @@ def stop_session_if_money_runs_out(request, session):
                         f"Unable to stop Session {session.uid} before the reserved money {reserved_money} runs out",
                         request,
                     )
-
-
-def fetch_location(country_code, party_id, location_id, evse_uid) -> bool:
-    party = Party(country_code, party_id)
-    route = find_route(
-        to=party, ocpi_module=OcpiModuleEnum.LOCATIONS, role=EndpointRoleEnum.SENDER
-    )
-    if not route:
-        return False
-    url = urljoin(
-        with_trailing_slash(route.url), f"{country_code}/{party_id}/{location_id}"
-    )
-    we = get_our_party(OcpiRolesEnum.EMSP) or get_our_party(OcpiRolesEnum.HUB)
-    print(f"Fetching unknown location from {party=}, {route=}, {url=}, {we=}")
-    response = send_ocpi_request(
-        data=dict(),
-        url=route.url,
-        token_base64=route.token_base64,
-        to_country_code=country_code,
-        to_party_id=party_id,
-        from_country_code=we.country_code,
-        from_party_id=we.party_id,
-        method="GET",
-    )
-    # Todo: Store the location in our database
-    return bool(response and response.get("status_code") == status.HTTP_200_OK)
 
 
 def update_authorization(request, session: Session) -> None:

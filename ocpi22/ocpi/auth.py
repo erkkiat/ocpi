@@ -11,7 +11,8 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from django.conf import settings
-from django.utils.functional import cached_property
+from django.contrib.auth import authenticate
+from ninja.security import HttpBasicAuth
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -39,7 +40,7 @@ class OcpiAuthTypes(Enum):
 @ttl_cache(maxsize=settings.MAX_NUMBER_OF_PARTNERS, ttl=2 * 60 * 60)  # 2 hours
 def find_credentials(token_ascii: str) -> Optional[Credentials]:
     try:
-        return Credentials.objects.filter(ours__iexact=token_ascii, valid=True).first()
+        return Credentials.objects.filter(ours=token_ascii, valid=True).first()
     except (binascii.Error, UnicodeDecodeError):
         pass
     return None
@@ -160,7 +161,7 @@ def get_credentialsrole(
         # Is this (one of) our identity?
         if str(party) in ocpi_identities:
             business_name = os.environ.get("BUSINESS_NAME", "N/A")
-            website = os.environ.get("BUSINESS_WEBSITE", "")
+            website = os.environ.get("BUSINESS_WEBSITE", None)
         credentialsrole = create_credentialsrole(
             Party(
                 country_code=party.country_code.upper(), party_id=party.party_id.upper()
@@ -179,7 +180,7 @@ def get_credentialsrole(
         result = query.filter(
             country_code__iexact=party.country_code, party_id__iexact=party.party_id
         ).first()
-        return result or (create and create_it())
+        return result if result is not None else (create_it() if create else None)
     except CredentialsRole.DoesNotExist:
         if create:
             return create_it()
@@ -211,10 +212,6 @@ class OCPIPermission(DjangoModelPermissions):
             return authorization[6:]
         return ""
 
-    @cached_property
-    def public_views(self):
-        return {reverse(i) for i in settings.PUBLIC_VIEWS}
-
     def has_permission(self, request, view=None):
         # Get the OCPI Authorization header or if none, the auth-test query param
         # Remove the "Token" keyword if present to get just the token value
@@ -233,9 +230,18 @@ class OCPIPermission(DjangoModelPermissions):
         ):
             return True
 
-        # Allow access to public views
-        if request.path in self.public_views:
-            return True
-
         logger.warning(f"No valid authentication for {request.path} (token: {token})")
         raise exceptions.NotAuthenticated
+
+
+class NinjaBasicAuth(HttpBasicAuth):
+    def authenticate(self, request, username, password):
+        try:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                if user.is_authenticated:
+                    request.user = user
+                    return user
+            return None
+        except exceptions.AuthenticationFailed:
+            return None
