@@ -137,7 +137,7 @@ class LoggingMiddleware(MiddlewareMixin):
         if 200 <= status < 300:
             data = "Omitted"
         elif 300 <= status < 500:
-            data = self._get_cleaned_response(response)
+            data = self.get_raw_response(response)
         else:
             data = HTTPStatus(status).phrase
         return {
@@ -151,41 +151,48 @@ class LoggingMiddleware(MiddlewareMixin):
         }
 
     def _get_cleaned_payload(self, request: HttpRequest) -> Optional[str]:
-        if self.sensitive_urls_to_mask_payload and any(
-            request.path.startswith(p) for p in self.sensitive_urls_to_mask_payload
-        ):
-            content_type = request.content_type or ""
-            if request.method in ("POST", "PUT", "PATCH") and content_type.startswith(
-                "application/json"
-            ):
-                try:
-                    raw = request.body.decode("utf-8", errors="ignore")
-                except Exception:
-                    return None
-                max_len = getattr(settings, "LOGGING_PAYLOAD_MAX_LENGTH", 1024 * 1024)
-                if len(raw) > max_len:
-                    raw = raw[:1000] + "..."
-                try:
-                    obj = orjson.loads(raw)
-                    masked = self.mask_sensitive_data(obj)
-                    return orjson.dumps(masked).decode("utf-8")
-                except Exception:
-                    return raw
+        raw = self._safe_get_raw_body(request)
+        if raw is None:
             return None
+
+        if not self._is_sensitive_path(request.path):
+            return raw
+
+        if self._is_json_write(request):
+            try:
+                parsed = orjson.loads(raw)
+                masked = self.mask_sensitive_data(parsed)
+                return orjson.dumps(masked).decode("utf-8")
+            except Exception:
+                return raw
+
+        return None
+
+    def _safe_get_raw_body(self, request: HttpRequest) -> Optional[str]:
         try:
-            raw = request.body.decode("utf-8", errors="ignore")
+            body_bytes = request.body
         except Exception:
             return None
-        max_len = getattr(settings, "LOGGING_PAYLOAD_MAX_LENGTH", 1024 * 1024)
-        if len(raw) > max_len:
-            raw = raw[:1000] + "..."
-        return raw
+        if not body_bytes:
+            return None
+        try:
+            return body_bytes.decode("utf-8", errors="ignore")
+        except Exception:
+            return None
 
-    def _get_cleaned_response(self, response: HttpResponse) -> str:
+    def _is_sensitive_path(self, path: str) -> bool:
+        return any(path.startswith(p) for p in self.sensitive_urls_to_mask_payload)
+
+    def _is_json_write(self, request: HttpRequest) -> bool:
+        if request.method not in ("POST", "PUT", "PATCH"):
+            return False
+        ct = (request.content_type or "").lower()
+        return ct.startswith("application/json")
+
+    def get_raw_response(self, response: HttpResponse) -> str:
         try:
             raw = response.content.decode("utf-8", errors="replace")
-            max_len = getattr(settings, "LOGGING_PAYLOAD_MAX_LENGTH", 1024 * 1024)
-            return (raw[:1000] + "...") if len(raw) > max_len else raw
+            return raw
         except Exception:
             return "**binary_or_unreadable_content**"
 
