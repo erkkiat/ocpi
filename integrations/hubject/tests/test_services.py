@@ -47,7 +47,6 @@ from integrations.hubject.schemas import (
 )
 from integrations.hubject.services import (
     HubjectService,
-    map_oicp_authorization_response_to_ocpi_221,
 )
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum

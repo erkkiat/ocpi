@@ -11,6 +11,9 @@ from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.oicp_to_ocpi_converter import (
+    map_oicp_authorization_response_to_ocpi_221,
+)
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
@@ -195,10 +198,7 @@ class HubjectService:
     async def post_authorize_request(
         operator_id: str, token_id: str
     ) -> tuple[Any, dict | None, Any]:
-        url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"charging/v21/operators/{operator_id}/authorize/start",
-        )
+        url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
         try:
             payload = ERoamingAuthorizeStart(
@@ -215,9 +215,11 @@ class HubjectService:
                 url, json=payload_dict, headers={"accept": "application/json"}
             )
 
+            logging.info(response)
+            status_code = response.get("StatusCode", {}).get("Code")
+
             ocpi_master = None
-            if response.status_code == 200:
-                party = Party.from_str(response.json().get("ProviderID", "*"))
+            if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
                     party=party,
@@ -231,17 +233,45 @@ class HubjectService:
             return (
                 response.status_code,
                 mapped_response,
-                ocpi_master,
+                ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
 
-        except (ValueError, OSError, RuntimeError):
-            logger.exception("Authorization error with Hubject")
+        except ValueError as ve:
+            logger.exception("ValueError during authorization with Hubject: %s", ve)
             return (
                 404,
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Error",
+                    "status_message": "Invalid data provided",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
+        except OSError as oe:
+            logger.exception("OSError during authorization with Hubject: %s", oe)
+            return (
+                404,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Network error occurred",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
+        except RuntimeError as re:
+            logger.exception("RuntimeError during authorization with Hubject: %s", re)
+            return (
+                404,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Unexpected runtime error",
                     "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
                     ),

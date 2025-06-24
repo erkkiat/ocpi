@@ -10,13 +10,13 @@ class CredentialsData:
         "data": {
             "roles": [
                 {
-                    "business_details": {"name": "BestCompany.EU", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": None},
                     "country_code": "FI",
                     "party_id": "CPO",
                     "role": "CPO",
                 },
                 {
-                    "business_details": {"name": "BestCompany.EU", "website": ""},
+                    "business_details": {"name": "BestCompany.EU", "website": None},
                     "country_code": "FI",
                     "party_id": "MSP",
                     "role": "EMSP",
@@ -1308,32 +1308,6 @@ class TokenAuthorizationData:
             timeout=28,
         )
     ]
-
-    # Todo: Hubject authorize, construct this structure based on the Hubject response
-    authorization_response = {
-        "data": {
-            "allowed": "ALLOWED",
-            "authorization_reference": "FI*MSP*A*MOCK-1",
-            "token": {
-                "country_code": "DE",
-                "party_id": "TNM",
-                "uid": "EKI1",
-                "type": "RFID",
-                "contract_id": "DE8ACC12E46L89",
-                "visual_number": "DF000-2001-8999-1",
-                "issuer": "TheNewMotion",
-                "group_id": "DF000-2001-8999",
-                "valid": True,
-                "whitelist": "ALLOWED",
-                "language": "IT",
-                "default_profile_type": "GREEN",
-                "last_updated": "2018-12-10T17:25:10Z",
-            },
-        },
-        "status_code": 1000,
-        "status_message": "Success",
-        "timestamp": "2022-01-01T12:00:00Z",
-    }
 
     invalid_token = {
         "data": {

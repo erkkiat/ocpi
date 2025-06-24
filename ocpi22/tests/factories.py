@@ -165,6 +165,7 @@ class LocationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(BusinessDetailsFactory)
     charging_when_closed = factory.Faker("boolean")
     parking_type = "ON_STREET"
+    roaming_enabled = True
 
 
 class EvseFactory(factory.django.DjangoModelFactory):

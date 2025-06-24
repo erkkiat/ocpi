@@ -1,8 +1,8 @@
 cachetools~=5.5.0
 Django~=4.2.13
 humanize~=4.10.0
-pip~=25.0
-mysqlclient~=2.1.1
+pip~=24.2
+mysqlclient~=2.2.6
 psycopg2-binary~=2.9.9
 requests~=2.32.3
 tzlocal~=5.2
@@ -39,7 +39,7 @@ prometheus_client==0.21.0
 django-gdpr-assist~=1.4.2
 drf-yasg~=1.21.7
 django-ninja-jwt~=5.3.3
-starlette~=0.40.0
+starlette~=0.39.1
 whitenoise~=6.7.0
 pre-commit==3.8.0
 django-cors-headers==4.4.0
@@ -63,4 +63,3 @@ locust==2.33.2
 deepdiff==8.4.2
 django-axes==7.0.2
 pytest-asyncio==0.26.0
-

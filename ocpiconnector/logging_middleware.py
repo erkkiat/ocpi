@@ -1,6 +1,7 @@
 import time
 import uuid
 from http import HTTPStatus
+from orjson import JSONDecodeError
 from logging import getLogger
 
 import orjson
@@ -101,7 +102,10 @@ class LoggingMiddleware(MiddlewareMixin):
             payload = request.body.decode("utf-8")
             if "token" in payload:
                 return "**"
-            payload_dict = orjson.loads(payload)
+            try:
+                payload_dict = orjson.loads(payload)
+            except JSONDecodeError:
+                return None
             if "password" in payload_dict:
                 payload_dict["password"] = "**"
             return payload_dict
