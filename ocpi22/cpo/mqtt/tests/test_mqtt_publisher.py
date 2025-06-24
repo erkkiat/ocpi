@@ -49,7 +49,7 @@ class TestPublishAuthResponse:
         mock_publish_info.rc = 0
         mock_client.publish.return_value = mock_publish_info
 
-        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE": "test/auth/topic"}):
+        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE_TOPIC": "test/auth/topic"}):
             payload = TokenAuthorizationResponse(
                 allowed=AuthorizationEnum.ALLOWED,
                 session_id="session-123",
@@ -99,7 +99,7 @@ class TestPublishAuthResponse:
         mock_publish_info.rc = 0
         mock_client.publish.return_value = mock_publish_info
 
-        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE": "test/auth/topic"}):
+        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE_TOPIC": "test/auth/topic"}):
             payload = TokenAuthorizationResponse(
                 allowed=AuthorizationEnum.NOT_ALLOWED,
                 session_id=None,
@@ -125,7 +125,8 @@ class TestPublishAuthResponse:
         mock_client.publish.return_value = mock_publish_info
 
         with patch.dict(
-            os.environ, {"SMAPPEE_AUTH_RESPONSE": "$share/group1/actual/auth/topic"}
+            os.environ,
+            {"SMAPPEE_AUTH_RESPONSE_TOPIC": "$share/group1/actual/auth/topic"},
         ):
             payload = TokenAuthorizationResponse(
                 allowed=AuthorizationEnum.ALLOWED,
@@ -172,7 +173,7 @@ class TestPublishAuthResponse:
         mock_publish_info.rc = 5
         mock_client.publish.return_value = mock_publish_info
 
-        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE": "test/auth/topic"}):
+        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE_TOPIC": "test/auth/topic"}):
             payload = TokenAuthorizationResponse(
                 allowed=AuthorizationEnum.ALLOWED,
                 session_id="session-123",
@@ -196,7 +197,7 @@ class TestPublishAuthResponse:
 
         mock_client.publish.side_effect = Exception("Connection failed")
 
-        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE": "test/auth/topic"}):
+        with patch.dict(os.environ, {"SMAPPEE_AUTH_RESPONSE_TOPIC": "test/auth/topic"}):
             payload = TokenAuthorizationResponse(
                 allowed=AuthorizationEnum.BLOCKED,
                 session_id="session-789",
