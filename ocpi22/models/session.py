@@ -268,6 +268,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
+    # This is the party we will send the Session updates through, for example Gireve
     credentials = models.ForeignKey(
         "ocpi22.Credentials",
         on_delete=models.PROTECT,
@@ -276,6 +277,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
+    # This is the eMSP that will be billed for this Session
     billed_to = models.ForeignKey(
         "ocpi22.CredentialsRole",
         on_delete=models.PROTECT,
