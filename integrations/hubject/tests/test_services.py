@@ -13,6 +13,9 @@ from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
 
+from integrations.hubject.oicp_to_ocpi_converter import (
+    map_oicp_authorization_response_to_ocpi_221,
+)
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -893,7 +896,7 @@ async def test_map_oicp_authorization_response_to_ocpi_221_success():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
 
     assert result is not None
     assert "data" in result
@@ -916,7 +919,7 @@ async def test_map_oicp_authorization_response_to_ocpi_221_failure():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
     assert result is None
 
 
@@ -928,5 +931,5 @@ async def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
         "SessionID": "HUBJECT-SESSION-1234",
     }
 
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+    result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
     assert result is None

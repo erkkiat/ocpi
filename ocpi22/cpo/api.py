@@ -537,7 +537,6 @@ class ChargePointViewSet(FlowchartViewSet):
                             save_to_session_cache(
                                 credentialsrole=authorization.ocpi_master,
                                 session=session,
-
                             )
                         messages.success(
                             request,
