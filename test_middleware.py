@@ -76,7 +76,7 @@ class TestLoggingMiddleware:
         assert request.request_id == "test-uuid"
         assert request.view_name is None
         assert request._logging_exception is None
-        assert hasattr(request, "cleaned_payload")
+        assert hasattr(request, "_cleaned_payload")
 
     def test_process_view_sets_view_name_when_not_skipping_logging(
         self, middleware, request_factory
@@ -175,7 +175,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("OK", status=200)
 
         with patch.object(middleware.logger, "info") as mock_info:
@@ -194,7 +194,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("Not Found", status=404)
 
         with patch.object(middleware.logger, "warning") as mock_warning:
@@ -213,7 +213,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("Internal Server Error", status=500)
 
         with patch.object(middleware.logger, "error") as mock_error:
@@ -270,9 +270,8 @@ class TestLoggingMiddleware:
         )
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = '{"test": "data"}'
+        request._cleaned_payload = '{"test": "data"}'
         request.user = AnonymousUser()
-
         data = middleware.get_request_data(request)
 
         assert data["request_id"] == "test-id"
@@ -613,3 +612,87 @@ class TestLoggingMiddleware:
 
         result = middleware._get_cleaned_payload(request)
         assert result is None
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api-auth/login/",
+            "/accounts/login/",
+            "/accounts/logout/",
+            "/accounts/password_change/",
+            "/accounts/password_reset/",
+            "/admin/login/",
+            "/admin/logout/",
+            "/api/token/",
+            "/api/token/refresh/",
+            "/api/token/verify/",
+        ],
+    )
+    def test_get_cleaned_payload_masks_data_for_configured_sensitive_paths(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "username": "user"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        parsed = orjson.loads(result)
+        assert parsed["password"] == "**masked**"
+        assert parsed["username"] == "user"
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api-auth/login/user",
+            "/accounts/login/redirect",
+            "/accounts/logout/success",
+            "/accounts/password_change/done",
+            "/accounts/password_reset/confirm",
+            "/admin/login/staff",
+            "/admin/logout/redirect",
+            "/api/token/exchange",
+            "/api/token/refresh/new",
+            "/api/token/verify/check",
+        ],
+    )
+    def test_get_cleaned_payload_masks_data_for_paths_starting_with_configured_sensitive_urls(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "api_key": "key12345"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        parsed = orjson.loads(result)
+        assert parsed["password"] == "**masked**"
+        assert "****" in parsed["api_key"]
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api/locations/",
+            "/api/sessions/",
+            "/api/cdrs/",
+            "/health/",
+            "/metrics/",
+            "/docs/",
+            "/api/",
+            "/portal/",
+            "/admin/",
+        ],
+    )
+    def test_get_cleaned_payload_returns_raw_data_for_non_sensitive_paths(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "username": "user"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        assert result == '{"password":"secret123","username":"user"}'

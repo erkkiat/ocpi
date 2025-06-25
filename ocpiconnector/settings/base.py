@@ -527,4 +527,7 @@ LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
     "/api/token/",
     "/api/token/refresh/",
     "/api/token/verify/",
+    "/portal/login/",
+    "/api-auth/login/",
+    "/portal/admin/",
 ]
