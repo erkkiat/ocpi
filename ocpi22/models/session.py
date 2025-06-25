@@ -276,6 +276,13 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
+    @property
+    def route_through_oicp(self):
+        return (
+            str(self.credentials.roles.first().get_party())
+            == settings.HUBJECT_OPERATOR_ID
+        )
+
     billed_to = models.ForeignKey(
         "ocpi22.CredentialsRole",
         on_delete=models.PROTECT,

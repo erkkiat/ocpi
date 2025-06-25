@@ -80,9 +80,6 @@ class TokenType(str, Enum):
     APP_USER = "APP_USER"
     OTHER = "OTHER"
 
-    def __str__(self):
-        return self.value
-
 
 TOKEN_TYPE_CHOICES = [
     (TokenType.AD_HOC_USER, "Ad-hoc user"),

@@ -323,6 +323,6 @@ class HubjectService:
             session_id=session.uid,
             kwh=session.kwh,
             timestamp=session.last_updated,
-            route_to_msp=Route(is_hubject=True),
+            route_to_msp=Route(route_through_oicp=True),
         )
         store_session_cache(cached_session)
