@@ -19,20 +19,7 @@ class LoggingMiddleware(MiddlewareMixin):
     )
 
     sensitive_urls_to_mask_payload: Optional[List[str]] = getattr(
-        settings,
-        "LOGGING_MIDDLEWARE_SENSITIVE_URLS",
-        [
-            "/api-auth/login/",
-            "/accounts/login/",
-            "/accounts/logout/",
-            "/accounts/password_change/",
-            "/accounts/password_reset/",
-            "/admin/login/",
-            "/admin/logout/",
-            "/api/token/",
-            "/api/token/refresh/",
-            "/api/token/verify/",
-        ],
+        settings, "LOGGING_MIDDLEWARE_SENSITIVE_URLS", []
     )
 
     sensitive_headers: set = {
@@ -62,7 +49,7 @@ class LoggingMiddleware(MiddlewareMixin):
         request.request_id = str(uuid.uuid4())
         request.view_name = None
         request._logging_exception = None
-        request.cleaned_payload = self._get_cleaned_payload(request)
+        request._cleaned_payload = self._get_cleaned_payload(request)
         return None
 
     def process_view(
@@ -119,7 +106,7 @@ class LoggingMiddleware(MiddlewareMixin):
             "view": request.view_name,
             "path": request.get_full_path(),
             "method": request.method,
-            "payload": request.cleaned_payload,
+            "payload": request._cleaned_payload,
             "content_length": request.headers.get("Content-Length", ""),
             "content_type": request.content_type or "",
             "remote_ip": self._get_client_ip(request),

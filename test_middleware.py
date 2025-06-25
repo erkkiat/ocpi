@@ -613,3 +613,107 @@ class TestLoggingMiddleware:
 
         result = middleware._get_cleaned_payload(request)
         assert result is None
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api-auth/login/",
+            "/accounts/login/",
+            "/accounts/logout/",
+            "/accounts/password_change/",
+            "/accounts/password_reset/",
+            "/admin/login/",
+            "/admin/logout/",
+            "/api/token/",
+            "/api/token/refresh/",
+            "/api/token/verify/",
+        ],
+    )
+    def test_get_cleaned_payload_masks_data_for_configured_sensitive_paths(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "username": "user"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        parsed = orjson.loads(result)
+        assert parsed["password"] == "**masked**"
+        assert parsed["username"] == "user"
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api-auth/login/user",
+            "/accounts/login/redirect",
+            "/accounts/logout/success",
+            "/accounts/password_change/done",
+            "/accounts/password_reset/confirm",
+            "/admin/login/staff",
+            "/admin/logout/redirect",
+            "/api/token/exchange",
+            "/api/token/refresh/new",
+            "/api/token/verify/check",
+        ],
+    )
+    def test_get_cleaned_payload_masks_data_for_paths_starting_with_configured_sensitive_urls(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "api_key": "key12345"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        parsed = orjson.loads(result)
+        assert parsed["password"] == "**masked**"
+        assert "****" in parsed["api_key"]
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/api/locations/",
+            "/api/sessions/",
+            "/api/cdrs/",
+            "/health/",
+            "/metrics/",
+            "/docs/",
+            "/api/",
+            "/portal/",
+            "/admin/",
+        ],
+    )
+    def test_get_cleaned_payload_returns_raw_data_for_non_sensitive_paths(
+        self, middleware, request_factory, test_path
+    ):
+        json_data = {"password": "secret123", "username": "user"}
+        request = request_factory.post(
+            test_path, data=orjson.dumps(json_data), content_type="application/json"
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        assert result == '{"password":"secret123","username":"user"}'
+
+    @pytest.mark.parametrize(
+        "test_path",
+        [
+            "/public/api/token/",
+            "/external/admin/login/",
+            "/redirect/accounts/login/",
+            "/prefix/api-auth/login/",
+        ],
+    )
+    def test_get_cleaned_payload_returns_none_for_sensitive_paths_with_non_json_content(
+        self, middleware, request_factory, test_path, content_type
+    ):
+        request = request_factory.post(
+            test_path, data="username=user&password=secret", content_type=content_type
+        )
+
+        result = middleware._get_cleaned_payload(request)
+
+        assert result is None
