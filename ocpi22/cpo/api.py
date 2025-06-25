@@ -527,11 +527,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             connector_id=None,
                             location_id=evse.location.uid,
                             ocpi_master=authorization.ocpi_master,
-                            hubject_session_id=authorization.hubject_session_id,
-                            emp_partner_session_id=authorization.emp_partner_session_id,
-                            cpo_partner_session_id=authorization.cpo_partner_session_id,
+                            hub_session_id=authorization.hub_session_id,
                         )
-                        if authorization.is_via_hubject:
+                        if authorization.route_via_hubject:
                             HubjectService().save_to_session_cache(session)
                         else:
                             save_to_session_cache(

@@ -887,7 +887,7 @@ class TestOICPDynamicPricingService:
         )
 
 
-async def test_map_oicp_authorization_response_to_ocpi_221_success():
+def test_map_oicp_authorization_response_to_ocpi_221_success():
     token_id = "TEST123456"
     oicp_response = {
         "AuthorizationStatus": "Authorized",
@@ -902,15 +902,15 @@ async def test_map_oicp_authorization_response_to_ocpi_221_success():
     assert "data" in result
     data = result["data"]
     assert data["allowed"] == "ALLOWED"
-    assert data["authorization_reference"] == "HUBJECT-SESSION-1234"
-    assert data["hubject_session_id"] == "HUBJECT-SESSION-1234"
+    assert data["authorization_reference"] == "HUBJECT-OMITTED"
+    assert data["hub_session_id"] == "HUBJECT-SESSION-1234"
     assert data["token"]["uid"] == token_id
     assert data["token"]["country_code"] == "FI"
     assert data["token"]["party_id"] == "MSP"
     assert data["token"]["issuer"] == "FI*MSP"
 
 
-async def test_map_oicp_authorization_response_to_ocpi_221_failure():
+def test_map_oicp_not_authorized_authorization_response_to_ocpi_221_results_in_not_allowed():
     token_id = "TEST123456"
     oicp_response = {
         "AuthorizationStatus": "NotAuthorized",
@@ -920,10 +920,13 @@ async def test_map_oicp_authorization_response_to_ocpi_221_failure():
     }
 
     result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-    assert result is None
+    assert result["data"]["authorization_reference"] == "HUBJECT-OMITTED"
+    assert result["data"]["hub_session_id"] == "HUBJECT-SESSION-1234"
+    assert result["data"]["allowed"] == "NOT_ALLOWED"
+    assert result["data"]["responding_party"] == settings.HUBJECT_OPERATOR_ID
 
 
-async def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
+def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
     token_id = "TEST123456"
     oicp_response = {
         "ProviderID": "FI*MSP",

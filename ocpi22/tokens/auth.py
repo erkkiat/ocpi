@@ -1,4 +1,5 @@
 import pytz
+from django.conf import settings
 from django.utils.datetime_safe import datetime
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
@@ -94,6 +95,10 @@ class TokenAuthorization:
     ocpi_master: CredentialsRole = None
     status_text: str = ""
     hub_session_id: str = ""
+
+    @property
+    def route_via_hubject(self) -> bool:
+        return self.responding_party == settings.HUBJECT_OPERATOR_ID
 
     @staticmethod
     def get_token_owner(token) -> Party:

@@ -25,7 +25,7 @@ def oicp_authorization_response(**kwargs):
 class TestMapOICPAuthorizationResponseToOCPI221:
     @pytest.mark.asyncio
     @pytest.mark.django_db
-    async def test_successful_mapping_with_valid_response(self):
+    def test_successful_mapping_with_valid_response(self):
         """Test that a valid OICP authorization response is correctly mapped to OCPI format"""
         token_id = "TEST123456"
         oicp_response = {
@@ -83,7 +83,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["authorization_reference"] == "HUBJECT-OMITTED"
         assert result["data"]["hub_session_id"] == "HUBJECT-SESSION-1234"
 
-    async def test_mapping_with_complex_provider_id_succeeds(self):
+    def test_mapping_with_complex_provider_id_succeeds(self):
         """Test mapping with a more complex ProviderID format"""
         token_id = "TEST123456"
         oicp_response = {
@@ -100,7 +100,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["token"]["party_id"] == "COMPLEX123"
         assert result["data"]["token"]["issuer"] == "DE*COMPLEX123"
 
-    async def test_mapping_with_failed_status_code_succeeds(self):
+    def test_mapping_with_failed_status_code_succeeds(self):
         """Test mapping with a non-success status code"""
         token_id = "TEST123456"
         oicp_response = {
@@ -115,7 +115,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["hub_session_id"] == "HUBJECT-SESSION-1234"
         assert result["data"]["allowed"] == "ALLOWED"
 
-    async def test_mapping_with_missing_authorization_status_fails(self):
+    def test_mapping_with_missing_authorization_status_fails(self):
         """Test mapping when AuthorizationStatus is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -128,7 +128,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
         assert result is None
 
-    async def test_mapping_with_missing_status_code_succeeds(self):
+    def test_mapping_with_missing_status_code_succeeds(self):
         """Test mapping when StatusCode is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -143,7 +143,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         assert result["data"]["hub_session_id"] == "HUBJECT-SESSION-1234"
         assert result["data"]["allowed"] == "ALLOWED"
 
-    async def test_mapping_with_missing_provider_id_fails(self):
+    def test_mapping_with_missing_provider_id_fails(self):
         """Test mapping when ProviderID is missing"""
         token_id = "TEST123456"
         oicp_response = {
@@ -156,7 +156,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
         assert result is None
 
-    async def test_mapping_with_empty_response_results_in_not_allowed(self):
+    def test_mapping_with_empty_response_results_in_not_allowed(self):
         """Test mapping with an empty response"""
         token_id = "TEST123456"
         oicp_response = {}
@@ -164,7 +164,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
         assert result is None
 
-    async def test_mapping_with_null_response_results_in_not_allowed(self):
+    def test_mapping_with_null_response_results_in_not_allowed(self):
         """Test mapping with a None response"""
         token_id = "TEST123456"
         oicp_response = None
