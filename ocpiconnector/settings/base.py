@@ -528,6 +528,6 @@ LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
     "/api/token/refresh/",
     "/api/token/verify/",
     "/portal/login/",
-    "/api-auth/login",
+    "/api-auth/login/",
     "/portal/admin/",
 ]
