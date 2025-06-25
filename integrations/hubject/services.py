@@ -164,15 +164,15 @@ class HubjectService:
             payload_dict = payload.model_dump(exclude_none=True)
 
             response = HubjectService.client.post(url, json=payload_dict)
-
+            response_json = response.json()
             logging.info(response)
-            status_code = response.get("StatusCode", {}).get("Code")
+            status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
             if response.status_code == status.HTTP_200_OK and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response.json().get("ProviderID", "*")),
+                    party=Party.from_str(response_json.get("ProviderID", "*")),
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
