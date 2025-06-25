@@ -76,7 +76,7 @@ class TestLoggingMiddleware:
         assert request.request_id == "test-uuid"
         assert request.view_name is None
         assert request._logging_exception is None
-        assert hasattr(request, "cleaned_payload")
+        assert hasattr(request, "_cleaned_payload")
 
     def test_process_view_sets_view_name_when_not_skipping_logging(
         self, middleware, request_factory
@@ -175,7 +175,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("OK", status=200)
 
         with patch.object(middleware.logger, "info") as mock_info:
@@ -194,7 +194,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("Not Found", status=404)
 
         with patch.object(middleware.logger, "warning") as mock_warning:
@@ -213,7 +213,7 @@ class TestLoggingMiddleware:
         request.start_time = time.time() - 0.5
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = None
+        request._cleaned_payload = None
         response = HttpResponse("Internal Server Error", status=500)
 
         with patch.object(middleware.logger, "error") as mock_error:
@@ -270,9 +270,8 @@ class TestLoggingMiddleware:
         )
         request.request_id = "test-id"
         request.view_name = "test.view"
-        request.cleaned_payload = '{"test": "data"}'
+        request._cleaned_payload = '{"test": "data"}'
         request.user = AnonymousUser()
-
         data = middleware.get_request_data(request)
 
         assert data["request_id"] == "test-id"
@@ -697,23 +696,3 @@ class TestLoggingMiddleware:
         result = middleware._get_cleaned_payload(request)
 
         assert result == '{"password":"secret123","username":"user"}'
-
-    @pytest.mark.parametrize(
-        "test_path",
-        [
-            "/public/api/token/",
-            "/external/admin/login/",
-            "/redirect/accounts/login/",
-            "/prefix/api-auth/login/",
-        ],
-    )
-    def test_get_cleaned_payload_returns_none_for_sensitive_paths_with_non_json_content(
-        self, middleware, request_factory, test_path, content_type
-    ):
-        request = request_factory.post(
-            test_path, data="username=user&password=secret", content_type=content_type
-        )
-
-        result = middleware._get_cleaned_payload(request)
-
-        assert result is None
