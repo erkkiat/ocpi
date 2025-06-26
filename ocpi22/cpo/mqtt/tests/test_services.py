@@ -28,6 +28,7 @@ from ocpi22.cpo.mqtt.services import (
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
     OCPISessionFactory,
     ConnectorFactory,
@@ -36,6 +37,7 @@ from ocpi22.tests.factories import (
     TariffFactory,
     TokenFactory,
     CredentialsRoleFactory,
+    CredentialsFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
 from ocpiconnector.party import Party
@@ -613,7 +615,7 @@ class TestCreateAndSaveSession:
     ):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        msp_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="MSP")
 
         token_dict = {
             "uid": "test-token-123",
@@ -622,14 +624,18 @@ class TestCreateAndSaveSession:
             "contract_id": "contract-456",
             "country_code": "FI",
             "party_id": "MSP",
+            "billed_to": "FI*MSP",
+            "ocpi_master": msp_credentialsrole,
         }
 
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="FI*MSP",
             authorization_reference="auth-ref-789",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            ocpi_master=msp_credentialsrole,
+            billed_to=msp_credentialsrole.get_party(),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -637,7 +643,7 @@ class TestCreateAndSaveSession:
         assert isinstance(result, Session)
         assert result.authorization_reference == "auth-ref-789"
         assert result.auth_method == "AUTH_REQUEST"
-        assert result.billed_to == authorization.ocpi_master
+        assert result.billed_to == msp_credentialsrole
         assert result.status == Session.PENDING
         assert result.evse == evse
         assert result.connector is None
@@ -650,7 +656,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_handles_missing_contract_id_in_token_dict(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="DE", party_id="EMO")
 
         token_dict = {
             "uid": "test-token-456",
@@ -658,14 +664,18 @@ class TestCreateAndSaveSession:
             "type": "APP_USER",
             "country_code": "DE",
             "party_id": "EMO",
+            "billed_to": "DE*EMO",
+            "ocpi_master": credentials_role,
         }
 
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="DE*EMO",
             authorization_reference="auth-ref-123",
             auth_method="WHITELIST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -684,6 +694,7 @@ class TestCreateAndSaveSession:
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
             token=token,
+            responding_party=str(credentials_role.get_party()),
             authorization_reference="auth-ref-obj",
             auth_method="COMMAND",
             ocpi_master=credentials_role,
@@ -701,7 +712,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_pending_status(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="NL", party_id="ABC")
 
         token_dict = {
             "uid": "status-test-token",
@@ -709,13 +720,17 @@ class TestCreateAndSaveSession:
             "type": "RFID",
             "country_code": "NL",
             "party_id": "ABC",
+            "billed_to": "NL*ABC",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="NL*ABC",
             authorization_reference="status-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -727,7 +742,7 @@ class TestCreateAndSaveSession:
     ):
         location = LocationFactory(uid="location-123")
         evse = EvseFactory(location=location, uid="evse-456")
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="BE", party_id="XYZ")
 
         token_dict = {
             "uid": "evse-test-token",
@@ -735,13 +750,17 @@ class TestCreateAndSaveSession:
             "type": "RFID",
             "country_code": "BE",
             "party_id": "XYZ",
+            "billed_to": "BE*XYZ",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="BE*XYZ",
             authorization_reference="evse-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -753,7 +772,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_returns_session_object_with_generated_uid(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="FR", party_id="EDF")
 
         token_dict = {
             "uid": "return-test-token",
@@ -761,13 +780,17 @@ class TestCreateAndSaveSession:
             "type": "RFID",
             "country_code": "FR",
             "party_id": "EDF",
+            "billed_to": "FR*EDF",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="FR*EDF",
             authorization_reference="return-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -779,7 +802,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_with_explicit_billed_to_parameter(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="AT", party_id="ENI")
 
         token_dict = {
             "uid": "billed-test-token",
@@ -787,10 +810,13 @@ class TestCreateAndSaveSession:
             "type": "RFID",
             "country_code": "AT",
             "party_id": "ENI",
+            "billed_to": "AT*ENI",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="AT*ENI",
             authorization_reference="billed-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
@@ -805,33 +831,48 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_sets_credentials_and_master_relationships(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        hub_credentials = CredentialsFactory()
+        hub_credentials_role = CredentialsRoleFactory(
+            credentials=hub_credentials,
+            country_code="FR",
+            party_id="007",
+            business_details__name="Gireve",
+        )
+        msp_credentials_role = CredentialsRoleFactory(
+            country_code="FR",
+            party_id="MSP",
+            business_details__name="Le Francaise MSP magnifique",
+        )
 
         token_dict = {
             "uid": "credentials-test-token",
             "valid": True,
             "type": "RFID",
-            "country_code": "ES",
-            "party_id": "IBE",
+            "country_code": msp_credentials_role.country_code,
+            "party_id": msp_credentials_role.party_id,
+            "billed_to": str(msp_credentials_role.get_party()),
+            "ocpi_master": msp_credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party=str(hub_credentials_role.get_party()),
             authorization_reference="credentials-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            ocpi_master=msp_credentials_role,
+            billed_to=str(msp_credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
 
-        assert result.credentials == credentials_role.credentials
-        assert result.billed_to == credentials_role
+        assert result.credentials == hub_credentials
+        assert result.billed_to == msp_credentials_role
         assert result.ocpi_master == location.ocpi_master
 
     def test_create_and_save_session_creates_cdr_token_with_correct_ocpi_master(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="CH", party_id="SWI")
 
         token_dict = {
             "uid": "cdr-test-token",
@@ -840,13 +881,17 @@ class TestCreateAndSaveSession:
             "contract_id": "cdr-contract",
             "country_code": "CH",
             "party_id": "SWI",
+            "billed_to": "CH*SWI",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="CH*SWI",
             authorization_reference="cdr-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
@@ -859,7 +904,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_persists_session_to_database(self):
         location = LocationFactory()
         evse = EvseFactory(location=location)
-        credentials_role = CredentialsRoleFactory()
+        credentials_role = CredentialsRoleFactory(country_code="IT", party_id="ENE")
 
         token_dict = {
             "uid": "persist-test-token",
@@ -867,13 +912,17 @@ class TestCreateAndSaveSession:
             "type": "RFID",
             "country_code": "IT",
             "party_id": "ENE",
+            "billed_to": "IT*ENE",
+            "ocpi_master": credentials_role,
         }
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=token_dict,
+            token=AdhocToken(**token_dict),
+            responding_party="IT*ENE",
             authorization_reference="persist-auth-ref",
             auth_method="AUTH_REQUEST",
             ocpi_master=credentials_role,
+            billed_to=str(credentials_role.get_party()),
         )
 
         result = create_and_save_session(authorization, evse)
