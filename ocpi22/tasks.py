@@ -176,8 +176,8 @@ def send_ocpi_request(
 
     try:
         request_session = get_request_session(credentials_id)
-    except ssl.SSLError as e:
-        logger.warning(f"SSL error while connecting to {url}: {str(e)}")
+    except ssl.SSLError:
+        logger.exception(f"SSL error while connecting to {url}.")
         # Don't retry on SSL errors as they're likely configuration issues
         return None
 
@@ -191,7 +191,7 @@ def send_ocpi_request(
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
-    env = os.environ.get("ENV", "development")
+    env = os.environ["ENV"]
     if response.status_code >= 300 and env in ["staging", "development"]:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
