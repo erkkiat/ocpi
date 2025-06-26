@@ -7,21 +7,6 @@ from integrations.hubject.oicp_to_ocpi_converter import (
 )
 
 
-def oicp_authorization_response(**kwargs):
-    # Below is an actual response from the Hubject QA server
-    response = {
-        "AuthorizationStatus": "Authorized",
-        "AuthorizationStopIdentifications": None,
-        "CPOPartnerSessionID": None,
-        "EMPPartnerSessionID": None,
-        "ProviderID": "DE*ICE",
-        "SessionID": "4a0fe067-de32-4ab7-9a27-0c107438a57b",
-        "StatusCode": {"AdditionalInfo": None, "Code": "000", "Description": None},
-    }
-    response.update(kwargs)
-    return response
-
-
 class TestMapOICPAuthorizationResponseToOCPI221:
     @pytest.mark.asyncio
     @pytest.mark.django_db
