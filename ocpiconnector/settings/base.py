@@ -410,7 +410,6 @@ LOGGING = {
     },
 }
 
-
 # OAuth2
 LOGIN_URL = "/admin/login/"
 
@@ -502,7 +501,6 @@ HUB_ID_MAX_LENGTH = 36
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
 
-
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
 
@@ -518,3 +516,18 @@ AXES_LOCKOUT_PARAMETERS = [
 AXES_ENABLE_ADMIN = True
 
 NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")
+LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
+    "/api-auth/login/",
+    "/accounts/login/",
+    "/accounts/logout/",
+    "/accounts/password_change/",
+    "/accounts/password_reset/",
+    "/admin/login/",
+    "/admin/logout/",
+    "/api/token/",
+    "/api/token/refresh/",
+    "/api/token/verify/",
+    "/portal/login/",
+    "/api-auth/login/",
+    "/portal/admin/",
+]
