@@ -755,10 +755,10 @@ class RFIDIdentification(BaseModel):
 
 class Identification(BaseModel):
     RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification]
-    RFIDIdentification: Optional[RFIDIdentification]
-    QRCodeIdentification: Optional[QRCodeIdentification]
-    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
-    RemoteIdentification: Optional[RemoteIdentification]
+    # RFIDIdentification: Optional[RFIDIdentification]
+    # QRCodeIdentification: Optional[QRCodeIdentification]
+    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
+    # RemoteIdentification: Optional[RemoteIdentification]
 
 
 class EvseDataRecord(BaseModel):

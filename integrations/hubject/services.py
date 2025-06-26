@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import pytz
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
 from rest_framework import status
@@ -334,10 +335,19 @@ class HubjectService:
             f"cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
         )
 
-        payload = (
-            HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(cdr)
-        )
-        payload_json = payload.model_dump(mode="json")
+        try:
+            payload = (
+                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
+                    cdr
+                )
+            )
+            payload_json = payload.model_dump(mode="json")
+        except ValidationError as ve:
+            return {
+                "success": False,
+                "errorType": "Validation Error",
+                "error": str(ve),
+            }
 
         response = HubjectService.client.post(url, json=payload_json)
         if response.status_code == 200:
