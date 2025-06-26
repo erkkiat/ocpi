@@ -22,9 +22,11 @@ from ocpi22.cpo.util import find_our_evse
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
+from ocpiconnector.party import Party
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -185,19 +187,21 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         contract_id=authorization.token.get("contract_id", "-"),
     )
     session = create_session(
-        credentials=authorization.ocpi_master.credentials,
+        credentials=get_credentialsrole(
+            party=Party.from_str(authorization.responding_party)
+        ).credentials,
         authorization_reference=authorization.authorization_reference,
         authorization_method=authorization.auth_method,
-        billed_to=authorization.ocpi_master,
+        billed_to=authorization.get_token_party(),
         ad_hoc_token=ad_hoc_token,
         status=Session.PENDING,
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
-        ocpi_master=authorization.ocpi_master,
+        ocpi_master=evse.location.ocpi_master,
     )
     save_to_session_cache(
-        credentialsrole=authorization.ocpi_master,
+        credentialsrole=session.credentials.roles.first(),
         session=session,
     )
     return session
