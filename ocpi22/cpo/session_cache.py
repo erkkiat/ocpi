@@ -15,7 +15,6 @@ def get_cached_session(session_id) -> CachedSession:
 
 
 def save_to_session_cache(credentialsrole, session):
-    """Save a cached session to the Redis store for quick access (mainly by process_meter_values)"""
     cached_session = CachedSession(
         session_id=session.uid,
         kwh=session.kwh,
