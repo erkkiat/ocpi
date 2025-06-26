@@ -73,7 +73,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Pytest in Parallel
-        run: pytest -n auto --dist loadscope
+        run: pytest -n auto --dist
 
   build-and-deploy:
     name: Build and Deploy to Production
