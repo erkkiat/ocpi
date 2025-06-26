@@ -57,7 +57,7 @@ class LocationService:
             for c in e.connectors:
                 tariffs = []
                 tariff_ids = c.tariff_ids
-                for t in tariff_ids:
+                for t in tariff_ids or []:
                     solid_tariff = (
                         self.solid_tariff_repository.get_latest_with_external_id(
                             external_id=t

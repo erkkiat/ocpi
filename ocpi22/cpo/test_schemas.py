@@ -3,7 +3,13 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from ocpi22.cpo.schemas import LocationIn, EVSE, Connector
+from ocpi22.cpo.schemas import (
+    LocationIn,
+    EVSE,
+    Connector,
+    OpeningTimes,
+    RegularHours,
+)
 from ocpi22.test_tariff_location_and_evse import load_example
 
 
@@ -70,21 +76,18 @@ def invalid_type(location_data):
 
 def test_location_in_schema_valid_data_does_not_raise_validation_error():
     data = load_example("data/examples/location_example.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_evse_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_evse.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
 
 def test_location_in_schema_valid_data_with_connector_does_not_raise_validation_error():
     data = load_example("data/examples/location_example_added_connector.json")
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "BEL"
 
@@ -93,7 +96,6 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
-    data["roaming_enabled"] = True
     location = LocationIn(**data)
     assert location.country == "SWE"
 
@@ -113,6 +115,12 @@ def test_location_in_schema_invalid_parking_type_raises_value_error(location_dat
     location_data["parking_type"] = "INVALID"
     with pytest.raises(ValidationError):
         LocationIn(**location_data)
+
+
+def test_location_in_roaming_enabled_field_is_optional(location_data):
+    location_data.pop("roaming_enabled")
+    location = LocationIn(**location_data)
+    assert location.roaming_enabled is True
 
 
 def test_evse_schema_valid_data(evse_data):
@@ -171,3 +179,47 @@ def test_connector_schema_none_power_type_raises_validation_error(connector_data
     connector_data.pop("power_type")
     with pytest.raises(ValidationError):
         Connector(**connector_data)
+
+
+def test_regular_hours_and_exceptional_openings_closings_are_not_mandatory_when_twentyfourseven_is_true():
+    opening_times = OpeningTimes(twentyfourseven=True)
+    assert opening_times.regular_hours is None
+
+
+def test_regular_hours_is_not_none_when_twentyfourseven_is_false_returns_opening_times_successfully():
+    opening_times = OpeningTimes(
+        twentyfourseven=False,
+        regular_hours=[
+            RegularHours(weekday=1, period_begin="08:00", period_end="20:00")
+        ],
+        exceptional_openings=None,
+        exceptional_closings=None,
+    )
+    assert opening_times.regular_hours is not None
+    assert len(opening_times.regular_hours) == 1
+
+
+def test_regular_hours_none_when_twentyfourseven_is_false_raises_validation_error():
+    with pytest.raises(ValidationError) as exc_info:
+        OpeningTimes(
+            twentyfourseven=False,
+            regular_hours=None,
+            exceptional_openings=None,
+            exceptional_closings=None,
+        )
+
+    error_msg = str(exc_info.value)
+    assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_error():
+    with pytest.raises(ValidationError) as exc_info:
+        OpeningTimes(
+            twentyfourseven=False,
+            regular_hours=[],
+            exceptional_openings=None,
+            exceptional_closings=None,
+        )
+
+    error_msg = str(exc_info.value)
+    assert "regular_hours is required when twentyfourseven is False" in error_msg

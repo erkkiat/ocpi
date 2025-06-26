@@ -671,8 +671,6 @@ class AuthorizeSerializer(serializers.Serializer):
         max_price = serializers.FloatField(required=False)
 
 
-
-
 class LocationReferencesSerializer(serializers.Serializer):
     location_id = ...
     evse_ids = ...
@@ -686,6 +684,7 @@ class AuthorizationInfoSerializer(serializers.Serializer):
         required=False, allow_blank=True, allow_null=True
     )
     info = DisplayTextSerializer(required=False, allow_null=True, many=True)
+    hub_session_id = serializers.CharField(required=False, allow_null=True)
 
 
 class InvoicingCallbackSerializer(CallbacksSerializer):

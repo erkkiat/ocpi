@@ -251,7 +251,7 @@ class TestEvseMove:
             "ocpi22/data/examples/location_example_added_evse.json",
         )
         assert result.response.status_code == 200
-        assert list(result.location.evses.values_list("uid", flat=True)) == [
+        assert sorted(list(result.location.evses.values_list("uid", flat=True))) == [
             "3256",
             "3257",
             "3299",
@@ -473,19 +473,7 @@ class TestRoamingEnabledLocations:
         [
             (True, 201, {"roaming_enabled": True}),
             (False, 201, {"roaming_enabled": False}),
-            (
-                None,
-                422,
-                {
-                    "detail": [
-                        {
-                            "type": "missing",
-                            "loc": ["body", "location", "roaming_enabled"],
-                            "msg": "Field required",
-                        }
-                    ]
-                },
-            ),
+            (None, 201, {"roaming_enabled": True}),
         ],
     )
     @patch("ocpi22.ocpi.util.OcpiModule.send_background_update")
@@ -519,30 +507,27 @@ class TestRoamingEnabledLocations:
             else expected_response
         )
 
-        if expected_status == 201:
-            roles_to_check = [nsp_lk_nsp, nap_np_nap]
+        roaming_enabled = response.json()["roaming_enabled"]
+        roles_to_check = [nsp_lk_nsp, nap_np_nap]
 
-            if roaming_enabled:
-                roles_to_check.extend([hub_fr_gir, msp_de_ice])
+        if roaming_enabled:
+            roles_to_check.extend([hub_fr_gir, msp_de_ice])
 
-            for role in roles_to_check:
-                party = Party(role.country_code, role.party_id)
-                mock_send_background_update.assert_any_call(
-                    ANY, ANY, ANY, to=party, sender=ANY, method=ANY, credentials=ANY
-                )
-
-            roles_not_to_check = (
-                [] if roaming_enabled else [hub_fr_gir, msp_de_ice, ocpi_master]
+        for role in roles_to_check:
+            party = Party(role.country_code, role.party_id)
+            mock_send_background_update.assert_any_call(
+                ANY, ANY, ANY, to=party, sender=ANY, method=ANY, credentials=ANY
             )
 
-            for role in roles_not_to_check:
-                party = Party(role.country_code, role.party_id)
-                for call in mock_send_background_update.call_args_list:
-                    args, _ = call
-                    kwargs = call.kwargs
-                    assert (
-                        kwargs["to"] != party
-                    ), f"Role {role.role} should not have been notified"
+        roles_not_to_check = (
+            [] if roaming_enabled else [hub_fr_gir, msp_de_ice, ocpi_master]
+        )
 
-        else:
-            assert response.json() == expected_response
+        for role in roles_not_to_check:
+            party = Party(role.country_code, role.party_id)
+            for call in mock_send_background_update.call_args_list:
+                args, _ = call
+                kwargs = call.kwargs
+                assert (
+                    kwargs["to"] != party
+                ), f"Role {role.role} should not have been notified"
