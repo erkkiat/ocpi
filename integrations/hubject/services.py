@@ -341,7 +341,7 @@ class HubjectService:
                     cdr
                 )
             )
-            payload_json = payload.model_dump(mode="json")
+            payload_json = payload.model_dump(mode="json", exclude_none=True)
         except ValidationError as ve:
             return {
                 "success": False,
@@ -349,25 +349,11 @@ class HubjectService:
                 "error": str(ve),
             }
 
-        response = HubjectService.client.post(url, json=payload_json)
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code >= 500 and retries > 0:
-            retry_policy = dict(max_retries=retries, interval_start=5)
-            if settings.BACKGROUND_SEND:
-                send_hubject_request.apply_async(
-                    payload_json, url, "post", retry=True, retry_policy=retry_policy
-                )
-            else:
-                send_hubject_request(payload_json, url, "post")
-            return {
-                "success": False,
-                "errorType": "Hubject server Error",
-                "error": f"Hubject server returned {response.status_code}. Retrying...",
-            }
-        else:
-            return {
-                "success": False,
-                "errorType": "HTTP Error",
-                "error": f"{response.status_code} : {response.text}",
-            }
+        retry_policy = dict(max_retries=retries, interval_start=5)
+        send_hubject_request.apply_async(
+            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
+        )
+        return {
+            "success": True,
+            "message": "Sent CDR to hubject",
+        }
