@@ -84,7 +84,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Pytest in Parallel
-        run: pytest -n auto --dist
+        run: pytest -n auto
 
       - name: Upload HTML Coverage Report
         uses: actions/upload-artifact@v4
