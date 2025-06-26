@@ -12,6 +12,7 @@ from ocpi22.tests.factories import (
     OCPISessionFactory,
     ConnectorFactory,
     LocationFactory,
+    CredentialsRoleFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
 
@@ -42,6 +43,15 @@ def session():
         connector=connector,
         location=location,
         evse=evse,
+        billed_to=CredentialsRoleFactory(
+            country_code="FI", party_id="MSP", role="EMSP"
+        ),
+        credentials=CredentialsRoleFactory(
+            country_code="FR",
+            party_id="207",
+            role="HUB",
+            business_details__name="Gireve",
+        ).credentials,
     )
 
 

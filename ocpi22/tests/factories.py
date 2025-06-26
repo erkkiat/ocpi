@@ -52,7 +52,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    username = "SolidRoamUser"
+    username = factory.Sequence(lambda n: f"SolidRoamUser{n}")
     email = "user@solidroam.com"
     password = factory.PostGenerationMethodCall(
         "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
