@@ -110,9 +110,7 @@ def find_route_from_credentials(
             version=OCPIVersion(credentials.version),
             to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
         )  # Todo: How to figure out the role, or is it relevant?
-    error_text = (
-        f"Endpoint `{ocpi_module.value}` {role} not found for party {credentials}"
-    )
+    error_text = f"Endpoint `{ocpi_module.value}` {role} not found for party {credentials} {credentials.party_str() or 'Unknown Party'}"
     raise ValueError(error_text)
 
 

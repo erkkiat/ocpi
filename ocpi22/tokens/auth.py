@@ -201,7 +201,7 @@ def authorize_token(
                         str(TokenType.AD_HOC_USER),
                         session.billed_to,
                     ),
-                    responding_party=session.billed_to.party_str(),
+                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
