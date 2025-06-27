@@ -1,15 +1,17 @@
+import logging
 import time
 
 import pytest
 import orjson
-from django.test import RequestFactory
+from django.core.exceptions import DisallowedHost
+from django.test import RequestFactory, override_settings
 from django.http import HttpResponse
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from middlewares import AllowHealthCheckMiddleware
 from ocpiconnector.logging_middleware import LoggingMiddleware
 
-from unittest.mock import Mock, patch, PropertyMock
+from unittest.mock import Mock, patch, PropertyMock, MagicMock
 
 
 @pytest.mark.django_db
@@ -696,3 +698,300 @@ class TestLoggingMiddleware:
         result = middleware._get_cleaned_payload(request)
 
         assert result == '{"password":"secret123","username":"user"}'
+
+
+class TestAllowHealthCheckMiddleware:
+    @pytest.fixture
+    def get_response_mock(self):
+        return MagicMock(return_value=HttpResponse("Normal response"))
+
+    @pytest.fixture
+    def middleware(self, get_response_mock):
+        return AllowHealthCheckMiddleware(get_response_mock)
+
+    @pytest.fixture
+    def failing_middleware(self, get_response_mock):
+        middleware = AllowHealthCheckMiddleware(get_response_mock)
+        middleware.check_health = lambda: False
+        return middleware
+
+    def test_check_health_returns_true(self, middleware):
+        result = middleware.check_health()
+        assert result is True
+
+    def test_non_health_check_path_passes_through_middleware(self, client):
+        response = client.get("/other-path/")
+        # This will return 404 since the path doesn't exist, but middleware should pass it through
+        assert response.status_code == 404
+
+    def test_get_client_ip_extracts_first_ip_from_x_forwarded_for_with_whitespace(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.META = {"HTTP_X_FORWARDED_FOR": " 192.168.1.1 , 10.0.0.1"}
+
+        ip = middleware.get_client_ip(request)
+        assert ip == "192.168.1.1"
+
+    def test_get_client_ip_returns_remote_addr_when_no_x_forwarded_for(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.META = {"REMOTE_ADDR": "192.168.1.1"}
+
+        ip = middleware.get_client_ip(request)
+        assert ip == "192.168.1.1"
+
+    def test_get_client_ip_returns_none_when_no_ip_headers(self, middleware):
+        request = MagicMock()
+        request.META = {}
+
+        ip = middleware.get_client_ip(request)
+        assert ip is None
+
+    @pytest.mark.parametrize(
+        "ip_address,is_private,description",
+        [
+            ("192.168.1.1", True, "private_ipv4"),
+            ("8.8.8.8", False, "public_ipv4"),
+            ("::1", True, "private_ipv6"),
+            ("169.254.1.1", True, "link_local"),
+            ("invalid", False, "invalid"),
+            ("999.999.999.999", False, "invalid_format"),
+            ("", False, "empty"),
+        ],
+    )
+    def test_is_private_ip_validates_addresses_correctly(
+        self, middleware, ip_address, is_private, description
+    ):
+        assert middleware.is_private_ip(ip_address) is is_private
+
+    def test_process_exception_returns_none_for_non_disallowed_host_exception(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.path = "/health-check/"
+        exception = ValueError("Some error")
+
+        result = middleware.process_exception(request, exception)
+        assert result is None
+
+    def test_process_exception_returns_none_for_disallowed_host_on_non_health_check_path(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.path = "/other-path/"
+        exception = DisallowedHost("Host not allowed")
+
+        result = middleware.process_exception(request, exception)
+        assert result is None
+
+    def test_process_exception_returns_none_for_disallowed_host_from_public_ip(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {"REMOTE_ADDR": "8.8.8.8"}  # Public IP
+        exception = DisallowedHost("Host not allowed")
+
+        result = middleware.process_exception(request, exception)
+        assert result is None
+
+    @pytest.mark.parametrize(
+        "health_status,expected_status,expected_content",
+        [
+            (True, 200, b"OK"),
+            (False, 500, b"Service Unhealthy"),
+        ],
+    )
+    def test_process_exception_handles_private_ip_disallowed_host(
+        self, health_status, expected_status, expected_content
+    ):
+        get_response = MagicMock(return_value=HttpResponse("Normal response"))
+        middleware = AllowHealthCheckMiddleware(get_response)
+        middleware.check_health = lambda: health_status
+
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {"REMOTE_ADDR": "192.168.1.1"}  # Any private IP
+        exception = DisallowedHost("Host not allowed")
+
+        response = middleware.process_exception(request, exception)
+
+        assert response.status_code == expected_status
+        assert response.content == expected_content
+
+    def test_process_exception_uses_x_forwarded_for_to_determine_private_ip(
+        self, middleware
+    ):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {
+            "HTTP_X_FORWARDED_FOR": "10.0.0.1, 8.8.8.8",
+            "REMOTE_ADDR": "8.8.8.8",
+        }
+        exception = DisallowedHost("Host not allowed")
+
+        response = middleware.process_exception(request, exception)
+
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+    @pytest.mark.parametrize(
+        "health_status,expected_status,expected_content",
+        [
+            (True, 200, b"OK"),
+            (False, 500, b"Service Unhealthy"),
+        ],
+    )
+    def test_health_check_endpoint_returns_correct_response_based_on_health(
+        self, health_status, expected_status, expected_content
+    ):
+        get_response = MagicMock(return_value=HttpResponse("Normal response"))
+        middleware = AllowHealthCheckMiddleware(get_response)
+        middleware.check_health = lambda: health_status
+
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {}
+
+        response = middleware(request)
+
+        assert response.status_code == expected_status
+        assert response.content == expected_content
+
+
+class TestAllowHealthCheckMiddlewareLogging:
+    @pytest.fixture
+    def middleware(self):
+        get_response = MagicMock(return_value=HttpResponse("Normal response"))
+        return AllowHealthCheckMiddleware(get_response)
+
+    @pytest.fixture
+    def failing_middleware(self):
+        get_response = MagicMock(return_value=HttpResponse("Normal response"))
+        middleware = AllowHealthCheckMiddleware(get_response)
+        middleware.check_health = lambda: False
+        return middleware
+
+    @override_settings(DEBUG=True)
+    def test_health_check_success_logs_in_debug_mode(self, client, caplog):
+        with caplog.at_level(logging.DEBUG):
+            client.get("/health-check/", HTTP_HOST="testserver")
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) > 0
+        assert "Health check succeeded from testserver" in caplog.text
+
+    @override_settings(DEBUG=False)
+    def test_health_check_success_does_not_log_in_production_mode(self, client, caplog):
+        with caplog.at_level(logging.DEBUG):
+            client.get("/health-check/", HTTP_HOST="testserver")
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) == 0
+
+    def test_health_check_logs_failure_with_host(self, failing_middleware, caplog):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {"HTTP_HOST": "testserver"}
+
+        failing_middleware(request)
+
+        assert "Health check failed from testserver" in caplog.text
+        assert any(record.levelname == "ERROR" for record in caplog.records)
+
+    def test_health_check_logs_failure_with_unknown_host_when_missing(
+        self, failing_middleware, caplog
+    ):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {}
+
+        failing_middleware(request)
+
+        assert "Health check failed from unknown" in caplog.text
+        assert any(record.levelname == "ERROR" for record in caplog.records)
+
+    @override_settings(DEBUG=True)
+    def test_process_exception_private_ip_logs_in_debug_mode(self, middleware, caplog):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {"REMOTE_ADDR": "192.168.1.1"}
+        exception = DisallowedHost("Host not allowed")
+
+        with caplog.at_level(logging.DEBUG):
+            middleware.process_exception(request, exception)
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) > 0
+        assert "Allowing health check from private IP: 192.168.1.1" in caplog.text
+
+    @override_settings(DEBUG=False)
+    def test_process_exception_private_ip_does_not_log_in_production_mode(
+        self, middleware, caplog
+    ):
+        request = MagicMock()
+        request.path = "/health-check/"
+        request.META = {"REMOTE_ADDR": "192.168.1.1"}
+        exception = DisallowedHost("Host not allowed")
+
+        with caplog.at_level(logging.DEBUG):
+            middleware.process_exception(request, exception)
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) == 0
+
+
+@pytest.mark.django_db
+class TestAllowHealthCheckMiddlewareIntegration:
+    def test_health_check_endpoint_responds_with_ok(self, client):
+        response = client.get("/health-check/")
+
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+    def test_health_check_endpoint_with_custom_host_header(self, client):
+        response = client.get("/health-check/", HTTP_HOST="custom-host.example.com")
+
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+    def test_health_check_endpoint_with_x_forwarded_for_header(self, client):
+        response = client.get(
+            "/health-check/", HTTP_X_FORWARDED_FOR="192.168.1.1, 10.0.0.1"
+        )
+
+        assert response.status_code == 200
+        assert response.content == b"OK"
+
+    @override_settings(DEBUG=True)
+    def test_health_check_endpoint_logs_in_debug_mode(self, client, caplog):
+        with caplog.at_level(logging.DEBUG):
+            client.get("/health-check/", HTTP_HOST="testserver")
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) > 0
+        assert "Health check succeeded from testserver" in caplog.text
+
+    @override_settings(DEBUG=False)
+    def test_health_check_endpoint_does_not_log_in_production_mode(
+        self, client, caplog
+    ):
+        with caplog.at_level(logging.DEBUG):
+            client.get("/health-check/", HTTP_HOST="testserver")
+
+        debug_records = [
+            record for record in caplog.records if record.levelname == "DEBUG"
+        ]
+        assert len(debug_records) == 0
