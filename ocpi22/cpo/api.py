@@ -33,6 +33,7 @@ from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
+from ocpi22.routing import find_route_from_credentials
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -46,7 +47,12 @@ from util import (
     markdown_escape,
 )
 
-from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.choices import (
+    OcpiRolesEnum,
+    MessageTexts,
+    AuthorizationEnum,
+    OcpiModuleEnum,
+)
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
@@ -478,6 +484,15 @@ class ChargePointViewSet(FlowchartViewSet):
         """
         try:
             if request.method == "POST":
+                data = dict(
+                    allowed=AuthorizationEnum.NOT_ALLOWED,
+                    token="",
+                    responding_party="*",
+                    billed_to="*",
+                    authorization_reference=None,
+                    auth_method="AUTH_REQUEST",
+                    session_id=None,
+                )
                 serializer = AuthorizationSerializer(data=request.data)
                 if serializer.is_valid():
                     next_url = reverse("chargepoint-start-transaction")
@@ -486,6 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     token: Union[Token, AdhocToken, str] = (
                         serializer.validated_data.get("token")
                     )
+                    data["token"] = get_token_id(token)
                     authorization: TokenAuthorization = authorize_token(
                         token, evse.location, request=request
                     )
@@ -498,7 +514,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         token_admin = reverse("admin:ocpi22_token_changelist")
                         messages.error(
                             request,
-                            f'The response was "{authorization.allowed}" for the Token "{token}".',
+                            f'The response was "{authorization.allowed if authorization else "N/A"}" for the Token "{token}".',
                         )
                         messages.info(
                             request,
@@ -532,9 +548,13 @@ class ChargePointViewSet(FlowchartViewSet):
                             evse_uid=evse.uid,
                             connector_id=None,
                             location_id=evse.location.uid,
+                            ocpi_master=authorization.ocpi_master,
+                            hub_session_id=authorization.hub_session_id,
                         )
                         save_to_session_cache(
-                            credentialsrole=route_through,
+                            route=find_route_from_credentials(
+                                route_through.credentials, OcpiModuleEnum.SESSIONS
+                            ),
                             session=session,
                         )
                         messages.success(
@@ -547,18 +567,22 @@ class ChargePointViewSet(FlowchartViewSet):
                             f"which has been authorized. The authorization expires in 15 minutes.",
                         )
 
-                    data = dict(
-                        allowed=authorization.allowed,
-                        token=authorization.token.get("uid"),
-                        responding_party=authorization.responding_party,
-                        billed_to=authorization.billed_to,
-                        authorization_reference=authorization.authorization_reference,
-                        auth_method=authorization.auth_method,
-                        session_id=session.uid if session else None,
-                    )
+                    if authorization:
+                        data = dict(
+                            allowed=authorization.allowed,
+                            token=authorization.token.get("uid"),
+                            responding_party=authorization.responding_party,
+                            billed_to=authorization.billed_to,
+                            authorization_reference=authorization.authorization_reference,
+                            auth_method=authorization.auth_method,
+                            session_id=session.uid if session else None,
+                        )
                     serializer = CPOAuthorizationResponseSerializer(instance=data)
                     return Response(
-                        serializer.data, status=authorization.get_http_status()
+                        serializer.data,
+                        status=authorization.get_http_status()
+                        if authorization
+                        else 401,
                     )
                 else:
                     return Response(

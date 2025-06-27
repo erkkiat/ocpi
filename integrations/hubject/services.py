@@ -10,7 +10,6 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
-from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
 from integrations.hubject.oicp_to_ocpi_converter import (
@@ -20,13 +19,13 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
-    ERoamingAuthorizeStart,
+    PricingProductData,
+    ERoamingPushPricingProductData,
     OperatorID,
+    ERoamingAuthorizeStart,
     Identification,
     UID,
     RFIDMifareFamilyIdentification,
-    PricingProductData,
-    ERoamingPushPricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -164,7 +163,9 @@ class HubjectService:
         payload_dict = payload.model_dump(exclude_none=True)
 
         try:
-            response = HubjectService.client.post(url, json=payload_dict)
+            response = HubjectService.client.post(
+                url, json=payload_dict, headers={"accept": "application/json"}
+            )
         except requests.exceptions.RequestException:
             logger.exception("Requests exception during authorization with Hubject")
             return (
@@ -186,7 +187,7 @@ class HubjectService:
             status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
-            if response.status_code == status.HTTP_200_OK and status_code == "000":
+            if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
                     party=Party.from_str(response_json.get("ProviderID", "*")),
@@ -194,9 +195,12 @@ class HubjectService:
                     role=OcpiRolesEnum.EMSP,
                 )
 
+            mapped_response = map_oicp_authorization_response_to_ocpi_221(
+                response_json, token_id
+            )
             return (
                 response.status_code,
-                map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
+                mapped_response,
                 ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
         except Exception:

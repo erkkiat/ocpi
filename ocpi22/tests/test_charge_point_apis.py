@@ -56,9 +56,9 @@ def session():
 
 
 @pytest.fixture
-def allowed_token(msp_de_ice, admin_user):
+def allowed_token(msp_de_icd, admin_user):
     return TokenFactory(
-        uid="ALLOWED_TOKEN", ocpi_master=msp_de_ice, customer=admin_user
+        uid="ALLOWED_TOKEN", ocpi_master=msp_de_icd, customer=admin_user
     )
 
 
@@ -73,20 +73,20 @@ def always_token(msp_de_ice, admin_user):
 
 
 @pytest.fixture
-def never_token(msp_de_ice, admin_user):
+def never_token(msp_de_icd, admin_user):
     return TokenFactory(
         uid="NEVER_TOKEN",
-        ocpi_master=msp_de_ice,
+        ocpi_master=msp_de_icd,
         customer=admin_user,
         whitelist="NEVER",
     )
 
 
 @pytest.fixture
-def allowed_offline_token(msp_de_ice, admin_user):
+def allowed_offline_token(msp_de_icd, admin_user):
     return TokenFactory(
         uid="ALLOWED_OFFLINE_TOKEN",
-        ocpi_master=msp_de_ice,
+        ocpi_master=msp_de_icd,
         customer=admin_user,
         whitelist="ALLOWED_OFFLINE",
     )

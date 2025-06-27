@@ -1,4 +1,5 @@
 import pytz
+from django.conf import settings
 from django.utils.datetime_safe import datetime
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
@@ -94,6 +95,10 @@ class TokenAuthorization:
     ocpi_master: CredentialsRole = None
     status_text: str = ""
     hub_session_id: str = ""
+
+    @property
+    def route_via_hubject(self) -> bool:
+        return self.responding_party == settings.HUBJECT_OPERATOR_ID
 
     @staticmethod
     def get_token_owner(token) -> Party:
@@ -193,7 +198,7 @@ def authorize_token(
                     token=AdhocToken(
                         session.billed_to,
                         token,
-                        TokenType.AD_HOC_USER,
+                        TokenType.AD_HOC_USER.value,
                         session.billed_to,
                     ),
                     responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
@@ -207,7 +212,11 @@ def authorize_token(
         authorization: TokenAuthorization = _authorize_token(
             token, location, request=request
         )
-        if authorization.is_positive and authorization.authorization_reference:
+        if (
+            authorization
+            and authorization.is_positive
+            and authorization.authorization_reference
+        ):
             messages.info(
                 request,
                 f'**{markdown_escape(str(authorization.billed_to))}** responded **"{authorization.allowed}"** and '
