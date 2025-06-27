@@ -1,5 +1,3 @@
-import re
-
 import requests
 import responses
 import pytest
@@ -13,7 +11,7 @@ from integrations.hubject.services import HubjectService
 async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatch):
     responses.add(
         method=responses.POST,
-        url=re.compile(r"^https://service-qa\.hubject\.com/.*$"),
+        url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
         json={"StatusCode": {"Code": "000"}, "ProviderID": "DE*XYZ"},
         status=200,
     )
@@ -42,7 +40,7 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
 ):
     responses.add(
         method=responses.POST,
-        url=re.compile(r"^https://service-qa\.hubject\.com/.*$"),
+        url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
         json={"StatusCode": {"Code": "123"}, "ProviderID": "DE*XYZ"},
         status=200,
     )
@@ -65,7 +63,7 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
 async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch):
     responses.add(
         method=responses.POST,
-        url=re.compile(r"^https://service-qa\.hubject\.com/.*$"),
+        url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
         body=requests.exceptions.ConnectionError("Network error occurred"),
     )
     status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
@@ -82,7 +80,7 @@ async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch
 async def test_post_authorize_request_returns_error_tuple_on_runtime_error(monkeypatch):
     responses.add(
         method=responses.POST,
-        url=re.compile(r"^https://service-qa\.hubject\.com/.*$"),
+        url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
         body=requests.exceptions.Timeout("Network error occurred"),
     )
     status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
