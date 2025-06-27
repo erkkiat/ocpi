@@ -28,6 +28,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
+from integrations.hubject.services import HubjectService
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
@@ -515,10 +516,6 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
-                        assert (
-                            authorization.ocpi_master
-                            and authorization.ocpi_master.credentials
-                        ), f"No OCPI Master or Credentials found: {authorization.ocpi_master}"
                         session = create_session(
                             credentials=authorization.ocpi_master.credentials,
                             authorization_reference=authorization.authorization_reference,
@@ -530,12 +527,15 @@ class ChargePointViewSet(FlowchartViewSet):
                             connector_id=None,
                             location_id=evse.location.uid,
                             ocpi_master=authorization.ocpi_master,
+                            hub_session_id=authorization.hub_session_id,
                         )
-                        save_to_session_cache(
-                            credentialsrole=authorization.ocpi_master,
-                            session=session,
-                            token=token,
-                        )
+                        if authorization.route_via_hubject:
+                            HubjectService().save_to_session_cache(session)
+                        else:
+                            save_to_session_cache(
+                                credentialsrole=authorization.ocpi_master,
+                                session=session,
+                            )
                         messages.success(
                             request,
                             "A new OCPI Session has been started in `PENDING` status. "

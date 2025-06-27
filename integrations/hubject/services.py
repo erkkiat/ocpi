@@ -10,7 +10,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
-from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
 from integrations.hubject.oicp_to_ocpi_converter import (
@@ -20,8 +19,8 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
-    ERoamingAuthorizeStart,
     OperatorID,
+    ERoamingAuthorizeStart,
     Identification,
     UID,
     RFIDMifareFamilyIdentification,
@@ -30,11 +29,15 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
+from ocpi22.cpo.mqtt.schemas import CachedSession
+from ocpi22.cpo.session_cache import store_session_cache
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Connector, Evse
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.routing import Route
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
@@ -166,23 +169,29 @@ class HubjectService:
             )
             payload_dict = payload.model_dump(exclude_none=True)
 
-            response = HubjectService.client.post(url, json=payload_dict)
+            response = HubjectService.client.post(
+                url, json=payload_dict, headers={"accept": "application/json"}
+            )
 
             logging.info(response)
             status_code = response.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
-            if response.status_code == status.HTTP_200_OK and status_code == "000":
+            if response.status_code == 200 and status_code == "000":
+                party = Party.from_str(response.json().get("ProviderID", "*"))
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response.json().get("ProviderID", "*")),
+                    party=party,
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
 
+            mapped_response = map_oicp_authorization_response_to_ocpi_221(
+                response.json(), token_id
+            )
             return (
                 response.status_code,
-                map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
+                mapped_response,
                 ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
 
@@ -309,6 +318,16 @@ class HubjectService:
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
+
+    @staticmethod
+    def save_to_session_cache(session: Session) -> None:
+        cached_session = CachedSession(
+            session_id=session.uid,
+            kwh=session.kwh,
+            timestamp=session.last_updated,
+            route_to_msp=Route(route_through_oicp=True),
+        )
+        store_session_cache(cached_session)
 
     @staticmethod
     def post_eroaming_charge_detail_record(

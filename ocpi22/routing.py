@@ -36,7 +36,7 @@ class Route:
     direct: bool = False
     version: OCPIVersion = OCPIVersion("2.2.1")
     to: Party = Party("", "")
-    is_hubject: bool = False
+    route_through_oicp: bool = False
 
     @property
     def through_hub(self) -> bool:

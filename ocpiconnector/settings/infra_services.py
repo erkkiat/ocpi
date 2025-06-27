@@ -1,5 +1,6 @@
 import os
 import socket
+import uuid
 from logging import getLogger
 
 import boto3
@@ -57,3 +58,4 @@ class CustomJsonFormatter(pythonjsonlogger.json.JsonFormatter):
     def add_fields(self, log_record, record, message_dict=None):
         super().add_fields(log_record, record, message_dict)
         log_record["docker_id"] = socket.gethostname()
+        log_record["event_id"] = str(uuid.uuid4())

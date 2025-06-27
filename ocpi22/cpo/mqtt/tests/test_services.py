@@ -9,12 +9,22 @@ import pytest
 import time_machine
 from kombu.exceptions import OperationalError
 
+from ocpi22.choices import AuthorizationEnum
 from ocpi22.cpo.api import process_meter_values
-from ocpi22.cpo.mqtt.schemas import MeterValues, EvseStatusUpdate
+from ocpi22.cpo.mqtt.schemas import (
+    MeterValues,
+    EvseStatusUpdate,
+    TokenAuthorizationMessageIn,
+    TokenAuthorizationResponse,
+)
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
     process_meter_values_data,
     process_status_update_data,
+    _find_token_by_uid,
+    process_authorize_data,
+    _authorize_and_publish,
+    create_and_save_session,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
@@ -24,7 +34,10 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
     TariffFactory,
+    TokenFactory,
+    CredentialsRoleFactory,
 )
+from ocpi22.tokens.auth import TokenAuthorization
 from ocpiconnector.party import Party
 
 
@@ -315,3 +328,581 @@ class TestMqttServices:
                 mock_save_and_send_evse_status_updates_task.assert_called_once_with(
                     kwargs=message_dict, expires=35
                 )
+
+
+class TestAuthorizeDataOverMqtt:
+    @pytest.mark.django_db
+    def test_find_token_by_uid_returns_none_when_no_token_exists(self):
+        result = _find_token_by_uid("NONEXISTENT_TOKEN")
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_find_token_by_uid_returns_token_when_exact_match_exists(self):
+        token = TokenFactory(uid="RANDOMGIBERISH9898")
+        result = _find_token_by_uid("RANDOMGIBERISH9898")
+        assert result == token
+
+
+class TestProcessAuthorizeData:
+    def test_process_authorize_data_exits_early_if_decode_message_fails(
+        self, auth_request_message
+    ):
+        auth_request_message.payload = b"\x80"
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services._decode_message", return_value=None
+            ) as mock_decode_message,
+            patch(
+                "ocpi22.cpo.mqtt.services._authorize_and_publish"
+            ) as mock_authorize_and_publish,
+        ):
+            result = process_authorize_data(auth_request_message)
+
+            mock_decode_message.assert_called_once_with(auth_request_message)
+            mock_authorize_and_publish.assert_not_called()
+            assert result is None
+
+    def test_process_authorize_data_returns_none_when_data_validation_fails(
+        self, auth_request_message, caplog
+    ):
+        auth_request_message.payload = b'{"invalid_data": "some_value"}'
+        result = process_authorize_data(auth_request_message)
+
+        assert result is None
+        assert any(
+            f"Failed to parse {auth_request_message.topic} message" in record.message
+            for record in caplog.records
+        )
+
+    def test_process_authorize_data_calls_authorize_and_publish_when_validation_succeeds(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        expected_token_auth = TokenAuthorizationMessageIn.model_validate(
+            decoded_message
+        )
+
+        with patch(
+            "ocpi22.cpo.mqtt.services._authorize_and_publish"
+        ) as mock_authorize_and_publish:
+            result = process_authorize_data(auth_request_message)
+
+            mock_authorize_and_publish.assert_called_once()
+            call_args = mock_authorize_and_publish.call_args[0]
+            assert call_args[0].token_id == expected_token_auth.token_id
+            assert call_args[0].evse_id == expected_token_auth.evse_id
+            assert call_args[0].correlation_id == expected_token_auth.correlation_id
+            assert call_args[1] == auth_request_message
+            assert result is None
+
+
+class TestAuthorizeAndPublish:
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_evse_not_found(
+        self, auth_request_message, caplog
+    ):
+        caplog.clear()
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            assert any(
+                f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found"
+                in record.message
+                for record in caplog.records
+            )
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_authorization_not_allowed(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        token = TokenFactory(uid=token_auth_message.token_id)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.NOT_ALLOWED
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=token),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ),
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session"
+            ) as mock_create_session,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            mock_create_session.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_authorization_is_none(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        token = TokenFactory(uid=token_auth_message.token_id)
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=token),
+            patch("ocpi22.cpo.mqtt.services.authorize_token", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session"
+            ) as mock_create_session,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            mock_create_session.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_creates_session_and_publishes_allowed_when_authorization_succeeds(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        token = TokenFactory(uid=token_auth_message.token_id)
+        session = Session(uid="test-session-123")
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=token),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ),
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ) as mock_create_session,
+            patch(
+                "ocpi22.cpo.mqtt.services.publish_auth_response"
+            ) as mock_publish_auth_response,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_create_session.assert_called_once_with(mock_authorization, evse)
+            mock_publish_auth_response.assert_called_once()
+
+            published_message = mock_publish_auth_response.call_args[0][0]
+            assert published_message.allowed == AuthorizationEnum.ALLOWED
+            assert published_message.correlation_id == token_auth_message.correlation_id
+            assert published_message.session_id == session.uid
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_uses_token_string_when_token_not_found_in_database(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+        session = Session(uid="test-session-456")
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ),
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_authorize_token.assert_called_once_with(
+                token_auth_message.token_id, evse.location
+            )
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_exception_occurs(
+        self, auth_request_message, caplog
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                side_effect=Exception("Test exception"),
+            ),
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            assert any(
+                "MQTT authorization failed miserably for auth message" in record.message
+                for record in caplog.records
+            )
+
+
+class TestPublishNotAllowedAuthResponse:
+    def test_publish_not_allowed_auth_response_creates_correct_message(self):
+        correlation_id = "test-correlation-123"
+
+        with patch("ocpi22.cpo.mqtt.services.publish_auth_response") as mock_publish:
+            from ocpi22.cpo.mqtt.services import _publish_not_allowed_auth_response
+
+            _publish_not_allowed_auth_response(correlation_id)
+
+            mock_publish.assert_called_once()
+            published_message = mock_publish.call_args[0][0]
+            assert isinstance(published_message, TokenAuthorizationResponse)
+            assert published_message.allowed == AuthorizationEnum.NOT_ALLOWED
+            assert published_message.correlation_id == correlation_id
+            assert published_message.session_id is None
+
+
+@pytest.mark.django_db
+class TestCreateAndSaveSession:
+    def test_create_and_save_session_creates_session_with_token_dict_authorization(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "test-token-123",
+            "valid": True,
+            "type": "RFID",
+            "contract_id": "contract-456",
+            "country_code": "FI",
+            "party_id": "MSP",
+        }
+
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="auth-ref-789",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert isinstance(result, Session)
+        assert result.authorization_reference == "auth-ref-789"
+        assert result.auth_method == "AUTH_REQUEST"
+        assert result.billed_to == authorization.ocpi_master
+        assert result.status == Session.PENDING
+        assert result.evse == evse
+        assert result.connector is None
+        assert result.location == evse.location
+        assert result.ocpi_master == location.ocpi_master
+        assert result.cdr_token.uid == "test-token-123"
+        assert result.cdr_token.token_type == "RFID"
+        assert result.cdr_token.contract_id == "contract-456"
+
+    def test_create_and_save_session_handles_missing_contract_id_in_token_dict(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "test-token-456",
+            "valid": False,
+            "type": "APP_USER",
+            "country_code": "DE",
+            "party_id": "EMO",
+        }
+
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="auth-ref-123",
+            auth_method="WHITELIST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.cdr_token.contract_id == "-"
+        assert result.cdr_token.uid == "test-token-456"
+        assert result.cdr_token.token_type == "APP_USER"
+        assert result.auth_method == "WHITELIST"
+
+    def test_create_and_save_session_with_token_object_authorization(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+        token = TokenFactory(uid="token-obj-789", contract_id="contract-999")
+
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token,
+            authorization_reference="auth-ref-obj",
+            auth_method="COMMAND",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert isinstance(result, Session)
+        assert result.authorization_reference == "auth-ref-obj"
+        assert result.auth_method == "COMMAND"
+        assert result.cdr_token.uid == token.uid
+        assert result.cdr_token.contract_id == token.contract_id
+        assert result.cdr_token.token_type == token.type
+
+    def test_create_and_save_session_creates_session_with_pending_status(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "status-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "NL",
+            "party_id": "ABC",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="status-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.status == Session.PENDING
+
+    def test_create_and_save_session_sets_evse_and_location_relationships_correctly(
+        self,
+    ):
+        location = LocationFactory(uid="location-123")
+        evse = EvseFactory(location=location, uid="evse-456")
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "evse-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "BE",
+            "party_id": "XYZ",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="evse-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.evse.uid == evse.uid
+        assert result.location.uid == location.uid
+        assert result.connector is None
+
+    def test_create_and_save_session_returns_session_object_with_generated_uid(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "return-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "FR",
+            "party_id": "EDF",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="return-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert isinstance(result, Session)
+        assert result.uid is not None
+        assert len(result.uid) > 0
+
+    def test_create_and_save_session_with_explicit_billed_to_parameter(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "billed-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "AT",
+            "party_id": "ENI",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="billed-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+            billed_to="AT*ENI",
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.authorization_reference == "billed-auth-ref"
+        assert result.auth_method == "AUTH_REQUEST"
+
+    def test_create_and_save_session_sets_credentials_and_master_relationships(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "credentials-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "ES",
+            "party_id": "IBE",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="credentials-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.credentials == credentials_role.credentials
+        assert result.billed_to == credentials_role
+        assert result.ocpi_master == location.ocpi_master
+
+    def test_create_and_save_session_creates_cdr_token_with_correct_ocpi_master(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "cdr-test-token",
+            "valid": True,
+            "type": "RFID",
+            "contract_id": "cdr-contract",
+            "country_code": "CH",
+            "party_id": "SWI",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="cdr-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        assert result.cdr_token.ocpi_master == credentials_role
+        assert result.cdr_token.uid == "cdr-test-token"
+        assert result.cdr_token.contract_id == "cdr-contract"
+        assert result.cdr_token.token_type == "RFID"
+
+    def test_create_and_save_session_persists_session_to_database(self):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        token_dict = {
+            "uid": "persist-test-token",
+            "valid": True,
+            "type": "RFID",
+            "country_code": "IT",
+            "party_id": "ENE",
+        }
+        authorization = TokenAuthorization(
+            allowed=AuthorizationEnum.ALLOWED,
+            token=token_dict,
+            authorization_reference="persist-auth-ref",
+            auth_method="AUTH_REQUEST",
+            ocpi_master=credentials_role,
+        )
+
+        result = create_and_save_session(authorization, evse)
+
+        saved_session = Session.objects.get(uid=result.uid)
+        assert saved_session.authorization_reference == "persist-auth-ref"
+        assert saved_session.cdr_token.uid == "persist-test-token"
+        assert saved_session.status == Session.PENDING
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_passes_location_instead_of_evse_to_authorize_token(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        token = TokenFactory(uid=token_auth_message.token_id)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message)
+            mock_authorize_token.assert_called_once_with(token, evse.location)

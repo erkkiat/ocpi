@@ -5,7 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, RootModel
 
-from ocpi22.choices import OcppStatusChoices
+from ocpi22.choices import OcppStatusChoices, AuthorizationEnum
 from ocpi22.routing import Route
 
 
@@ -43,6 +43,21 @@ class EvseStatusUpdate(BaseModel):
         json_encoders = {
             EvseStatus: lambda v: v.value,  # Convert Enum to its value
         }
+
+
+class TokenAuthorizationMessageIn(BaseModel):
+    token_id: str
+    evse_id: str
+    correlation_id: str
+
+
+class TokenAuthorizationResponse(BaseModel):
+    allowed: AuthorizationEnum
+    session_id: str | None = None
+    correlation_id: str
+
+    class Config:
+        use_enum_values = True
 
 
 @dataclass

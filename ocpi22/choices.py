@@ -74,7 +74,7 @@ class SessionStatus:
     RESERVATION = "RESERVATION"
 
 
-class TokenType:
+class TokenType(str, Enum):
     AD_HOC_USER = "AD_HOC_USER"
     RFID = "RFID"
     APP_USER = "APP_USER"
@@ -87,13 +87,6 @@ TOKEN_TYPE_CHOICES = [
     (TokenType.APP_USER, "Application user"),
     (TokenType.OTHER, "Other"),
 ]
-
-
-class TokenType(Enum):
-    AD_HOC_USER = "AD_HOC_USER"
-    RFID = "RFID"
-    APP_USER = "APP_USER"
-    OTHER = "OTHER"
 
 
 class OcpiModuleEnum(Enum):
