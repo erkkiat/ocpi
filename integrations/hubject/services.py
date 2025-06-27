@@ -206,7 +206,7 @@ class HubjectService:
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Exception occurred",
+                    "status_message": "",
                     "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
                     ),
