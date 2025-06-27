@@ -196,7 +196,7 @@ class HubjectService:
                 )
 
             mapped_response = map_oicp_authorization_response_to_ocpi_221(
-                response.json(), token_id
+                response_json, token_id
             )
             return (
                 response.status_code,
