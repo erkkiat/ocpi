@@ -228,7 +228,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def route_through_oicp(self):
-        return self.session.route_through_oicp()
+        return self.session.route_through_oicp
 
     charging_periods = models.JSONField(null=True, verbose_name=_("Charging periods"))
 
