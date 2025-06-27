@@ -28,14 +28,10 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.cpo.mqtt.schemas import CachedSession
-from ocpi22.cpo.session_cache import store_session_cache
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
-from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
-from ocpi22.routing import Route
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
@@ -315,13 +311,3 @@ class HubjectService:
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
-
-    @staticmethod
-    def save_to_session_cache(session: Session) -> None:
-        cached_session = CachedSession(
-            session_id=session.uid,
-            kwh=session.kwh,
-            timestamp=session.last_updated,
-            route_to_msp=Route(route_through_oicp=True),
-        )
-        store_session_cache(cached_session)

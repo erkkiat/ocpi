@@ -28,12 +28,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
-from integrations.hubject.services import HubjectService
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
+from ocpi22.routing import find_route_from_credentials
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -47,7 +47,12 @@ from util import (
     markdown_escape,
 )
 
-from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.choices import (
+    OcpiRolesEnum,
+    MessageTexts,
+    AuthorizationEnum,
+    OcpiModuleEnum,
+)
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
@@ -536,13 +541,12 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             hub_session_id=authorization.hub_session_id,
                         )
-                        if authorization.route_via_hubject:
-                            HubjectService().save_to_session_cache(session)
-                        else:
-                            save_to_session_cache(
-                                credentialsrole=route_through,
-                                session=session,
-                            )
+                        save_to_session_cache(
+                            route=find_route_from_credentials(
+                                route_through.credentials, OcpiModuleEnum.SESSIONS
+                            ),
+                            session=session,
+                        )
                         messages.success(
                             request,
                             "A new OCPI Session has been started in `PENDING` status. "

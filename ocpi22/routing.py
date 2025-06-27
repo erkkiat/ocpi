@@ -33,7 +33,6 @@ class Route:
     credentials_id: int = 0
     token_base64: str = ""
     alive: bool = True
-    direct: bool = False
     version: OCPIVersion = OCPIVersion("2.2.1")
     to: Party = Party("", "")
     route_through_oicp: bool = False
@@ -88,6 +87,9 @@ def find_route_from_credentials(
     ocpi_module: OcpiModuleEnum,
     role: Union[str, EndpointRoleEnum] = "RECEIVER",
 ) -> Route:
+    if credentials.roles.first() == settings.HUBJECT_OPERATOR_ID:
+        return Route(credentials_id=credentials.pk, route_through_oicp=True)
+
     from ocpi22.models.credentials import Endpoint
 
     endpoints = Endpoint.objects.filter(
@@ -105,7 +107,6 @@ def find_route_from_credentials(
             identifier=ocpi_module,
             credentials_id=credentials.pk,
             token_base64=credentials.theirs_base64(),
-            direct=True,
             alive=credentials.responding(),
             version=OCPIVersion(credentials.version),
             to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
@@ -130,7 +131,6 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
             identifier=ocpi_module,
             credentials_id=credentials.pk,
             token_base64=credentials.theirs_base64(),
-            direct=False,
             alive=credentials.responding(),
             version=credentials.version,
             to=credentials.get_party_for_role(OcpiRolesEnum.HUB),
@@ -244,7 +244,6 @@ def process_incoming_remote_command_at_hub(request: HttpRequest, data: str) -> s
                 identifier=OcpiModuleEnum.COMMANDS,
                 credentials_id=credentials.pk,
                 token_base64=credentials.theirs_base64(),
-                direct=True,
                 alive=credentials.responding(),
                 to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
                 version=credentials.version,

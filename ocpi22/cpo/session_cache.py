@@ -1,9 +1,7 @@
 from cachetools import cached, TTLCache
 from django.conf import settings
 
-from ocpi22.choices import OcpiModuleEnum
 from ocpi22.cpo.mqtt.schemas import CachedSession
-from ocpi22.routing import find_route_from_credentials
 from util import RedisStore
 
 session_store = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -14,14 +12,12 @@ def get_cached_session(session_id) -> CachedSession:
     return session_store.retrieve(session_id)
 
 
-def save_to_session_cache(credentialsrole, session):
+def save_to_session_cache(route, session):
     cached_session = CachedSession(
         session_id=session.uid,
         kwh=session.kwh,
         timestamp=session.last_updated,
-        route_to_msp=find_route_from_credentials(
-            credentialsrole.credentials, OcpiModuleEnum.SESSIONS
-        ),
+        route_to_msp=route,
     )
     store_session_cache(cached_session)
 

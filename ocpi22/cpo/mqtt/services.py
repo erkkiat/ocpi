@@ -7,7 +7,7 @@ from functools import wraps
 from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
 
-from ocpi22.choices import AuthorizationEnum
+from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
 from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
@@ -24,6 +24,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
 from ocpiconnector.party import Party
@@ -201,7 +202,9 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         ocpi_master=evse.location.ocpi_master,
     )
     save_to_session_cache(
-        credentialsrole=session.credentials.roles.first(),
+        route=find_route_from_credentials(
+            credentials=session.credentials, ocpi_module=OcpiModuleEnum.SESSIONS
+        ),
         session=session,
     )
     return session
