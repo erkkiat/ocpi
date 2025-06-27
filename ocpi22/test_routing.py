@@ -9,7 +9,7 @@ from ocpi22.tests.factories import (
 
 
 @pytest.mark.django_db
-def test_route_through_ocpi(ocpi_master):
+def test_routing_through_ocpi_succeeds(ocpi_master):
     route = find_route_from_credentials(
         ocpi_master.credentials, OcpiModuleEnum.SESSIONS
     )
@@ -20,7 +20,7 @@ def test_route_through_ocpi(ocpi_master):
 
 
 @pytest.mark.django_db
-def test_hub_credentials_route_through_oicp(hubject_credentials):
+def test_routing_through_oicp_succeeds(hubject_credentials):
     route = find_route_from_credentials(hubject_credentials, OcpiModuleEnum.SESSIONS)
     assert isinstance(route, Route)
     assert route.credentials_id == hubject_credentials.pk
@@ -28,7 +28,7 @@ def test_hub_credentials_route_through_oicp(hubject_credentials):
 
 
 @pytest.mark.django_db
-def test_raises_value_error_when_no_endpoints(monkeypatch):
+def test_routing_raises_value_error_when_no_endpoints(monkeypatch):
     # Not using CredentialsRoleFactory to avoid creating any Endpoints
     credentials = CredentialsFactory()
     CredentialsRoleFactoryWithoutCredentials(
