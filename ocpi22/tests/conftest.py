@@ -364,3 +364,8 @@ def solid_tariff_smp1_msp2_data(operator_fi_cpo, msp_de_icd):
         "operator": operator_fi_cpo,
         "last_updated": "2024-09-22T12:30:30Z",
     }
+
+
+# @pytest.fixture
+# def clear_authorization_cache():
+#     _authorize_token.cache_clear()

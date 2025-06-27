@@ -212,7 +212,11 @@ def authorize_token(
         authorization: TokenAuthorization = _authorize_token(
             token, location, request=request
         )
-        if authorization.is_positive and authorization.authorization_reference:
+        if (
+            authorization
+            and authorization.is_positive
+            and authorization.authorization_reference
+        ):
             messages.info(
                 request,
                 f'**{markdown_escape(str(authorization.billed_to))}** responded **"{authorization.allowed}"** and '

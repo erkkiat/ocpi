@@ -46,7 +46,7 @@ class Route:
             self.version = OCPIVersion(self.version)
 
     def __bool__(self):
-        return bool(self.url and self.credentials_id)
+        return bool((self.url or self.route_through_oicp) and self.credentials_id)
 
     @property
     def credentials(self):
@@ -87,7 +87,7 @@ def find_route_from_credentials(
     ocpi_module: OcpiModuleEnum,
     role: Union[str, EndpointRoleEnum] = "RECEIVER",
 ) -> Route:
-    if credentials.roles.first() == settings.HUBJECT_OPERATOR_ID:
+    if str(credentials.roles.first().get_party()) == settings.HUBJECT_OPERATOR_ID:
         return Route(credentials_id=credentials.pk, route_through_oicp=True)
 
     from ocpi22.models.credentials import Endpoint
