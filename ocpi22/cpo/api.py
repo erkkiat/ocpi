@@ -30,6 +30,7 @@ from rest_framework.exceptions import ValidationError
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.services import HubjectService
 from ocpi22.cpo.schemas import LocationIn, Error
+from ocpi22.cpo.services import CdrService
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
@@ -836,9 +837,9 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
 
                     # Create the corresponding CDR (it will also be sent to other party)
-                    from ocpi22.models.cdr import Cdr
-
-                    Cdr.from_session(session)  # Todo: Do this in a celery task
+                    CdrService.get_cdr_from_session(
+                        session
+                    )  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,
