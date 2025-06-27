@@ -2037,6 +2037,9 @@ class CredentialsTest(TestCase):
     maxDiff = 99999
 
     def test_cached_partylist(self):
+        # Clear cache to ensure test isolation during parallel execution
+        find_endpoints_by_roles.cache_clear()
+
         location_url = urljoin("http://localhost:8001", reverse("location-list"))
         token_url = urljoin("http://localhost:8001", reverse("token-list"))
         tariff_url = urljoin("http://localhost:8001", reverse("tariff-list"))
