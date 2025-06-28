@@ -9,6 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+from django.conf import settings
 from pydantic import (
     BaseModel,
     Field,
@@ -18,6 +19,7 @@ from pydantic import (
     RootModel,
     field_validator,
     model_validator,
+    ConfigDict,
 )
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
@@ -1007,8 +1009,14 @@ class ERoamingChargeDetailRecord(BaseModel):
     HubProviderID: Optional[ProviderID] = None
 
 
-class ERoamingChargingNotificationEnd(BaseModel):
-    Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
+class ChargingNotificationBase(BaseModel):
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda date_time: date_time.strftime(settings.OICP_DATE_FORMAT)
+        }
+    )
+
+    Type: ChargingNotificationType
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
@@ -1020,6 +1028,11 @@ class ERoamingChargingNotificationEnd(BaseModel):
     )
     Identification: Optional[IdentificationClass] = None
     EvseID: EvseID
+    OperatorID: OperatorID
+
+
+class ERoamingChargingNotificationEnd(ChargingNotificationBase):
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
     ChargingStart: Optional[datetime] = Field(
         None, description="The date and time at which the charging process started."
     )
@@ -1045,7 +1058,6 @@ class ERoamingChargingNotificationEnd(BaseModel):
         None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
-    OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
     PenaltyTimeStart: Optional[datetime] = Field(
         None,
@@ -1109,20 +1121,7 @@ class ERoamingChargingNotificationEnd(BaseModel):
         return self
 
 
-class ERoamingChargingNotificationError(BaseModel):
-    Type: ChargingNotificationType
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[IdentificationClass] = None
-    OperatorID: OperatorID
-    EvseID: EvseID
+class ERoamingChargingNotificationError(ChargingNotificationBase):
     ErrorType: ErrorType
     ErrorAdditionalInfo: Optional[str] = Field(
         None,
@@ -1130,19 +1129,8 @@ class ERoamingChargingNotificationError(BaseModel):
     )
 
 
-class ERoamingChargingNotificationProgress(BaseModel):
+class ERoamingChargingNotificationProgress(ChargingNotificationBase):
     Type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[IdentificationClass] = None
-    EvseID: EvseID
     ChargingStart: datetime = Field(
         ..., description="The date and time at which the charging process started."
     )
@@ -1166,7 +1154,6 @@ class ERoamingChargingNotificationProgress(BaseModel):
         None, description="The starting meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
-    OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
 
     @model_validator(mode="after")
@@ -1189,19 +1176,8 @@ class ERoamingChargingNotificationProgress(BaseModel):
         return self
 
 
-class ERoamingChargingNotificationStart(BaseModel):
+class ERoamingChargingNotificationStart(ChargingNotificationBase):
     Type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[IdentificationClass] = None
-    EvseID: EvseID
     ChargingStart: datetime = Field(
         ..., description="The date and time at which the charging process started."
     )
@@ -1212,7 +1188,6 @@ class ERoamingChargingNotificationStart(BaseModel):
     MeterValueStart: Optional[float] = Field(
         None, description="The starting meter value in kWh."
     )
-    OperatorID: OperatorID
     PartnerProductID: Optional[ProductID] = None
 
     @model_validator(mode="after")
