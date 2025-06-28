@@ -47,7 +47,6 @@ from integrations.hubject.schemas import (
 )
 from integrations.hubject.services import (
     HubjectService,
-    map_oicp_authorization_response_to_ocpi_221,
 )
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
@@ -883,51 +882,3 @@ class TestOICPDynamicPricingService:
                 ),
             ],
         )
-
-
-async def test_map_oicp_authorization_response_to_ocpi_221_success():
-    token_id = "TEST123456"
-    oicp_response = {
-        "AuthorizationStatus": "Authorized",
-        "ProviderID": "FI*MSP",
-        "StatusCode": {"Code": "000"},
-        "SessionID": "HUBJECT-SESSION-1234",
-    }
-
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-
-    assert result is not None
-    assert "data" in result
-    data = result["data"]
-    assert data["allowed"] == "ALLOWED"
-    assert data["authorization_reference"] == "HUBJECT-SESSION-1234"
-    assert data["hubject_session_id"] == "HUBJECT-SESSION-1234"
-    assert data["token"]["uid"] == token_id
-    assert data["token"]["country_code"] == "FI"
-    assert data["token"]["party_id"] == "MSP"
-    assert data["token"]["issuer"] == "FI*MSP"
-
-
-async def test_map_oicp_authorization_response_to_ocpi_221_failure():
-    token_id = "TEST123456"
-    oicp_response = {
-        "AuthorizationStatus": "NotAuthorized",
-        "ProviderID": "FI*MSP",
-        "StatusCode": {"Code": "100"},  # Not a success code
-        "SessionID": "HUBJECT-SESSION-1234",
-    }
-
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-    assert result is None
-
-
-async def test_map_oicp_authorization_response_to_ocpi_221_missing_status():
-    token_id = "TEST123456"
-    oicp_response = {
-        "ProviderID": "FI*MSP",
-        "StatusCode": {"Code": "000"},
-        "SessionID": "HUBJECT-SESSION-1234",
-    }
-
-    result = await map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
-    assert result is None

@@ -684,10 +684,7 @@ class AuthorizationInfoSerializer(serializers.Serializer):
         required=False, allow_blank=True, allow_null=True
     )
     info = DisplayTextSerializer(required=False, allow_null=True, many=True)
-
-    hubject_session_id = serializers.CharField(required=False, allow_null=True)
-    emp_partner_session_id = serializers.CharField(required=False, allow_null=True)
-    cpo_partner_session_id = serializers.CharField(required=False, allow_null=True)
+    hub_session_id = serializers.CharField(required=False, allow_null=True)
 
 
 class InvoicingCallbackSerializer(CallbacksSerializer):

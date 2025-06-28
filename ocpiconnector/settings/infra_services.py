@@ -1,10 +1,13 @@
 import os
+import socket
+import uuid
 from logging import getLogger
 
 import boto3
 import time
 import threading
 
+import pythonjsonlogger
 
 logger = getLogger(__name__)
 
@@ -49,3 +52,10 @@ class RDSTokenManager:
                 )
                 cls._token_expiry = current_time + 12 * 60
             return database_url, database_user, cls._token
+
+
+class CustomJsonFormatter(pythonjsonlogger.json.JsonFormatter):
+    def add_fields(self, log_record, record, message_dict=None):
+        super().add_fields(log_record, record, message_dict)
+        log_record["docker_id"] = socket.gethostname()
+        log_record["event_id"] = str(uuid.uuid4())

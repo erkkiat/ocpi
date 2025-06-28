@@ -28,12 +28,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
-from integrations.hubject.services import HubjectService
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
 from ocpi22.models import enum
-from ocpi22.ocpi.auth import NinjaBasicAuth
+from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
+from ocpi22.routing import find_route_from_credentials
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -47,7 +47,12 @@ from util import (
     markdown_escape,
 )
 
-from ocpi22.choices import OcpiRolesEnum, MessageTexts, AuthorizationEnum
+from ocpi22.choices import (
+    OcpiRolesEnum,
+    MessageTexts,
+    AuthorizationEnum,
+    OcpiModuleEnum,
+)
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
@@ -89,7 +94,7 @@ from pprint import PrettyPrinter
 
 from ocpi22.webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
-from ocpiconnector.party import party_from_str
+from ocpiconnector.party import party_from_str, Party
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -479,6 +484,15 @@ class ChargePointViewSet(FlowchartViewSet):
         """
         try:
             if request.method == "POST":
+                data = dict(
+                    allowed=AuthorizationEnum.NOT_ALLOWED,
+                    token="",
+                    responding_party="*",
+                    billed_to="*",
+                    authorization_reference=None,
+                    auth_method="AUTH_REQUEST",
+                    session_id=None,
+                )
                 serializer = AuthorizationSerializer(data=request.data)
                 if serializer.is_valid():
                     next_url = reverse("chargepoint-start-transaction")
@@ -487,6 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     token: Union[Token, AdhocToken, str] = (
                         serializer.validated_data.get("token")
                     )
+                    data["token"] = get_token_id(token)
                     authorization: TokenAuthorization = authorize_token(
                         token, evse.location, request=request
                     )
@@ -499,7 +514,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         token_admin = reverse("admin:ocpi22_token_changelist")
                         messages.error(
                             request,
-                            f'The response was "{authorization.allowed}" for the Token "{token}".',
+                            f'The response was "{authorization.allowed if authorization else "N/A"}" for the Token "{token}".',
                         )
                         messages.info(
                             request,
@@ -516,11 +531,15 @@ class ChargePointViewSet(FlowchartViewSet):
                             ocpi_master=authorization.ocpi_master,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
-                        assert (
-                            authorization.ocpi_master
-                        ), f"No OCPI Master found: {authorization.ocpi_master}"
+                        route_through = get_credentialsrole(
+                            party=Party.from_str(authorization.responding_party)
+                        )
+                        if not route_through:
+                            raise ValueError(
+                                f"CredentialsRole for {authorization.responding_party} not found in the database."
+                            )
                         session = create_session(
-                            credentials=authorization.ocpi_master.credentials,
+                            credentials=route_through.credentials,
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
                             billed_to=authorization.ocpi_master,
@@ -530,18 +549,14 @@ class ChargePointViewSet(FlowchartViewSet):
                             connector_id=None,
                             location_id=evse.location.uid,
                             ocpi_master=authorization.ocpi_master,
-                            hubject_session_id=authorization.hubject_session_id,
-                            emp_partner_session_id=authorization.emp_partner_session_id,
-                            cpo_partner_session_id=authorization.cpo_partner_session_id,
+                            hub_session_id=authorization.hub_session_id,
                         )
-                        if authorization.is_via_hubject:
-                            HubjectService().save_to_session_cache(session)
-                        else:
-                            save_to_session_cache(
-                                credentialsrole=authorization.ocpi_master,
-                                session=session,
-                                token=token,
-                            )
+                        save_to_session_cache(
+                            route=find_route_from_credentials(
+                                route_through.credentials, OcpiModuleEnum.SESSIONS
+                            ),
+                            session=session,
+                        )
                         messages.success(
                             request,
                             "A new OCPI Session has been started in `PENDING` status. "
@@ -552,18 +567,22 @@ class ChargePointViewSet(FlowchartViewSet):
                             f"which has been authorized. The authorization expires in 15 minutes.",
                         )
 
-                    data = dict(
-                        allowed=authorization.allowed,
-                        token=authorization.token.get("uid"),
-                        responding_party=authorization.responding_party,
-                        billed_to=authorization.billed_to,
-                        authorization_reference=authorization.authorization_reference,
-                        auth_method=authorization.auth_method,
-                        session_id=session.uid if session else None,
-                    )
+                    if authorization:
+                        data = dict(
+                            allowed=authorization.allowed,
+                            token=authorization.token.get("uid"),
+                            responding_party=authorization.responding_party,
+                            billed_to=authorization.billed_to,
+                            authorization_reference=authorization.authorization_reference,
+                            auth_method=authorization.auth_method,
+                            session_id=session.uid if session else None,
+                        )
                     serializer = CPOAuthorizationResponseSerializer(instance=data)
                     return Response(
-                        serializer.data, status=authorization.get_http_status()
+                        serializer.data,
+                        status=authorization.get_http_status()
+                        if authorization
+                        else 401,
                     )
                 else:
                     return Response(
@@ -576,10 +595,10 @@ class ChargePointViewSet(FlowchartViewSet):
             )
 
         except (ObjectDoesNotExist, ValueError, OSError) as e:
-            logger.exception("Exception in CPO authorize()")
+            logger.exception("Exception in CPO authorize()", extra={"error": str(e)})
             evse_admin = reverse("admin:ocpi22_evse_changelist")
             token_admin = reverse("admin:ocpi22_token_changelist")
-            messages.info(  # what is this ?
+            messages.info(
                 request,
                 "Seems that the ID for the EVSE or the Token was not quite correct. You can "
                 f'check <a target="evseadmin" href="{evse_admin}">the list of known EVSEs</a> '

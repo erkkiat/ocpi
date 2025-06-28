@@ -161,7 +161,7 @@ def get_credentialsrole(
         # Is this (one of) our identity?
         if str(party) in ocpi_identities:
             business_name = os.environ.get("BUSINESS_NAME", "N/A")
-            website = os.environ.get("BUSINESS_WEBSITE", "")
+            website = os.environ.get("BUSINESS_WEBSITE", None)
         credentialsrole = create_credentialsrole(
             Party(
                 country_code=party.country_code.upper(), party_id=party.party_id.upper()

@@ -80,9 +80,6 @@ class TokenType(str, Enum):
     APP_USER = "APP_USER"
     OTHER = "OTHER"
 
-    def __str__(self):
-        return self.value
-
 
 TOKEN_TYPE_CHOICES = [
     (TokenType.AD_HOC_USER, "Ad-hoc user"),
@@ -529,3 +526,13 @@ class EnergySourceCategory(Enum):
     SOLAR = "SOLAR"
     WIND = "WIND"
     WATER = "WATER"
+
+
+class RoamingProtocol(Enum):
+    OCPI = "Open Charge Point Interface"
+    OICP = "Open InterCharge Protocol"
+
+
+ROAMING_PROTOCOL_CHOICES = [
+    (protocol.name, protocol.value) for protocol in RoamingProtocol
+]

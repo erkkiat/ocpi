@@ -8,6 +8,7 @@ from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
+from ocpiconnector.settings.infra_services import CustomJsonFormatter
 
 setup_sentry()
 
@@ -373,7 +374,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "()": CustomJsonFormatter,
             "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
@@ -397,13 +398,17 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
+        "ocpiconnector.logging_middleware": {
+            "level": "INFO",
+            "propagate": False,
+            "handlers": ["console"],
+        },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
             "propagate": True,
         },
     },
 }
-
 
 # OAuth2
 LOGIN_URL = "/admin/login/"
@@ -491,11 +496,10 @@ HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
-HUBJECT_MAX_ID_LENGTH = 36
+HUB_ID_MAX_LENGTH = 36
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
-
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
@@ -512,3 +516,18 @@ AXES_LOCKOUT_PARAMETERS = [
 AXES_ENABLE_ADMIN = True
 
 NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")
+LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
+    "/api-auth/login/",
+    "/accounts/login/",
+    "/accounts/logout/",
+    "/accounts/password_change/",
+    "/accounts/password_reset/",
+    "/admin/login/",
+    "/admin/logout/",
+    "/api/token/",
+    "/api/token/refresh/",
+    "/api/token/verify/",
+    "/portal/login/",
+    "/api-auth/login/",
+    "/portal/admin/",
+]
