@@ -201,7 +201,7 @@ def authorize_token(
                         TokenType.AD_HOC_USER.value,
                         session.billed_to,
                     ),
-                    responding_party=session.billed_to.party_str(),
+                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
@@ -212,7 +212,11 @@ def authorize_token(
         authorization: TokenAuthorization = _authorize_token(
             token, location, request=request
         )
-        if authorization.is_positive and authorization.authorization_reference:
+        if (
+            authorization
+            and authorization.is_positive
+            and authorization.authorization_reference
+        ):
             messages.info(
                 request,
                 f'**{markdown_escape(str(authorization.billed_to))}** responded **"{authorization.allowed}"** and '

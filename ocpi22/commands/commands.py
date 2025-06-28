@@ -155,7 +155,6 @@ class CommandsViewSet(GenericViewSet):
                 authorization_method=enum.AuthMethodChoices.COMMAND,
                 credentials=request.credentials,
                 connector_id=connector_id,
-                ocpi_master=billed_to,
             )
         )
         params.pop("token")

@@ -2,8 +2,10 @@ from datetime import datetime
 
 import pytest
 import pytz
+from django.conf import settings
 
 from ocpi22.cpo.schemas import LocationIn, GeoLocation, EVSE, Connector as ConnectorIn
+from ocpi22.models.credentials import Credentials
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.models.session import Session
@@ -14,6 +16,7 @@ from ocpi22.tests.factories import (
     SolidTariffFactory,
     CredentialsRoleFactory,
 )
+from ocpiconnector.party import Party
 
 
 def create_ocpi_session_with_tariff() -> Session:
@@ -37,6 +40,20 @@ def ocpi_master():
     get_credentialsrole.cache_clear()
 
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
+
+
+@pytest.fixture
+def hubject_credentials() -> Credentials:
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
+    party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
+
+    return CredentialsRoleFactory(
+        country_code=party.country_code,
+        party_id=party.party_id,
+        role="HUB",
+        business_details__name="Hubject",
+    ).credentials
 
 
 @pytest.fixture
