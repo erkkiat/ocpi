@@ -79,51 +79,6 @@ def validate_meter_values(
             )
 
 
-async def map_oicp_authorization_response_to_ocpi_221(
-    oicp_response: dict | None, token_id: str
-) -> dict | None:
-    if not oicp_response:
-        return None
-    authorization_status = oicp_response.get("AuthorizationStatus")
-    country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
-    status_code = oicp_response.get("StatusCode", {}).get("Code")
-    status_ok = bool(status_code == "000")
-
-    if authorization_status and status_ok and country_code and party_id:
-        hubject_session_id = oicp_response.get("SessionID")
-        emp_partner_session_id = oicp_response.get("EMPPartnerSessionID")
-        data = {
-            "allowed": {"Authorized": "ALLOWED"}.get(
-                authorization_status, "NOT_ALLOWED"
-            ),
-            "authorization_reference": emp_partner_session_id or hubject_session_id,
-            "hubject_session_id": hubject_session_id,
-            "emp_partner_session_id": emp_partner_session_id,
-            "cpo_partner_session_id": oicp_response.get("CPOPartnerSessionID"),
-            "token": {
-                "contract_id": "N/A",
-                "country_code": country_code,
-                "party_id": party_id,
-                "default_profile_type": "REGULAR",
-                "issuer": f"{country_code}*{party_id}",
-                "language": settings.LANGUAGE_CODE.upper(),
-                "type": "RFID",
-                "uid": token_id,
-                "valid": True,
-                "whitelist": "NEVER",
-                "last_updated": datetime.now(pytz.utc).strftime(
-                    settings.OCPI_DATE_FORMAT
-                ),
-            },
-        }
-        return {"data": data}
-
-    logger.info(
-        f"Hubject authorization failed with status code {status_code} and authorization status {authorization_status}"
-    )
-    return None
-
-
 class HubjectService:
     client = HubjectClient()
     converter = SolidToHubjectConverter()
