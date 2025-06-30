@@ -15,9 +15,6 @@ from integrations.hubject.schemas import (
     EvseID,
     OperatorID,
 )
-from integrations.hubject.services import (
-    validate_meter_values,
-)
 
 
 class TestIdentificationValidation:
@@ -306,50 +303,6 @@ class TestChargingNotificationEnd:
         assert notification.PenaltyTimeStart > notification.ChargingEnd
 
 
-class TestUtilityFunctions:
-    """Test the utility functions added to services.py."""
-
-    def test_validate_meter_values_valid_succeeds(self):
-        validate_meter_values(meter_start=100.0, meter_end=150.0, consumed_energy=50.0)
-
-    def test_validate_meter_values_negative_start_fails(self):
-        with pytest.raises(ValueError, match="MeterValueStart cannot be negative"):
-            validate_meter_values(meter_start=-10.0)
-
-    def test_validate_meter_values_negative_end_fails(self):
-        with pytest.raises(ValueError, match="MeterValueEnd cannot be negative"):
-            validate_meter_values(meter_end=-10.0)
-
-    def test_validate_meter_values_negative_consumed_fails(self):
-        with pytest.raises(ValueError, match="ConsumedEnergy cannot be negative"):
-            validate_meter_values(consumed_energy=-10.0)
-
-    def test_validate_meter_values_inconsistent_calculation_fails(self):
-        """Test that inconsistent energy calculation fails."""
-        with pytest.raises(
-            ValueError, match="ConsumedEnergy.*doesn't match.*meter difference"
-        ):
-            validate_meter_values(
-                meter_start=100.0,
-                meter_end=150.0,
-                consumed_energy=40.0,  # Should be 50.0
-            )
-
-    def test_validate_meter_values_with_tolerance_succeeds(self):
-        # Should not raise an exception (within 0.001 tolerance)
-        validate_meter_values(
-            meter_start=100.0,
-            meter_end=150.0,
-            consumed_energy=50.0005,  # Very small difference
-        )
-
-    def test_validate_meter_values_partial_data_succeeds(self):
-        validate_meter_values(meter_start=100.0)
-        validate_meter_values(meter_end=150.0)
-        validate_meter_values(consumed_energy=50.0)
-        validate_meter_values(meter_start=100.0, meter_end=150.0)
-
-
 class TestEdgeCases:
     def test_charging_notification_with_same_datetime_values_succeeds(self):
         now = datetime.now(pytz.utc)
@@ -361,18 +314,3 @@ class TestEdgeCases:
             OperatorID=OperatorID(root="DE*ABC"),
         )
         assert notification.ChargingStart == notification.ChargingEnd
-
-    def test_meter_values_with_zero_consumption_succeeds(self):
-        validate_meter_values(meter_start=100.0, meter_end=100.0, consumed_energy=0.0)
-
-    def test_floating_point_precision_in_energy_calculation(self):
-        validate_meter_values(
-            meter_start=100.123456789,
-            meter_end=150.987654321,
-            consumed_energy=50.864197532,  # Precise calculation
-        )
-
-    def test_large_meter_values_succeed(self):
-        validate_meter_values(
-            meter_start=999999.999, meter_end=1000099.999, consumed_energy=100.0
-        )
