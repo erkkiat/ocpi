@@ -191,7 +191,7 @@ class HubjectService:
             OperatorID=OperatorID(root=operator_id),
             Identification=IdentificationClass(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root="7568290FFF765F")
+                    UID=UID(root=token_id)
                 )
             ),
         )
