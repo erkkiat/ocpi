@@ -21,7 +21,7 @@ def env_bool(key, default=False) -> bool:
 
 DEBUG = env_bool("DEBUG", False)
 
-RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
+RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", True)
 
 FIXIE_URL = os.getenv("FIXIE_URL", "")
 os.environ["https_proxy"] = FIXIE_URL
@@ -390,6 +390,11 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
+        "": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
         "django": {
             "level": "INFO",
             "propagate": True,
@@ -397,11 +402,6 @@ LOGGING = {
         "django.request": {
             "level": "INFO",
             "propagate": True,
-        },
-        "ocpiconnector.logging_middleware": {
-            "level": "INFO",
-            "propagate": False,
-            "handlers": ["console"],
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
@@ -499,7 +499,6 @@ HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
 HUB_ID_MAX_LENGTH = 36
 
 FIXIE_URL = os.environ.get("FIXIE_URL", "")
-
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
