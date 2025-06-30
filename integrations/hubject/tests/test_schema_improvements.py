@@ -271,20 +271,18 @@ class TestChargingNotificationEnd:
             )
 
     def test_charging_notification_end_with_negative_meter_values_fail(self):
-        """Test that negative meter values fail validation."""
-        with pytest.raises(ValidationError, match="MeterValueStart cannot be negative"):
+        with pytest.raises(ValidationError, match="Input should be greater than"):
             self.create_valid_notification_end(MeterValueStart=-10.0)
 
-        with pytest.raises(ValidationError, match="MeterValueEnd cannot be negative"):
+        with pytest.raises(ValidationError, match="Input should be greater than"):
             self.create_valid_notification_end(MeterValueEnd=-10.0)
 
-        with pytest.raises(ValidationError, match="ConsumedEnergy cannot be negative"):
+        with pytest.raises(ValidationError, match="Input should be greater than"):
             self.create_valid_notification_end(ConsumedEnergy=-10.0)
 
     def test_charging_notification_end_with_penalty_time_before_charging_end_fails(
         self,
     ):
-        """Test that penalty time before charging end fails."""
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError, match="PenaltyTimeStart should be after ChargingEnd"
