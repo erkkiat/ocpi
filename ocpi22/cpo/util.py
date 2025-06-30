@@ -5,7 +5,7 @@ from ocpi22.models.location import Evse
 from ocpiconnector.ocpi_identities import get_our_party
 
 
-def _find_our_evse(evse_uid) -> Evse:
+def find_our_evse(evse_uid) -> Evse:
     """
     Return our latest EVSE that matches the given UID
     This function gets expensive with a large number of EVSEs, consider simplifying the query or preloading the data

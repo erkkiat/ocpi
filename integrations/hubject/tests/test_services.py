@@ -45,7 +45,9 @@ from integrations.hubject.schemas import (
     HubjectDefaultTariff,
     HubjectPriceComponent,
 )
-from integrations.hubject.services import HubjectService
+from integrations.hubject.services import (
+    HubjectService,
+)
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Location

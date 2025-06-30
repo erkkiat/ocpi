@@ -12,7 +12,7 @@ from ocpi22.choices import (
 )
 from ocpi22.commands.serializers import CommandResultBaseSerializer
 from ocpi22.cpo.services import SolidTariffService
-from ocpi22.cpo.util import _find_our_evse
+from ocpi22.cpo.util import find_our_evse
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse
@@ -133,7 +133,7 @@ class ConnectorTariffIdSerializer(serializers.Serializer):
 
 class EvseSerialnumberSerializer(fields.CharField):
     def to_internal_value(self, evse_uid):
-        return _find_our_evse(evse_uid)
+        return find_our_evse(evse_uid)
 
 
 class TokenIdSerializer(fields.CharField):

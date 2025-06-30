@@ -6,9 +6,13 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
+from aiohttp import ClientError
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.db import close_old_connections
+from rest_framework import status
 
+from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -41,19 +45,21 @@ async def post_request(
     session, url, data, ocpi_master, headers=None, ssl_context=None
 ) -> (int, dict):
     headers = headers or {}
+    response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
     headers.update({"Content-Type": "application/json", "Accept": "application/json"})
-    async with session.post(
-        url, json=data, headers=headers, ssl=ssl_context
-    ) as response:
-        status = response.status
-        try:
-            json_data = await response.json()
-        except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            logger.error(f"Cannot decode JSON response from url {url}")
-            json_data = None
+    try:
+        response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        response_status = response.status
+        json_data = await response.json()
+    except (aiohttp.ContentTypeError, json.JSONDecodeError):
+        logger.error(f"Cannot decode JSON response from url {url}")
+        json_data = None
+    except ClientError:
+        logger.error(f"Cannot connect to {url} for token authorization")
+        return 0, None, None
 
-        logger.info("Response from %s status: %s", url, status, extra=json_data)
-        return status, json_data, ocpi_master
+    logger.info("Response from %s status: %s", url, response_status, extra=json_data)
+    return response_status, json_data, ocpi_master
 
 
 def process_task_result(successful_task):
@@ -156,7 +162,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
                 ),
-                name=str(Party(country_code, party_id)),
+                name=f"{country_code}*{party_id}",
             )
             for (
                 url,
@@ -166,6 +172,17 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 _,  # credentials not needed anymore
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
+
+        tasks.append(
+            # Do SSL context per request, Hubject/Gireve separately
+            asyncio.create_task(
+                HubjectService().post_authorize_request(
+                    operator_id=str(sender),
+                    token_id=token_id,
+                ),
+                name=settings.HUBJECT_OPERATOR_ID,
+            )
+        )
 
         while tasks:
             done_tasks, pending_tasks = await asyncio.wait(
@@ -177,9 +194,12 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 try:
                     result = process_task_result(task)
                     if result:
-                        break
+                        break  # For loop
                 except Exception:
                     logger.exception(f"Task {task.get_name()} failed")
+
+            if result:
+                break  # While loop
 
             if not pending_tasks:
                 # No more tasks pending_tasks, break the loop
@@ -189,7 +209,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
         for task in pending_tasks:
-            logger.info(f"Cancelling task {task.get_name()}", task.cancel())
+            logger.debug(f"Cancelling task {task.get_name()}", task.cancel())
 
         return result
 
