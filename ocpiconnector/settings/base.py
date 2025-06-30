@@ -21,7 +21,7 @@ def env_bool(key, default=False) -> bool:
 
 DEBUG = env_bool("DEBUG", False)
 
-RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", True)
+RENDER_ONLY_JSON = env_bool("RENDER_ONLY_JSON", False)
 
 FIXIE_URL = os.getenv("FIXIE_URL", "")
 os.environ["https_proxy"] = FIXIE_URL
