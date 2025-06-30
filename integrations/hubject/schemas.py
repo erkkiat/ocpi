@@ -21,6 +21,7 @@ from pydantic import (
     model_validator,
     ConfigDict,
 )
+from pydantic import PositiveFloat
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
 
@@ -1047,14 +1048,14 @@ class ERoamingChargingNotificationEnd(ChargingNotificationBase):
         None,
         description="The date and time at which the session ended, e.g. swipe of RFID or cable disconnected.",
     )
-    ConsumedEnergy: Optional[float] = Field(
+    ConsumedEnergy: Optional[PositiveFloat] = Field(
         None,
         description="The difference between MeterValueEnd and MeterValueStart in kWh.",
     )
-    MeterValueStart: Optional[float] = Field(
+    MeterValueStart: Optional[PositiveFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueEnd: Optional[float] = Field(
+    MeterValueEnd: Optional[PositiveFloat] = Field(
         None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
@@ -1065,59 +1066,60 @@ class ERoamingChargingNotificationEnd(ChargingNotificationBase):
     )
 
     @model_validator(mode="after")
-    def validate_charging_notification_end(self):
-        """Validate ERoamingChargingNotificationEnd fields"""
-        for field_name, field_value in [
-            ("MeterValueStart", self.MeterValueStart),
-            ("MeterValueEnd", self.MeterValueEnd),
-            ("ConsumedEnergy", self.ConsumedEnergy),
-        ]:
-            if field_value is not None and field_value < 0:
-                raise ValueError(f"{field_name} cannot be negative")
-
+    def validate_consumed_energy(self):
         if (
             self.MeterValueStart is not None
             and self.MeterValueEnd is not None
             and self.ConsumedEnergy is not None
         ):
-            expected_consumed = self.MeterValueEnd - self.MeterValueStart
-            # Allow small tolerance for floating point differences
-            if abs(self.ConsumedEnergy - expected_consumed) > 0.001:
+            expected = self.MeterValueEnd - self.MeterValueStart
+            if abs(self.ConsumedEnergy - expected) > 0.001:
                 raise ValueError(
                     f"ConsumedEnergy ({self.ConsumedEnergy}) doesn't match "
-                    f"meter difference ({expected_consumed})"
+                    f"meter difference ({expected})"
                 )
+        return self
 
-        if self.ChargingStart is not None and self.ChargingStart > self.ChargingEnd:
+    @model_validator(mode="after")
+    def validate_charging_time_order(self):
+        if (
+            self.ChargingStart is not None
+            and self.ChargingEnd is not None
+            and self.ChargingStart > self.ChargingEnd
+        ):
             raise ValueError("ChargingStart cannot be after ChargingEnd")
+        return self
 
+    @model_validator(mode="after")
+    def validate_session_time_order(self):
         if (
             self.SessionStart is not None
             and self.SessionEnd is not None
             and self.SessionStart > self.SessionEnd
         ):
             raise ValueError("SessionStart cannot be after SessionEnd")
-
         if (
             self.SessionStart is not None
             and self.ChargingStart is not None
             and self.SessionStart > self.ChargingStart
         ):
             raise ValueError("SessionStart should be before or equal to ChargingStart")
-
         if (
             self.ChargingEnd is not None
             and self.SessionEnd is not None
             and self.ChargingEnd > self.SessionEnd
         ):
             raise ValueError("ChargingEnd should be before or equal to SessionEnd")
+        return self
 
+    @model_validator(mode="after")
+    def validate_penalty_start(self):
         if (
             self.PenaltyTimeStart is not None
+            and self.ChargingEnd is not None
             and self.PenaltyTimeStart <= self.ChargingEnd
         ):
             raise ValueError("PenaltyTimeStart should be after ChargingEnd")
-
         return self
 
 
