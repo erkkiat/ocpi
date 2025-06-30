@@ -77,7 +77,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         max_length=settings.OCPI_22_MAX_UID_LENGTH, db_index=True, verbose_name=_("UID")
     )
 
-    route_through = models.ForeignKey(
+    route_through = models.ForeignKey(  # Not in use yet, Session.credentials is the field currently in use for this purpose
         "ocpi22.CredentialsRole",
         related_name="sessions_route_through",
         on_delete=models.PROTECT,
@@ -268,6 +268,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
     def __hash__(self):
         return util.member_hash(self)
 
+    # This is the party we will send the Session updates through, for example Gireve
     credentials = models.ForeignKey(
         "ocpi22.Credentials",
         on_delete=models.PROTECT,
@@ -276,6 +277,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         verbose_name=_("Credentials"),
     )
 
+    @property
+    def route_through_oicp(self):
+        return (
+            str(self.credentials.roles.first().get_party())
+            == settings.HUBJECT_OPERATOR_ID
+        )
+
+    # This is the eMSP that will be billed for this Session
     billed_to = models.ForeignKey(
         "ocpi22.CredentialsRole",
         on_delete=models.PROTECT,

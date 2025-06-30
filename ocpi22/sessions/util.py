@@ -68,7 +68,6 @@ def create_session(
     reservation_id=None,
     authorization_method=None,
     currency=None,
-    ocpi_master=None,
     *_args,
     **kwargs,
 ) -> Session:
@@ -77,15 +76,12 @@ def create_session(
         if not isinstance(token_id, Token)
         else token_id
     )
-    if ocpi_master:
-        billed_to = ocpi_master
-    else:
-        if not billed_to:
-            billed_to = token.ocpi_master
-        if isinstance(billed_to, str):
-            billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
-        if isinstance(billed_to, Party):
-            billed_to = get_credentialsrole(party=billed_to)
+    if not billed_to:
+        billed_to = token.ocpi_master
+    if isinstance(billed_to, str):
+        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
+    if isinstance(billed_to, Party):
+        billed_to = get_credentialsrole(party=billed_to)
     if not uid:
         uid = generate_session_uid()
     location = location_id
@@ -153,6 +149,7 @@ def create_session(
         billed_to=billed_to,
         credentials=credentials,
         ocpi_master=location.ocpi_master,
+        hub_session_id=kwargs.get("hub_session_id", None),
     )
     params.update(kwargs)
     params.pop("expiry_date", None)  # Todo: Finish implementing reservations

@@ -52,7 +52,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    username = "SolidRoamUser"
+    username = factory.Sequence(lambda n: f"SolidRoamUser{n}")
     email = "user@solidroam.com"
     password = factory.PostGenerationMethodCall(
         "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
@@ -101,6 +101,16 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     last_connection = factory.Faker("date_time", tzinfo=pytz.UTC)
     version = "22"
     valid = True
+
+
+class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CredentialsRole
+
+    role = "CPO"
+    business_details = factory.SubFactory(BusinessDetailsFactory)
+    country_code = "FI"
+    party_id = "CPO"
 
 
 class CredentialsRoleFactory(factory.django.DjangoModelFactory):

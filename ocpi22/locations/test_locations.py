@@ -251,7 +251,7 @@ class TestEvseMove:
             "ocpi22/data/examples/location_example_added_evse.json",
         )
         assert result.response.status_code == 200
-        assert list(result.location.evses.values_list("uid", flat=True)) == [
+        assert sorted(list(result.location.evses.values_list("uid", flat=True))) == [
             "3256",
             "3257",
             "3299",

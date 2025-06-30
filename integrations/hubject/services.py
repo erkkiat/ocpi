@@ -5,11 +5,11 @@ from urllib.error import HTTPError
 from urllib.parse import urljoin
 
 import pytz
+import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
-from rest_framework import status
 
 from integrations.hubject.client import HubjectClient
 from integrations.hubject.oicp_to_ocpi_converter import (
@@ -19,13 +19,13 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
-    ERoamingAuthorizeStart,
+    PricingProductData,
+    ERoamingPushPricingProductData,
     OperatorID,
+    ERoamingAuthorizeStart,
     Identification,
     UID,
     RFIDMifareFamilyIdentification,
-    PricingProductData,
-    ERoamingPushPricingProductData,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -152,77 +152,65 @@ class HubjectService:
     ) -> tuple[Any, dict | None, Any]:
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
+        payload = ERoamingAuthorizeStart(
+            OperatorID=OperatorID(root=operator_id),
+            Identification=Identification(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+                    UID=UID(root=token_id)
+                )
+            ),
+        )
+        payload_dict = payload.model_dump(exclude_none=True)
+
         try:
-            payload = ERoamingAuthorizeStart(
-                OperatorID=OperatorID(root=operator_id),
-                Identification=Identification(
-                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
-                        UID=UID(root=token_id)
-                    ),
-                    RFIDIdentification=None,
-                    QRCodeIdentification=None,
-                    PlugAndChargeIdentification=None,
-                    RemoteIdentification=None,
-                ),
+            response = HubjectService.client.post(
+                url, json=payload_dict, headers={"accept": "application/json"}
             )
-            payload_dict = payload.model_dump(exclude_none=True)
+        except requests.exceptions.RequestException:
+            logger.exception("Requests exception during authorization with Hubject")
+            return (
+                404,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Request error occurred",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
 
-            response = HubjectService.client.post(url, json=payload_dict)
-
+        try:
+            response_json = response.json()
             logging.info(response)
-            status_code = response.get("StatusCode", {}).get("Code")
+            status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
-            if response.status_code == status.HTTP_200_OK and status_code == "000":
+            if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response.json().get("ProviderID", "*")),
+                    party=Party.from_str(response_json.get("ProviderID", "*")),
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
 
+            mapped_response = map_oicp_authorization_response_to_ocpi_221(
+                response_json, token_id
+            )
             return (
                 response.status_code,
-                map_oicp_authorization_response_to_ocpi_221(response.json(), token_id),
+                mapped_response,
                 ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
             )
-
-        except ValueError as ve:
-            logger.exception("ValueError during authorization with Hubject: %s", ve)
+        except Exception:
+            logger.exception("Exception during authorization with Hubject")
             return (
                 404,
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Invalid data provided",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                CredentialsRole.objects.none(),
-            )
-        except OSError as oe:
-            logger.exception("OSError during authorization with Hubject: %s", oe)
-            return (
-                404,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Network error occurred",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                CredentialsRole.objects.none(),
-            )
-        except RuntimeError as re:
-            logger.exception("RuntimeError during authorization with Hubject: %s", re)
-            return (
-                404,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Unexpected runtime error",
+                    "status_message": "",
                     "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
                     ),
