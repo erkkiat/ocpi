@@ -661,11 +661,7 @@ def expected_eroaming_cdr():
         "HubOperatorID": "FI*CPO",
         "HubProviderID": "FI*MSP",
         "Identification": {
-            "PlugAndChargeIdentification": None,
-            "QRCodeIdentification": None,
-            "RFIDIdentification": None,
             "RFIDMifareFamilyIdentification": {"UID": "AACDEFFE123456"},
-            "RemoteIdentification": None,
         },
         "MeterValueEnd": 120.0,
         "MeterValueInBetween": None,
