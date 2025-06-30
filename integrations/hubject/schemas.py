@@ -20,8 +20,9 @@ from pydantic import (
     field_validator,
     model_validator,
     ConfigDict,
+    AwareDatetime,
 )
-from pydantic import PositiveFloat
+from pydantic import NonNegativeFloat
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
 
@@ -861,14 +862,8 @@ class EvseDataRecord(BaseModel):
     DynamicInfoAvailable: DynamicInfoAvailable
 
 
-class AuthorizationStopIdentification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass] = (
-        Field(default=None)
-    )
-    # RFIDIdentification: Optional[RFIDIdentification] = None
-    # QRCodeIdentification: Optional[QRCodeIdentification] = None
-    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
-    # RemoteIdentification: Optional[RemoteIdentification] = None
+class AuthorizationStopIdentification(IdentificationClass):
+    pass
 
 
 class ERoamingAuthorizationStart(BaseModel):
@@ -976,28 +971,28 @@ class ERoamingChargeDetailRecord(BaseModel):
     PartnerProductID: Optional[ProductID] = None
     EvseID: EvseID
     Identification: IdentificationClass
-    ChargingStart: datetime = Field(
+    ChargingStart: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    ChargingEnd: datetime = Field(
+    ChargingEnd: AwareDatetime = Field(
         ..., description="The date and time at which the charging process stoped."
     )
-    SessionStart: datetime = Field(
+    SessionStart: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    SessionEnd: datetime = Field(
+    SessionEnd: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    MeterValueStart: Optional[float] = Field(
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueEnd: Optional[float] = Field(
+    MeterValueEnd: Optional[NonNegativeFloat] = Field(
         None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass]
-    ConsumedEnergy: float = Field(
+    ConsumedEnergy: NonNegativeFloat = Field(
         ...,
         description="The difference between MeterValueEnd and MeterValueStart in kWh.",
     )
@@ -1013,7 +1008,9 @@ class ERoamingChargeDetailRecord(BaseModel):
 class ChargingNotificationBase(BaseModel):
     model_config = ConfigDict(
         json_encoders={
-            datetime: lambda date_time: date_time.strftime(settings.OICP_DATE_FORMAT)
+            AwareDatetime: lambda date_time: date_time.strftime(
+                settings.OICP_DATE_FORMAT
+            )
         }
     )
 
@@ -1034,33 +1031,33 @@ class ChargingNotificationBase(BaseModel):
 
 class ERoamingChargingNotificationEnd(ChargingNotificationBase):
     Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
-    ChargingStart: Optional[datetime] = Field(
+    ChargingStart: Optional[AwareDatetime] = Field(
         None, description="The date and time at which the charging process started."
     )
-    ChargingEnd: datetime = Field(
+    ChargingEnd: AwareDatetime = Field(
         ..., description="The date and time at which the charging process stopped."
     )
-    SessionStart: Optional[datetime] = Field(
+    SessionStart: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    SessionEnd: Optional[datetime] = Field(
+    SessionEnd: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session ended, e.g. swipe of RFID or cable disconnected.",
     )
-    ConsumedEnergy: Optional[PositiveFloat] = Field(
+    ConsumedEnergy: Optional[NonNegativeFloat] = Field(
         None,
         description="The difference between MeterValueEnd and MeterValueStart in kWh.",
     )
-    MeterValueStart: Optional[PositiveFloat] = Field(
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueEnd: Optional[PositiveFloat] = Field(
+    MeterValueEnd: Optional[NonNegativeFloat] = Field(
         None, description="The ending meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
     PartnerProductID: Optional[ProductID] = None
-    PenaltyTimeStart: Optional[datetime] = Field(
+    PenaltyTimeStart: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the penalty time start after the grace period.",
     )
@@ -1133,10 +1130,10 @@ class ERoamingChargingNotificationError(ChargingNotificationBase):
 
 class ERoamingChargingNotificationProgress(ChargingNotificationBase):
     Type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
-    ChargingStart: datetime = Field(
+    ChargingStart: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    EventOccurred: datetime = Field(
+    EventOccurred: AwareDatetime = Field(
         ...,
         description="The date and time at which the charging progress parameters are captured.",
     )
@@ -1144,50 +1141,51 @@ class ERoamingChargingNotificationProgress(ChargingNotificationBase):
         None,
         description="Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
-    SessionStart: Optional[datetime] = Field(
+    SessionStart: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    ConsumedEnergyProgress: Optional[float] = Field(
+    ConsumedEnergyProgress: Optional[NonNegativeFloat] = Field(
         None,
         description="This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
-    MeterValueStart: Optional[float] = Field(
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
     MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
     PartnerProductID: Optional[ProductID] = None
 
     @model_validator(mode="after")
-    def validate_charging_notification_progress(self):
-        """Validate ERoamingChargingNotificationProgress fields"""
+    def validate_duration_or_energy(self):
         if self.ChargingDuration is None and self.ConsumedEnergyProgress is None:
             raise ValueError(
                 "Either ChargingDuration or ConsumedEnergyProgress must be provided"
             )
+        return self
 
+    @model_validator(mode="after")
+    def validate_event_sequence(self):
         if self.EventOccurred <= self.ChargingStart:
             raise ValueError("EventOccurred must be after ChargingStart")
+        return self
 
-        if self.ConsumedEnergyProgress is not None and self.ConsumedEnergyProgress < 0:
-            raise ValueError("ConsumedEnergyProgress cannot be negative")
-
+    @model_validator(mode="after")
+    def validate_meter_value_start_non_negative(self):
         if self.MeterValueStart is not None and self.MeterValueStart < 0:
             raise ValueError("MeterValueStart cannot be negative")
-
         return self
 
 
 class ERoamingChargingNotificationStart(ChargingNotificationBase):
     Type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
-    ChargingStart: datetime = Field(
+    ChargingStart: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    SessionStart: Optional[datetime] = Field(
+    SessionStart: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    MeterValueStart: Optional[float] = Field(
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
     PartnerProductID: Optional[ProductID] = None

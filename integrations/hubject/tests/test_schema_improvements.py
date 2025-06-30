@@ -83,7 +83,9 @@ class TestChargingNotificationStart:
 
     def test_charging_notification_start_with_negative_meter_value_fails(self):
         """Test that negative MeterValueStart fails validation."""
-        with pytest.raises(ValidationError, match="MeterValueStart cannot be negative"):
+        with pytest.raises(
+            ValidationError, match="Input should be greater than or equal"
+        ):
             self.create_valid_notification_start(MeterValueStart=-10.0)
 
     def test_charging_notification_start_with_valid_meter_value_succeeds(self):
@@ -160,13 +162,15 @@ class TestChargingNotificationProgress:
     def test_charging_notification_progress_with_negative_energy_fails(self):
         """Test that negative consumed energy fails validation."""
         with pytest.raises(
-            ValidationError, match="ConsumedEnergyProgress cannot be negative"
+            ValidationError, match="Input should be greater than or equal"
         ):
             self.create_valid_notification_progress(ConsumedEnergyProgress=-10.0)
 
     def test_charging_notification_progress_with_negative_meter_start_fails(self):
         """Test that negative meter start value fails validation."""
-        with pytest.raises(ValidationError, match="MeterValueStart cannot be negative"):
+        with pytest.raises(
+            ValidationError, match="Input should be greater than or equal"
+        ):
             self.create_valid_notification_progress(MeterValueStart=-5.0)
 
 
