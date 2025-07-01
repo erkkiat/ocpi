@@ -1029,17 +1029,85 @@ class ChargingNotificationBase(BaseModel):
     OperatorID: OperatorID
 
 
-class ERoamingChargingNotificationEnd(ChargingNotificationBase):
-    Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
-    ChargingStart: Optional[AwareDatetime] = Field(
-        None, description="The date and time at which the charging process started."
+class ERoamingChargingNotificationError(ChargingNotificationBase):
+    ErrorType: ErrorType
+    ErrorAdditionalInfo: Optional[str] = Field(
+        None,
+        description="The CPO can put in the additional information about the error",
     )
-    ChargingEnd: AwareDatetime = Field(
-        ..., description="The date and time at which the charging process stopped."
+
+
+class ERoamingChargingNotificationProgress(ChargingNotificationBase):
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
+    ChargingStart: AwareDatetime = Field(
+        ..., description="The date and time at which the charging process started."
+    )
+    EventOccurred: AwareDatetime = Field(
+        ...,
+        description="The date and time at which the charging progress parameters are captured.",
+    )
+    ChargingDuration: Optional[int] = Field(
+        None,
+        description="Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
     SessionStart: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
+    )
+    ConsumedEnergyProgress: Optional[NonNegativeFloat] = Field(
+        None,
+        description="This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
+    )
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
+        None, description="The starting meter value in kWh."
+    )
+    MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
+    PartnerProductID: Optional[ProductID] = None
+
+    @model_validator(mode="after")
+    def validate_duration_or_energy_required(self):
+        if self.ChargingDuration is None and self.ConsumedEnergyProgress is None:
+            raise ValueError(
+                "Either ChargingDuration or ConsumedEnergyProgress must be provided"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_event_occurred_after_charging_start(self):
+        if self.EventOccurred <= self.ChargingStart:
+            raise ValueError("EventOccurred must be after ChargingStart")
+        return self
+
+
+class ERoamingChargingPeriod(ChargingNotificationBase):
+    ChargingStart: AwareDatetime = Field(
+        ..., description="The date and time at which the charging process started."
+    )
+    SessionStart: Optional[AwareDatetime] = Field(
+        None,
+        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
+    )
+
+    @model_validator(mode="after")
+    def validate_session_start_before_charging_start(self):
+        if self.SessionStart is not None and self.SessionStart > self.ChargingStart:
+            raise ValueError("SessionStart should be before ChargingStart")
+
+        return self
+
+
+class ERoamingChargingNotificationStart(ERoamingChargingPeriod):
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
+    MeterValueStart: Optional[NonNegativeFloat] = Field(
+        None, description="The starting meter value in kWh."
+    )
+    PartnerProductID: Optional[ProductID] = None
+
+
+class ERoamingChargingNotificationEnd(ERoamingChargingPeriod):
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
+    ChargingEnd: AwareDatetime = Field(
+        ..., description="The date and time at which the charging process stopped."
     )
     SessionEnd: Optional[AwareDatetime] = Field(
         None,
@@ -1077,129 +1145,57 @@ class ERoamingChargingNotificationEnd(ChargingNotificationBase):
                 )
         return self
 
-    @model_validator(mode="after")
-    def validate_charging_time_order(self):
-        if (
-            self.ChargingStart is not None
-            and self.ChargingEnd is not None
-            and self.ChargingStart > self.ChargingEnd
-        ):
-            raise ValueError("ChargingStart cannot be after ChargingEnd")
+    def check_chronology_and_raise(
+        self,
+        earlier_time: AwareDatetime,
+        later_time: AwareDatetime,
+        exception_text: str,
+    ):
+        if earlier_time and later_time and earlier_time >= later_time:
+            raise ValueError(exception_text)
+        return self
+
+    def check_chronology_or_equal_and_raise(
+        self,
+        earlier_time: AwareDatetime,
+        later_time: AwareDatetime,
+        exception_text: str,
+    ):
+        if earlier_time and later_time and earlier_time > later_time:
+            raise ValueError(exception_text)
         return self
 
     @model_validator(mode="after")
-    def validate_session_time_order(self):
-        if (
-            self.SessionStart is not None
-            and self.SessionEnd is not None
-            and self.SessionStart > self.SessionEnd
-        ):
-            raise ValueError("SessionStart cannot be after SessionEnd")
-        if (
-            self.SessionStart is not None
-            and self.ChargingStart is not None
-            and self.SessionStart > self.ChargingStart
-        ):
-            raise ValueError("SessionStart should be before or equal to ChargingStart")
-        if (
-            self.ChargingEnd is not None
-            and self.SessionEnd is not None
-            and self.ChargingEnd > self.SessionEnd
-        ):
-            raise ValueError("ChargingEnd should be before or equal to SessionEnd")
-        return self
+    def validate_charging_start_before_end(self):
+        return self.check_chronology_or_equal_and_raise(
+            self.ChargingStart,
+            self.ChargingEnd,
+            "ChargingStart should be before or equal to ChargingEnd",
+        )
 
     @model_validator(mode="after")
-    def validate_penalty_start(self):
-        if (
-            self.PenaltyTimeStart is not None
-            and self.ChargingEnd is not None
-            and self.PenaltyTimeStart <= self.ChargingEnd
-        ):
-            raise ValueError("PenaltyTimeStart should be after ChargingEnd")
-        return self
-
-
-class ERoamingChargingNotificationError(ChargingNotificationBase):
-    ErrorType: ErrorType
-    ErrorAdditionalInfo: Optional[str] = Field(
-        None,
-        description="The CPO can put in the additional information about the error",
-    )
-
-
-class ERoamingChargingNotificationProgress(ChargingNotificationBase):
-    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
-    ChargingStart: AwareDatetime = Field(
-        ..., description="The date and time at which the charging process started."
-    )
-    EventOccurred: AwareDatetime = Field(
-        ...,
-        description="The date and time at which the charging progress parameters are captured.",
-    )
-    ChargingDuration: Optional[int] = Field(
-        None,
-        description="Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
-    )
-    SessionStart: Optional[AwareDatetime] = Field(
-        None,
-        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
-    )
-    ConsumedEnergyProgress: Optional[NonNegativeFloat] = Field(
-        None,
-        description="This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
-    )
-    MeterValueStart: Optional[NonNegativeFloat] = Field(
-        None, description="The starting meter value in kWh."
-    )
-    MeterValueInBetween: Optional[MeterValueInBetweenClass] = Field(default=None)
-    PartnerProductID: Optional[ProductID] = None
+    def validate_session_start_before_end(self):
+        return self.check_chronology_and_raise(
+            self.SessionStart,
+            self.SessionEnd,
+            "SessionStart should be before SessionEnd",
+        )
 
     @model_validator(mode="after")
-    def validate_duration_or_energy(self):
-        if self.ChargingDuration is None and self.ConsumedEnergyProgress is None:
-            raise ValueError(
-                "Either ChargingDuration or ConsumedEnergyProgress must be provided"
-            )
-        return self
+    def validate_charging_end_before_session_end(self):
+        return self.check_chronology_or_equal_and_raise(
+            self.ChargingEnd,
+            self.SessionEnd,
+            "ChargingEnd should be before or equal to SessionEnd",
+        )
 
     @model_validator(mode="after")
-    def validate_event_sequence(self):
-        if self.EventOccurred <= self.ChargingStart:
-            raise ValueError("EventOccurred must be after ChargingStart")
-        return self
-
-    @model_validator(mode="after")
-    def validate_meter_value_start_non_negative(self):
-        if self.MeterValueStart is not None and self.MeterValueStart < 0:
-            raise ValueError("MeterValueStart cannot be negative")
-        return self
-
-
-class ERoamingChargingNotificationStart(ChargingNotificationBase):
-    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
-    ChargingStart: AwareDatetime = Field(
-        ..., description="The date and time at which the charging process started."
-    )
-    SessionStart: Optional[AwareDatetime] = Field(
-        None,
-        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
-    )
-    MeterValueStart: Optional[NonNegativeFloat] = Field(
-        None, description="The starting meter value in kWh."
-    )
-    PartnerProductID: Optional[ProductID] = None
-
-    @model_validator(mode="after")
-    def validate_charging_notification_start(self):
-        """Validate ERoamingChargingNotificationStart fields"""
-        if self.MeterValueStart is not None and self.MeterValueStart < 0:
-            raise ValueError("MeterValueStart cannot be negative")
-
-        if self.SessionStart is not None and self.SessionStart > self.ChargingStart:
-            raise ValueError("SessionStart cannot be after ChargingStart")
-
-        return self
+    def validate_penalty_time_start_after_charging_end(self):
+        return self.check_chronology_or_equal_and_raise(
+            self.ChargingEnd,
+            self.PenaltyTimeStart,
+            "PenaltyTimeStart should be after or equal to ChargingEnd",
+        )
 
 
 class OperatorEvseData(BaseModel):

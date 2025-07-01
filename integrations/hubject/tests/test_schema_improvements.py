@@ -63,7 +63,7 @@ class TestChargingNotificationStart:
     ):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart cannot be after ChargingStart"
+            ValidationError, match="SessionStart should be before ChargingStart"
         ):
             self.create_valid_charging_notification_start(
                 SessionStart=now, ChargingStart=now - timedelta(minutes=5)
@@ -153,11 +153,13 @@ class TestChargingNotificationProgress:
 
 
 class TestChargingNotificationEnd:
-    def create_valid_notification_end(self, **overrides):
+    @staticmethod
+    def create_valid_notification_end(**overrides):
         now = datetime.now(pytz.utc)
         defaults = {
             "SessionID": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
             "EvseID": EvseID(root="DE*ABC*E123*456"),
+            "ChargingStart": now - timedelta(minutes=5),
             "ChargingEnd": now,
             "OperatorID": OperatorID(root="DE*ABC"),
         }
@@ -187,19 +189,22 @@ class TestChargingNotificationEnd:
     def test_charging_notification_end_with_charging_start_after_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="ChargingStart cannot be after ChargingEnd"
+            ValidationError,
+            match="ChargingStart should be before or equal to ChargingEnd",
         ):
             self.create_valid_notification_end(
                 ChargingStart=now, ChargingEnd=now - timedelta(minutes=30)
             )
 
-    def test_charging_notification_end_with_session_start_after_end_fails(self):
+    def test_charging_notification_end_with_session_start_after_session_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart cannot be after SessionEnd"
+            ValidationError, match="SessionStart should be before SessionEnd"
         ):
             self.create_valid_notification_end(
-                SessionStart=now, SessionEnd=now - timedelta(minutes=30)
+                SessionStart=now,
+                SessionEnd=now - timedelta(minutes=30),
+                ChargingStart=now,
             )
 
     def test_charging_notification_end_with_session_start_after_charging_start_fails(
@@ -208,7 +213,7 @@ class TestChargingNotificationEnd:
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError,
-            match="SessionStart should be before or equal to ChargingStart",
+            match="SessionStart should be before ChargingStart",
         ):
             self.create_valid_notification_end(
                 SessionStart=now, ChargingStart=now - timedelta(minutes=5)
@@ -256,7 +261,8 @@ class TestChargingNotificationEnd:
     ):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="PenaltyTimeStart should be after ChargingEnd"
+            ValidationError,
+            match="PenaltyTimeStart should be after or equal to ChargingEnd",
         ):
             self.create_valid_notification_end(
                 ChargingEnd=now, PenaltyTimeStart=now - timedelta(minutes=5)
