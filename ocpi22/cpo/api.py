@@ -28,6 +28,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
@@ -223,7 +224,7 @@ def process_meter_values(
         )
 
         session.send_updates(
-            method="put"
+            method="put", update_type=ChargingNotificationType.Progress
         )  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
         messages.success(
@@ -674,7 +675,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
 
-                    session.send_updates()
+                    session.send_updates(update_type=ChargingNotificationType.Start)
 
                     messages.info(
                         request,
@@ -837,7 +838,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             "total_cost_excl_vat",
                         ]
                     )
-                    session.send_updates()
+                    session.send_updates(update_type=ChargingNotificationType.End)
                     logger.info(
                         f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
                         f"cost {session.total_cost_incl_vat} {session.currency}"

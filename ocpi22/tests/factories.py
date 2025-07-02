@@ -537,7 +537,7 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
         role="EMSP",
         business_details__name="Test MSP",
     )
-    uid = "CDRTOKEN-12345"
+    uid = "DEADC0DE"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
 
@@ -574,6 +574,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         business_details__name="Test CPO",
     )
     uid = "SESSION-12345"
+    hub_session_id = "b2688855-7f00-0002-6d8e-48d883f6abb6"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     start_kwh = 0.0

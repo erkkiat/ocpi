@@ -10,8 +10,14 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
+from requests import Response
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.ocpi_to_oicp_converter import (
+    convert_ocpi_session_to_oicp_charging_notification_progress,
+    convert_ocpi_session_to_oicp_charging_notification_start,
+    convert_ocpi_session_to_oicp_charging_notification_end,
+)
 from integrations.hubject.oicp_to_ocpi_converter import (
     map_oicp_authorization_response_to_ocpi_221,
 )
@@ -26,6 +32,8 @@ from integrations.hubject.schemas import (
     IdentificationClass,
     UID,
     RFIDMifareFamilyIdentificationClass,
+    ChargingNotificationBase,
+    ChargingNotificationType,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -91,7 +99,7 @@ class HubjectService:
                         )
 
         if len(evse_data_records) == 0:
-            return
+            return None
 
         return OperatorEvseData(
             OperatorID=OperatorID(root=str(party)),
@@ -298,3 +306,45 @@ class HubjectService:
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
+
+    @classmethod
+    def send_update(
+        cls, session, update_type: ChargingNotificationType
+    ) -> Response | None:
+        match update_type:
+            case ChargingNotificationType.Start:
+                return cls.post_hubject_charging_notification(
+                    convert_ocpi_session_to_oicp_charging_notification_start(session)
+                )
+            case ChargingNotificationType.End:
+                return cls.post_hubject_charging_notification(
+                    convert_ocpi_session_to_oicp_charging_notification_end(session)
+                )
+            case ChargingNotificationType.Progress:
+                return cls.post_hubject_charging_notification(
+                    convert_ocpi_session_to_oicp_charging_notification_progress(session)
+                )
+        return None
+
+    @staticmethod
+    def post_hubject_charging_notification(
+        payload: ChargingNotificationBase,
+    ) -> Response | None:
+        url = urljoin(
+            with_trailing_slash(settings.HUBJECT_URL),
+            "notificationmgmt/v11/charging-notifications",
+        )
+        try:
+            response = HubjectService.client.post(
+                url, json=payload.model_dump(mode="json")
+            )
+            if response.status_code != 200:
+                logger.error(
+                    f"Failed to send updates to Hubject: {response.status_code} - {response.text}"
+                )
+            return response
+        except requests.exceptions.RequestException:
+            logger.exception(
+                "Request exception during sending ChargingNotification to Hubject"
+            )
+        return None

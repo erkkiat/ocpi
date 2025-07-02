@@ -20,6 +20,8 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 import util
+from integrations.hubject.schemas import ChargingNotificationType
+from integrations.hubject.services import HubjectService
 
 from ocpi22.choices import (
     OcpiModuleEnum,
@@ -492,9 +494,19 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
                 last_period.set_dimension(hours=last_period_hours)
         return period
 
-    def send_updates(self, data=None, method="put", path_components=None) -> None:
+    def send_updates(
+        self,
+        data=None,
+        method="put",
+        path_components=None,
+        send_updates_to=None,
+        update_type: ChargingNotificationType = ChargingNotificationType.Progress,
+    ) -> None:
         if self.status == Session.PENDING:
             return  # Don't send updates for pending sessions per OCPI 2.2.1 specifications
+        if self.route_through_oicp:
+            HubjectService.send_update(session=self, update_type=update_type)
+            return
         if isinstance(data, list):
             # We have a list of stuff, is it by any chance ChargingPeriods?
             if isinstance(data[0], ChargingPeriod):
