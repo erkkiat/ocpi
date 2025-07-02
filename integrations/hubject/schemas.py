@@ -1014,7 +1014,6 @@ class ChargingNotificationBase(BaseModel):
         }
     )
 
-    Type: ChargingNotificationType
     SessionID: SessionID
     CPOPartnerSessionID: Optional[str] = Field(
         None,
@@ -1030,6 +1029,7 @@ class ChargingNotificationBase(BaseModel):
 
 
 class ERoamingChargingNotificationError(ChargingNotificationBase):
+    Type: ChargingNotificationType = Field(default=ChargingNotificationType.Error)
     ErrorType: ErrorType
     ErrorAdditionalInfo: Optional[str] = Field(
         None,
