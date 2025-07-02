@@ -9,6 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+import pytz
 from pydantic import (
     BaseModel,
     Field,
@@ -17,7 +18,11 @@ from pydantic import (
     constr,
     RootModel,
     field_validator,
+    AwareDatetime,
+    NonNegativeFloat,
+    model_validator,
 )
+from pydantic.alias_generators import to_pascal
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
 
@@ -45,6 +50,19 @@ the charge point location due to the need for time based charging fees.
 
 
 """
+
+
+def oicp_alias_generator(field_name: str) -> str:
+    custom_mappings = {
+        "CPO_partner_session_id": "CPOPartnerSessionID",
+        "EMP_partner_session_id": "EMPPartnerSessionID",
+        "evse_id": "EvseID",
+        "session_id": "SessionID",
+        "partner_product_id": "PartnerProductID",
+        "hub_operator_id": "HubOperatorID",
+        "hub_provider_id": "HubProviderID",
+    }
+    return custom_mappings.get(field_name, to_pascal(field_name))
 
 
 class AuthorizationStatus(Enum):
@@ -956,50 +974,103 @@ class ERoamingAuthorizeStop(BaseModel):
 
 
 class ERoamingChargeDetailRecord(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+    model_config = {"alias_generator": oicp_alias_generator, "populate_by_name": True}
+
+    session_id: SessionID
+    CPO_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    EMP_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    PartnerProductID: Optional[ProductID] = None
-    EvseID: EvseID
-    Identification: Identification
-    ChargingStart: datetime = Field(
+    partner_product_id: Optional[ProductID] = None
+    evse_id: EvseID
+    identification: Identification
+    charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    ChargingEnd: datetime = Field(
-        ..., description="The date and time at which the charging process stoped."
+    charging_end: AwareDatetime = Field(
+        ...,
+        description="The date and time at which the charging process stopped.",
+        le=datetime.now(pytz.utc),
     )
-    SessionStart: datetime = Field(
+    session_start: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    SessionEnd: datetime = Field(
+    session_end: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
+        le=datetime.now(pytz.utc),
     )
-    MeterValueStart: Optional[float] = Field(
+    meter_value_start: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueEnd: Optional[float] = Field(
+    meter_value_end: Optional[NonNegativeFloat] = Field(
         None, description="The ending meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
-    ConsumedEnergy: float = Field(
-        ...,
-        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
+    meter_value_in_between: Optional[MeterValueInBetween] = Field(
+        None, description="Meter values in between start and end"
     )
-    SignedMeteringValues: Optional[List[SignedMeteringValue]] = Field(
+    consumed_energy: NonNegativeFloat = Field(
+        ...,
+        description="The difference between MeterValueEnd and MeterValueStart in kWh. Must be less than or equal to 1000 kWh.",
+        le=1000.0,
+    )
+    signed_metering_values: Optional[List[SignedMeteringValue]] = Field(
         None,
         description="Metering Signature basically contains all metering signature values (these values should be in Transparency software format) for different status of charging session for eg start, end or progress. In total you can provide maximum 10 metering signature values",
     )
-    CalibrationLawVerificationInfo: Optional[CalibrationLawVerificationInfo]
-    HubOperatorID: Optional[OperatorID] = None
-    HubProviderID: Optional[ProviderID] = None
+    calibration_law_verification_info: Optional[CalibrationLawVerificationInfo] = Field(
+        None, description="Calibration law verification information"
+    )
+    hub_operator_id: Optional[OperatorID] = None
+    hub_provider_id: Optional[ProviderID] = None
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_charging_end(cls, values):
+        charging_start = values.charging_start
+        charging_end = values.charging_end
+        session_start = values.session_start
+
+        if charging_start > charging_end:
+            raise ValueError("ChargingStart cannot be after ChargingEnd")
+        if session_start > charging_end:
+            raise ValueError("SessionStart cannot be after ChargingEnd")
+        return values
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_session_end(cls, values):
+        charging_end = values.charging_end
+        session_start = values.session_start
+        session_end = values.session_end
+
+        if session_start > session_end:
+            raise ValueError("SessionStart cannot be after SessionEnd")
+        if charging_end > session_end:
+            raise ValueError("ChargingEnd cannot be after SessionEnd")
+        return values
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_meter_value_end(cls, values):
+        meter_value_start = values.meter_value_start
+        meter_value_end = values.meter_value_end
+        meter_value_in_between = values.meter_value_in_between
+
+        if meter_value_start and meter_value_start > meter_value_end:
+            raise ValueError("MeterValueStart cannot be after MeterValueEnd")
+        if meter_value_in_between:
+            for mv in meter_value_in_between.meterValues:
+                if mv > meter_value_end:
+                    raise ValueError(
+                        "MeterValueInBetween cannot be after MeterValueEnd"
+                    )
+        return values
 
 
 class ERoamingChargingNotificationEnd(BaseModel):
