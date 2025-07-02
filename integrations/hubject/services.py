@@ -23,9 +23,9 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
-    Identification,
+    IdentificationClass,
     UID,
-    RFIDMifareFamilyIdentification,
+    RFIDMifareFamilyIdentificationClass,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -154,8 +154,8 @@ class HubjectService:
 
         payload = ERoamingAuthorizeStart(
             OperatorID=OperatorID(root=operator_id),
-            Identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+            Identification=IdentificationClass(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=token_id)
                 )
             ),
