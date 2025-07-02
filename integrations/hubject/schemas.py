@@ -1116,6 +1116,7 @@ class ERoamingChargingNotificationEnd(ERoamingChargingPeriod):
     ConsumedEnergy: Optional[NonNegativeFloat] = Field(
         None,
         description="The difference between MeterValueEnd and MeterValueStart in kWh.",
+        le=1000.0,
     )
     MeterValueStart: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
@@ -1145,57 +1146,36 @@ class ERoamingChargingNotificationEnd(ERoamingChargingPeriod):
                 )
         return self
 
-    def check_chronology_and_raise(
-        self,
-        earlier_time: AwareDatetime,
-        later_time: AwareDatetime,
-        exception_text: str,
-    ):
-        if earlier_time and later_time and earlier_time >= later_time:
-            raise ValueError(exception_text)
-        return self
-
-    def check_chronology_or_equal_and_raise(
-        self,
-        earlier_time: AwareDatetime,
-        later_time: AwareDatetime,
-        exception_text: str,
-    ):
-        if earlier_time and later_time and earlier_time > later_time:
-            raise ValueError(exception_text)
-        return self
-
     @model_validator(mode="after")
     def validate_charging_start_before_end(self):
-        return self.check_chronology_or_equal_and_raise(
-            self.ChargingStart,
-            self.ChargingEnd,
-            "ChargingStart should be before or equal to ChargingEnd",
-        )
+        if self.ChargingStart is not None and self.ChargingStart > self.ChargingEnd:
+            raise ValueError("ChargingStart should be before or equal to ChargingEnd")
+        return self
 
     @model_validator(mode="after")
     def validate_session_start_before_end(self):
-        return self.check_chronology_and_raise(
-            self.SessionStart,
-            self.SessionEnd,
-            "SessionStart should be before SessionEnd",
-        )
+        if (
+            self.SessionStart is not None
+            and self.SessionEnd is not None
+            and self.SessionStart > self.SessionEnd
+        ):
+            raise ValueError("SessionStart should be before SessionEnd")
+        return self
 
     @model_validator(mode="after")
     def validate_charging_end_before_session_end(self):
-        return self.check_chronology_or_equal_and_raise(
-            self.ChargingEnd,
-            self.SessionEnd,
-            "ChargingEnd should be before or equal to SessionEnd",
-        )
+        if self.SessionEnd is not None and self.ChargingEnd > self.SessionEnd:
+            raise ValueError("ChargingEnd should be before or equal to SessionEnd")
+        return self
 
     @model_validator(mode="after")
     def validate_penalty_time_start_after_charging_end(self):
-        return self.check_chronology_or_equal_and_raise(
-            self.ChargingEnd,
-            self.PenaltyTimeStart,
-            "PenaltyTimeStart should be after or equal to ChargingEnd",
-        )
+        if (
+            self.PenaltyTimeStart is not None
+            and self.ChargingEnd > self.PenaltyTimeStart
+        ):
+            raise ValueError("PenaltyTimeStart should be after or equal to ChargingEnd")
+        return self
 
 
 class OperatorEvseData(BaseModel):
