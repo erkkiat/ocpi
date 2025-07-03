@@ -136,14 +136,14 @@ def test_convert_session_to_charging_notification_end_negative_meter_raises_valu
 @responses.activate
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "update_type, method_name",
+    "update_type",
     [
-        (ChargingNotificationType.Start, "send_session_start"),
-        (ChargingNotificationType.End, "send_session_end"),
-        (ChargingNotificationType.Progress, "send_session_meter_values"),
+        ChargingNotificationType.Start,
+        ChargingNotificationType.End,
+        ChargingNotificationType.Progress,
     ],
 )
-def test_send_updates_calls_correct_method(update_type, method_name):
+def test_send_updates_calls_correct_method(update_type):
     def session_evse_matcher(
         session_id,
         evse_id,
