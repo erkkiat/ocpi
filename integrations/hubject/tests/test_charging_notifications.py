@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 import pytz
@@ -229,3 +230,15 @@ def test_send_updates_calls_correct_method(update_type):
 
     response = HubjectService.send_update(ocpi_session, update_type)
     assert response.status_code == 200, response.content
+
+
+@responses.activate
+@pytest.mark.django_db
+def test_route_through_oicp_true_invokes_send_update(hubject_credentials):
+    session = OCPISessionFactory(credentials=hubject_credentials)
+    with patch.object(HubjectService, "send_update") as mock_send:
+        result = session.send_updates()
+    mock_send.assert_called_once_with(
+        session=session, update_type=ChargingNotificationType.Progress
+    )
+    assert result is None
