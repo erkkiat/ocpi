@@ -38,10 +38,10 @@ from integrations.hubject.schemas import (
     ERoamingChargeDetailRecord,
     OperatorID,
     ProviderID,
-    Identification,
+    IdentificationClass,
     UID,
     ProductID,
-    RFIDMifareFamilyIdentification,
+    RFIDMifareFamilyIdentificationClass,
 )
 from ocpi22.choices import OCPICapability
 from ocpi22.cpo.repositories import SolidTariffRepository
@@ -595,8 +595,8 @@ class SolidToHubjectConverter:
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+            identification=IdentificationClass(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=session.token_id)
                 ),
             ),
