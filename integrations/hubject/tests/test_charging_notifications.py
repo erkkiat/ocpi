@@ -160,46 +160,22 @@ def test_send_updates_calls_correct_method(update_type):
     ):
         def _matcher(request):
             payload = json.loads(request.body)
-            if (
-                payload.get("SessionID") != session_id
-                or payload.get("EvseID") != evse_id
-            ):
-                return False, (
-                    f"Expected SessionID={session_id}, EvseID={evse_id}; "
-                    f"got SessionID={payload.get('SessionID')}, EvseID={payload.get('EvseID')}"
-                )
-            if payload.get("Type") != upd_type:
-                return (
-                    False,
-                    f"Expected Type={upd_type}; got Type={payload.get('Type')}",
-                )
+            assert payload.get("SessionID") == session_id
+            assert payload.get("EvseID") == evse_id
+            assert payload.get("Type") == upd_type
             assert (
                 payload.get("Identification", {})
                 .get("RFIDMifareFamilyIdentification", {})
                 .get("UID")
                 == identification
-            ), f"Expected UID={identification}; got {payload.get('Identification', {}).get('RFIDMifareFamilyIdentification', {}).get('UID')}"
-            assert (
-                payload.get("ChargingStart") == charging_start
-            ), f"Expected ChargingStart={charging_start}; got {payload.get('ChargingStart')}"
-            assert (
-                payload.get("SessionStart") == session_start
-            ), f"Expected SessionStart={session_start}; got {payload.get('SessionStart')}"
-            assert (
-                payload.get("MeterValueStart") == meter_value_start
-            ), f"Expected MeterValueStart={meter_value_start}; got {payload.get('MeterValueStart')}"
-            assert (
-                payload.get("OperatorID") == operator_id
-            ), f"Expected OperatorID={operator_id}; got {payload.get('OperatorID')}"
-            assert (
-                payload.get("CPOPartnerSessionID") == cpo_partner_session_id
-            ), f"Expected CPOPartnerSessionID={cpo_partner_session_id}; got {payload.get('CPOPartnerSessionID')}"
-            assert (
-                payload.get("EMPPartnerSessionID") == emp_partner_session_id
-            ), f"Expected EMPPartnerSessionID={emp_partner_session_id}; got {payload.get('EMPPartnerSessionID')}"
-            assert (
-                payload.get("PartnerProductID") == partner_product_id
-            ), f"Expected PartnerProductID={partner_product_id}; got {payload.get('PartnerProductID')}"
+            )
+            assert payload.get("ChargingStart") == charging_start
+            assert payload.get("SessionStart") == session_start
+            assert payload.get("MeterValueStart") == meter_value_start
+            assert payload.get("OperatorID") == operator_id
+            assert payload.get("CPOPartnerSessionID") == cpo_partner_session_id
+            assert payload.get("EMPPartnerSessionID") == emp_partner_session_id
+            assert payload.get("PartnerProductID") == partner_product_id
             return True, None
 
         return _matcher
@@ -228,17 +204,25 @@ def test_send_updates_calls_correct_method(update_type):
         ],
     )
 
-    response = HubjectService.send_update(ocpi_session, update_type)
+    response = HubjectService().send_update(ocpi_session, update_type)  # noqa
     assert response.status_code == 200, response.content
 
 
 @responses.activate
 @pytest.mark.django_db
-def test_route_through_oicp_true_invokes_send_update(hubject_credentials):
+@pytest.mark.parametrize(
+    "update_type",
+    [
+        ChargingNotificationType.Start,
+        ChargingNotificationType.End,
+        ChargingNotificationType.Progress,
+    ],
+)
+def test_route_through_oicp_true_invokes_send_update(hubject_credentials, update_type):
     session = OCPISessionFactory(credentials=hubject_credentials)
     with patch.object(HubjectService, "send_update") as mock_send:
-        result = session.send_updates()
-    mock_send.assert_called_once_with(
-        session=session, update_type=ChargingNotificationType.Progress
-    )
+        result = session.send_updates(
+            update_type=update_type,
+        )
+    mock_send.assert_called_once_with(session=session, update_type=update_type)
     assert result is None

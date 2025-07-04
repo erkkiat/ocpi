@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 
@@ -9,6 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
+from pydantic import BaseModel
 from pydantic_core import PydanticSerializationError
 from requests import Response
 
@@ -32,7 +32,6 @@ from integrations.hubject.schemas import (
     IdentificationClass,
     UID,
     RFIDMifareFamilyIdentificationClass,
-    ChargingNotificationBase,
     ChargingNotificationType,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
@@ -47,6 +46,10 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ocpi22.models.session import Session
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -308,43 +311,51 @@ class HubjectService:
             }
 
     @classmethod
-    def send_update(
+    def create_charging_notification_payload(
         cls, session, update_type: ChargingNotificationType
-    ) -> Response | None:
+    ) -> BaseModel:
         match update_type:
             case ChargingNotificationType.Start:
-                return cls.post_hubject_charging_notification(
-                    convert_ocpi_session_to_oicp_charging_notification_start(session)
+                payload = convert_ocpi_session_to_oicp_charging_notification_start(
+                    session
                 )
             case ChargingNotificationType.End:
-                return cls.post_hubject_charging_notification(
-                    convert_ocpi_session_to_oicp_charging_notification_end(session)
+                payload = convert_ocpi_session_to_oicp_charging_notification_end(
+                    session
                 )
             case ChargingNotificationType.Progress:
-                return cls.post_hubject_charging_notification(
-                    convert_ocpi_session_to_oicp_charging_notification_progress(session)
+                payload = convert_ocpi_session_to_oicp_charging_notification_progress(
+                    session
                 )
-        return None
+            case _:
+                raise ValueError(f"Unsupported session update type: {update_type}")
+        return payload
+
+    def send_update(
+        self,
+        session: "Session",
+        update_type: ChargingNotificationType,
+    ) -> Response:
+        """
+        Send an update to the OICP client based on the session and update type.
+        """
+        payload = self.create_charging_notification_payload(session, update_type)
+        try:
+            response = self.post_hubject_charging_notification(payload)
+            logger.info("Notification sent successfully")
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error: {e.response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error: {e}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
+        return response
 
     @staticmethod
     def post_hubject_charging_notification(
-        payload: ChargingNotificationBase,
+        payload,
     ) -> Response | None:
-        url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            "notificationmgmt/v11/charging-notifications",
-        )
-        try:
-            response = HubjectService.client.post(
-                url, json=payload.model_dump(mode="json")
-            )
-            if response.status_code != 200:
-                logger.error(
-                    f"Failed to send updates to Hubject: {response.status_code} - {response.text}"
-                )
-            return response
-        except requests.exceptions.RequestException:
-            logger.exception(
-                "Request exception during sending ChargingNotification to Hubject"
-            )
-        return None
+        url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
+        response = HubjectService.client.post(url, json=payload.model_dump(mode="json"))
+        response.raise_for_status()
+        return response

@@ -9,6 +9,10 @@ from integrations.hubject.schemas import (
     ERoamingChargingNotificationProgress,
     ERoamingChargingNotificationEnd,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ocpi22.models.session import Session
 
 
 def convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session) -> dict:
@@ -31,7 +35,7 @@ def convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session) -
 
 
 def convert_ocpi_session_to_oicp_charging_notification_start(
-    ocpi_session,
+    ocpi_session: "Session",
 ) -> ERoamingChargingNotificationStart:
     data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationStart(**data)
@@ -42,7 +46,7 @@ def hours_to_milliseconds(total_time_float: float) -> int:
 
 
 def convert_ocpi_session_to_oicp_charging_notification_progress(
-    ocpi_session,
+    ocpi_session: "Session",
 ) -> ERoamingChargingNotificationProgress:
     data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationProgress(
@@ -54,7 +58,7 @@ def convert_ocpi_session_to_oicp_charging_notification_progress(
 
 
 def convert_ocpi_session_to_oicp_charging_notification_end(
-    ocpi_session,
+    ocpi_session: "Session",
 ) -> ERoamingChargingNotificationEnd:
     data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationEnd(
