@@ -437,7 +437,7 @@ class TestMappings:
                 ocpi_cdr
             )
         )
-        assert eroaming.model_dump(by_alias=True) == expected_eroaming_cdr
+        assert eroaming.model_dump(by_alias=True, mode="json") == expected_eroaming_cdr
 
     @pytest.mark.django_db
     def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_total_energy_exceeds_1000(
