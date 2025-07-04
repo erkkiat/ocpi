@@ -331,12 +331,12 @@ class HubjectService:
     def send_update(
         cls,
         session: "Session",
-        update_type: ChargingNotificationType,
+        notification_type: ChargingNotificationType,
     ) -> None:
         """
         Send an update to the OICP client based on the session and update type.
         """
-        payload = cls.create_charging_notification_payload(session, update_type)
+        payload = cls.create_charging_notification_payload(session, notification_type)
         try:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")

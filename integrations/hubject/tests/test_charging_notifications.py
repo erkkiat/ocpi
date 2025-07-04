@@ -17,6 +17,7 @@ from integrations.hubject.schemas import ChargingNotificationType
 from integrations.hubject.services import HubjectService
 from ocpi22.models.session import Session
 from ocpi22.tests.factories import OCPISessionFactory
+from util import hours_to_milliseconds
 
 
 @pytest.mark.django_db
@@ -136,6 +137,92 @@ def test_convert_session_to_charging_notification_end_negative_meter_raises_valu
         convert_to_charging_notification_end(session)
 
 
+@pytest.mark.django_db
+def test_create_charging_notification_payload_start_successfully():
+    session = OCPISessionFactory()
+    expected_payload = {
+        "CPOPartnerSessionID": None,
+        "ChargingStart": "2021-01-01T10:00:00Z",
+        "EMPPartnerSessionID": None,
+        "EvseID": session.evse.evse_id,
+        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "MeterValueStart": 0.0,
+        "OperatorID": "FI*CPO",
+        "PartnerProductID": None,
+        "SessionID": session.hub_session_id,
+        "SessionStart": "2021-01-01T10:00:00Z",
+        "Type": "Start",
+    }
+    payload = HubjectService.create_charging_notification_payload(
+        session, ChargingNotificationType.Start
+    )
+    assert payload.model_dump(mode="json") == expected_payload
+
+
+@pytest.mark.django_db
+def test_create_charging_notification_payload_progress_successfully():
+    session = OCPISessionFactory()
+    expected_payload = {
+        "CPOPartnerSessionID": None,
+        "ChargingStart": "2021-01-01T10:00:00Z",
+        "EMPPartnerSessionID": None,
+        "EvseID": session.evse.evse_id,
+        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "MeterValueStart": 0.0,
+        "ChargingDuration": hours_to_milliseconds(session.total_time_float),
+        "MeterValueInBetween": None,
+        "EventOccurred": "2021-01-01T12:00:00Z",
+        "ConsumedEnergyProgress": 120.0,
+        "OperatorID": "FI*CPO",
+        "PartnerProductID": None,
+        "SessionID": session.hub_session_id,
+        "SessionStart": "2021-01-01T10:00:00Z",
+        "Type": "Progress",
+    }
+    payload = HubjectService.create_charging_notification_payload(
+        session, ChargingNotificationType.Progress
+    )
+    assert payload.model_dump(mode="json") == expected_payload
+
+
+@pytest.mark.django_db
+def test_create_charging_notification_payload_end_successfully():
+    session = OCPISessionFactory()
+    expected_payload = {
+        "CPOPartnerSessionID": None,
+        "ChargingStart": "2021-01-01T10:00:00Z",
+        "EMPPartnerSessionID": None,
+        "EvseID": session.evse.evse_id,
+        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "MeterValueStart": 0.0,
+        "ChargingEnd": "2021-01-01T12:00:00Z",
+        "SessionEnd": "2021-01-01T12:00:00Z",
+        "MeterValueEnd": 120.0,
+        "ConsumedEnergy": 120.0,
+        "OperatorID": "FI*CPO",
+        "PartnerProductID": None,
+        "PenaltyTimeStart": None,
+        "MeterValueInBetween": None,
+        "SessionID": session.hub_session_id,
+        "SessionStart": "2021-01-01T10:00:00Z",
+        "Type": "End",
+    }
+    payload = HubjectService.create_charging_notification_payload(
+        session, ChargingNotificationType.End
+    )
+    assert payload.model_dump(mode="json") == expected_payload
+
+
+@pytest.mark.django_db
+def test_invalid_notification_type_raises_value_error():
+    with pytest.raises(
+        ValueError, match="Unsupported session notification type: InvalidType"
+    ):
+        HubjectService.create_charging_notification_payload(
+            session=OCPISessionFactory(), notification_type="InvalidType"
+        )
+
+
 @pytest.fixture
 def charge_notification_payload():
     def generate_payload(session: Session, notification_type: ChargingNotificationType):
@@ -182,18 +269,20 @@ def test_send_updates_calls_correct_method(
 @responses.activate
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "update_type",
+    "notification_type",
     [
         ChargingNotificationType.Start,
         ChargingNotificationType.End,
         ChargingNotificationType.Progress,
     ],
 )
-def test_route_through_oicp_true_invokes_send_update(hubject_credentials, update_type):
+def test_route_through_oicp_true_invokes_send_update(
+    hubject_credentials, notification_type
+):
     session = OCPISessionFactory(credentials=hubject_credentials)
     with patch.object(HubjectService, "send_update") as mock_send:
         result = session.send_updates(
-            update_type=update_type,
+            update_type=notification_type,
         )
-    mock_send.assert_called_once_with(session=session, update_type=update_type)
+    mock_send.assert_called_once_with(session=session, update_type=notification_type)
     assert result is None
