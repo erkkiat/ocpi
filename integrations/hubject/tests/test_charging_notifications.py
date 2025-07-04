@@ -6,6 +6,7 @@ import pytest
 import pytz
 import responses
 from django.conf import settings
+from pydantic import ValidationError
 from responses import matchers
 
 from integrations.hubject.ocpi_to_oicp_converter import (
@@ -160,6 +161,16 @@ def test_create_charging_notification_payload_start_successfully():
 
 
 @pytest.mark.django_db
+def test_create_charging_notification_payload_start_with_invalid_charging_start_raises_value_error():
+    session = OCPISessionFactory()
+    session.start_date_time = None
+    with pytest.raises(ValidationError):
+        HubjectService.create_charging_notification_payload(
+            session, ChargingNotificationType.Start
+        )
+
+
+@pytest.mark.django_db
 def test_create_charging_notification_payload_progress_successfully():
     session = OCPISessionFactory()
     expected_payload = {
@@ -183,6 +194,36 @@ def test_create_charging_notification_payload_progress_successfully():
         session, ChargingNotificationType.Progress
     )
     assert payload.model_dump(mode="json") == expected_payload
+
+
+@pytest.mark.django_db
+def test_create_charging_notification_payload_progress_with_invalid_charging_start_raises_value_error():
+    session = OCPISessionFactory()
+    session.start_date_time = datetime.now(pytz.utc) + timedelta(days=10)
+    with pytest.raises(ValidationError):
+        HubjectService.create_charging_notification_payload(
+            session, ChargingNotificationType.Progress
+        )
+
+
+@pytest.mark.django_db
+def test_create_charging_notification_payload_progress_with_invalid_event_occurred_raises_value_error():
+    session = OCPISessionFactory()
+    session.last_updated = None
+    with pytest.raises(ValidationError):
+        HubjectService.create_charging_notification_payload(
+            session, ChargingNotificationType.Progress
+        )
+
+
+@pytest.mark.django_db
+def test_create_charging_notification_payload_end_with_invalid_charging_end_raises_value_error():
+    session = OCPISessionFactory()
+    session.end_date_time = None
+    with pytest.raises(ValidationError):
+        HubjectService.create_charging_notification_payload(
+            session, ChargingNotificationType.End
+        )
 
 
 @pytest.mark.django_db
