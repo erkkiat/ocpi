@@ -41,8 +41,6 @@ from ocpi22.tests.factories import (
     OCPIImageFactory,
     SolidTariffFactory,
     ERoamingPushPricingProductDataFactory,
-    CdrTokenFactory,
-    OCPISessionFactory,
     CdrFactory,
     CdrLocationFactory,
 )
@@ -629,22 +627,11 @@ def pricing_product_data_successful_result():
 
 
 @pytest.fixture
-def session_for_cdr():
-    cdr_token = CdrTokenFactory(uid="AACDEFFE123456")
-
-    return OCPISessionFactory(
-        uid="Session123",
-        cdr_token=cdr_token,
-    )
-
-
-@pytest.fixture
-def ocpi_cdr(session_for_cdr):
+def ocpi_cdr():
     cdr_location = CdrLocationFactory(
         evse_uid="EVSECONVERT", evse_id="FI*CPO*EEVSECONVERT"
     )
-    cdr = CdrFactory(session_id=session_for_cdr.uid, cdr_location=cdr_location)
-
+    cdr = CdrFactory(cdr_location=cdr_location)
     return cdr
 
 
