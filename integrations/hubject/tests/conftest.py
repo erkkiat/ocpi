@@ -630,7 +630,7 @@ def pricing_product_data_successful_result():
 
 @pytest.fixture
 def session_for_cdr():
-    cdr_token = CdrTokenFactory(uid="AACDEFFE123456")
+    cdr_token = CdrTokenFactory(uid="BAADF00D")
 
     return OCPISessionFactory(
         uid="Session123",
@@ -661,7 +661,7 @@ def expected_eroaming_cdr():
         "HubOperatorID": "FI*CPO",
         "HubProviderID": "FI*MSP",
         "Identification": {
-            "RFIDMifareFamilyIdentification": {"UID": "AACDEFFE123456"},
+            "RFIDMifareFamilyIdentification": {"UID": "BAADF00D"},
         },
         "MeterValueEnd": 120.0,
         "MeterValueInBetween": None,

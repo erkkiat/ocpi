@@ -507,7 +507,7 @@ class TestMappings:
     def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_session_not_found(
         self, ocpi_cdr
     ):
-        Session.objects.filter(uid=ocpi_cdr.session_id).delete()
+        Session.objects.filter(uid__iexact=ocpi_cdr.session_id).delete()
 
         with pytest.raises(
             ValidationError, match=f"No session found for ID {ocpi_cdr.session_id}"
