@@ -6,21 +6,23 @@ import pytest
 import pytz
 import responses
 from django.conf import settings
+from responses import matchers
 
 from integrations.hubject.ocpi_to_oicp_converter import (
-    convert_ocpi_session_to_oicp_charging_notification_start,
-    convert_ocpi_session_to_oicp_charging_notification_progress,
-    convert_ocpi_session_to_oicp_charging_notification_end,
+    convert_to_charging_notification_start,
+    convert_to_charging_notification_progress,
+    convert_to_charging_notification_end,
 )
 from integrations.hubject.schemas import ChargingNotificationType
 from integrations.hubject.services import HubjectService
+from ocpi22.models.session import Session
 from ocpi22.tests.factories import OCPISessionFactory
 
 
 @pytest.mark.django_db
 def test_convert_session_to_charging_notification_start_with_defaults_succeeds():
     session = OCPISessionFactory()
-    notification = convert_ocpi_session_to_oicp_charging_notification_start(session)
+    notification = convert_to_charging_notification_start(session)
 
     assert notification.SessionID.root == session.hub_session_id
     assert notification.EvseID.root == session.evse.evse_id
@@ -39,7 +41,7 @@ def test_convert_session_to_charging_notification_start_with_defaults_succeeds()
 def test_convert_session_to_charging_notification_start_with_meter_start_succeeds():
     meter_start_value = 42.5
     session = OCPISessionFactory(start_kwh=meter_start_value)
-    notification = convert_ocpi_session_to_oicp_charging_notification_start(session)
+    notification = convert_to_charging_notification_start(session)
 
     assert notification.MeterValueStart == meter_start_value, notification
 
@@ -48,7 +50,7 @@ def test_convert_session_to_charging_notification_start_with_meter_start_succeed
 def test_convert_session_to_charging_notification_progress_defaults_succeeds():
     session = OCPISessionFactory()
     session.last_updated = session.start_date_time + timedelta(minutes=5)
-    notification = convert_ocpi_session_to_oicp_charging_notification_progress(session)
+    notification = convert_to_charging_notification_progress(session)
 
     assert notification.Type == ChargingNotificationType.Progress
     assert notification.SessionID.root == session.hub_session_id
@@ -65,7 +67,7 @@ def test_convert_session_to_charging_notification_progress_with_consumed_energy_
     session.last_updated = now
     session.stop_kwh = 12.5
 
-    notification = convert_ocpi_session_to_oicp_charging_notification_progress(session)
+    notification = convert_to_charging_notification_progress(session)
 
     assert notification.EventOccurred == now
     assert notification.ConsumedEnergyProgress == 12.5
@@ -79,7 +81,7 @@ def test_convert_session_to_charging_notification_progress_with_duration_only_su
     session.last_updated = now
     session.current_kwh = None
 
-    notification = convert_ocpi_session_to_oicp_charging_notification_progress(session)
+    notification = convert_to_charging_notification_progress(session)
 
     expected_ms = int((now - start).total_seconds() * 1000)
     assert notification.ChargingDuration == expected_ms, (
@@ -106,7 +108,7 @@ def test_convert_session_to_charging_notification_end_basic_mapping_succeeds():
         start_kwh=start_kwh,
         stop_kwh=stop_kwh,
     )
-    notification = convert_ocpi_session_to_oicp_charging_notification_end(session)
+    notification = convert_to_charging_notification_end(session)
 
     assert notification.Type == ChargingNotificationType.End
     assert notification.SessionID.root == session.hub_session_id
@@ -131,81 +133,50 @@ def test_convert_session_to_charging_notification_end_negative_meter_raises_valu
     session.stop_kwh = 1.0
 
     with pytest.raises(ValueError):
-        convert_ocpi_session_to_oicp_charging_notification_end(session)
+        convert_to_charging_notification_end(session)
+
+
+@pytest.fixture
+def charge_notification_payload():
+    def generate_payload(session: Session, notification_type: ChargingNotificationType):
+        payload = HubjectService.create_charging_notification_payload(
+            session, notification_type
+        )
+        return payload.model_dump(mode="json")
+
+    return generate_payload
 
 
 @responses.activate
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "update_type",
+    "notification_type",
     [
         ChargingNotificationType.Start,
         ChargingNotificationType.End,
         ChargingNotificationType.Progress,
     ],
 )
-def test_send_updates_calls_correct_method(update_type):
-    def session_evse_matcher(
-        session_id,
-        evse_id,
-        upd_type,
-        identification,
-        charging_start,
-        session_start,
-        meter_value_start,
-        operator_id,
-        cpo_partner_session_id,
-        emp_partner_session_id,
-        partner_product_id,
-    ):
-        def _matcher(request):
-            payload = json.loads(request.body)
-            assert payload.get("SessionID") == session_id
-            assert payload.get("EvseID") == evse_id
-            assert payload.get("Type") == upd_type
-            assert (
-                payload.get("Identification", {})
-                .get("RFIDMifareFamilyIdentification", {})
-                .get("UID")
-                == identification
-            )
-            assert payload.get("ChargingStart") == charging_start
-            assert payload.get("SessionStart") == session_start
-            assert payload.get("MeterValueStart") == meter_value_start
-            assert payload.get("OperatorID") == operator_id
-            assert payload.get("CPOPartnerSessionID") == cpo_partner_session_id
-            assert payload.get("EMPPartnerSessionID") == emp_partner_session_id
-            assert payload.get("PartnerProductID") == partner_product_id
-            return True, None
-
-        return _matcher
-
-    ocpi_session = OCPISessionFactory()
-    start_date_time = ocpi_session.start_date_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+def test_send_updates_calls_correct_method(
+    notification_type, charge_notification_payload
+):
+    session = OCPISessionFactory()
+    payload = charge_notification_payload(session, notification_type)
     responses.add(
         responses.POST,
         f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications",
-        json={},
         status=200,
-        match=[
-            session_evse_matcher(
-                session_id=ocpi_session.hub_session_id,
-                evse_id=ocpi_session.evse.evse_id,
-                upd_type=update_type.value,
-                identification=ocpi_session.cdr_token.uid,
-                charging_start=start_date_time,
-                session_start=start_date_time,
-                meter_value_start=ocpi_session.start_kwh or 0.0,
-                operator_id=f"{ocpi_session.location.ocpi_master.country_code}*{ocpi_session.location.ocpi_master.party_id}",
-                cpo_partner_session_id=None,
-                emp_partner_session_id=None,
-                partner_product_id=None,
-            ),
-        ],
+        match=[matchers.json_params_matcher(payload)],
     )
 
-    response = HubjectService().send_update(ocpi_session, update_type)  # noqa
-    assert response.status_code == 200, response.content
+    HubjectService.send_update(session, notification_type)  # noqa
+    response = responses.calls[0].response
+    assert (
+        response.request.url
+        == f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
+    )
+    assert response.status_code == 200
+    assert json.loads(response.request.body)["Type"] == notification_type.value
 
 
 @responses.activate

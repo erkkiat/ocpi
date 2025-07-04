@@ -11,11 +11,13 @@ from integrations.hubject.schemas import (
 )
 from typing import TYPE_CHECKING
 
+from util import hours_to_milliseconds
+
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
 
 
-def convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session) -> dict:
+def convert_to_charging_notification_base_data(ocpi_session: "Session") -> dict:
     ocpi_master = ocpi_session.location.ocpi_master
     return {
         "SessionID": SessionID(root=ocpi_session.hub_session_id),
@@ -34,21 +36,17 @@ def convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session) -
     }
 
 
-def convert_ocpi_session_to_oicp_charging_notification_start(
+def convert_to_charging_notification_start(
     ocpi_session: "Session",
 ) -> ERoamingChargingNotificationStart:
-    data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
+    data = convert_to_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationStart(**data)
 
 
-def hours_to_milliseconds(total_time_float: float) -> int:
-    return int(total_time_float * 3600 * 1000)
-
-
-def convert_ocpi_session_to_oicp_charging_notification_progress(
+def convert_to_charging_notification_progress(
     ocpi_session: "Session",
 ) -> ERoamingChargingNotificationProgress:
-    data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
+    data = convert_to_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationProgress(
         ChargingDuration=hours_to_milliseconds(ocpi_session.total_time_float),
         EventOccurred=ocpi_session.last_updated,
@@ -57,10 +55,10 @@ def convert_ocpi_session_to_oicp_charging_notification_progress(
     )
 
 
-def convert_ocpi_session_to_oicp_charging_notification_end(
+def convert_to_charging_notification_end(
     ocpi_session: "Session",
 ) -> ERoamingChargingNotificationEnd:
-    data = convert_ocpi_session_to_oicp_charging_notification_base_data(ocpi_session)
+    data = convert_to_charging_notification_base_data(ocpi_session)
     return ERoamingChargingNotificationEnd(
         ChargingEnd=ocpi_session.end_date_time,
         SessionEnd=ocpi_session.end_date_time,
