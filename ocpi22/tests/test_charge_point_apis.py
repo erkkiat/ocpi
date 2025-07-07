@@ -419,3 +419,23 @@ class TestChargePointAPI:
                 "total_cost_incl_vat": 0.9,
                 "total_kwh": 10.0,
             }
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "stop_kwh, expected_status_code",
+        [
+            (0, 200),
+            (-1, 400),
+            (1000.1234, 200),
+            ("invalid", 400),
+        ],
+    )
+    def test_stop_transaction_post_with_multiple_stop_kwh_returns_expected_response(
+        self, admin_user_client, session, stop_kwh, expected_status_code
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": stop_kwh,
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == expected_status_code
