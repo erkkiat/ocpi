@@ -545,11 +545,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             authorization_method=authorization.auth_method,
                             billed_to=authorization.ocpi_master,
                             ad_hoc_token=ad_hoc_token,
-                            status=Session.PENDING,
                             evse_uid=evse.uid,
                             connector_id=None,
                             location_id=evse.location.uid,
-                            ocpi_master=authorization.ocpi_master,
                             hub_session_id=authorization.hub_session_id,
                         )
                         save_to_session_cache(
