@@ -1,6 +1,5 @@
 import json
 from datetime import time, date
-from decimal import Decimal
 from functools import reduce
 from logging import getLogger
 
@@ -206,12 +205,10 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
-        session.stop_kwh = kwh
-        session.update_last_updated()
 
-        session.update_charging_periods(
-            Decimal(kwh) - session.start_kwh, soc, power, timestamp
-        )
+        session.update_last_updated()
+        kwh_delta = session.stop_kwh - session.start_kwh
+        session.update_charging_periods(kwh_delta, soc, power, timestamp)
 
         session.calculate_price()
         session.save(
