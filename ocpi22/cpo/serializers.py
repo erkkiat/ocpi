@@ -267,6 +267,7 @@ class StopTransactionSerializer(serializers.Serializer):
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
     stop_kwh = serializers.FloatField(
+        min_value=0.0,
         default=0.0,
         required=False,
         help_text="Optionally, the final kWh reading from the charger",
