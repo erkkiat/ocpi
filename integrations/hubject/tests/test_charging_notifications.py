@@ -298,6 +298,7 @@ def test_send_updates_calls_correct_method(
     )
 
     HubjectService.send_update(session, notification_type)  # noqa
+    assert len(responses.calls) == 1
     response = responses.calls[0].response
     assert (
         response.request.url
