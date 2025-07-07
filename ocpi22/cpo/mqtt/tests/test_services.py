@@ -331,6 +331,32 @@ class TestMqttServices:
                     kwargs=message_dict, expires=35
                 )
 
+    @pytest.mark.django_db
+    def test_process_meter_values_calculates_kwh_delta_after_decimal_conversion_in_save(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            connector=connector, status=Session.ACTIVE, start_kwh=10.5
+        )
+        mock_request = MagicMock()
+
+        with patch.object(session, "send_updates"):
+            result = process_meter_values(
+                request=mock_request, kwh=15.75, session=session
+            )
+
+            session.refresh_from_db()
+            assert session.stop_kwh == 15.75
+            assert result.status_code == 200
+
+            charging_period = session.chargingperiods.first()
+            energy_dimension = charging_period.dimensions.filter(type="ENERGY").first()
+            assert energy_dimension.volume == Decimal("5.25")
+
 
 class TestAuthorizeDataOverMqtt:
     @pytest.mark.django_db
