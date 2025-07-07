@@ -195,11 +195,9 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         authorization_method=authorization.auth_method,
         billed_to=authorization.get_token_party(),
         ad_hoc_token=ad_hoc_token,
-        status=Session.PENDING,
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
-        ocpi_master=evse.location.ocpi_master,
     )
     save_to_session_cache(
         route=find_route_from_credentials(
