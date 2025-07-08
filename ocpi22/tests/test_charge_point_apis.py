@@ -430,7 +430,7 @@ class TestChargePointAPI:
             ("invalid", 400),
         ],
     )
-    def test_stop_transaction_post_with_multiple_stop_kwh_returns_expected_response(
+    def test_stop_transaction_post_with_stop_kwh_returns_expected_response(
         self, admin_user_client, session, stop_kwh, expected_status_code
     ):
         request_body = {
