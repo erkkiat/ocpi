@@ -7,6 +7,7 @@ import pytest
 import pytz
 import time_machine
 from django.core.exceptions import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 from integrations.hubject.schemas import (
     Plug,
@@ -28,7 +29,8 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapability
 from ocpi22.models.location import Connector
-from ocpi22.tests.factories import LocationFactory, EvseFactory
+from ocpi22.models.session import Session
+from ocpi22.tests.factories import LocationFactory, EvseFactory, OCPISessionFactory
 
 
 def load_tests(_loader, tests, _ignore):
@@ -435,7 +437,7 @@ class TestMappings:
                 ocpi_cdr
             )
         )
-        assert eroaming.model_dump() == expected_eroaming_cdr
+        assert eroaming.model_dump(by_alias=True, mode="json") == expected_eroaming_cdr
 
     @pytest.mark.django_db
     def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_total_energy_exceeds_1000(
@@ -443,9 +445,7 @@ class TestMappings:
     ):
         ocpi_cdr.total_energy = 1001
 
-        with pytest.raises(
-            ValidationError, match="Total energy must not exceed 1000 kWh."
-        ):
+        with pytest.raises(PydanticValidationError):
             self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                 ocpi_cdr
             )
@@ -458,8 +458,7 @@ class TestMappings:
         ocpi_cdr.end_date_time = datetime.now(pytz.utc) - timedelta(hours=1)
 
         with pytest.raises(
-            ValidationError,
-            match="ChargingStart time must be earlier than ChargingEnd time.",
+            PydanticValidationError,
         ):
             self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                 ocpi_cdr
@@ -471,9 +470,7 @@ class TestMappings:
     ):
         ocpi_cdr.end_date_time = datetime.now(pytz.utc) + timedelta(hours=1)
 
-        with pytest.raises(
-            ValidationError, match="ChargingEnd time must not be in the future."
-        ):
+        with pytest.raises(PydanticValidationError):
             self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                 ocpi_cdr
             )
@@ -483,14 +480,13 @@ class TestMappings:
         self, ocpi_cdr
     ):
         with patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
-            mock_session = mock.MagicMock()
+            mock_session = OCPISessionFactory()
             mock_session.start_kwh = 10
             mock_session.stop_kwh = 5
             mock_filter.return_value.first.return_value = mock_session
 
             with pytest.raises(
-                ValidationError,
-                match="MeterValueEnd must be greater than MeterValueStart.",
+                PydanticValidationError,
             ):
                 self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                     ocpi_cdr
@@ -502,8 +498,19 @@ class TestMappings:
     ):
         ocpi_cdr.total_energy = -1
 
+        with pytest.raises(PydanticValidationError):
+            self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_cdr_to_eroaming_cdr_raises_validation_error_when_session_not_found(
+        self, ocpi_cdr
+    ):
+        Session.objects.filter(uid__iexact=ocpi_cdr.session_id).delete()
+
         with pytest.raises(
-            ValidationError, match="ConsumedEnergy must not be negative."
+            ValidationError, match=f"No session found for ID {ocpi_cdr.session_id}"
         ):
             self._ocpi_2_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
                 ocpi_cdr

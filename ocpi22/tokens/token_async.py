@@ -12,7 +12,6 @@ from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
-from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -120,6 +119,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return:
     """
+    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")

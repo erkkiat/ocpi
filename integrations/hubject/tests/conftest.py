@@ -630,7 +630,7 @@ def pricing_product_data_successful_result():
 
 @pytest.fixture
 def session_for_cdr():
-    cdr_token = CdrTokenFactory(uid="AACDEFFE123456")
+    cdr_token = CdrTokenFactory(uid="BAADF00D")
 
     return OCPISessionFactory(
         uid="Session123",
@@ -653,22 +653,20 @@ def expected_eroaming_cdr():
     return {
         "CPOPartnerSessionID": "Session123",
         "CalibrationLawVerificationInfo": None,
-        "ChargingEnd": datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC),
-        "ChargingStart": datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),
+        "ChargingEnd": "2022-02-22T23:22:22Z",
+        "ChargingStart": "2022-02-22T22:22:22Z",
         "ConsumedEnergy": 1.1,
         "EMPPartnerSessionID": "EMSPSESSION1",
         "EvseID": "FI*CPO*EEVSECONVERT",
         "HubOperatorID": "FI*CPO",
         "HubProviderID": "FI*MSP",
-        "Identification": {
-            "RFIDMifareFamilyIdentification": {"UID": "AACDEFFE123456"},
-        },
+        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "BAADF00D"}},
         "MeterValueEnd": 120.0,
         "MeterValueInBetween": None,
         "MeterValueStart": 0.0,
         "PartnerProductID": None,
-        "SessionEnd": datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC),
-        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d2c527",
-        "SessionStart": datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),
+        "SessionEnd": "2022-02-22T23:22:22Z",
+        "SessionID": "b2688855-7f00-0002-6d8e-48d883f6abb6",
+        "SessionStart": "2022-02-22T22:22:22Z",
         "SignedMeteringValues": None,
     }

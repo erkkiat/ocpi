@@ -32,6 +32,8 @@ class SolidTariffRepository:
     @staticmethod
     def get_by_ocpi_tariff_id(ocpi_tariff_id: str) -> SolidTariff | None:
         try:
-            return SolidTariff.objects.get(ocpi_tariff__uid=ocpi_tariff_id)
+            return SolidTariff.objects.filter(ocpi_tariff__uid=ocpi_tariff_id).latest(
+                "created_at"
+            )
         except SolidTariff.DoesNotExist:
             return None

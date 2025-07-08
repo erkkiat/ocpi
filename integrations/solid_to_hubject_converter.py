@@ -53,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
-    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -564,56 +563,15 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
-    def _validate_cdr(self, cdr):
-        MAX_TOTAL_ENERGY_KWH = 1000
-
-        if cdr.total_energy > 1000:
-            logger.error(
-                "Total energy exceeds maximum limit in ERoamingChargeDetailRecords."
-            )
-            raise ValidationError(
-                f"Total energy must not exceed {MAX_TOTAL_ENERGY_KWH} kWh."
-            )
-
-        if cdr.start_date_time >= cdr.end_date_time:
-            logger.error(
-                "Start date and end time are not valid in ERoamingChargeDetailRecord."
-            )
-            raise ValidationError(
-                "ChargingStart time must be earlier than ChargingEnd time."
-            )
-
-        if cdr.end_date_time > datetime.now(pytz.utc):
-            logger.error(
-                "ChargingEnd time is in the future in ERoamingChargeDetailRecord."
-            )
-            raise ValidationError("ChargingEnd time must not be in the future.")
-
-        if cdr.total_energy < 0:
-            logger.error("Consumed energy is negative in ERoamingChargeDetailRecord.")
-            raise ValidationError("ConsumedEnergy must not be negative.")
-
-    def _validate_session(self, session: "Session"):
-        if session.stop_kwh <= session.start_kwh:
-            logger.exception(
-                "MeterValueEnd is not greater than MeterValueStart in ERoamingChargeDetailRecord."
-            )
-            raise ValidationError("MeterValueEnd must be greater than MeterValueStart.")
-
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
         from ocpi22.cpo.api import applying_tariff_element
         from ocpi22.models.session import Session
 
-        self._validate_cdr(cdr)
         session = Session.objects.filter(uid__iexact=cdr.session_id).first()
-        if session is None:
-            logger.error(
-                f"No session found with ID: {cdr.session_id}. Cannot convert CDR to ERoamingChargeDetailRecord."
-            )
-            raise ValidationError(f"No session found with ID: {cdr.session_id}.")
-        self._validate_session(session)
+        if not session:
+            raise ValidationError(f"No session found for ID {cdr.session_id}")
 
         msp_party_str = cdr.billed_to.party_str()
         operator_party_str = cdr.ocpi_master.party_str()
@@ -632,30 +590,30 @@ class SolidToHubjectConverter:
             )
 
         eroaming_cdr = ERoamingChargeDetailRecord(
-            SessionID=session.hub_session_id,
-            CPOPartnerSessionID=session.uid,
-            EMPPartnerSessionID=session.reservation_id,
-            PartnerProductID=ProductID(root=partner_product_id)
-            if partner_product_id
-            else None,
-            EvseID=EvseID(root=cdr.evse_id),
-            Identification=IdentificationClass(
+            session_id=session.hub_session_id,
+            CPO_partner_session_id=session.uid,
+            EMP_partner_session_id=session.reservation_id,
+            partner_product_id=(
+                ProductID(root=partner_product_id) if partner_product_id else None
+            ),
+            evse_id=EvseID(root=cdr.evse_id),
+            identification=IdentificationClass(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=session.token_id)
                 ),
             ),
-            ChargingStart=cdr.start_date_time,
-            ChargingEnd=cdr.end_date_time,
-            SessionStart=cdr.start_date_time,
-            SessionEnd=cdr.end_date_time,
-            MeterValueStart=session.start_kwh,
-            MeterValueEnd=session.stop_kwh,
-            MeterValueInBetween=None,
-            ConsumedEnergy=cdr.total_energy,
-            SignedMeteringValues=None,
-            CalibrationLawVerificationInfo=None,
-            HubOperatorID=OperatorID(root=operator_party_str),
-            HubProviderID=ProviderID(root=msp_party_str),
+            charging_start=cdr.start_date_time,
+            charging_end=cdr.end_date_time,
+            session_start=cdr.start_date_time,
+            session_end=cdr.end_date_time,
+            meter_value_start=session.start_kwh,
+            meter_value_end=session.stop_kwh,
+            meter_value_in_between=None,
+            consumed_energy=cdr.total_energy,
+            signed_metering_values=None,
+            calibration_law_verification_info=None,
+            hub_operator_id=OperatorID(root=operator_party_str),
+            hub_provider_id=ProviderID(root=msp_party_str),
         )
 
         evse_data_record = self._convert_to_evse_data_record(
@@ -666,7 +624,7 @@ class SolidToHubjectConverter:
             evse_data_record.CalibrationLawDataAvailability
             == CalibrationLawDataAvailability.External
         ):
-            if eroaming_cdr.SignedMeteringValues is None:
+            if eroaming_cdr.signed_metering_values is None:
                 logger.error(
                     "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External in ERoamingChargeDetailRecord."
                 )
