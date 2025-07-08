@@ -119,7 +119,9 @@ class TestERoamingChargeDetailRecordValidation:
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
-        assert "Input should be less than or equal to 1000" in str(exc_info.value)
+        assert "ConsumedEnergy must be less than or equal to 1000 kWh" in str(
+            exc_info.value
+        )
 
     def test_consumed_energy_negative_value_raises_validation_error(
         self, valid_eroaming_cdr
