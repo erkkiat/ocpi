@@ -70,6 +70,7 @@ USE_ACCOUNTS = env_bool("USE_ACCOUNTS", False)
 REQUIRE_WALLET_BALANCE = bool(env_bool("REQUIRE_WALLET_BALANCE", True) and USE_ACCOUNTS)
 
 OCPI_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+OICP_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 OCPI_22_URL = "/ocpi/2.2/"
 OCPI_221_URL = "/ocpi/2.2.1/"
 VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
@@ -390,6 +391,11 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
+        "": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
         "django": {
             "level": "INFO",
             "propagate": True,
@@ -397,11 +403,6 @@ LOGGING = {
         "django.request": {
             "level": "INFO",
             "propagate": True,
-        },
-        "ocpiconnector.logging_middleware": {
-            "level": "INFO",
-            "propagate": False,
-            "handlers": ["console"],
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
@@ -497,6 +498,8 @@ HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
 HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
 HUB_ID_MAX_LENGTH = 36
+
+FIXIE_URL = os.environ.get("FIXIE_URL", "")
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")

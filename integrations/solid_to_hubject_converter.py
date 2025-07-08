@@ -2,7 +2,7 @@ import functools
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import pytz
 from django.conf import settings
@@ -39,19 +39,21 @@ from integrations.hubject.schemas import (
     ERoamingChargeDetailRecord,
     OperatorID,
     ProviderID,
-    Identification,
+    IdentificationClass,
     UID,
     ProductID,
-    RFIDMifareFamilyIdentification,
+    RFIDMifareFamilyIdentificationClass,
 )
 from ocpi22.choices import OCPICapability
 from ocpi22.cpo.repositories import SolidTariffRepository
-from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from ocpi22.models.cdr import Cdr
+    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -591,7 +593,7 @@ class SolidToHubjectConverter:
             logger.error("Consumed energy is negative in ERoamingChargeDetailRecord.")
             raise ValidationError("ConsumedEnergy must not be negative.")
 
-    def _validate_session(self, session: Session):
+    def _validate_session(self, session: "Session"):
         if session.stop_kwh <= session.start_kwh:
             logger.exception(
                 "MeterValueEnd is not greater than MeterValueStart in ERoamingChargeDetailRecord."
@@ -599,9 +601,10 @@ class SolidToHubjectConverter:
             raise ValidationError("MeterValueEnd must be greater than MeterValueStart.")
 
     def convert_cdr_to_eroaming_charging_detail_record(
-        self, cdr: Cdr
+        self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
         from ocpi22.cpo.api import applying_tariff_element
+        from ocpi22.models.session import Session
 
         self._validate_cdr(cdr)
         session = Session.objects.filter(uid__iexact=cdr.session_id).first()
@@ -636,8 +639,8 @@ class SolidToHubjectConverter:
             if partner_product_id
             else None,
             EvseID=EvseID(root=cdr.evse_id),
-            Identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+            Identification=IdentificationClass(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=session.token_id)
                 ),
             ),

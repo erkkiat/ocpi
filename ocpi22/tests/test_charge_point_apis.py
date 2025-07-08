@@ -363,7 +363,7 @@ class TestChargePointAPI:
             "token": {
                 "country_code": "FI",
                 "party_id": "MSP",
-                "token_id": "ABCABCDE123456",
+                "token_id": "DEADC0DE",
                 "type": "RFID",
                 "contract_id": "CONTRACT-12345",
             },
@@ -412,7 +412,7 @@ class TestChargePointAPI:
                     "contract_id": "CONTRACT-12345",
                     "country_code": "FI",
                     "party_id": "MSP",
-                    "token_id": "ABCABCDE123456",
+                    "token_id": "DEADC0DE",
                     "type": "RFID",
                 },
                 "total_cost_excl_vat": 0.8,
