@@ -439,3 +439,13 @@ class TestChargePointAPI:
         }
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
         assert response.status_code == expected_status_code
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_require_stop_kwh_returns_400(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 400

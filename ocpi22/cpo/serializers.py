@@ -268,8 +268,7 @@ class StopTransactionSerializer(serializers.Serializer):
     )
     stop_kwh = serializers.FloatField(
         min_value=0.0,
-        default=0.0,
-        required=False,
+        required=True,
         help_text="Optionally, the final kWh reading from the charger",
     )
     timestamp = UTCDateTimeField(
