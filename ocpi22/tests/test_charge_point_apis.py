@@ -441,6 +441,22 @@ class TestChargePointAPI:
         assert response.status_code == expected_status_code
 
     @pytest.mark.django_db
+    def test_stop_transaction_post_with_invalid_stop_kwh_returns_400(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": "invalid",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 400
+        assert response.json() == {
+            "stop_kwh": [
+                "A valid number is required.",
+            ],
+        }
+
+    @pytest.mark.django_db
     def test_stop_transaction_post_require_stop_kwh_returns_400(
         self, admin_user_client, session
     ):
@@ -449,9 +465,12 @@ class TestChargePointAPI:
         }
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
         assert response.status_code == 400
+        assert response.json() == {
+            "stop_kwh": ["This field is required."],
+        }
 
     @pytest.mark.django_db
-    def test_stop_transaction_post_use_timestamp_returns_200(
+    def test_stop_transaction_post_with_timestamp_returns_200(
         self, admin_user_client, session
     ):
         request_body = {
