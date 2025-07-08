@@ -54,19 +54,6 @@ the charge point location due to the need for time based charging fees.
 """
 
 
-def oicp_alias_generator(field_name: str) -> str:
-    custom_mappings = {
-        "CPO_partner_session_id": "CPOPartnerSessionID",
-        "EMP_partner_session_id": "EMPPartnerSessionID",
-        "evse_id": "EvseID",
-        "session_id": "SessionID",
-        "partner_product_id": "PartnerProductID",
-        "hub_operator_id": "HubOperatorID",
-        "hub_provider_id": "HubProviderID",
-    }
-    return custom_mappings.get(field_name, to_pascal(field_name))
-
-
 class AuthorizationStatus(Enum):
     Authorized = "Authorized"
     NotAuthorized = "NotAuthorized"
@@ -974,19 +961,29 @@ class ERoamingAuthorizeStop(BaseModel):
 
 
 class ERoamingChargeDetailRecord(BaseModel):
-    model_config = {"alias_generator": oicp_alias_generator, "populate_by_name": True}
+    model_config = {"alias_generator": to_pascal, "populate_by_name": True}
 
-    session_id: SessionID
+    session_id: SessionID = Field(
+        ..., alias="SessionID", description="The hubject session ID."
+    )
     CPO_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
     EMP_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    partner_product_id: Optional[ProductID] = None
-    evse_id: EvseID
+    partner_product_id: Optional[ProductID] = Field(
+        None,
+        alias="PartnerProductID",
+        description="The pricing product id related to the CDR",
+    )
+    evse_id: EvseID = Field(
+        ..., alias="EvseID", description="The EVSE ID of the charging station."
+    )
     identification: IdentificationClass
     charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
@@ -1017,7 +1014,6 @@ class ERoamingChargeDetailRecord(BaseModel):
     consumed_energy: NonNegativeFloat = Field(
         ...,
         description="The difference between MeterValueEnd and MeterValueStart in kWh. Must be less than or equal to 1000 kWh.",
-        le=1000.0,
     )
     signed_metering_values: Optional[List[SignedMeteringValue]] = Field(
         None,
@@ -1026,8 +1022,16 @@ class ERoamingChargeDetailRecord(BaseModel):
     calibration_law_verification_info: Optional[CalibrationLawVerificationInfo] = Field(
         None, description="Calibration law verification information"
     )
-    hub_operator_id: Optional[OperatorID] = None
-    hub_provider_id: Optional[ProviderID] = None
+    hub_operator_id: Optional[OperatorID] = Field(None, alias="HubOperatorID")
+    hub_provider_id: Optional[ProviderID] = Field(None, alias="HubProviderID")
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_consumed_energy(cls, values):
+        consumed_energy = values.consumed_energy
+        if consumed_energy > 1000.0:
+            raise ValueError("ConsumedEnergy must be less than or equal to 1000 kWh")
+        return values
 
     @model_validator(mode="after")
     @classmethod

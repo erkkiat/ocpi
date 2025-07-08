@@ -666,7 +666,7 @@ def expected_eroaming_cdr():
         "MeterValueStart": 0.0,
         "PartnerProductID": None,
         "SessionEnd": "2022-02-22T23:22:22Z",
-        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d2c527",
+        "SessionID": "b2688855-7f00-0002-6d8e-48d883f6abb6",
         "SessionStart": "2022-02-22T22:22:22Z",
         "SignedMeteringValues": None,
     }

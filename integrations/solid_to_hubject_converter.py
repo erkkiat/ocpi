@@ -574,12 +574,9 @@ class SolidToHubjectConverter:
         operator_party_str = cdr.ocpi_master.party_str()
 
         current_tariff_element = applying_tariff_element(session)
-        try:
-            solid_tariff = SolidTariffRepository.get_by_ocpi_tariff_id(
-                current_tariff_element.tariff.uid
-            )
-        except SolidTariff.DoesNotExist:
-            solid_tariff = None
+        solid_tariff = SolidTariffRepository.get_by_ocpi_tariff_id(
+            current_tariff_element.tariff.uid
+        )
         partner_product_id = None
         if solid_tariff:
             partner_product_id = self.get_pricing_product_id(
