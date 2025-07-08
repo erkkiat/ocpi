@@ -1,7 +1,7 @@
 import functools
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import pytz
 from django.conf import settings
@@ -45,10 +45,11 @@ from integrations.hubject.schemas import (
 )
 from ocpi22.choices import OCPICapability
 from ocpi22.cpo.repositories import SolidTariffRepository
-from ocpi22.models.cdr import Cdr
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
+
+if TYPE_CHECKING:
+    from ocpi22.models.cdr import Cdr
 
 
 class SolidToHubjectConverter:
@@ -560,9 +561,10 @@ class SolidToHubjectConverter:
         return payment_options
 
     def convert_cdr_to_eroaming_charging_detail_record(
-        self, cdr: Cdr
+        self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
         from ocpi22.cpo.api import applying_tariff_element
+        from ocpi22.models.session import Session
 
         session = Session.objects.filter(uid__iexact=cdr.session_id).first()
         if not session:

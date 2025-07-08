@@ -2348,12 +2348,6 @@ class TestSession(TestCase):
             uid=uid,
             billed_to=party,
             authorization_reference=authorization_reference,
-            ocpi_master=get_credentialsrole(
-                credentials,
-                party=Party("FI", "CPO"),
-                role=OcpiRolesEnum.CPO,
-                create=True,
-            ),
         )
         self.assertTrue(bool(session))
 
