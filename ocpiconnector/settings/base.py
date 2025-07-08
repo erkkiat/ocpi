@@ -401,7 +401,7 @@ LOGGING = {
             "propagate": True,
         },
         "django.request": {
-            "level": "ERROR",
+            "level": "INFO",
             "propagate": True,
         },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
