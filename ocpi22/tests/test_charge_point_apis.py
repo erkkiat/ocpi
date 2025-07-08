@@ -449,3 +449,16 @@ class TestChargePointAPI:
         }
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
         assert response.status_code == 400
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_use_timestamp_returns_200(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 100,
+            "timestamp": "2025-03-31T06:26:58Z",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        assert response.json()["end_date_time"] == "2025-03-31T06:26:58Z"
