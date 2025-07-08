@@ -102,7 +102,7 @@ def authorize_token_response(allowed_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -116,7 +116,7 @@ def authorize_whitelist_token_response(always_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -130,7 +130,7 @@ def authorize_never_token_success_response(never_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -144,7 +144,7 @@ def authorize_never_token_not_allowed_response(never_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
