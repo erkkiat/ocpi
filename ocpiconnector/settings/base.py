@@ -493,6 +493,7 @@ MOESIF_MIDDLEWARE = {
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
+HUBJECT_URL = os.environ.get("HUBJECT_URL", "https://service.hubject.com/api/oicp/")
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
