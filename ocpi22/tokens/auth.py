@@ -92,7 +92,7 @@ class TokenAuthorization:
     location: dict = field(default_factory=dict)
     info: list = field(default_factory=list)
     billed_to: str = ""
-    ocpi_master: CredentialsRole = None
+    msp: CredentialsRole = None
     status_text: str = ""
     hub_session_id: str = ""
 
@@ -205,7 +205,7 @@ def authorize_token(
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
-                    ocpi_master=session.billed_to,
+                    msp=session.billed_to,
                 )
 
         # Not AD HOC, so Token should be found from database

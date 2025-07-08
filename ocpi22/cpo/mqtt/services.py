@@ -184,7 +184,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         valid=token_dict.get("valid"),
         billed_to=authorization.get_token_party(),
         type=token_dict.get("type"),
-        ocpi_master=authorization.ocpi_master,
+        ocpi_master=authorization.msp,
         contract_id=authorization.token.get("contract_id", "-"),
     )
     session = create_session(
