@@ -28,6 +28,14 @@ class TestERoamingChargeDetailRecordValidation:
         assert record.session_id.root == "12345678-1234-1234-1234-123456789012"
         assert record.evse_id.root == "DE*AB7*E840*6487"
         assert record.consumed_energy == 25.5
+        assert (
+            record.identification.RFIDMifareFamilyIdentification.UID.root
+            == "7568290FFF765F"
+        )
+        assert record.charging_start == datetime(2024, 1, 15, 10, 0, 0, tzinfo=pytz.UTC)
+        assert record.charging_end == datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC)
+        assert record.session_start == datetime(2024, 1, 15, 9, 30, 0, tzinfo=pytz.UTC)
+        assert record.session_end == datetime(2024, 1, 15, 12, 30, 0, tzinfo=pytz.UTC)
 
     def test_charging_end_before_charging_start_validation_raises_validation_error(
         self, valid_eroaming_cdr
