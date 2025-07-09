@@ -633,7 +633,7 @@ def session_for_cdr():
     cdr_token = CdrTokenFactory(uid="BAADF00D")
 
     return OCPISessionFactory(
-        uid="Session123",
+        uid="SESSION123",
         cdr_token=cdr_token,
     )
 
@@ -651,7 +651,7 @@ def ocpi_cdr(session_for_cdr):
 @pytest.fixture
 def expected_eroaming_cdr():
     return {
-        "CPOPartnerSessionID": "Session123",
+        "CPOPartnerSessionID": "SESSION123",
         "CalibrationLawVerificationInfo": None,
         "ChargingEnd": "2022-02-22T23:22:22Z",
         "ChargingStart": "2022-02-22T22:22:22Z",

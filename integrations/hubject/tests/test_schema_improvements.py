@@ -174,10 +174,10 @@ class TestChargingNotificationEnd:
     def test_charging_notification_end_with_valid_time_sequence_succeeds(self):
         now = datetime.now(pytz.utc)
         notification = self.create_valid_notification_end(
-            session_start=now - timedelta(minutes=5),
-            charging_start=now,
-            charging_end=now + timedelta(hours=1),
-            session_end=now + timedelta(hours=1, minutes=2),
+            session_start=now - timedelta(minutes=50),
+            charging_start=now - timedelta(minutes=45),
+            charging_end=now - timedelta(minutes=10),
+            session_end=now - timedelta(minutes=5),
         )
         assert (
             notification.session_start
