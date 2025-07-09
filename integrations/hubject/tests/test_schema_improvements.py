@@ -63,7 +63,7 @@ class TestChargingNotificationStart:
     ):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart should be before ChargingStart"
+            ValidationError, match="SessionStart cannot be after ChargingStart"
         ):
             self.create_valid_charging_notification_start(
                 session_start=now, charging_start=now - timedelta(minutes=5)
@@ -190,7 +190,7 @@ class TestChargingNotificationEnd:
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError,
-            match="ChargingStart should be before or equal to ChargingEnd",
+            match="ChargingStart cannot be after ChargingEnd",
         ):
             self.create_valid_notification_end(
                 charging_start=now, charging_end=now - timedelta(minutes=30)
@@ -199,7 +199,7 @@ class TestChargingNotificationEnd:
     def test_charging_notification_end_with_session_start_after_session_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart should be before SessionEnd"
+            ValidationError, match="SessionStart cannot be after SessionEnd"
         ):
             self.create_valid_notification_end(
                 session_start=now,
@@ -213,7 +213,7 @@ class TestChargingNotificationEnd:
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError,
-            match="SessionStart should be before ChargingStart",
+            match="SessionStart cannot be after ChargingStart",
         ):
             self.create_valid_notification_end(
                 session_start=now, charging_start=now - timedelta(minutes=5)
@@ -222,7 +222,7 @@ class TestChargingNotificationEnd:
     def test_charging_notification_end_with_charging_end_after_session_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="ChargingEnd should be before or equal to SessionEnd"
+            ValidationError, match="ChargingEnd cannot be after SessionEnd"
         ):
             self.create_valid_notification_end(
                 charging_end=now, session_end=now - timedelta(minutes=5)

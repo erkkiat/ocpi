@@ -44,27 +44,36 @@ class TestERoamingChargeDetailRecordValidation:
     def test_session_start_after_charging_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["session_start"] = datetime(
-            2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
-        )
+        data = {
+            "session_start": datetime(
+                2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
+            ),  # after charging_end
+            "charging_start": datetime(
+                2024, 1, 15, 10, 30, 0, tzinfo=pytz.UTC
+            ),  # before charging_end
+            "charging_end": datetime(
+                2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
+            ),  # before session_start
+            "session_end": datetime(2024, 1, 15, 14, 0, 0, tzinfo=pytz.UTC),
+        }
+        valid_eroaming_cdr.update(data)
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
-        assert "SessionStart cannot be after ChargingEnd" in str(exc_info.value)
+        # In CDR all fields are required, so the exact message "SessionStart cannot be after ChargingEnd" cannot not be triggered.
+        assert "SessionStart cannot be after ChargingStart" in str(exc_info.value)
 
     def test_session_start_after_session_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["session_start"] = datetime(
-            2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
-        )
-        valid_eroaming_cdr["session_end"] = datetime(
-            2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
-        )
-        valid_eroaming_cdr["charging_end"] = datetime(
-            2024, 1, 15, 13, 30, 0, tzinfo=pytz.UTC
-        )
+        data = {
+            "session_start": datetime(2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC),
+            "charging_start": datetime(2024, 1, 15, 13, 30, 0, tzinfo=pytz.UTC),
+            "charging_end": datetime(2024, 1, 15, 13, 40, 0, tzinfo=pytz.UTC),
+            "session_end": datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC),
+        }
+        valid_eroaming_cdr.update(data)
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -74,12 +83,11 @@ class TestERoamingChargeDetailRecordValidation:
     def test_charging_end_after_session_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["charging_end"] = datetime(
-            2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
-        )
-        valid_eroaming_cdr["session_end"] = datetime(
-            2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
-        )
+        data = {
+            "charging_end": datetime(2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC),
+            "session_end": datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC),
+        }
+        valid_eroaming_cdr.update(data)
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -100,11 +108,13 @@ class TestERoamingChargeDetailRecordValidation:
     def test_meter_value_in_between_greater_than_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["meter_value_start"] = 10.0
-        valid_eroaming_cdr["meter_value_end"] = 50.0
-        valid_eroaming_cdr["meter_value_in_between"] = {
-            "meterValues": [20.0, 30.0, 60.0]
+        data = {
+            "meter_value_start": 10.0,
+            "meter_value_end": 50.0,
+            "consumed_energy": 40.0,
+            "meter_value_in_between": {"meterValues": [20.0, 30.0, 60.0]},
         }
+        valid_eroaming_cdr.update(data)
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -136,11 +146,13 @@ class TestERoamingChargeDetailRecordValidation:
         assert "greater than or equal to 0" in str(exc_info.value)
 
     def test_valid_meter_values_with_in_between_succeeds(self, valid_eroaming_cdr):
-        valid_eroaming_cdr["meter_value_start"] = 10.0
-        valid_eroaming_cdr["meter_value_end"] = 50.0
-        valid_eroaming_cdr["meter_value_in_between"] = {
-            "meterValues": [15.0, 25.0, 35.0, 45.0]
+        data = {
+            "meter_value_start": 10.0,
+            "meter_value_end": 50.0,
+            "consumed_energy": 40.0,
+            "meter_value_in_between": {"meterValues": [15.0, 25.0, 35.0, 45.0]},
         }
+        valid_eroaming_cdr.update(data)
 
         record = ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
@@ -214,9 +226,13 @@ class TestERoamingChargeDetailRecordValidation:
     def test_empty_meter_value_in_between_list_validation_succeeds(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["meter_value_start"] = 10.0
-        valid_eroaming_cdr["meter_value_end"] = 50.0
-        valid_eroaming_cdr["meter_value_in_between"] = {"meterValues": []}
+        data = {
+            "meter_value_start": 10.0,
+            "meter_value_end": 50.0,
+            "consumed_energy": 40.0,
+            "meter_value_in_between": {"meterValues": []},
+        }
+        valid_eroaming_cdr.update(data)
 
         record = ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 

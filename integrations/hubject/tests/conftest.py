@@ -655,7 +655,7 @@ def expected_eroaming_cdr():
         "CalibrationLawVerificationInfo": None,
         "ChargingEnd": "2022-02-22T23:22:22Z",
         "ChargingStart": "2022-02-22T22:22:22Z",
-        "ConsumedEnergy": 1.1,
+        "ConsumedEnergy": 120.0,
         "EMPPartnerSessionID": "EMSPSESSION1",
         "EvseID": "FI*CPO*EEVSECONVERT",
         "HubOperatorID": "FI*CPO",

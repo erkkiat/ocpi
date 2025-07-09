@@ -26,6 +26,13 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_pascal
 
+from integrations.mixins import (
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
+    MeterValueEndValidatorMixin,
+    ChargingStartValidatorMixin,
+)
 from ocpi22.util import VALID_CURRENCY_CODE_SET
 
 """
@@ -964,30 +971,14 @@ class ERoamingAuthorizeStop(BaseModel):
     identification: Identification
 
 
-class ConsumedEnergyValidatorMixin:
-    @model_validator(mode="after")
-    @classmethod
-    def validate_consumed_energy(cls, values):
-        consumed_energy = values.consumed_energy
-        meter_value_start = values.meter_value_start
-        meter_value_end = values.meter_value_end
-        if consumed_energy is not None and consumed_energy > 1000.0:
-            raise ValueError("ConsumedEnergy must be less than or equal to 1000 kWh")
-        if (
-            meter_value_start is not None
-            and meter_value_end is not None
-            and consumed_energy is not None
-        ):
-            expected = meter_value_end - meter_value_start
-            if abs(consumed_energy - expected) > 0.001:
-                raise ValueError(
-                    f"ConsumedEnergy ({consumed_energy}) doesn't match "
-                    f"meter difference ({expected})"
-                )
-        return values
-
-
-class ERoamingChargeDetailRecord(BaseModel, ConsumedEnergyValidatorMixin):
+class ERoamingChargeDetailRecord(
+    BaseModel,
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
+    MeterValueEndValidatorMixin,
+    ChargingStartValidatorMixin,
+):
     model_config = {"alias_generator": to_pascal, "populate_by_name": True}
 
     session_id: SessionID = Field(
@@ -1051,57 +1042,6 @@ class ERoamingChargeDetailRecord(BaseModel, ConsumedEnergyValidatorMixin):
     )
     hub_operator_id: Optional[OperatorID] = Field(None, alias="HubOperatorID")
     hub_provider_id: Optional[ProviderID] = Field(None, alias="HubProviderID")
-
-    @model_validator(mode="after")
-    @classmethod
-    def validate_consumed_energy(cls, values):
-        consumed_energy = values.consumed_energy
-        if consumed_energy > 1000.0:
-            raise ValueError("ConsumedEnergy must be less than or equal to 1000 kWh")
-        return values
-
-    @model_validator(mode="after")
-    @classmethod
-    def validate_charging_end(cls, values):
-        charging_start = values.charging_start
-        charging_end = values.charging_end
-        session_start = values.session_start
-
-        if charging_start > charging_end:
-            raise ValueError("ChargingStart cannot be after ChargingEnd")
-        if session_start > charging_end:
-            raise ValueError("SessionStart cannot be after ChargingEnd")
-        return values
-
-    @model_validator(mode="after")
-    @classmethod
-    def validate_session_end(cls, values):
-        charging_end = values.charging_end
-        session_start = values.session_start
-        session_end = values.session_end
-
-        if session_start > session_end:
-            raise ValueError("SessionStart cannot be after SessionEnd")
-        if charging_end > session_end:
-            raise ValueError("ChargingEnd cannot be after SessionEnd")
-        return values
-
-    @model_validator(mode="after")
-    @classmethod
-    def validate_meter_value_end(cls, values):
-        meter_value_start = values.meter_value_start
-        meter_value_end = values.meter_value_end
-        meter_value_in_between = values.meter_value_in_between
-
-        if meter_value_start and meter_value_start > meter_value_end:
-            raise ValueError("MeterValueStart cannot be after MeterValueEnd")
-        if meter_value_in_between:
-            for mv in meter_value_in_between.meterValues:
-                if mv > meter_value_end:
-                    raise ValueError(
-                        "MeterValueInBetween cannot be after MeterValueEnd"
-                    )
-        return values
 
 
 class ChargingNotificationBase(BaseModel):
@@ -1182,7 +1122,7 @@ class ERoamingChargingNotificationProgress(ChargingNotificationBase):
         return self
 
 
-class ERoamingChargingPeriod(ChargingNotificationBase):
+class ERoamingChargingPeriod(ChargingNotificationBase, ChargingStartValidatorMixin):
     charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
@@ -1190,13 +1130,6 @@ class ERoamingChargingPeriod(ChargingNotificationBase):
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-
-    @model_validator(mode="after")
-    def validate_session_start_before_charging_start(self):
-        if self.session_start is not None and self.session_start > self.charging_start:
-            raise ValueError("SessionStart should be before ChargingStart")
-
-        return self
 
 
 class ERoamingChargingNotificationStart(ERoamingChargingPeriod):
@@ -1208,7 +1141,10 @@ class ERoamingChargingNotificationStart(ERoamingChargingPeriod):
 
 
 class ERoamingChargingNotificationEnd(
-    ERoamingChargingPeriod, ConsumedEnergyValidatorMixin
+    ERoamingChargingPeriod,
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
 ):
     type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
     charging_end: AwareDatetime = Field(
@@ -1235,28 +1171,6 @@ class ERoamingChargingNotificationEnd(
         None,
         description="The date and time at which the penalty time start after the grace period.",
     )
-
-    @model_validator(mode="after")
-    def validate_charging_start_before_end(self):
-        if self.charging_start is not None and self.charging_start > self.charging_end:
-            raise ValueError("ChargingStart should be before or equal to ChargingEnd")
-        return self
-
-    @model_validator(mode="after")
-    def validate_session_start_before_end(self):
-        if (
-            self.session_start is not None
-            and self.session_end is not None
-            and self.session_start > self.session_end
-        ):
-            raise ValueError("SessionStart should be before SessionEnd")
-        return self
-
-    @model_validator(mode="after")
-    def validate_charging_end_before_session_end(self):
-        if self.session_end is not None and self.charging_end > self.session_end:
-            raise ValueError("ChargingEnd should be before or equal to SessionEnd")
-        return self
 
     @model_validator(mode="after")
     def validate_penalty_time_start_after_charging_end(self):

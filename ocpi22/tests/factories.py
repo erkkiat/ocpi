@@ -524,7 +524,7 @@ class CdrFactory(factory.Factory):
     currency = "EUR"
     total_cost_excl_vat = 0.1
     total_cost_incl_vat = 0.2
-    total_energy = 1.1
+    total_energy = 120.0
     billed_to = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
