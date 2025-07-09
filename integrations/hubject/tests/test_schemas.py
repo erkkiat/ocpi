@@ -201,8 +201,8 @@ class TestERoamingChargeDetailRecordValidation:
 
         record = ERoamingChargeDetailRecord(**minimal_data)
 
-        assert record.CPO_partner_session_id is None
-        assert record.EMP_partner_session_id is None
+        assert record.cpo_partner_session_id is None
+        assert record.emp_partner_session_id is None
         assert record.partner_product_id is None
 
     def test_empty_meter_value_in_between_list_validation_succeeds(

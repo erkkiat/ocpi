@@ -966,12 +966,12 @@ class ERoamingChargeDetailRecord(BaseModel):
     session_id: SessionID = Field(
         ..., alias="SessionID", description="The hubject session ID."
     )
-    CPO_partner_session_id: Optional[str] = Field(
+    cpo_partner_session_id: Optional[str] = Field(
         None,
         alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMP_partner_session_id: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
         alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
