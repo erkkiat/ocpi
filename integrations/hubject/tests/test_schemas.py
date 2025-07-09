@@ -15,10 +15,10 @@ class TestERoamingChargeDetailRecordValidation:
             "identification": {
                 "RFIDMifareFamilyIdentification": {"UID": "7568290FFF765F"}
             },
-            "charging_start": datetime(2024, 1, 15, 10, 0, 0, tzinfo=pytz.UTC),
-            "charging_end": datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC),
-            "session_start": datetime(2024, 1, 15, 9, 30, 0, tzinfo=pytz.UTC),
-            "session_end": datetime(2024, 1, 15, 12, 30, 0, tzinfo=pytz.UTC),
+            "charging_start": "2024-01-15T10:00:00Z",
+            "charging_end": "2024-01-15T12:00:00Z",
+            "session_start": "2024-01-15T09:30:00Z",
+            "session_end": "2024-01-15T12:30:00Z",
             "consumed_energy": 25.5,
         }
 
