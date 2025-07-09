@@ -370,6 +370,7 @@ TEMPLATES = [
 MESSAGE_STORAGE = "ocpiconnector.util.SessionDedupStorage"  # Removes duplicate messages, like the OCPI 2.2 explanations
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -385,17 +386,16 @@ LOGGING = {
             "formatter": "json",
             "level": "INFO",
         },
+        "sentry": {
+            "class": "sentry_sdk.integrations.logging.EventHandler",
+            "level": "ERROR",
+        },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", "sentry"],
         "level": "INFO",
     },
     "loggers": {
-        "": {
-            "level": "INFO",
-            "handlers": ["console"],
-            "propagate": False,
-        },
         "django": {
             "level": "INFO",
             "propagate": True,
@@ -410,6 +410,7 @@ LOGGING = {
         },
     },
 }
+
 
 # OAuth2
 LOGIN_URL = "/admin/login/"
@@ -493,6 +494,7 @@ MOESIF_MIDDLEWARE = {
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
+HUBJECT_URL = os.environ.get("HUBJECT_URL", "https://service.hubject.com/api/oicp/")
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")

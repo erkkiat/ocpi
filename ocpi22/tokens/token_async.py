@@ -61,7 +61,7 @@ async def post_request(
     return response_status, json_data, ocpi_master
 
 
-def process_task_result(successful_task):
+def process_task_result(successful_task) -> dict | None:
     # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
         status_code, json_data, ocpi_master = successful_task.result()
@@ -73,7 +73,10 @@ def process_task_result(successful_task):
             if isinstance(json_data, dict) and json_data.get("allowed"):
                 logger.info(f"Received authorization from {successful_task.get_name()}")
                 json_data["responding_party"] = successful_task.get_name()
-                json_data["ocpi_master"] = ocpi_master
+                token = json_data.get("token", {})
+                json_data["msp"] = (
+                    f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+                )
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
@@ -273,16 +276,16 @@ def authorize_with_msps_sync(
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
                 token = serializer.validated_data.pop("token", {})
-                ocpi_master = response.get("ocpi_master")
-                token["ocpi_master"] = ocpi_master
-                token["billed_to"] = ocpi_master
+                msp = response.get("msp")
+                token["billed_to"] = msp
+                token["ocpi_master"] = msp
                 return TokenAuthorization(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=ocpi_master.get_party(),
-                    ocpi_master=ocpi_master,
+                    billed_to=Party.from_str(msp),
+                    msp=msp,
                 )
             else:
                 logger.error(
