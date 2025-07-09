@@ -1,4 +1,4 @@
-def decode_country_code_and_party_id(provider_id: str) -> tuple[str | None, str | None]:
+def decode_country_code_and_party_id(provider_id: str | None) -> tuple[str | None, str | None]:
     if provider_id is None:
         return None, None
     if "*" in provider_id:
