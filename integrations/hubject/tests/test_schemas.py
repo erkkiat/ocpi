@@ -32,7 +32,7 @@ class TestERoamingChargeDetailRecordValidation:
     def test_charging_end_before_charging_start_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["ChargingEnd"] = datetime(
+        valid_eroaming_cdr["charging_end"] = datetime(
             2024, 1, 15, 9, 0, 0, tzinfo=pytz.UTC
         )
 
@@ -44,7 +44,7 @@ class TestERoamingChargeDetailRecordValidation:
     def test_session_start_after_charging_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["SessionStart"] = datetime(
+        valid_eroaming_cdr["session_start"] = datetime(
             2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
         )
 
@@ -56,13 +56,13 @@ class TestERoamingChargeDetailRecordValidation:
     def test_session_start_after_session_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["SessionStart"] = datetime(
+        valid_eroaming_cdr["session_start"] = datetime(
             2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
         )
-        valid_eroaming_cdr["SessionEnd"] = datetime(
+        valid_eroaming_cdr["session_end"] = datetime(
             2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
         )
-        valid_eroaming_cdr["ChargingEnd"] = datetime(
+        valid_eroaming_cdr["charging_end"] = datetime(
             2024, 1, 15, 13, 30, 0, tzinfo=pytz.UTC
         )
 
@@ -74,10 +74,10 @@ class TestERoamingChargeDetailRecordValidation:
     def test_charging_end_after_session_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["ChargingEnd"] = datetime(
+        valid_eroaming_cdr["charging_end"] = datetime(
             2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
         )
-        valid_eroaming_cdr["SessionEnd"] = datetime(
+        valid_eroaming_cdr["session_end"] = datetime(
             2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
         )
 
@@ -89,8 +89,8 @@ class TestERoamingChargeDetailRecordValidation:
     def test_meter_value_start_greater_than_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["MeterValueStart"] = 100.0
-        valid_eroaming_cdr["MeterValueEnd"] = 50.0
+        valid_eroaming_cdr["meter_value_start"] = 100.0
+        valid_eroaming_cdr["meter_value_end"] = 50.0
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -100,9 +100,11 @@ class TestERoamingChargeDetailRecordValidation:
     def test_meter_value_in_between_greater_than_end_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["MeterValueStart"] = 10.0
-        valid_eroaming_cdr["MeterValueEnd"] = 50.0
-        valid_eroaming_cdr["MeterValueInBetween"] = {"meterValues": [20.0, 30.0, 60.0]}
+        valid_eroaming_cdr["meter_value_start"] = 10.0
+        valid_eroaming_cdr["meter_value_end"] = 50.0
+        valid_eroaming_cdr["meter_value_in_between"] = {
+            "meterValues": [20.0, 30.0, 60.0]
+        }
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -114,7 +116,7 @@ class TestERoamingChargeDetailRecordValidation:
     def test_consumed_energy_exceeds_maximum_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["ConsumedEnergy"] = 1500.0
+        valid_eroaming_cdr["consumed_energy"] = 1500.0
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -126,7 +128,7 @@ class TestERoamingChargeDetailRecordValidation:
     def test_consumed_energy_negative_value_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["ConsumedEnergy"] = -10.0
+        valid_eroaming_cdr["consumed_energy"] = -10.0
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -134,9 +136,9 @@ class TestERoamingChargeDetailRecordValidation:
         assert "greater than or equal to 0" in str(exc_info.value)
 
     def test_valid_meter_values_with_in_between_succeeds(self, valid_eroaming_cdr):
-        valid_eroaming_cdr["MeterValueStart"] = 10.0
-        valid_eroaming_cdr["MeterValueEnd"] = 50.0
-        valid_eroaming_cdr["MeterValueInBetween"] = {
+        valid_eroaming_cdr["meter_value_start"] = 10.0
+        valid_eroaming_cdr["meter_value_end"] = 50.0
+        valid_eroaming_cdr["meter_value_in_between"] = {
             "meterValues": [15.0, 25.0, 35.0, 45.0]
         }
 
@@ -196,7 +198,11 @@ class TestERoamingChargeDetailRecordValidation:
             key: value
             for key, value in valid_eroaming_cdr.items()
             if key
-            not in ["CPOPartnerSessionId", "EMPPartnerSessionId", "PartnerProductId"]
+            not in [
+                "cpo_partner_session_id",
+                "emp_partner_session_id",
+                "partner_product_id",
+            ]
         }
 
         record = ERoamingChargeDetailRecord(**minimal_data)
@@ -208,9 +214,9 @@ class TestERoamingChargeDetailRecordValidation:
     def test_empty_meter_value_in_between_list_validation_succeeds(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["MeterValueStart"] = 10.0
-        valid_eroaming_cdr["MeterValueEnd"] = 50.0
-        valid_eroaming_cdr["MeterValueInBetween"] = {"meterValues": []}
+        valid_eroaming_cdr["meter_value_start"] = 10.0
+        valid_eroaming_cdr["meter_value_end"] = 50.0
+        valid_eroaming_cdr["meter_value_in_between"] = {"meterValues": []}
 
         record = ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
@@ -218,8 +224,8 @@ class TestERoamingChargeDetailRecordValidation:
 
     def test_equal_datetime_values_validation_succeeds(self, valid_eroaming_cdr):
         same_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC)
-        valid_eroaming_cdr["ChargingStart"] = same_time
-        valid_eroaming_cdr["ChargingEnd"] = same_time
+        valid_eroaming_cdr["charging_start"] = same_time
+        valid_eroaming_cdr["charging_end"] = same_time
 
         record = ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
