@@ -18,7 +18,7 @@ from integrations.hubject.ocpi_to_oicp_converter import (
     convert_to_charging_notification_end,
 )
 from integrations.hubject.oicp_to_ocpi_converter import (
-    map_oicp_authorization_response_to_ocpi_221,
+    map_successful_oicp_authorization_response_to_ocpi_221,
 )
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -196,7 +196,7 @@ class HubjectService:
             response_json = response.json()
             logging.info(response)
             status_code = response_json.get("StatusCode", {}).get("Code")
-
+            mapped_response = None
             ocpi_master = None
             if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
@@ -205,10 +205,12 @@ class HubjectService:
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
+                mapped_response = (
+                    map_successful_oicp_authorization_response_to_ocpi_221(
+                        response_json, token_id
+                    )
+                )
 
-            mapped_response = map_oicp_authorization_response_to_ocpi_221(
-                response_json, token_id
-            )
             return (
                 response.status_code,
                 mapped_response,

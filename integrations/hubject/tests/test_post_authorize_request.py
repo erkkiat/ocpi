@@ -22,7 +22,7 @@ async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatc
     monkeypatch.setattr(services, "sync_to_async", lambda func: fake_role)
     monkeypatch.setattr(
         services,
-        "map_oicp_authorization_response_to_ocpi_221",
+        "map_successful_oicp_authorization_response_to_ocpi_221",
         lambda data, token: {"mapped": token},
     )
     status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
@@ -41,20 +41,20 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
     responses.add(
         method=responses.POST,
         url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
-        json={"StatusCode": {"Code": "123"}, "ProviderID": "DE*XYZ"},
+        json={"StatusCode": {"Code": "123"}, "ProviderID": "DEXYZ"},
         status=200,
     )
     # leave sync_to_async unpatched so ocpi_master stays None
     monkeypatch.setattr(
         services,
-        "map_oicp_authorization_response_to_ocpi_221",
+        "map_successful_oicp_authorization_response_to_ocpi_221",
         lambda data, token: {"mapped": token},
     )
     status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
         "DE*XYZ", "E4CEA229D30A523A19CC"
     )
     assert status_code == 200
-    assert mapped == {"mapped": "E4CEA229D30A523A19CC"}
+    assert mapped is None
     assert ocpi_master is None
 
 

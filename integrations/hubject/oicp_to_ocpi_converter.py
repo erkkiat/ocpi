@@ -4,17 +4,21 @@ from datetime import datetime
 import pytz
 from django.conf import settings
 
+from integrations.hubject.util import decode_country_code_and_party_id
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def map_oicp_authorization_response_to_ocpi_221(
+def map_successful_oicp_authorization_response_to_ocpi_221(
     oicp_response: dict | None, token_id: str
 ) -> dict | None:
     if not oicp_response:
         return None
-    authorization_status = oicp_response.get("AuthorizationStatus")
-    country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
+    authorization_status = oicp_response["AuthorizationStatus"]
+    country_code, party_id = decode_country_code_and_party_id(
+        oicp_response.get("ProviderID")
+    )
 
     if authorization_status and country_code and party_id:
         data = {
