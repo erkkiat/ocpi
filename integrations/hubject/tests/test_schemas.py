@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import ValidationError
 import pytz
 
@@ -93,6 +93,21 @@ class TestERoamingChargeDetailRecordValidation:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
 
         assert "ChargingEnd cannot be after SessionEnd" in str(exc_info.value)
+
+    def test_session_end_in_the_future_validation_raises_validation_error(
+        self, valid_eroaming_cdr
+    ):
+        data = {
+            "session_end": datetime.strftime(
+                datetime.now(pytz.utc) + timedelta(days=1), "%Y-%m-%dT%H:%M:%SZ"
+            ),
+        }
+        valid_eroaming_cdr.update(data)
+
+        with pytest.raises(ValidationError) as exc_info:
+            ERoamingChargeDetailRecord(**valid_eroaming_cdr)
+
+        assert "SessionEnd cannot be in the future" in str(exc_info.value)
 
     def test_meter_value_start_greater_than_end_validation_raises_validation_error(
         self, valid_eroaming_cdr

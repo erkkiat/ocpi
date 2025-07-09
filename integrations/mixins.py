@@ -1,3 +1,6 @@
+from datetime import datetime
+
+import pytz
 from pydantic import model_validator
 
 
@@ -43,6 +46,9 @@ class ChargingEndValidatorMixin:
         charging_end = values.charging_end
         session_start = values.session_start
 
+        if charging_end is not None:
+            if charging_end > datetime.now(pytz.utc):
+                raise ValueError("ChargingEnd cannot be in the future")
         if charging_start is not None and charging_end is not None:
             if charging_start > charging_end:
                 raise ValueError("ChargingStart cannot be after ChargingEnd")
@@ -59,6 +65,9 @@ class SessionEndValidatorMixin:
         charging_end = values.charging_end
         session_start = values.session_start
         session_end = values.session_end
+        if session_end is not None:
+            if session_end > datetime.now(pytz.utc):
+                raise ValueError("SessionEnd cannot be in the future")
         if session_start is not None and session_end is not None:
             if session_start > session_end:
                 raise ValueError("SessionStart cannot be after SessionEnd")

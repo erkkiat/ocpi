@@ -10,7 +10,6 @@ from enum import Enum
 from typing import List, Optional
 
 from django.conf import settings
-import pytz
 from pydantic import (
     BaseModel,
     Field,
@@ -1009,7 +1008,6 @@ class ERoamingChargeDetailRecord(
     charging_end: AwareDatetime = Field(
         ...,
         description="The date and time at which the charging process stopped.",
-        le=datetime.now(pytz.utc),
     )
     session_start: AwareDatetime = Field(
         ...,
@@ -1018,7 +1016,6 @@ class ERoamingChargeDetailRecord(
     session_end: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
-        le=datetime.now(pytz.utc),
     )
     meter_value_start: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
