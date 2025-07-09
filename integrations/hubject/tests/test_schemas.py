@@ -40,9 +40,7 @@ class TestERoamingChargeDetailRecordValidation:
     def test_charging_end_before_charging_start_validation_raises_validation_error(
         self, valid_eroaming_cdr
     ):
-        valid_eroaming_cdr["charging_end"] = datetime(
-            2024, 1, 15, 9, 0, 0, tzinfo=pytz.UTC
-        )
+        valid_eroaming_cdr["charging_end"] = "2024-01-15T09:00:00Z"
 
         with pytest.raises(ValidationError) as exc_info:
             ERoamingChargeDetailRecord(**valid_eroaming_cdr)
@@ -53,16 +51,10 @@ class TestERoamingChargeDetailRecordValidation:
         self, valid_eroaming_cdr
     ):
         data = {
-            "session_start": datetime(
-                2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC
-            ),  # after charging_end
-            "charging_start": datetime(
-                2024, 1, 15, 10, 30, 0, tzinfo=pytz.UTC
-            ),  # before charging_end
-            "charging_end": datetime(
-                2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC
-            ),  # before session_start
-            "session_end": datetime(2024, 1, 15, 14, 0, 0, tzinfo=pytz.UTC),
+            "session_start": "2024-01-15T13:00:00Z",  # after charging_end
+            "charging_start": "2024-01-15T10:30:00Z",  # before charging_end
+            "charging_end": "2024-01-15T12:00:00Z",  # before session_start
+            "session_end": "2024-01-15T14:00:00Z",
         }
         valid_eroaming_cdr.update(data)
 
@@ -76,10 +68,10 @@ class TestERoamingChargeDetailRecordValidation:
         self, valid_eroaming_cdr
     ):
         data = {
-            "session_start": datetime(2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC),
-            "charging_start": datetime(2024, 1, 15, 13, 30, 0, tzinfo=pytz.UTC),
-            "charging_end": datetime(2024, 1, 15, 13, 40, 0, tzinfo=pytz.UTC),
-            "session_end": datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC),
+            "session_start": "2024-01-15T13:00:00Z",  # after charging_end
+            "charging_start": "2024-01-15T13:30:00Z",  # before charging_end
+            "charging_end": "2024-01-15T13:40:00Z",  # before session_start
+            "session_end": "2024-01-15T12:00:00Z",
         }
         valid_eroaming_cdr.update(data)
 
@@ -92,8 +84,8 @@ class TestERoamingChargeDetailRecordValidation:
         self, valid_eroaming_cdr
     ):
         data = {
-            "charging_end": datetime(2024, 1, 15, 13, 0, 0, tzinfo=pytz.UTC),
-            "session_end": datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC),
+            "charging_end": "2024-01-15T13:00:00Z",
+            "session_end": "2024-01-15T12:00:00Z",
         }
         valid_eroaming_cdr.update(data)
 
@@ -247,7 +239,7 @@ class TestERoamingChargeDetailRecordValidation:
         assert record.meter_value_in_between.meterValues == []
 
     def test_equal_datetime_values_validation_succeeds(self, valid_eroaming_cdr):
-        same_time = datetime(2024, 1, 15, 12, 0, 0, tzinfo=pytz.UTC)
+        same_time = "2024-01-15T12:00:00Z"
         valid_eroaming_cdr["charging_start"] = same_time
         valid_eroaming_cdr["charging_end"] = same_time
 
