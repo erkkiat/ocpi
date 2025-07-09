@@ -28,9 +28,15 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapability
+from ocpi22.cpo.api import applying_tariff_element
 from ocpi22.models.location import Connector
 from ocpi22.models.session import Session
-from ocpi22.tests.factories import LocationFactory, EvseFactory, OCPISessionFactory
+from ocpi22.tests.factories import (
+    LocationFactory,
+    EvseFactory,
+    OCPISessionFactory,
+    SolidTariffFactory,
+)
 
 
 def load_tests(_loader, tests, _ignore):
@@ -428,112 +434,6 @@ class TestMappings:
         )
         assert result == pricing_product_data_successful_result
 
-
-class TestOCPICDRToERoamingCDR:
-    _ocpi_to_oicp_converter = SolidToHubjectConverter()
-
-    @pytest.mark.django_db
-    def test_conversion_with_valid_data_returns_correct_eroaming_cdr(
-        self, ocpi_cdr, expected_eroaming_cdr
-    ):
-        eroaming = (
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-        )
-        assert eroaming.model_dump(by_alias=True, mode="json") == expected_eroaming_cdr
-
-    @pytest.mark.django_db
-    def test_total_energy_exceeds_1000_raises_validation_error(self, ocpi_cdr):
-        ocpi_cdr.total_energy = 1001
-
-        with pytest.raises(PydanticValidationError):
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-
-    @pytest.mark.django_db
-    def test_start_time_gt_end_time_raises_validation_error(self, ocpi_cdr):
-        ocpi_cdr.start_date_time = datetime.now(pytz.utc)
-        ocpi_cdr.end_date_time = datetime.now(pytz.utc) - timedelta(hours=1)
-
-        with pytest.raises(
-            PydanticValidationError,
-        ):
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-
-    @pytest.mark.django_db
-    def test_end_time_in_future_raises_validation_error(self, ocpi_cdr):
-        ocpi_cdr.end_date_time = datetime.now(pytz.utc) + timedelta(hours=1)
-
-        with pytest.raises(PydanticValidationError):
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-
-    @pytest.mark.django_db
-    def test_meter_value_end_lt_meter_value_start_raises_validation_error(
-        self, ocpi_cdr
-    ):
-        with patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
-            mock_session = OCPISessionFactory()
-            mock_session.start_kwh = 10
-            mock_session.stop_kwh = 5
-            mock_filter.return_value.first.return_value = mock_session
-
-            with pytest.raises(
-                PydanticValidationError,
-            ):
-                self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                    ocpi_cdr
-                )
-
-    @pytest.mark.django_db
-    def test_negative_energy_raises_validation_error(self, ocpi_cdr):
-        ocpi_cdr.total_energy = -1
-
-        with pytest.raises(PydanticValidationError):
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-
-    @pytest.mark.django_db
-    def test_non_existing_session_raises_validation_error(self, ocpi_cdr):
-        Session.objects.filter(uid__iexact=ocpi_cdr.session_id).delete()
-
-        with pytest.raises(
-            ValidationError, match=f"No session found for ID {ocpi_cdr.session_id}"
-        ):
-            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                ocpi_cdr
-            )
-
-    @pytest.mark.django_db
-    def test_external_calibration_without_signed_values_raises_validation_error(
-        self, ocpi_cdr, session_for_cdr
-    ):
-        with mock.patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
-            mock_filter.return_value.first.return_value = session_for_cdr
-
-            with mock.patch.object(
-                self._ocpi_to_oicp_converter, "_convert_to_evse_data_record"
-            ) as mock_convert_to_evse_data_record:
-                mock_evse_data = mock.MagicMock()
-                mock_evse_data.CalibrationLawDataAvailability = (
-                    CalibrationLawDataAvailability.External
-                )
-                mock_convert_to_evse_data_record.return_value = mock_evse_data
-
-                with pytest.raises(
-                    ValidationError,
-                    match="SignedMeteringValues must be provided when CalibrationLawDataAvailability is External.",
-                ):
-                    self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
-                        ocpi_cdr
-                    )
-
     def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
         return {
             "ActionType": ActionType.insert,
@@ -703,3 +603,148 @@ class TestOCPICDRToERoamingCDR:
                 ],
             },
         }
+
+
+class TestConvertOCPICDRToERoamingCDR:
+    _ocpi_to_oicp_converter = SolidToHubjectConverter()
+
+    @pytest.mark.django_db
+    def test_conversion_with_valid_data_returns_correct_eroaming_cdr(
+        self, ocpi_cdr, expected_eroaming_cdr
+    ):
+        eroaming = (
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+        )
+        assert eroaming.model_dump(by_alias=True, mode="json") == expected_eroaming_cdr
+
+    @pytest.mark.django_db
+    def test_total_energy_exceeds_1000_raises_validation_error(self, ocpi_cdr):
+        ocpi_cdr.total_energy = 1001
+
+        with pytest.raises(PydanticValidationError):
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_start_time_gt_end_time_raises_validation_error(self, ocpi_cdr):
+        ocpi_cdr.start_date_time = datetime.now(pytz.utc)
+        ocpi_cdr.end_date_time = datetime.now(pytz.utc) - timedelta(hours=1)
+
+        with pytest.raises(
+            PydanticValidationError,
+        ):
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_end_time_in_future_raises_validation_error(self, ocpi_cdr):
+        ocpi_cdr.end_date_time = datetime.now(pytz.utc) + timedelta(hours=1)
+
+        with pytest.raises(PydanticValidationError):
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_meter_value_end_lt_meter_value_start_raises_validation_error(
+        self, ocpi_cdr
+    ):
+        with patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
+            mock_session = OCPISessionFactory()
+            mock_session.start_kwh = 10
+            mock_session.stop_kwh = 5
+            mock_filter.return_value.first.return_value = mock_session
+
+            with pytest.raises(
+                PydanticValidationError,
+            ):
+                self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                    ocpi_cdr
+                )
+
+    @pytest.mark.django_db
+    def test_negative_energy_raises_validation_error(self, ocpi_cdr):
+        ocpi_cdr.total_energy = -1
+
+        with pytest.raises(PydanticValidationError):
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_non_existing_session_raises_validation_error(self, ocpi_cdr):
+        Session.objects.filter(uid__iexact=ocpi_cdr.session_id).delete()
+
+        with pytest.raises(
+            ValidationError, match=f"No session found for ID {ocpi_cdr.session_id}"
+        ):
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+
+    @pytest.mark.django_db
+    def test_external_calibration_without_signed_values_raises_validation_error(
+        self, ocpi_cdr, session_for_cdr
+    ):
+        with mock.patch("ocpi22.models.session.Session.objects.filter") as mock_filter:
+            mock_filter.return_value.first.return_value = session_for_cdr
+
+            with mock.patch.object(
+                self._ocpi_to_oicp_converter, "_convert_to_evse_data_record"
+            ) as mock_convert_to_evse_data_record:
+                mock_evse_data = mock.MagicMock()
+                mock_evse_data.CalibrationLawDataAvailability = (
+                    CalibrationLawDataAvailability.External
+                )
+                mock_convert_to_evse_data_record.return_value = mock_evse_data
+
+                with pytest.raises(
+                    ValidationError,
+                    match="SignedMeteringValues must be provided when CalibrationLawDataAvailability is External.",
+                ):
+                    self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                        ocpi_cdr
+                    )
+
+    @pytest.mark.django_db
+    def test_eroaming_cdr_without_solid_tariff_returns_cdr_with_partner_product_id_none(
+        self, ocpi_cdr
+    ):
+        eroaming_cdr = (
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+        )
+        assert (
+            eroaming_cdr.partner_product_id is None
+        ), "PartnerProductID should be None when SolidTariff is not provided."
+
+    @pytest.mark.django_db
+    def test_eroaming_cdr_with_solid_tariff_returns_cdr_with_correct_partner_product_id(
+        self, ocpi_cdr
+    ):
+        tariff = applying_tariff_element(ocpi_cdr.session).tariff
+        solid_tariff = SolidTariffFactory(
+            external_id="SD1",
+            ocpi_tariff=tariff,
+            msp=ocpi_cdr.billed_to,
+            operator=ocpi_cdr.ocpi_master,
+        )
+        eroaming_cdr = (
+            self._ocpi_to_oicp_converter.convert_cdr_to_eroaming_charging_detail_record(
+                ocpi_cdr
+            )
+        )
+        assert (
+            eroaming_cdr.partner_product_id.root
+            == self._ocpi_to_oicp_converter.get_pricing_product_id(
+                solid_tariff_id=solid_tariff.external_id,
+                ref_unit=HubjectPriceComponent.KWH,
+                operator_id=solid_tariff.operator.party_str(),
+                msp_id=solid_tariff.msp.party_str(),
+            )
+        )
