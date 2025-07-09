@@ -278,6 +278,7 @@ def authorize_with_msps_sync(
                 token = serializer.validated_data.pop("token", {})
                 msp = response.get("msp")
                 token["billed_to"] = msp
+                token["ocpi_master"] = msp
                 return TokenAuthorization(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
