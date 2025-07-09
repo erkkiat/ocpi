@@ -195,7 +195,7 @@ class HubjectService:
 
         try:
             response_json = response.json()
-            logging.info(response)
+            logging.info(f"Response from Hubject, {response_json}")
             status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
