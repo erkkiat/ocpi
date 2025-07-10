@@ -375,7 +375,9 @@ class SolidToHubjectConverter:
                 return match.group("house"), match.group("street").strip()
             return extract_general_address(addr)
 
-        return dict(FRA=extract_french_address).get(country, extract_general_address)
+        if country == "FRA":
+            return extract_french_address
+        return extract_general_address
 
     def get_address_components(self, address: str, country: str) -> (str, str):
         """
