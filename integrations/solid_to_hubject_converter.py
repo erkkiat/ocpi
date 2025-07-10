@@ -48,7 +48,8 @@ class SolidToHubjectConverter:
         self.address_pattern = regex.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
         self.general_address_pattern = regex.compile(
-            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b"
+            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
+            regex.IGNORECASE,
         )
         self.france_pattern = regex.compile(
             r"^\s*(?P<house>\d{1,4})[\s,]+(?P<street>[A-Za-zÀ-ÖØ-öø-ÿ\s.'’\-]+)$",
