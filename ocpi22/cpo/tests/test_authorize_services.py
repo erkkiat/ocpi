@@ -25,7 +25,7 @@ def sample_auth_data():
 class TestHubjectFeatureFlag:
     @pytest.mark.asyncio
     @override_settings(ENABLE_HUBJECT_AUTHORIZE=True, HUBJECT_OPERATOR_ID="DE*ICE")
-    async def test_authorize_with_msps_creates_hubject_authorize_task_when_it_is_enabled(
+    async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
         self, mock_token, sample_auth_data
     ):
         with patch("ocpi22.tokens.token_async.HubjectService") as mock_hubject_service:
