@@ -194,7 +194,10 @@ class HubjectService:
 
         try:
             response_json = response.json()
-            logging.info(response_json)
+            logging.info(
+                f"Hubject authorize for token {token_id} and {operator_id} responded",
+                response_json,
+            )
             status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
