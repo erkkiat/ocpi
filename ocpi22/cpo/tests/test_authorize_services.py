@@ -67,7 +67,7 @@ class TestHubjectFeatureFlag:
 
     @pytest.mark.asyncio
     @override_settings(ENABLE_HUBJECT_AUTHORIZE=False)
-    async def test_authorize_with_msps_creates_hubject_authorize_task_when_it_is_disabled(
+    async def test_authorize_with_msps_does_not_create_hubject_authorize_task_when_disabled(
         self, mock_token, sample_auth_data
     ):
         with patch("ocpi22.tokens.token_async.HubjectService") as mock_hubject_service:
