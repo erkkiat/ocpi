@@ -660,7 +660,7 @@ class TestCreateAndSaveSession:
             responding_party="FI*MSP",
             authorization_reference="auth-ref-789",
             auth_method="AUTH_REQUEST",
-            ocpi_master=msp_credentialsrole,
+            msp=msp_credentialsrole,
             billed_to=msp_credentialsrole.get_party(),
         )
 
@@ -700,7 +700,7 @@ class TestCreateAndSaveSession:
             responding_party="DE*EMO",
             authorization_reference="auth-ref-123",
             auth_method="WHITELIST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -723,7 +723,7 @@ class TestCreateAndSaveSession:
             responding_party=str(credentials_role.get_party()),
             authorization_reference="auth-ref-obj",
             auth_method="COMMAND",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
         )
 
         result = create_and_save_session(authorization, evse)
@@ -755,7 +755,7 @@ class TestCreateAndSaveSession:
             responding_party="NL*ABC",
             authorization_reference="status-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -785,7 +785,7 @@ class TestCreateAndSaveSession:
             responding_party="BE*XYZ",
             authorization_reference="evse-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -815,7 +815,7 @@ class TestCreateAndSaveSession:
             responding_party="FR*EDF",
             authorization_reference="return-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -845,7 +845,7 @@ class TestCreateAndSaveSession:
             responding_party="AT*ENI",
             authorization_reference="billed-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to="AT*ENI",
         )
 
@@ -885,7 +885,7 @@ class TestCreateAndSaveSession:
             responding_party=str(hub_credentials_role.get_party()),
             authorization_reference="credentials-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=msp_credentials_role,
+            msp=msp_credentials_role,
             billed_to=str(msp_credentials_role.get_party()),
         )
 
@@ -916,7 +916,7 @@ class TestCreateAndSaveSession:
             responding_party="CH*SWI",
             authorization_reference="cdr-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -947,7 +947,7 @@ class TestCreateAndSaveSession:
             responding_party="IT*ENE",
             authorization_reference="persist-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 

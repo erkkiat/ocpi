@@ -39,7 +39,7 @@ from integrations.hubject.schemas import (
     ERoamingChargeDetailRecord,
     OperatorID,
     ProviderID,
-    IdentificationClass,
+    Identification,
     UID,
     ProductID,
     RFIDMifareFamilyIdentificationClass,
@@ -577,7 +577,7 @@ class SolidToHubjectConverter:
         operator_party_str = cdr.ocpi_master.party_str()
 
         current_tariff_element = applying_tariff_element(session)
-        solid_tariff = SolidTariffRepository.get_by_ocpi_tariff_id(
+        solid_tariff = SolidTariffRepository.find_by_ocpi_tariff_id(
             current_tariff_element.tariff.uid
         )
         partner_product_id = None
@@ -591,13 +591,13 @@ class SolidToHubjectConverter:
 
         eroaming_cdr = ERoamingChargeDetailRecord(
             session_id=session.hub_session_id,
-            CPO_partner_session_id=session.uid,
-            EMP_partner_session_id=session.reservation_id,
+            cpo_partner_session_id=session.uid,
+            emp_partner_session_id=session.reservation_id,
             partner_product_id=(
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=IdentificationClass(
+            identification=Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=session.token_id)
                 ),

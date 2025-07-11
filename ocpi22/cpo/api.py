@@ -527,7 +527,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             valid=token_dict.get("valid"),
                             billed_to=authorization.get_token_party(),
                             type=token_dict.get("type"),
-                            ocpi_master=authorization.ocpi_master,
+                            ocpi_master=authorization.msp,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
                         route_through = get_credentialsrole(
@@ -541,7 +541,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             credentials=route_through.credentials,
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                            billed_to=authorization.ocpi_master,
+                            billed_to=authorization.msp,
                             ad_hoc_token=ad_hoc_token,
                             evse_uid=evse.uid,
                             connector_id=None,
@@ -798,7 +798,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
                     stop_timestamp = serializer.validated_data.get(
-                        "stop_timestamp", datetime.now(pytz.utc)
+                        "timestamp", datetime.now(pytz.utc)
                     )
 
                     if session.is_final():

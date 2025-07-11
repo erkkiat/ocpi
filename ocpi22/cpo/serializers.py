@@ -266,10 +266,9 @@ class StopTransactionSerializer(serializers.Serializer):
         source="session",
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
-    stop_kwh = serializers.DecimalField(
-        max_digits=8,
-        decimal_places=4,
-        required=False,
+    stop_kwh = serializers.FloatField(
+        min_value=0.0,
+        required=True,
         help_text="Optionally, the final kWh reading from the charger",
     )
     timestamp = UTCDateTimeField(

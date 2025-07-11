@@ -102,7 +102,7 @@ def authorize_token_response(allowed_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -116,7 +116,7 @@ def authorize_whitelist_token_response(always_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -130,7 +130,7 @@ def authorize_never_token_success_response(never_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -144,7 +144,7 @@ def authorize_never_token_not_allowed_response(never_token, session):
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),
-        ocpi_master=session.billed_to,
+        msp=session.billed_to,
     )
 
 
@@ -419,3 +419,65 @@ class TestChargePointAPI:
                 "total_cost_incl_vat": 0.9,
                 "total_kwh": 10.0,
             }
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "stop_kwh, expected_status_code",
+        [
+            (0, 200),
+            (-1, 400),
+            (10000.1234, 200),
+            ("invalid", 400),
+        ],
+    )
+    def test_stop_transaction_post_with_stop_kwh_returns_expected_response(
+        self, admin_user_client, session, stop_kwh, expected_status_code
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": stop_kwh,
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == expected_status_code
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_with_invalid_stop_kwh_returns_400(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": "invalid",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 400
+        assert response.json() == {
+            "stop_kwh": [
+                "A valid number is required.",
+            ],
+        }
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_require_stop_kwh_returns_400(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 400
+        assert response.json() == {
+            "stop_kwh": ["This field is required."],
+        }
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_with_timestamp_returns_200(
+        self, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 100,
+            "timestamp": "2025-03-31T06:26:58Z",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        assert response.json()["end_date_time"] == "2025-03-31T06:26:58Z"
