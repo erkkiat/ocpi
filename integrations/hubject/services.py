@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 
@@ -10,8 +9,14 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
 from pydantic_core import PydanticSerializationError
+from requests import Response
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.ocpi_to_oicp_converter import (
+    convert_to_charging_notification_progress,
+    convert_to_charging_notification_start,
+    convert_to_charging_notification_end,
+)
 from integrations.hubject.oicp_to_ocpi_converter import (
     map_oicp_authorization_response_to_ocpi_221,
 )
@@ -23,9 +28,11 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
-    Identification,
+    IdentificationClass,
     UID,
-    RFIDMifareFamilyIdentification,
+    RFIDMifareFamilyIdentificationClass,
+    ChargingNotificationType,
+    ChargingNotificationBase,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -39,8 +46,11 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
+from typing import Any, TYPE_CHECKING
 
-logging.basicConfig(level=logging.DEBUG)
+if TYPE_CHECKING:
+    from ocpi22.models.session import Session
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +101,7 @@ class HubjectService:
                         )
 
         if len(evse_data_records) == 0:
-            return
+            return None
 
         return OperatorEvseData(
             OperatorID=OperatorID(root=str(party)),
@@ -154,8 +164,8 @@ class HubjectService:
 
         payload = ERoamingAuthorizeStart(
             OperatorID=OperatorID(root=operator_id),
-            Identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentification(
+            Identification=IdentificationClass(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=token_id)
                 )
             ),
@@ -183,7 +193,9 @@ class HubjectService:
 
         try:
             response_json = response.json()
-            logging.info(response)
+            logger.info(
+                f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
+            )
             status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None
@@ -298,3 +310,50 @@ class HubjectService:
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
+
+    @classmethod
+    def create_charging_notification_payload(
+        cls, session, notification_type: ChargingNotificationType
+    ) -> ChargingNotificationBase:
+        match notification_type:
+            case ChargingNotificationType.Start:
+                payload = convert_to_charging_notification_start(session)
+            case ChargingNotificationType.End:
+                payload = convert_to_charging_notification_end(session)
+            case ChargingNotificationType.Progress:
+                payload = convert_to_charging_notification_progress(session)
+            case _:
+                raise ValueError(
+                    f"Unsupported session notification type: {notification_type}"
+                )
+        return payload
+
+    @classmethod
+    def send_update(
+        cls,
+        session: "Session",
+        notification_type: ChargingNotificationType,
+    ) -> None:
+        """
+        Send an update to the OICP client based on the session and update type.
+        """
+        payload = cls.create_charging_notification_payload(session, notification_type)
+        try:
+            cls.post_charging_notification(payload)
+            logger.info("Notification sent successfully")
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error: {e.response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error: {e}")
+        except Exception as e:
+            logger.exception(e)
+        return
+
+    @staticmethod
+    def post_charging_notification(
+        payload,
+    ) -> Response:
+        url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
+        response = HubjectService.client.post(url, json=payload.model_dump(mode="json"))
+        response.raise_for_status()
+        return response

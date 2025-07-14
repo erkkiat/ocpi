@@ -510,3 +510,7 @@ def format_session_url(base_url, country_code, party_id, session_id):
     return urljoin(
         with_trailing_slash(base_url), "/".join([country_code, party_id, session_id])
     )
+
+
+def hours_to_milliseconds(total_time_float: float) -> int:
+    return int(total_time_float * 3600 * 1000)

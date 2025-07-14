@@ -274,6 +274,57 @@ class TestMappings:
         assert street == expected_street_addr
         assert house_num == expected_house_num
 
+    @pytest.mark.parametrize(
+        "address, country, expected",
+        [
+            pytest.param(
+                "Weteringstraat 34-1",
+                "NLD",
+                ("Weteringstraat", "34-1"),
+                id="netherlands-street-house",
+            ),
+            pytest.param(
+                "Weberstr. 2", "DEU", ("Weberstr.", "2"), id="germany-street-house"
+            ),
+            pytest.param(
+                "Kandintie 4E", "FIN", ("Kandintie", "4E"), id="finland-street-house"
+            ),
+            pytest.param(
+                "23 Rue de Grenelle",
+                "FRA",
+                ("Rue de Grenelle", "23"),
+                id="france-house-street",
+            ),
+            pytest.param(
+                "23 avenue de la grande armée",
+                "FRA",
+                ("avenue de la grande armée", "23"),
+                id="france-lower-case-with-special-characters",
+            ),
+            pytest.param(
+                "23, Boulevard Saint-Jacques",
+                "FRA",
+                ("Boulevard Saint-Jacques", "23"),
+                id="france-address-with-comma-and-dash",
+            ),
+            pytest.param(
+                "Invalid Address", "NLD", ("-", "-"), id="netherlands-invalid"
+            ),
+            pytest.param(
+                "Just A Street", "NLD", ("-", "-"), id="only-street-no-number"
+            ),
+            pytest.param("5", "FRA", ("-", "-"), id="only-house-number"),
+            pytest.param(
+                "12 Unknown Street", "USA", ("-", "-"), id="invalid-format-usa"
+            ),
+            pytest.param("", "NLD", ("-", "-"), id="empty-address-nld"),
+            pytest.param("", "FRA", ("-", "-"), id="empty-address-fra"),
+        ],
+    )
+    def test_get_address_components(self, address, country, expected):
+        result = self._ocpi_2_oicp_converter.get_address_components(address, country)
+        assert result == expected
+
     def test_invalid_address(self):
         invalid_street_addr = "Coubertin"
         invalid_country_code = "FRA"

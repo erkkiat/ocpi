@@ -141,9 +141,7 @@ class CommandsViewSet(GenericViewSet):
         )
 
     @staticmethod
-    def create_session(
-        request, token, connector_id, billed_to, evse_uid, serializer, **_kwargs
-    ):
+    def create_session(request, token, connector_id, billed_to, evse_uid, serializer):
         from ocpi22.models.credentials import CredentialsRole
 
         assert isinstance(billed_to, CredentialsRole)

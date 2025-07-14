@@ -89,8 +89,12 @@ def process_status_update_data(message) -> None:
         return
     try:
         evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
-    except ValidationError:
-        logger.exception(f"Failed to parse {message.topic} message")
+    except ValidationError as e:
+        logger.warning(
+            f"Failed to parse {message.topic} message",
+            extra={"payload": decoded_message},
+            exc_info=e,
+        )
         return
 
     # Todo: Find the Session which may be active on the EVSE
@@ -184,7 +188,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         valid=token_dict.get("valid"),
         billed_to=authorization.get_token_party(),
         type=token_dict.get("type"),
-        ocpi_master=authorization.ocpi_master,
+        ocpi_master=authorization.msp,
         contract_id=authorization.token.get("contract_id", "-"),
     )
     session = create_session(
@@ -195,11 +199,9 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         authorization_method=authorization.auth_method,
         billed_to=authorization.get_token_party(),
         ad_hoc_token=ad_hoc_token,
-        status=Session.PENDING,
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
-        ocpi_master=evse.location.ocpi_master,
     )
     save_to_session_cache(
         route=find_route_from_credentials(

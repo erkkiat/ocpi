@@ -67,8 +67,7 @@ def create_session(
     reservation_id=None,
     authorization_method=None,
     currency=None,
-    *_args,
-    **kwargs,
+    hub_session_id=None,
 ) -> Session:
     token: Token = (
         get_token(token_id, ad_hoc_token)
@@ -148,9 +147,8 @@ def create_session(
         billed_to=billed_to,
         credentials=credentials,
         ocpi_master=location.ocpi_master,
-        hub_session_id=kwargs.get("hub_session_id", None),
+        hub_session_id=hub_session_id,
     )
-    params.update(kwargs)
     params.pop("expiry_date", None)  # Todo: Finish implementing reservations
 
     session = Session.objects.create(**params)
