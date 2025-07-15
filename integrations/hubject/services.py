@@ -55,7 +55,6 @@ if TYPE_CHECKING:
 
 from ocpi22.tasks import send_hubject_request
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -198,7 +197,9 @@ class HubjectService:
 
         try:
             response_json = response.json()
-            logging.info(response)
+            logger.info(
+                f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
+            )
             status_code = response_json.get("StatusCode", {}).get("Code")
 
             ocpi_master = None

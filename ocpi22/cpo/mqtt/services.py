@@ -89,8 +89,12 @@ def process_status_update_data(message) -> None:
         return
     try:
         evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
-    except ValidationError:
-        logger.exception(f"Failed to parse {message.topic} message")
+    except ValidationError as e:
+        logger.warning(
+            f"Failed to parse {message.topic} message",
+            extra={"payload": decoded_message},
+            exc_info=e,
+        )
         return
 
     # Todo: Find the Session which may be active on the EVSE
