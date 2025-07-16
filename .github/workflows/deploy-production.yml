@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    types: [opened, ]
+    branches:
+      - main
 
 jobs:
   lint:
@@ -70,7 +74,7 @@ jobs:
         run: pytest -n auto
 
   tag-and-release-draft:
-    name: Create Draft Release
+    name: Create and Tag Draft Release
     runs-on: ubuntu-latest-m
     needs: test
     permissions:
@@ -83,9 +87,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create Draft Release
+      - name: Create or Update Draft Release
         id: draft_release
         uses: release-drafter/release-drafter@v6
+        with:
+          publish: false
+          config-name: release-drafter.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -107,6 +114,7 @@ jobs:
           path: release_tag.txt
 
   build-and-deploy:
+    if: github.event_name == 'push'
     name: Build and Deploy to Production
     runs-on: ubuntu-latest-m
     needs: tag-and-release-draft
@@ -180,6 +188,7 @@ jobs:
           done
 
   publish-release:
+    if: github.event_name == 'push'
     name: Tag and Publish GitHub Release
     runs-on: ubuntu-latest-m
     needs: build-and-deploy

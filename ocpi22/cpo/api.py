@@ -1,6 +1,5 @@
 import json
 from datetime import time, date
-from decimal import Decimal
 from functools import reduce
 from logging import getLogger
 
@@ -28,6 +27,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService
@@ -141,7 +141,7 @@ def applying_tariff_element(
         return True
 
     location_timezone = session_instance.location.get_timezone()
-    timestamp = timestamp.astimezone(location_timezone) or datetime.now(
+    timestamp = (timestamp and timestamp.astimezone(location_timezone)) or datetime.now(
         tz=location_timezone
     )
     weekday = timestamp.weekday()
@@ -207,10 +207,8 @@ def process_meter_values(
             )
         session.stop_kwh = kwh
         session.update_last_updated()
-
-        session.update_charging_periods(
-            Decimal(kwh) - session.start_kwh, soc, power, timestamp
-        )
+        kwh_delta = session.stop_kwh - session.start_kwh
+        session.update_charging_periods(kwh_delta, soc, power, timestamp)
 
         session.calculate_price()
         session.save(
@@ -223,7 +221,7 @@ def process_meter_values(
         )
 
         session.send_updates(
-            method="put"
+            method="put", update_type=ChargingNotificationType.Progress
         )  # Until Gireve implements OCPI 2.2.1 Session PATCH
 
         messages.success(
@@ -528,7 +526,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             valid=token_dict.get("valid"),
                             billed_to=authorization.get_token_party(),
                             type=token_dict.get("type"),
-                            ocpi_master=authorization.ocpi_master,
+                            ocpi_master=authorization.msp,
                             contract_id=authorization.token.get("contract_id", "-"),
                         )
                         route_through = get_credentialsrole(
@@ -542,13 +540,11 @@ class ChargePointViewSet(FlowchartViewSet):
                             credentials=route_through.credentials,
                             authorization_reference=authorization.authorization_reference,
                             authorization_method=authorization.auth_method,
-                            billed_to=authorization.ocpi_master,
+                            billed_to=authorization.msp,
                             ad_hoc_token=ad_hoc_token,
-                            status=Session.PENDING,
                             evse_uid=evse.uid,
                             connector_id=None,
                             location_id=evse.location.uid,
-                            ocpi_master=authorization.ocpi_master,
                             hub_session_id=authorization.hub_session_id,
                         )
                         save_to_session_cache(
@@ -674,7 +670,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
 
-                    session.send_updates()
+                    session.send_updates(update_type=ChargingNotificationType.Start)
 
                     messages.info(
                         request,
@@ -801,7 +797,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
                     stop_timestamp = serializer.validated_data.get(
-                        "stop_timestamp", datetime.now(pytz.utc)
+                        "timestamp", datetime.now(pytz.utc)
                     )
 
                     if session.is_final():
@@ -837,7 +833,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             "total_cost_excl_vat",
                         ]
                     )
-                    session.send_updates()
+                    session.send_updates(update_type=ChargingNotificationType.End)
                     logger.info(
                         f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
                         f"cost {session.total_cost_incl_vat} {session.currency}"

@@ -176,7 +176,7 @@ class TestMqttServices:
                             [
                                 ("country_code", "FI"),
                                 ("party_id", "MSP"),
-                                ("uid", "CDRTOKEN-12345"),
+                                ("uid", "DEADC0DE"),
                                 ("type", "RFID"),
                                 ("contract_id", "CONTRACT-12345"),
                             ]
@@ -330,6 +330,32 @@ class TestMqttServices:
                 mock_save_and_send_evse_status_updates_task.assert_called_once_with(
                     kwargs=message_dict, expires=35
                 )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_calculates_kwh_delta_after_decimal_conversion_in_save(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            connector=connector, status=Session.ACTIVE, start_kwh=10.5
+        )
+        mock_request = MagicMock()
+
+        with patch.object(session, "send_updates"):
+            result = process_meter_values(
+                request=mock_request, kwh=15.75, session=session
+            )
+
+            session.refresh_from_db()
+            assert session.stop_kwh == 15.75
+            assert result.status_code == 200
+
+            charging_period = session.chargingperiods.first()
+            energy_dimension = charging_period.dimensions.filter(type="ENERGY").first()
+            assert energy_dimension.volume == Decimal("5.25")
 
 
 class TestAuthorizeDataOverMqtt:
@@ -634,7 +660,7 @@ class TestCreateAndSaveSession:
             responding_party="FI*MSP",
             authorization_reference="auth-ref-789",
             auth_method="AUTH_REQUEST",
-            ocpi_master=msp_credentialsrole,
+            msp=msp_credentialsrole,
             billed_to=msp_credentialsrole.get_party(),
         )
 
@@ -674,7 +700,7 @@ class TestCreateAndSaveSession:
             responding_party="DE*EMO",
             authorization_reference="auth-ref-123",
             auth_method="WHITELIST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -697,7 +723,7 @@ class TestCreateAndSaveSession:
             responding_party=str(credentials_role.get_party()),
             authorization_reference="auth-ref-obj",
             auth_method="COMMAND",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
         )
 
         result = create_and_save_session(authorization, evse)
@@ -729,7 +755,7 @@ class TestCreateAndSaveSession:
             responding_party="NL*ABC",
             authorization_reference="status-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -759,7 +785,7 @@ class TestCreateAndSaveSession:
             responding_party="BE*XYZ",
             authorization_reference="evse-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -789,7 +815,7 @@ class TestCreateAndSaveSession:
             responding_party="FR*EDF",
             authorization_reference="return-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -819,7 +845,7 @@ class TestCreateAndSaveSession:
             responding_party="AT*ENI",
             authorization_reference="billed-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to="AT*ENI",
         )
 
@@ -859,7 +885,7 @@ class TestCreateAndSaveSession:
             responding_party=str(hub_credentials_role.get_party()),
             authorization_reference="credentials-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=msp_credentials_role,
+            msp=msp_credentials_role,
             billed_to=str(msp_credentials_role.get_party()),
         )
 
@@ -890,7 +916,7 @@ class TestCreateAndSaveSession:
             responding_party="CH*SWI",
             authorization_reference="cdr-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 
@@ -921,7 +947,7 @@ class TestCreateAndSaveSession:
             responding_party="IT*ENE",
             authorization_reference="persist-auth-ref",
             auth_method="AUTH_REQUEST",
-            ocpi_master=credentials_role,
+            msp=credentials_role,
             billed_to=str(credentials_role.get_party()),
         )
 

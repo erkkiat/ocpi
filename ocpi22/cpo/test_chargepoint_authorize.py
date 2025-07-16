@@ -47,7 +47,7 @@ def test_authorize_successful_with_200(
         authorization_reference="REF123",
         auth_method="AUTH_REQUEST",
         billed_to="US*TST",
-        ocpi_master=ocpi_master,
+        msp=ocpi_master,
     )
     monkeypatch.setattr(
         "ocpi22.cpo.api.authorize_token", lambda token, location, request=None: auth
@@ -68,6 +68,7 @@ def test_authorize_successful_with_200(
     assert data["session_id"] == "SESSION_ID_123", data["session_id"]
     session = Session.objects.get(authorization_reference="REF123")
     assert session.credentials == gireve_credentials
+    assert session.ocpi_master == evse.location.ocpi_master
 
 
 def test_authorize_with_non_existent_credentialsrole_fails_with_404(
@@ -80,7 +81,7 @@ def test_authorize_with_non_existent_credentialsrole_fails_with_404(
         authorization_reference="REF123",
         auth_method="AUTH_REQUEST",
         billed_to="FR*TST",
-        ocpi_master=ocpi_master,
+        msp=ocpi_master,
     )
     monkeypatch.setattr(
         "ocpi22.cpo.api.authorize_token", lambda token, location, request=None: auth

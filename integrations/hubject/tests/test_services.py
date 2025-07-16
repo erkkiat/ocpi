@@ -577,7 +577,7 @@ class TestHubjectService:
                     Address=Address(
                         Country="DEU",
                         City="Emsdetten",
-                        Street="dring",
+                        Street="Südring",
                         PostalCode="38170",
                         HouseNum="25",
                         Floor=None,

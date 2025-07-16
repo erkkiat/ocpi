@@ -501,11 +501,11 @@ class CdrFactory(factory.Factory):
             self.tariffs.add(TariffFactory())
 
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
-    uid = "UID-12345"
+    uid = "UID12345"
     start_date_time = datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC)
     end_date_time = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
-    session_id = "SESSION-123"
-    cdr_token_uid = "TOKEN-123"
+    session_id = "SESSION123"
+    cdr_token_uid = "TOKEN123"
     cdr_token_type = "RFID"
     cdr_token_contract_id = "CONTRACT-123"
     auth_method = "WHITELIST"
@@ -518,8 +518,12 @@ class CdrFactory(factory.Factory):
     cdr_location_latitude = "47.662249"
     cdr_location_longitude = "9.360922"
     cdr_location_name = "Location A"
-    cdr_location_evse_uid = "EVSE-123"
-    cdr_location_evse_id = f"{str(ocpi_master)}*E{cdr_location_evse_uid}"[:48]
+    cdr_location_evse_uid = "EVSE123"
+    cdr_location_evse_id = factory.LazyAttribute(
+        lambda obj: f"{obj.ocpi_master.country_code}*{obj.ocpi_master.party_id}*E{obj.cdr_location_evse_uid}"[
+            :48
+        ]
+    )
     cdr_location_connector_id = "1"
     cdr_location_connector_standard = "IEC_62196_T2"
     cdr_location_connector_format = "CABLE"
@@ -527,7 +531,7 @@ class CdrFactory(factory.Factory):
     currency = "EUR"
     total_cost_excl_vat = 0.1
     total_cost_incl_vat = 0.2
-    total_energy = 1.1
+    total_energy = 120.0
     billed_to = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
@@ -544,7 +548,7 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
         role="EMSP",
         business_details__name="Test MSP",
     )
-    uid = "CDRTOKEN-12345"
+    uid = "DEADC0DE"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
 
@@ -553,7 +557,7 @@ class CdrLocationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CdrLocation
 
-    uid = "LOC-12345"
+    uid = "LOC12345"
     name = "Location A"
     address = "Alfred Nobellaan 22 App 150Z"
     city = "Harelbeke"
@@ -580,7 +584,9 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         role="CPO",
         business_details__name="Test CPO",
     )
-    uid = "SESSION-12345"
+    uid = "SESSION12345"
+    reservation_id = "EMSPSESSION1"
+    hub_session_id = "b2688855-7f00-0002-6d8e-48d883f6abb6"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     start_kwh = 0.0

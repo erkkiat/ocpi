@@ -12,7 +12,6 @@ from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
-from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -62,7 +61,7 @@ async def post_request(
     return response_status, json_data, ocpi_master
 
 
-def process_task_result(successful_task):
+def process_task_result(successful_task) -> dict | None:
     # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
         status_code, json_data, ocpi_master = successful_task.result()
@@ -74,7 +73,10 @@ def process_task_result(successful_task):
             if isinstance(json_data, dict) and json_data.get("allowed"):
                 logger.info(f"Received authorization from {successful_task.get_name()}")
                 json_data["responding_party"] = successful_task.get_name()
-                json_data["ocpi_master"] = ocpi_master
+                token = json_data.get("token", {})
+                json_data["msp"] = (
+                    f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+                )
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
@@ -120,6 +122,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return:
     """
+    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
@@ -148,6 +151,17 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     )
     # Get all roles up front
     prefetched_roles = await prefetch_roles()
+    hubject_task = []
+    if settings.ENABLE_HUBJECT_AUTHORIZE:
+        hubject_task.append(
+            asyncio.create_task(
+                HubjectService.post_authorize_request(
+                    operator_id=str(sender),
+                    token_id=token_id,
+                ),
+                name=settings.HUBJECT_OPERATOR_ID,
+            )
+        )
 
     async with aiohttp.ClientSession() as session:
         tasks = [
@@ -172,17 +186,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 _,  # credentials not needed anymore
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
-
-        tasks.append(
-            # Do SSL context per request, Hubject/Gireve separately
-            asyncio.create_task(
-                HubjectService().post_authorize_request(
-                    operator_id=str(sender),
-                    token_id=token_id,
-                ),
-                name=settings.HUBJECT_OPERATOR_ID,
-            )
-        )
+        tasks.extend(hubject_task)
 
         while tasks:
             done_tasks, pending_tasks = await asyncio.wait(
@@ -273,16 +277,16 @@ def authorize_with_msps_sync(
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
                 token = serializer.validated_data.pop("token", {})
-                ocpi_master = response.get("ocpi_master")
-                token["ocpi_master"] = ocpi_master
-                token["billed_to"] = ocpi_master
+                msp = response.get("msp")
+                token["billed_to"] = msp
+                token["ocpi_master"] = msp
                 return TokenAuthorization(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=ocpi_master.get_party(),
-                    ocpi_master=ocpi_master,
+                    billed_to=Party.from_str(msp),
+                    msp=msp,
                 )
             else:
                 logger.error(
