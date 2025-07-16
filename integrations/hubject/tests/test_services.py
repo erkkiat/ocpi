@@ -900,7 +900,7 @@ class TestPostEroamingChargeDetailRecord:
             "error": "Hubject server returned 500. Retrying...",
         }
 
-    def test_post_eroaming_cdr_with_cdr_and_session_id_none_returns_success_false_response(
+    def test_post_eroaming_cdr_with_cdr_and_session_id_none_returns_unsuccessful_response(
         self,
     ):
         operator_id = "FI*CPO"
@@ -917,7 +917,7 @@ class TestPostEroamingChargeDetailRecord:
         }
 
     @pytest.mark.django_db
-    def test_post_eroaming_cdr_with_non_existing_cdr_returns_success_false_response(
+    def test_post_eroaming_cdr_with_non_existing_cdr_returns_unsuccessful_response(
         self,
     ):
         operator_id = "FI*CPO"
@@ -930,6 +930,24 @@ class TestPostEroamingChargeDetailRecord:
             "success": False,
             "errorType": "Invalid Input",
             "error": "No CDR found for session_id session_without_cdr.",
+        }
+
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_with_cdr_route_through_oicp_false_returns_unsuccessful_response(
+        self, ocpi_cdr, monkeypatch
+    ):
+        operator_id = "FI*CPO"
+        monkeypatch.setattr(
+            type(ocpi_cdr.session), "route_through_oicp", property(lambda self: False)
+        )
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, None, session_id=ocpi_cdr.session.uid
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Incompatible CDR",
+            "error": f"CDR with session id {ocpi_cdr.session.uid} has not routed through OICP",
         }
 
     @responses.activate

@@ -388,7 +388,7 @@ class HubjectService:
             if not cdr.route_through_oicp:
                 return {
                     "success": False,
-                    "errorType": "Non compatible CDR",
+                    "errorType": "Incompatible CDR",
                     "error": f"CDR with session id {session_id} has not routed through OICP",
                 }
 
