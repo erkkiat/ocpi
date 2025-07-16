@@ -265,7 +265,9 @@ class TestOnMessage:
 
     @pytest.mark.django_db
     def test_on_message_calls_process_status_update_data(
-        self, smappee_status_update_message, db, celery_app, celery_worker
+        self,
+        smappee_status_update_message,
+        db,
     ):
         with patch(
             "ocpi22.cpo.mqtt.mqtt_handler.process_status_update_data"

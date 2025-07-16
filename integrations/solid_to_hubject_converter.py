@@ -1,5 +1,5 @@
 import functools
-import re
+import regex
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -56,14 +56,15 @@ class SolidToHubjectConverter:
     def __init__(self, oicp_version: str = None, ocpi_version: str = None):
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
-        self.address_pattern = re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
+        self.address_pattern = regex.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
-        self.general_address_pattern = re.compile(
-            r"(?P<street>[A-Za-z\s.-]+?)\s+(?P<house>\d+[A-Za-z]?(?:-\d+)?)"
+        self.general_address_pattern = regex.compile(
+            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
+            regex.IGNORECASE,
         )
-        self.france_pattern = re.compile(
-            r"(?P<house>\d+[A-Za-z]?)\s+(?P<street>(?:Rue|Avenue|Boulevard|Chemin)\s+[A-Za-z\s.-]+)",
-            re.IGNORECASE,
+        self.france_pattern = regex.compile(
+            r"^\s*(?P<house>\d{1,4})[\s,]+(?P<street>[A-Za-zÀ-ÖØ-öø-ÿ\s.'’\-]+)$",
+            regex.IGNORECASE,
         )
 
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
@@ -171,7 +172,7 @@ class SolidToHubjectConverter:
         >>> oicp_converter.get_evse_id("FI*SMP*34567")
         EvseID(root='FI*SMP*E34567')
         """
-        hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
+        hubject_evse_id = regex.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
         return EvseID(hubject_evse_id)
 
     def get_operator_name(self, location: Location) -> str:
@@ -386,7 +387,9 @@ class SolidToHubjectConverter:
                 return match.group("house"), match.group("street").strip()
             return extract_general_address(addr)
 
-        return dict(FRA=extract_french_address).get(country, extract_general_address)
+        if country == "FRA":
+            return extract_french_address
+        return extract_general_address
 
     def get_address_components(self, address: str, country: str) -> (str, str):
         """

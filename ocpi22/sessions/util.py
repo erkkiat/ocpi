@@ -78,9 +78,9 @@ def create_session(
     if not billed_to:
         billed_to = token.ocpi_master
     if isinstance(billed_to, str):
-        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
+        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")), create=True)
     if isinstance(billed_to, Party):
-        billed_to = get_credentialsrole(party=billed_to)
+        billed_to = get_credentialsrole(party=billed_to, create=True)
     if not uid:
         uid = generate_session_uid()
     location = location_id
