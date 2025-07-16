@@ -69,8 +69,12 @@ def start_pricing_product_full_load(request) -> dict:
     },
 )
 def send_charge_detail_record(request, session_id: str):
-    if session_id is None:
-        return {"success": False, "message": "Session ID is required."}
+    if not session_id or not session_id.strip():
+        return 400, HubjectCDRError(
+            success=False,
+            errorType="Invalid Input",
+            error="session_id cannot be blank or empty",
+        )
 
     result = HubjectService.post_eroaming_charge_detail_record(
         get_our_identity(OcpiRolesEnum.CPO.value),
