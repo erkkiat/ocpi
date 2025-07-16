@@ -332,7 +332,7 @@ class TestMappings:
         ],
     )
     def test_get_address_components(self, address, country, expected):
-        result = self._ocpi_2_oicp_converter.get_address_components(address, country)
+        result = self._ocpi_to_oicp_converter.get_address_components(address, country)
         assert result == expected
 
     def test_invalid_address(self):
