@@ -28,7 +28,9 @@ class TestHubjectFeatureFlag:
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
         self, mock_token, sample_auth_data
     ):
-        with patch("ocpi22.tokens.token_async.HubjectService") as mock_hubject_service:
+        with patch(
+            "integrations.hubject.services.HubjectService"
+        ) as mock_hubject_service:
             with patch(
                 "ocpi22.tokens.token_async.get_our_party",
                 return_value=Party("DE", "CPO"),
@@ -48,11 +50,7 @@ class TestHubjectFeatureFlag:
                                 "ocpi22.tokens.token_async.sync_to_async",
                                 return_value=AsyncMock(return_value=MagicMock()),
                             ):
-                                mock_hubject_instance = MagicMock()
-                                mock_hubject_service.return_value = (
-                                    mock_hubject_instance
-                                )
-                                mock_hubject_instance.post_authorize_request = (
+                                mock_hubject_service.post_authorize_request = (
                                     AsyncMock()
                                 )
 
@@ -60,7 +58,7 @@ class TestHubjectFeatureFlag:
                                     mock_token, sample_auth_data, []
                                 )
 
-                                mock_hubject_instance.post_authorize_request.assert_called_once_with(
+                                mock_hubject_service.post_authorize_request.assert_called_once_with(
                                     operator_id="DE*CPO",
                                     token_id="TEST_TOKEN_123",
                                 )
@@ -70,7 +68,9 @@ class TestHubjectFeatureFlag:
     async def test_authorize_with_msps_does_not_create_hubject_authorize_task_when_disabled(
         self, mock_token, sample_auth_data
     ):
-        with patch("ocpi22.tokens.token_async.HubjectService") as mock_hubject_service:
+        with patch(
+            "integrations.hubject.services.HubjectService"
+        ) as mock_hubject_service:
             with patch("ocpi22.tokens.token_async.asyncio.wait", return_value=([], [])):
                 with patch(
                     "ocpi22.tokens.token_async.create_ssl_context",
@@ -80,10 +80,8 @@ class TestHubjectFeatureFlag:
                         "ocpi22.tokens.token_async.sync_to_async",
                         return_value=AsyncMock(return_value=MagicMock()),
                     ):
-                        mock_hubject_instance = MagicMock()
-                        mock_hubject_service.return_value = mock_hubject_instance
-                        mock_hubject_instance.post_authorize_request = AsyncMock()
+                        mock_hubject_service.post_authorize_request = AsyncMock()
 
                         await authorize_with_msps(mock_token, sample_auth_data, [])
 
-                        mock_hubject_instance.post_authorize_request.assert_not_called()
+                        mock_hubject_service.post_authorize_request.assert_not_called()

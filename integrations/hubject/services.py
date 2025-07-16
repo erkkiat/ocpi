@@ -28,7 +28,7 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
-    IdentificationClass,
+    Identification,
     UID,
     RFIDMifareFamilyIdentificationClass,
     ChargingNotificationType,
@@ -164,13 +164,13 @@ class HubjectService:
 
         payload = ERoamingAuthorizeStart(
             OperatorID=OperatorID(root=operator_id),
-            Identification=IdentificationClass(
+            identification=Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=token_id)
                 )
             ),
         )
-        payload_dict = payload.model_dump(exclude_none=True)
+        payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
 
         try:
             response = HubjectService.client.post(
@@ -354,6 +354,8 @@ class HubjectService:
         payload,
     ) -> Response:
         url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
-        response = HubjectService.client.post(url, json=payload.model_dump(mode="json"))
+        response = HubjectService.client.post(
+            url, json=payload.model_dump(mode="json", by_alias=True)
+        )
         response.raise_for_status()
         return response
