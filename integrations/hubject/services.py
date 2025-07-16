@@ -379,11 +379,17 @@ class HubjectService:
                 }
 
             cdr = Cdr.objects.filter(session_id=session_id).first()
-            if cdr is None:
+            if not cdr:
                 return {
                     "success": False,
                     "errorType": "Invalid Input",
                     "error": f"No CDR found for session_id {session_id}.",
+                }
+            if not cdr.route_through_oicp:
+                return {
+                    "success": False,
+                    "errorType": "Non compatible CDR",
+                    "error": f"CDR with session id {session_id} has not routed through OICP",
                 }
 
         url = urljoin(
@@ -397,7 +403,9 @@ class HubjectService:
                     cdr
                 )
             )
-            payload_json = payload.model_dump(mode="json", exclude_none=True)
+            payload_json = payload.model_dump(
+                mode="json", exclude_none=True, by_alias=True
+            )
         except ValidationError as ve:
             return {
                 "success": False,
