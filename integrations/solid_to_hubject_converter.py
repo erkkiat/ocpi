@@ -1,7 +1,7 @@
 import functools
 import regex
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import pytz
 from django.conf import settings
@@ -35,10 +35,21 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     AdditionalReference,
     AdditionalReferenceChoice,
+    ERoamingChargeDetailRecord,
+    OperatorID,
+    ProviderID,
+    Identification,
+    UID,
+    ProductID,
+    RFIDMifareFamilyIdentificationClass,
 )
 from ocpi22.choices import OCPICapability
+from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
+
+if TYPE_CHECKING:
+    from ocpi22.models.cdr import Cdr
 
 
 class SolidToHubjectConverter:
@@ -551,3 +562,71 @@ class SolidToHubjectConverter:
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
+
+    def convert_cdr_to_eroaming_charging_detail_record(
+        self, cdr: "Cdr"
+    ) -> ERoamingChargeDetailRecord:
+        from ocpi22.cpo.api import applying_tariff_element
+        from ocpi22.models.session import Session
+
+        session = Session.objects.filter(uid__iexact=cdr.session_id).first()
+        if not session:
+            raise ValidationError(f"No session found for ID {cdr.session_id}")
+
+        msp_party_str = cdr.billed_to.party_str()
+        operator_party_str = cdr.ocpi_master.party_str()
+
+        current_tariff_element = applying_tariff_element(session)
+        solid_tariff = SolidTariffRepository.find_by_ocpi_tariff_id(
+            current_tariff_element.tariff.uid
+        )
+        partner_product_id = None
+        if solid_tariff:
+            partner_product_id = self.get_pricing_product_id(
+                solid_tariff.external_id,
+                HubjectPriceComponent.KWH,
+                operator_party_str,
+                msp_party_str,
+            )
+
+        eroaming_cdr = ERoamingChargeDetailRecord(
+            session_id=session.hub_session_id,
+            cpo_partner_session_id=session.uid,
+            emp_partner_session_id=session.reservation_id,
+            partner_product_id=(
+                ProductID(root=partner_product_id) if partner_product_id else None
+            ),
+            evse_id=EvseID(root=cdr.evse_id),
+            identification=Identification(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                    UID=UID(root=session.token_id)
+                ),
+            ),
+            charging_start=cdr.start_date_time,
+            charging_end=cdr.end_date_time,
+            session_start=cdr.start_date_time,
+            session_end=cdr.end_date_time,
+            meter_value_start=session.start_kwh,
+            meter_value_end=session.stop_kwh,
+            meter_value_in_between=None,
+            consumed_energy=cdr.total_energy,
+            signed_metering_values=None,
+            calibration_law_verification_info=None,
+            hub_operator_id=OperatorID(root=operator_party_str),
+            hub_provider_id=ProviderID(root=msp_party_str),
+        )
+
+        evse_data_record = self._convert_to_evse_data_record(
+            session.evse, session.location
+        )
+
+        if (
+            evse_data_record.CalibrationLawDataAvailability
+            == CalibrationLawDataAvailability.External
+        ):
+            if eroaming_cdr.signed_metering_values is None:
+                raise ValidationError(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
+                )
+
+        return eroaming_cdr
