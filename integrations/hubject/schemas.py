@@ -703,21 +703,21 @@ class ERoamingPushEVSEPricing(BaseModel):
 
 
 class EvseStatusRecordItem(BaseModel):
-    EvseID: EvseID
-    EvseStatus: EvseStatus
+    evse_id: EvseID = Field(..., alias="EvseID")
+    evse_status: EvseStatus
 
 
 class OperatorEvseStatus(BaseModel):
-    OperatorID: OperatorID
-    OperatorName: Optional[str] = Field(None, description="Free text for operator")
-    EvseStatusRecord: List[EvseStatusRecordItem] = Field(
+    operator_id: OperatorID = Field(..., alias="OperatorID")
+    operator_name: Optional[str] = Field(None, description="Free text for operator")
+    evse_status_record: List[EvseStatusRecordItem] = Field(
         ..., description="EvseStatus list"
     )
 
 
 class ERoamingPushEvseStatus(BaseModel):
-    ActionType: ActionType
-    OperatorEvseStatus: OperatorEvseStatus
+    action_type: ActionType
+    operator_evse_status: OperatorEvseStatus
 
 
 class PricingProductData(BaseModel):
