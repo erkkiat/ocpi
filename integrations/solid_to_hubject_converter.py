@@ -42,6 +42,7 @@ from integrations.hubject.schemas import (
     UID,
     ProductID,
     RFIDMifareFamilyIdentificationClass,
+    EvseStatus as OICPEvseStatus,
 )
 from ocpi22.choices import OCPICapability
 from ocpi22.cpo.repositories import SolidTariffRepository
@@ -630,3 +631,17 @@ class SolidToHubjectConverter:
                 )
 
         return eroaming_cdr
+
+    def convert_ocpi_evse_status(self, status: str) -> OICPEvseStatus:
+        mapping = {
+            "AVAILABLE": OICPEvseStatus.Available,
+            "PREPARING": OICPEvseStatus.Occupied,
+            "CHARGING": OICPEvseStatus.Occupied,
+            "SUSPENDEDEV": OICPEvseStatus.Occupied,
+            "SUSPENDEDEVSE": OICPEvseStatus.Occupied,
+            "FINISHING": OICPEvseStatus.Occupied,
+            "RESERVED": OICPEvseStatus.Reserved,
+            "UNAVAILABLE": OICPEvseStatus.Occupied,
+            "FAULTED": OICPEvseStatus.OutOfService,
+        }
+        return mapping.get(status.upper(), OICPEvseStatus.Unknown)
