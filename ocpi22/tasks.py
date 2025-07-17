@@ -197,6 +197,60 @@ def send_ocpi_request(
         )
 
 
+@shared_task(
+    bind=True,
+    retry_backoff=1,
+    max_retries=10,
+)
+def send_hubject_request(
+    self,
+    payload_json,
+    url: str,
+    method: str = "put",
+    **kwargs,
+) -> Response:
+    from integrations.hubject.services import HubjectService
+
+    request_session = HubjectService.client.session
+    function = getattr(request_session, method.lower(), None)
+    if not function:
+        raise NotImplementedError(
+            f"Method {method} is not supported for send_hubject_request"
+        )
+
+    logger.info(f"Sending hubject {method} request to {url}")
+    response: requests.Response = function(url, json=payload_json, **kwargs)
+    if self.request.is_eager:
+        return response
+    env = os.environ["ENV"]
+    retry_count = self.request.retries
+    if response.status_code >= 300 and env in ["staging", "development"]:
+        logger.warning(
+            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+        )
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
+    if response.status_code >= 500 and env == "production":
+        logger.warning(
+            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+        )
+        raise self.retry(
+            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+        )
+
+    return (
+        response.json()
+        if response.status_code < 300
+        else {
+            "success": False,
+            "errorType": "HTTP Error",
+            "error": f"{response.status_code} : {response.text}",
+            "retry_count": retry_count,
+        }
+    )
+
+
 @shared_task(max_retries=2, retry_backoff=2)
 def exchange_credentials(token, url):
     from ocpiconnector.management.commands import exchange_credentials
