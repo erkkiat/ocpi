@@ -33,6 +33,9 @@ from integrations.hubject.schemas import (
     RFIDMifareFamilyIdentificationClass,
     ChargingNotificationType,
     ChargingNotificationBase,
+    ERoamingPushEvseStatus,
+    OperatorEvseStatus,
+    EvseStatusRecordItem,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -354,6 +357,42 @@ class HubjectService:
         payload,
     ) -> Response:
         url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
+        response = HubjectService.client.post(
+            url, json=payload.model_dump(mode="json", by_alias=True)
+        )
+        response.raise_for_status()
+        return response
+
+    def _get_evse_status_update_payload(
+        self, evse: Evse, operator_id: str, operator_name: str
+    ) -> ERoamingPushEvseStatus:
+        return ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=operator_id),
+                operator_name=operator_name,
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        evse_id=evse.evse_id,
+                        evse_status=self.converter.convert_ocpi_evse_status(
+                            evse.status
+                        ),
+                    )
+                ],
+            ),
+        )
+
+    @classmethod
+    def post_eroaming_push_evse_status(cls, evse: Evse) -> Response:
+        ocpi_master = evse.location.ocpi_master
+        operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
+        operator_name = ocpi_master.business_details.name
+
+        payload = cls._get_evse_status_update_payload(evse, operator_id, operator_name)
+
+        url = (
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
+        )
         response = HubjectService.client.post(
             url, json=payload.model_dump(mode="json", by_alias=True)
         )
