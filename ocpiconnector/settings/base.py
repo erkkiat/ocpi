@@ -404,6 +404,18 @@ LOGGING = {
             "level": "INFO",
             "propagate": True,
         },
+        "django.db.backends": {
+            "level": "WARNING",
+            "propagate": True,
+        },
+        "django.core.management": {
+            "level": "INFO",
+            "propagate": True,
+        },
+        "gunicorn.error": {
+            "level": "INFO",
+            "propagate": True,
+        },
         "ocpi22.cpo.mqtt.mqtt_subscriber": {
             "level": "INFO",
             "propagate": True,

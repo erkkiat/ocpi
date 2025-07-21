@@ -141,7 +141,7 @@ def applying_tariff_element(
         return True
 
     location_timezone = session_instance.location.get_timezone()
-    timestamp = timestamp.astimezone(location_timezone) or datetime.now(
+    timestamp = (timestamp and timestamp.astimezone(location_timezone)) or datetime.now(
         tz=location_timezone
     )
     weekday = timestamp.weekday()

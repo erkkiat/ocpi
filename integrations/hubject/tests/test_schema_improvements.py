@@ -4,7 +4,7 @@ import pytz
 from pydantic import ValidationError
 
 from integrations.hubject.schemas import (
-    IdentificationClass,
+    Identification,
     RFIDMifareFamilyIdentificationClass,
     UID,
     ERoamingChargingNotificationStart,
@@ -19,7 +19,7 @@ from integrations.hubject.schemas import (
 
 class TestIdentificationValidation:
     def test_identification_with_rfid_mifare_family_succeeds(self):
-        identification = IdentificationClass(
+        identification = Identification(
             RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                 UID=UID(root="7568290FFF765F")
             )
@@ -31,11 +31,11 @@ class TestChargingNotificationStart:
     @staticmethod
     def create_valid_charging_notification_start(**overrides):
         defaults = {
-            "SessionID": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
-            "EvseID": EvseID(root="DE*ABC*E123*456"),
-            "ChargingStart": datetime.now(pytz.utc),
-            "OperatorID": OperatorID(root="DE*ABC"),
-            "Identification": IdentificationClass(
+            "session_id": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
+            "evse_id": EvseID(root="DE*ABC*E123*456"),
+            "charging_start": datetime.now(pytz.utc),
+            "operator_id": OperatorID(root="DE*ABC"),
+            "identification": Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root="7568290FFF765F")
                 )
@@ -46,78 +46,78 @@ class TestChargingNotificationStart:
 
     def test_valid_charging_notification_start_succeeds(self):
         notification = self.create_valid_charging_notification_start()
-        assert notification.Type == ChargingNotificationType.Start
-        assert notification.SessionID is not None
+        assert notification.type == ChargingNotificationType.Start
+        assert notification.session_id is not None
 
     def test_charging_notification_start_with_session_start_before_charging_start_succeeds(
         self,
     ):
         now = datetime.now(pytz.utc)
         notification = self.create_valid_charging_notification_start(
-            SessionStart=now - timedelta(minutes=5), ChargingStart=now
+            session_start=now - timedelta(minutes=5), charging_start=now
         )
-        assert notification.SessionStart < notification.ChargingStart
+        assert notification.session_start < notification.charging_start
 
     def test_charging_notification_start_with_session_start_after_charging_start_raises_validation_error(
         self,
     ):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart should be before ChargingStart"
+            ValidationError, match="SessionStart cannot be after ChargingStart"
         ):
             self.create_valid_charging_notification_start(
-                SessionStart=now, ChargingStart=now - timedelta(minutes=5)
+                session_start=now, charging_start=now - timedelta(minutes=5)
             )
 
     def test_charging_notification_start_with_negative_meter_value_fails(self):
         with pytest.raises(
             ValidationError, match="Input should be greater than or equal"
         ):
-            self.create_valid_charging_notification_start(MeterValueStart=-10.0)
+            self.create_valid_charging_notification_start(meter_value_start=-10.0)
 
     def test_charging_notification_start_with_valid_meter_value_succeeds(self):
         notification = self.create_valid_charging_notification_start(
-            MeterValueStart=100.0
+            meter_value_start=100.0
         )
-        assert notification.MeterValueStart == 100.0
+        assert notification.meter_value_start == 100.0
 
     def test_charging_notification_start_with_identification_succeeds(self):
-        identification = IdentificationClass(
+        identification = Identification(
             RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                 UID=UID(root="7568290FFF765F")
             )
         )
         notification = self.create_valid_charging_notification_start(
-            Identification=identification
+            identification=identification
         )
-        assert notification.Identification is not None
+        assert notification.identification is not None
 
 
 class TestChargingNotificationProgress:
     def create_valid_notification_progress(self, **overrides):
         now = datetime.now(pytz.utc)
         defaults = {
-            "SessionID": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
-            "EvseID": EvseID(root="DE*ABC*E123*456"),
-            "ChargingStart": now,
-            "EventOccurred": now + timedelta(minutes=30),
-            "ConsumedEnergyProgress": 25.0,
-            "OperatorID": OperatorID(root="DE*ABC"),
+            "session_id": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
+            "evse_id": EvseID(root="DE*ABC*E123*456"),
+            "charging_start": now,
+            "event_occurred": now + timedelta(minutes=30),
+            "consumed_energy_progress": 25.0,
+            "operator_id": OperatorID(root="DE*ABC"),
         }
         defaults.update(overrides)
         return ERoamingChargingNotificationProgress(**defaults)
 
     def test_valid_charging_notification_progress_with_energy_succeeds(self):
         notification = self.create_valid_notification_progress()
-        assert notification.Type == ChargingNotificationType.Progress
-        assert notification.ConsumedEnergyProgress == 25.0
+        assert notification.type == ChargingNotificationType.Progress
+        assert notification.consumed_energy_progress == 25.0
 
     def test_valid_charging_notification_progress_with_duration_succeeds(self):
         notification = self.create_valid_notification_progress(
-            ConsumedEnergyProgress=None,
-            ChargingDuration=1800000,  # 30 minutes in milliseconds
+            consumed_energy_progress=None,
+            charging_duration=1800000,  # 30 minutes in milliseconds
         )
-        assert notification.ChargingDuration == 1800000
+        assert notification.charging_duration == 1800000
 
     def test_charging_notification_progress_without_energy_or_duration_fails(self):
         with pytest.raises(
@@ -125,7 +125,7 @@ class TestChargingNotificationProgress:
             match="Either ChargingDuration or ConsumedEnergyProgress must be provided",
         ):
             self.create_valid_notification_progress(
-                ConsumedEnergyProgress=None, ChargingDuration=None
+                consumed_energy_progress=None, charging_duration=None
             )
 
     def test_charging_notification_progress_with_event_before_charging_start_fails(
@@ -136,20 +136,20 @@ class TestChargingNotificationProgress:
             ValidationError, match="EventOccurred must be after ChargingStart"
         ):
             self.create_valid_notification_progress(
-                ChargingStart=now, EventOccurred=now - timedelta(minutes=5)
+                charging_start=now, event_occurred=now - timedelta(minutes=5)
             )
 
     def test_charging_notification_progress_with_negative_energy_fails(self):
         with pytest.raises(
             ValidationError, match="Input should be greater than or equal"
         ):
-            self.create_valid_notification_progress(ConsumedEnergyProgress=-10.0)
+            self.create_valid_notification_progress(consumed_energy_progress=-10.0)
 
     def test_charging_notification_progress_with_negative_meter_start_fails(self):
         with pytest.raises(
             ValidationError, match="Input should be greater than or equal"
         ):
-            self.create_valid_notification_progress(MeterValueStart=-5.0)
+            self.create_valid_notification_progress(meter_value_start=-5.0)
 
 
 class TestChargingNotificationEnd:
@@ -157,54 +157,54 @@ class TestChargingNotificationEnd:
     def create_valid_notification_end(**overrides):
         now = datetime.now(pytz.utc)
         defaults = {
-            "SessionID": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
-            "EvseID": EvseID(root="DE*ABC*E123*456"),
-            "ChargingStart": now - timedelta(minutes=5),
-            "ChargingEnd": now,
-            "OperatorID": OperatorID(root="DE*ABC"),
+            "session_id": SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
+            "evse_id": EvseID(root="DE*ABC*E123*456"),
+            "charging_start": now - timedelta(minutes=5),
+            "charging_end": now,
+            "operator_id": OperatorID(root="DE*ABC"),
         }
         defaults.update(overrides)
         return ERoamingChargingNotificationEnd(**defaults)
 
     def test_valid_charging_notification_end_succeeds(self):
         notification = self.create_valid_notification_end()
-        assert notification.Type == ChargingNotificationType.End
-        assert notification.ChargingEnd is not None
+        assert notification.type == ChargingNotificationType.End
+        assert notification.charging_end is not None
 
     def test_charging_notification_end_with_valid_time_sequence_succeeds(self):
         now = datetime.now(pytz.utc)
         notification = self.create_valid_notification_end(
-            SessionStart=now - timedelta(minutes=5),
-            ChargingStart=now,
-            ChargingEnd=now + timedelta(hours=1),
-            SessionEnd=now + timedelta(hours=1, minutes=2),
+            session_start=now - timedelta(minutes=50),
+            charging_start=now - timedelta(minutes=45),
+            charging_end=now - timedelta(minutes=10),
+            session_end=now - timedelta(minutes=5),
         )
         assert (
-            notification.SessionStart
-            < notification.ChargingStart
-            < notification.ChargingEnd
-            < notification.SessionEnd
+            notification.session_start
+            < notification.charging_start
+            < notification.charging_end
+            < notification.session_end
         )
 
     def test_charging_notification_end_with_charging_start_after_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError,
-            match="ChargingStart should be before or equal to ChargingEnd",
+            match="ChargingStart cannot be after ChargingEnd",
         ):
             self.create_valid_notification_end(
-                ChargingStart=now, ChargingEnd=now - timedelta(minutes=30)
+                charging_start=now, charging_end=now - timedelta(minutes=30)
             )
 
     def test_charging_notification_end_with_session_start_after_session_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="SessionStart should be before SessionEnd"
+            ValidationError, match="SessionStart cannot be after SessionEnd"
         ):
             self.create_valid_notification_end(
-                SessionStart=now,
-                SessionEnd=now - timedelta(minutes=30),
-                ChargingStart=now,
+                session_start=now,
+                session_end=now - timedelta(minutes=30),
+                charging_start=now,
             )
 
     def test_charging_notification_end_with_session_start_after_charging_start_fails(
@@ -213,48 +213,48 @@ class TestChargingNotificationEnd:
         now = datetime.now(pytz.utc)
         with pytest.raises(
             ValidationError,
-            match="SessionStart should be before ChargingStart",
+            match="SessionStart cannot be after ChargingStart",
         ):
             self.create_valid_notification_end(
-                SessionStart=now, ChargingStart=now - timedelta(minutes=5)
+                session_start=now, charging_start=now - timedelta(minutes=5)
             )
 
     def test_charging_notification_end_with_charging_end_after_session_end_fails(self):
         now = datetime.now(pytz.utc)
         with pytest.raises(
-            ValidationError, match="ChargingEnd should be before or equal to SessionEnd"
+            ValidationError, match="ChargingEnd cannot be after SessionEnd"
         ):
             self.create_valid_notification_end(
-                ChargingEnd=now, SessionEnd=now - timedelta(minutes=5)
+                charging_end=now, session_end=now - timedelta(minutes=5)
             )
 
     def test_charging_notification_end_with_consistent_energy_calculation_succeeds(
         self,
     ):
         notification = self.create_valid_notification_end(
-            MeterValueStart=100.0, MeterValueEnd=150.0, ConsumedEnergy=50.0
+            meter_value_start=100.0, meter_value_end=150.0, consumed_energy=50.0
         )
-        assert notification.ConsumedEnergy == 50.0
+        assert notification.consumed_energy == 50.0
 
     def test_charging_notification_end_with_inconsistent_energy_calculation_fails(self):
         with pytest.raises(
             ValidationError, match="ConsumedEnergy.*doesn't match.*meter difference"
         ):
             self.create_valid_notification_end(
-                MeterValueStart=100.0,
-                MeterValueEnd=150.0,
-                ConsumedEnergy=40.0,  # Should be 50.0
+                meter_value_start=100.0,
+                meter_value_end=150.0,
+                consumed_energy=40.0,  # Should be 50.0
             )
 
     def test_charging_notification_end_with_negative_meter_values_fail(self):
         with pytest.raises(ValidationError, match="Input should be greater than"):
-            self.create_valid_notification_end(MeterValueStart=-10.0)
+            self.create_valid_notification_end(meter_value_start=-10.0)
 
         with pytest.raises(ValidationError, match="Input should be greater than"):
-            self.create_valid_notification_end(MeterValueEnd=-10.0)
+            self.create_valid_notification_end(meter_value_end=-10.0)
 
         with pytest.raises(ValidationError, match="Input should be greater than"):
-            self.create_valid_notification_end(ConsumedEnergy=-10.0)
+            self.create_valid_notification_end(consumed_energy=-10.0)
 
     def test_charging_notification_end_with_penalty_time_before_charging_end_fails(
         self,
@@ -265,7 +265,7 @@ class TestChargingNotificationEnd:
             match="PenaltyTimeStart should be after or equal to ChargingEnd",
         ):
             self.create_valid_notification_end(
-                ChargingEnd=now, PenaltyTimeStart=now - timedelta(minutes=5)
+                charging_end=now, penalty_time_start=now - timedelta(minutes=5)
             )
 
     def test_charging_notification_end_with_penalty_time_after_charging_end_succeeds(
@@ -273,19 +273,19 @@ class TestChargingNotificationEnd:
     ):
         now = datetime.now(pytz.utc)
         notification = self.create_valid_notification_end(
-            ChargingEnd=now, PenaltyTimeStart=now + timedelta(minutes=15)
+            charging_end=now, penalty_time_start=now + timedelta(minutes=15)
         )
-        assert notification.PenaltyTimeStart > notification.ChargingEnd
+        assert notification.penalty_time_start > notification.charging_end
 
 
 class TestEdgeCases:
     def test_charging_notification_with_same_datetime_values_succeeds(self):
         now = datetime.now(pytz.utc)
         notification = ERoamingChargingNotificationEnd(
-            SessionID=SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
-            EvseID=EvseID(root="DE*ABC*E123*456"),
-            ChargingStart=now,
-            ChargingEnd=now,  # Same time - should be valid
-            OperatorID=OperatorID(root="DE*ABC"),
+            session_id=SessionID(root="b2688855-7f00-0002-6d8e-48d883f6abb6"),
+            evse_id=EvseID(root="DE*ABC*E123*456"),
+            charging_start=now,
+            charging_end=now,  # Same time - should be valid
+            operator_id=OperatorID(root="DE*ABC"),
         )
-        assert notification.ChargingStart == notification.ChargingEnd
+        assert notification.charging_start == notification.charging_end
