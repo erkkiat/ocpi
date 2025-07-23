@@ -221,9 +221,8 @@ def send_hubject_request(
     response: requests.Response = function(url, json=payload_json)
     if self.request.is_eager:
         return response.json()
-    env = os.environ.get("ENV", "development")
     retry_count = self.request.retries
-    if response.status_code >= 500 and env == "production":
+    if response.status_code >= 500:
         logger.warning(
             f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
         )
