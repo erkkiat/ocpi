@@ -207,8 +207,7 @@ def send_hubject_request(
     payload_json,
     url: str,
     method: str = "put",
-    **kwargs,
-) -> Response:
+) -> dict:
     from integrations.hubject.services import HubjectService
 
     request_session = HubjectService.client.session
@@ -219,18 +218,11 @@ def send_hubject_request(
         )
 
     logger.info(f"Sending hubject {method} request to {url}")
-    response: requests.Response = function(url, json=payload_json, **kwargs)
+    response: requests.Response = function(url, json=payload_json)
     if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
+        return response.json()
+    env = os.environ.get("ENV", "development")
     retry_count = self.request.retries
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(
-            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
-        )
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
     if response.status_code >= 500 and env == "production":
         logger.warning(
             f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
