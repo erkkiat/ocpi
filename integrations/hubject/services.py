@@ -50,6 +50,7 @@ from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import Any, TYPE_CHECKING
+from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
@@ -383,18 +384,19 @@ class HubjectService:
         )
 
     @classmethod
-    def post_eroaming_push_evse_status(cls, evse: Evse) -> Response:
+    def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
         ocpi_master = evse.location.ocpi_master
         operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
         operator_name = ocpi_master.business_details.name
 
         payload = cls._get_evse_status_update_payload(evse, operator_id, operator_name)
+        payload_json = payload.model_dump(mode="json", by_alias=True)
 
         url = (
             f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
         )
-        response = HubjectService.client.post(
-            url, json=payload.model_dump(mode="json", by_alias=True)
+
+        retry_policy = dict(max_retries=retries, interval_start=5)
+        send_hubject_request.apply_async(
+            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
         )
-        response.raise_for_status()
-        return response
