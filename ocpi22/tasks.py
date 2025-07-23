@@ -1,5 +1,6 @@
 import os
 import random
+import ssl
 from datetime import timedelta, datetime
 from logging import getLogger
 from urllib.parse import urlparse
@@ -162,7 +163,7 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Response:
+) -> Response | None:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -173,7 +174,13 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    request_session = get_request_session(credentials_id)
+    try:
+        request_session = get_request_session(credentials_id)
+    except ssl.SSLError:
+        logger.exception(f"SSL error while connecting to {url}.")
+        # Don't retry on SSL errors as they're likely configuration issues
+        return None
+
     function = getattr(request_session, method.lower())
     if not function:
         raise NotImplementedError(
