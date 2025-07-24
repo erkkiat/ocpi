@@ -41,7 +41,7 @@ class TestSendHubjectRequest:
     def test_send_hubject_request_unsupported_method(self, mock_client, payload_json):
         mock_client.session.invalid_method = None
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(ValueError):
             send_hubject_request(
                 payload_json, TestSendHubjectRequest.HUBJECT_URL, "invalid_method"
             )

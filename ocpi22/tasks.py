@@ -211,6 +211,12 @@ def send_hubject_request(
     method: Literal["get", "post", "put", "patch", "delete"] = "put",
 ) -> dict | None:
     try:
+        valid_methods = {"get", "post", "put", "patch", "delete"}
+        if method.lower() not in valid_methods:
+            raise ValueError(
+                f"Invalid HTTP method '{method}'. Must be one of: {valid_methods}"
+            )
+
         from integrations.hubject.services import HubjectService
 
         logger.info(f"Sending hubject {method} request to {url}")
@@ -238,11 +244,11 @@ def send_hubject_request(
 
     except RequestException as e:
         retry_count = self.request.retries
-        logger.error(f"Request failed for {url}: {str(e)}")
+        logger.exception(f"Request failed for {url}: {str(e)}")
         if retry_count < self.max_retries:
             raise self.retry(exc=e)
     except Exception as e:
-        logger.error(f"Unexpected error for hubject request to {url}: {str(e)}")
+        logger.exception(f"Unexpected error for hubject request to {url}: {str(e)}")
 
 
 @shared_task(max_retries=2, retry_backoff=2)
