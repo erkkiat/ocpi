@@ -44,6 +44,7 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     HubjectDefaultTariff,
     HubjectPriceComponent,
+    ERoamingPushEvseStatus,
 )
 from integrations.hubject.services import (
     HubjectService,
@@ -882,3 +883,28 @@ class TestOICPDynamicPricingService:
                 ),
             ],
         )
+
+
+class TestPushEvseStatus:
+    service = HubjectService()
+
+    @pytest.mark.django_db
+    def test_get_payload_successfully(self, monkeypatch):
+        evse = EvseFactory()
+        ocpi_master = evse.location.ocpi_master
+        operator_id = Party(
+            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
+        )
+        result = self.service._get_evse_status_update_payload(
+            evse, str(operator_id), "HelsinkiOperator"
+        )
+
+        assert isinstance(result, ERoamingPushEvseStatus)
+        assert result.action_type == ActionType.update
+        assert result.operator_evse_status.operator_id.root == str(operator_id)
+        assert result.operator_evse_status.operator_name == "HelsinkiOperator"
+        assert len(result.operator_evse_status.evse_status_record) == 1
+
+        status_record = result.operator_evse_status.evse_status_record[0]
+        assert status_record.evse_id == "EVS123456"
+        assert status_record.evse_status == "Available"

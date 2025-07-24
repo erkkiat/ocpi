@@ -382,6 +382,9 @@ class Evse(models.Model, ModelUtilMixin):
                 self.uid,
             ],
         )
+        from integrations.hubject.services import HubjectService
+
+        HubjectService.post_eroaming_push_evse_status(self)
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()
