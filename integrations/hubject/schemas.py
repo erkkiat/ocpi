@@ -60,6 +60,10 @@ the charge point location due to the need for time based charging fees.
 """
 
 
+class HubjectBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
+
+
 class AuthorizationStatus(Enum):
     Authorized = "Authorized"
     NotAuthorized = "NotAuthorized"
@@ -710,12 +714,12 @@ class ERoamingPushEVSEPricing(BaseModel):
     )
 
 
-class EvseStatusRecordItem(BaseModel):
+class EvseStatusRecordItem(HubjectBaseModel):
     evse_id: EvseID = Field(..., alias="EvseID")
     evse_status: EvseStatus
 
 
-class OperatorEvseStatus(BaseModel):
+class OperatorEvseStatus(HubjectBaseModel):
     operator_id: OperatorID = Field(..., alias="OperatorID")
     operator_name: Optional[str] = Field(None, description="Free text for operator")
     evse_status_record: List[EvseStatusRecordItem] = Field(
@@ -723,7 +727,7 @@ class OperatorEvseStatus(BaseModel):
     )
 
 
-class ERoamingPushEvseStatus(BaseModel):
+class ERoamingPushEvseStatus(HubjectBaseModel):
     action_type: ActionType
     operator_evse_status: OperatorEvseStatus
 
@@ -971,15 +975,13 @@ class ERoamingAuthorizeStop(BaseModel):
 
 
 class ERoamingChargeDetailRecord(
-    BaseModel,
+    HubjectBaseModel,
     ConsumedEnergyValidatorMixin,
     ChargingEndValidatorMixin,
     SessionEndValidatorMixin,
     MeterValueEndValidatorMixin,
     ChargingStartValidatorMixin,
 ):
-    model_config = {"alias_generator": to_pascal, "populate_by_name": True}
-
     session_id: SessionID = Field(
         ..., alias="SessionID", description="The hubject session ID."
     )
@@ -1041,10 +1043,9 @@ class ERoamingChargeDetailRecord(
     hub_provider_id: Optional[ProviderID] = Field(None, alias="HubProviderID")
 
 
-class ChargingNotificationBase(BaseModel):
+class ChargingNotificationBase(HubjectBaseModel):
     model_config = ConfigDict(
-        alias_generator=to_pascal,
-        populate_by_name=True,
+        **HubjectBaseModel.model_config,
         json_encoders={
             AwareDatetime: lambda date_time: date_time.strftime(
                 settings.OICP_DATE_FORMAT
