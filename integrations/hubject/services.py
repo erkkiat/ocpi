@@ -36,6 +36,7 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseStatus,
     OperatorEvseStatus,
     EvseStatusRecordItem,
+    EvseID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -374,7 +375,7 @@ class HubjectService:
                 operator_name=operator_name,
                 evse_status_record=[
                     EvseStatusRecordItem(
-                        evse_id=evse.evse_id,
+                        evse_id=EvseID(root=evse.evse_id),
                         evse_status=self.converter.convert_ocpi_evse_status(
                             evse.status
                         ),

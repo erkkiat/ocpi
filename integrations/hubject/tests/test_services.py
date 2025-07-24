@@ -45,6 +45,9 @@ from integrations.hubject.schemas import (
     HubjectDefaultTariff,
     HubjectPriceComponent,
     ERoamingPushEvseStatus,
+    OperatorEvseStatus,
+    EvseStatusRecordItem,
+    EvseStatus,
 )
 from integrations.hubject.services import (
     HubjectService,
@@ -890,7 +893,7 @@ class TestPushEvseStatus:
 
     @pytest.mark.django_db
     def test_get_payload_successfully(self, monkeypatch):
-        evse = EvseFactory()
+        evse = EvseFactory(status="AVAILABLE")
         ocpi_master = evse.location.ocpi_master
         operator_id = Party(
             country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
@@ -899,12 +902,17 @@ class TestPushEvseStatus:
             evse, str(operator_id), "HelsinkiOperator"
         )
 
-        assert isinstance(result, ERoamingPushEvseStatus)
-        assert result.action_type == ActionType.update
-        assert result.operator_evse_status.operator_id.root == str(operator_id)
-        assert result.operator_evse_status.operator_name == "HelsinkiOperator"
-        assert len(result.operator_evse_status.evse_status_record) == 1
-
-        status_record = result.operator_evse_status.evse_status_record[0]
-        assert status_record.evse_id == "EVS123456"
-        assert status_record.evse_status == "Available"
+        assert result == ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=str(operator_id)),
+                operator_name="HelsinkiOperator",
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        EvseID=EvseID(root=evse.evse_id),
+                        evse_id=evse.evse_id,
+                        evse_status=EvseStatus.Available,
+                    )
+                ],
+            ),
+        )
