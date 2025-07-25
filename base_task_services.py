@@ -41,7 +41,7 @@ class RefreshTokenBaseTask(Task):
         return super().before_start(task_id, args, kwargs)
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
-        logger.exception(f"Task {self.name} failed with {exc}")
+        logger.exception(f"Task {self.name} failed")
         return super().on_failure(exc, task_id, args, kwargs, einfo)
 
 
