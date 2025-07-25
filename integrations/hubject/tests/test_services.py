@@ -888,17 +888,15 @@ class TestOICPDynamicPricingService:
         )
 
 
+@pytest.mark.django_db
 class TestPushEvseStatus:
-    service = HubjectService()
-
-    @pytest.mark.django_db
     def test_get_payload_successfully(self, monkeypatch):
         evse = EvseFactory(status="AVAILABLE")
         ocpi_master = evse.location.ocpi_master
         operator_id = Party(
             country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
         )
-        result = self.service._get_evse_status_update_payload(
+        result = HubjectService._get_evse_status_update_payload(
             evse, str(operator_id), "HelsinkiOperator"
         )
 
@@ -915,4 +913,75 @@ class TestPushEvseStatus:
                     )
                 ],
             ),
+        )
+
+    def test_get_payload_with_invalid_evse_status_return_unknown_status(self):
+        evse = EvseFactory(status="INVALID")
+        ocpi_master = evse.location.ocpi_master
+        operator_id = Party(
+            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
+        )
+
+        result = HubjectService._get_evse_status_update_payload(
+            evse, str(operator_id), "HelsinkiOperator"
+        )
+
+        assert result == ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=str(operator_id)),
+                operator_name="HelsinkiOperator",
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        EvseID=EvseID(root=evse.evse_id),
+                        evse_id=evse.evse_id,
+                        evse_status=EvseStatus.Unknown,
+                    )
+                ],
+            ),
+        )
+
+    @pytest.mark.parametrize("operator_id", ["DE*SMPW", "KL1*CPO", "INVALID", None])
+    def test_get_payload_with_invalid_operator_id(self, operator_id):
+        evse = EvseFactory(status="INVALID")
+        with pytest.raises(ValidationError):
+            HubjectService._get_evse_status_update_payload(
+                evse, str(operator_id), "HelsinkiOperator"
+            )
+
+    @responses.activate
+    def test_post_evse_status_success(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/FI*CPO/status-records",
+            json={"success": True},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    HubjectService._get_evse_status_update_payload(
+                        evse, "FI*CPO", evse.location.ocpi_master.business_details.name
+                    ).model_dump(mode="json", by_alias=True)
+                )
+            ],
+        )
+        HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+        assert (
+            caplog.records[0].message
+            == "Sending hubject post request to https://service-qa.hubject.com/api/oicp/evsepush/v21/operators/FI*CPO/status-records"
+        )
+        assert "succeeded in " in caplog.records[1].message
+
+    def test_post_evse_status_without_evse(self, caplog):
+        HubjectService.post_eroaming_push_evse_status(None, retries=0)
+        assert caplog.records[0].message == "No EVSE provided for hubject status update"
+
+    def test_post_evse_status_with_incorrect_payload(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+        evse.evse_id = "INVALID_EVSE_ID"
+        HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+        assert (
+            "Failed to create payload for EVSE status update"
+            in caplog.records[0].message
         )

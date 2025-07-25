@@ -8,6 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
+from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import Response
 
@@ -365,8 +366,9 @@ class HubjectService:
         response.raise_for_status()
         return response
 
+    @classmethod
     def _get_evse_status_update_payload(
-        self, evse: Evse, operator_id: str, operator_name: str
+        cls, evse: Evse, operator_id: str, operator_name: str
     ) -> ERoamingPushEvseStatus:
         return ERoamingPushEvseStatus(
             action_type=ActionType.update,
@@ -376,9 +378,7 @@ class HubjectService:
                 evse_status_record=[
                     EvseStatusRecordItem(
                         evse_id=EvseID(root=evse.evse_id),
-                        evse_status=self.converter.convert_ocpi_evse_status(
-                            evse.status
-                        ),
+                        evse_status=cls.converter.convert_ocpi_evse_status(evse.status),
                     )
                 ],
             ),
@@ -386,11 +386,20 @@ class HubjectService:
 
     @classmethod
     def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
+        if not evse:
+            logger.warning("No EVSE provided for hubject status update")
+            return
         ocpi_master = evse.location.ocpi_master
         operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
         operator_name = ocpi_master.business_details.name
 
-        payload = cls._get_evse_status_update_payload(evse, operator_id, operator_name)
+        try:
+            payload = cls._get_evse_status_update_payload(
+                evse, operator_id, operator_name
+            )
+        except ValidationError as e:
+            logger.warning(f"Failed to create payload for EVSE status update: {e}")
+            return
         payload_json = payload.model_dump(mode="json", by_alias=True)
 
         url = (
