@@ -1,7 +1,6 @@
 import os
 import random
 from datetime import timedelta, datetime
-from json import JSONDecodeError
 from logging import getLogger
 from typing import Literal
 from urllib.parse import urlparse
@@ -211,17 +210,17 @@ def send_hubject_request(
     method: Literal["get", "post", "put", "patch", "delete"] = "put",
 ) -> dict | None:
     try:
-        valid_methods = {"get", "post", "put", "patch", "delete"}
-        if method.lower() not in valid_methods:
-            raise ValueError(
-                f"Invalid HTTP method '{method}'. Must be one of: {valid_methods}"
-            )
+        # valid_methods = {"get", "post", "put", "patch", "delete"}
+        # if method.lower() not in valid_methods:
+        #     raise ValueError(
+        #         f"Invalid HTTP method '{method}'. Must be one of: {valid_methods}"
+        #     )
 
         from integrations.hubject.services import HubjectService
 
         logger.info(f"Sending hubject {method} request to {url}")
         response = HubjectService.client.session.request(
-            method=method, url=url, json=payload_json
+            method=method, url=url, json=payload_json, timeout=10
         )
         if self.request.is_eager:
             return response.json() if response.text else None
@@ -235,20 +234,17 @@ def send_hubject_request(
                     f"Server Error for {response.url}: {response.status_code}"
                 )
             )
-
-        try:
-            return response.json() if response.content else None
-        except JSONDecodeError:
-            logger.warning(f"Non-JSON response from {url}: {response.text[:200]}")
-            return None
-
+        if response.status_code >= 400:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: {response.json()}"
+            )
     except RequestException as e:
         retry_count = self.request.retries
-        logger.exception(f"Request failed for {url}: {str(e)}")
+        logger.warning(f"Request failed for {url}")
         if retry_count < self.max_retries:
             raise self.retry(exc=e)
-    except Exception as e:
-        logger.exception(f"Unexpected error for hubject request to {url}: {str(e)}")
+    except Exception:
+        logger.exception(f"Unexpected error for hubject request to {url}")
 
 
 @shared_task(max_retries=2, retry_backoff=2)
