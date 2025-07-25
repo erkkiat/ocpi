@@ -2,6 +2,7 @@ import os
 import random
 from datetime import timedelta, datetime
 from logging import getLogger
+from typing import Literal
 from urllib.parse import urlparse
 
 import celery
@@ -206,49 +207,44 @@ def send_hubject_request(
     self,
     payload_json,
     url: str,
-    method: str = "put",
-    **kwargs,
-) -> Response:
-    from integrations.hubject.services import HubjectService
+    method: Literal["get", "post", "put", "patch", "delete"] = "put",
+) -> dict | None:
+    try:
+        # valid_methods = {"get", "post", "put", "patch", "delete"}
+        # if method.lower() not in valid_methods:
+        #     raise ValueError(
+        #         f"Invalid HTTP method '{method}'. Must be one of: {valid_methods}"
+        #     )
 
-    request_session = HubjectService.client.session
-    function = getattr(request_session, method.lower(), None)
-    if not function:
-        raise NotImplementedError(
-            f"Method {method} is not supported for send_hubject_request"
-        )
+        from integrations.hubject.services import HubjectService
 
-    logger.info(f"Sending hubject {method} request to {url}")
-    response: requests.Response = function(url, json=payload_json, **kwargs)
-    if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
-    retry_count = self.request.retries
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(
-            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+        logger.info(f"Sending hubject {method} request to {url}")
+        response = HubjectService.client.session.request(
+            method=method, url=url, json=payload_json, timeout=10
         )
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
-    if response.status_code >= 500 and env == "production":
-        logger.warning(
-            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
-        )
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
-
-    return (
-        response.json()
-        if response.status_code < 300
-        else {
-            "success": False,
-            "errorType": "HTTP Error",
-            "error": f"{response.status_code} : {response.text}",
-            "retry_count": retry_count,
-        }
-    )
+        if self.request.is_eager:
+            return response.json() if response.text else None
+        retry_count = self.request.retries
+        if response.status_code >= 500:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+            )
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+        if response.status_code >= 400:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: {response.json()}"
+            )
+    except RequestException as e:
+        retry_count = self.request.retries
+        logger.warning(f"Request failed for {url}")
+        if retry_count < self.max_retries:
+            raise self.retry(exc=e)
+    except Exception:
+        logger.exception(f"Unexpected error for hubject request to {url}")
 
 
 @shared_task(max_retries=2, retry_backoff=2)

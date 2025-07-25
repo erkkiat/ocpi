@@ -36,15 +36,26 @@ class TestSendHubjectRequest:
         )
 
         result = send_hubject_request(payload_json, TestSendHubjectRequest.HUBJECT_URL)
-        assert result == {"success": True}
+        assert result is None
 
-    def test_send_hubject_request_unsupported_method(self, mock_client, payload_json):
-        mock_client.session.invalid_method = None
+    @responses.activate
+    def test_send_hubject_request_unsupported_method(self, payload_json, caplog):
+        responses.add(
+            url=TestSendHubjectRequest.HUBJECT_URL,
+            method="INVALID_METHOD",
+            json={"success": False, "error": "hubject error"},
+            status=405,
+            match=[matchers.json_params_matcher(payload_json)],
+        )
 
-        with pytest.raises(NotImplementedError):
-            send_hubject_request(
-                payload_json, TestSendHubjectRequest.HUBJECT_URL, "invalid_method"
-            )
+        result = send_hubject_request(
+            payload_json, TestSendHubjectRequest.HUBJECT_URL, "invalid_method"
+        )
+        assert result is None
+        assert (
+            caplog.records[1].message
+            == "Got 405 for https://hubject-api.com/endpoint: {'success': False, 'error': 'hubject error'}"
+        )
 
     @responses.activate
     @pytest.mark.django_db
