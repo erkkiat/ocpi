@@ -210,12 +210,6 @@ def send_hubject_request(
     method: Literal["get", "post", "put", "patch", "delete"] = "put",
 ) -> dict | None:
     try:
-        # valid_methods = {"get", "post", "put", "patch", "delete"}
-        # if method.lower() not in valid_methods:
-        #     raise ValueError(
-        #         f"Invalid HTTP method '{method}'. Must be one of: {valid_methods}"
-        #     )
-
         from integrations.hubject.services import HubjectService
 
         logger.info(f"Sending hubject {method} request to {url}")
