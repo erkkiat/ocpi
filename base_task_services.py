@@ -19,7 +19,7 @@ class RefreshTokenBaseTask(Task):
     """
 
     autoretry_for = (OperationalError,)
-    retry_backoff = True  # uses exponential backoff
+    retry_backoff = True
     retry_kwargs = {"max_retries": 3}
 
     def before_start(self, task_id, args, kwargs):
