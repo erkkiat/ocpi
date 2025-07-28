@@ -214,14 +214,17 @@ def send_hubject_request(
 
         logger.info(f"Sending hubject {method} request to {url}")
         response = HubjectService.client.session.request(
-            method=method, url=url, json=payload_json, timeout=10
+            method=method,
+            url=url,
+            json=payload_json,
+            timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
         if self.request.is_eager:
             return response.json() if response.text else None
         retry_count = self.request.retries
         if response.status_code >= 500:
             logger.warning(
-                f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
+                f"Hubject responded {response.status_code} for {response.url}: Retrying({retry_count})"
             )
             raise self.retry(
                 exc=Exception(
