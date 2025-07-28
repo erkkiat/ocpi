@@ -240,8 +240,6 @@ def send_hubject_request(
         logger.warning(f"Request failed for {url}")
         if retry_count < self.max_retries:
             raise self.retry(exc=e)
-    except Exception:
-        logger.exception(f"Unexpected error for hubject request to {url}")
 
 
 @shared_task(max_retries=2, retry_backoff=2)
