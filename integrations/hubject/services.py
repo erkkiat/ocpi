@@ -406,7 +406,4 @@ class HubjectService:
             f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
         )
 
-        retry_policy = dict(max_retries=retries, interval_start=5)
-        send_hubject_request.apply_async(
-            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
-        )
+        send_hubject_request.delay(payload_json, url, "post")

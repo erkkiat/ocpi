@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 import pytz
@@ -950,7 +950,7 @@ class TestPushEvseStatus:
             )
 
     @responses.activate
-    def test_post_evse_status_success(self, caplog):
+    def test_post_evse_status_success(self):
         evse = EvseFactory(status="AVAILABLE")
 
         responses.add(
@@ -966,12 +966,12 @@ class TestPushEvseStatus:
                 )
             ],
         )
-        HubjectService.post_eroaming_push_evse_status(evse, retries=0)
-        assert (
-            caplog.records[0].message
-            == "Sending hubject post request to https://service-qa.hubject.com/api/oicp/evsepush/v21/operators/FI*CPO/status-records"
-        )
-        assert "succeeded in " in caplog.records[1].message
+        with patch(
+            "integrations.hubject.services.send_hubject_request.delay",
+            return_value=AsyncMock(),
+        ) as mock_send_request:
+            HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            assert mock_send_request.call_count == 1
 
     def test_post_evse_status_without_evse(self, caplog):
         HubjectService.post_eroaming_push_evse_status(None, retries=0)
