@@ -3,6 +3,7 @@ import random
 import ssl
 from datetime import timedelta, datetime
 from logging import getLogger
+from typing import Literal
 from urllib.parse import urlparse
 
 import celery
@@ -202,6 +203,50 @@ def send_ocpi_request(
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")
         )
+
+
+@shared_task(
+    bind=True,
+    retry_backoff=1,
+    max_retries=10,
+)
+def send_hubject_request(
+    self,
+    payload_json,
+    url: str,
+    method: Literal["get", "post", "put", "patch", "delete"] = "put",
+) -> dict | None:
+    try:
+        from integrations.hubject.services import HubjectService
+
+        logger.info(f"Sending hubject {method} request to {url}")
+        response = HubjectService.client.session.request(
+            method=method,
+            url=url,
+            json=payload_json,
+            timeout=settings.HUBJECT_TIMEOUT_SECONDS,
+        )
+        if self.app.conf.task_always_eager:
+            return response.json() if response.text else None
+        retry_count = self.request.retries
+        if response.status_code >= 500:
+            logger.warning(
+                f"Hubject responded {response.status_code} for {response.url}: Retrying({retry_count})"
+            )
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+        if response.status_code >= 400:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: {response.json()}"
+            )
+    except RequestException as e:
+        retry_count = self.request.retries
+        logger.warning(f"Request failed for {url}")
+        if retry_count < self.max_retries:
+            raise self.retry(exc=e)
 
 
 @shared_task(max_retries=2, retry_backoff=2)
