@@ -4,6 +4,7 @@ import pytest
 
 import responses
 from celery.exceptions import Retry
+from requests import RequestException
 from responses import matchers
 
 from ocpi22.tasks import send_hubject_request
@@ -34,16 +35,32 @@ class TestSendHubjectRequest:
             status=200,
             match=[matchers.json_params_matcher(payload_json)],
         )
+        with patch.object(send_hubject_request, "app") as mock_app:
+            mock_app.conf.task_always_eager = False
+            result = send_hubject_request(
+                payload_json, TestSendHubjectRequest.HUBJECT_URL
+            )
+            assert result is None
 
-        result = send_hubject_request(payload_json, TestSendHubjectRequest.HUBJECT_URL)
-        assert result == {"success": True}
+    @responses.activate
+    def test_send_hubject_request_unsupported_method(self, payload_json, caplog):
+        responses.add(
+            url=TestSendHubjectRequest.HUBJECT_URL,
+            method="INVALID_METHOD",
+            json={"success": False, "error": "hubject error"},
+            status=405,
+            match=[matchers.json_params_matcher(payload_json)],
+        )
 
-    def test_send_hubject_request_unsupported_method(self, mock_client, payload_json):
-        mock_client.session.invalid_method = None
-
-        with pytest.raises(NotImplementedError):
-            send_hubject_request(
+        with patch.object(send_hubject_request, "app") as mock_app:
+            mock_app.conf.task_always_eager = False
+            result = send_hubject_request(
                 payload_json, TestSendHubjectRequest.HUBJECT_URL, "invalid_method"
+            )
+            assert result is None
+            assert (
+                caplog.records[1].message
+                == "Got 405 for https://hubject-api.com/endpoint: {'success': False, 'error': 'hubject error'}"
             )
 
     @responses.activate
@@ -51,8 +68,6 @@ class TestSendHubjectRequest:
     def test_send_hubject_request_eager_mode_does_not_retry(
         self, payload_json, monkeypatch
     ):
-        monkeypatch.setenv("ENV", "production")
-
         responses.add(
             responses.POST,
             TestSendHubjectRequest.HUBJECT_URL,
@@ -61,8 +76,11 @@ class TestSendHubjectRequest:
             match=[matchers.json_params_matcher(payload_json)],
         )
 
-        with patch("celery.app.task.Task.request") as mock_request:
-            mock_request.is_eager = True
+        with (
+            patch("celery.app.task.Task.request") as mock_request,
+            patch.object(send_hubject_request, "app") as mock_app,
+        ):
+            mock_app.conf.task_always_eager = True
             send_hubject_request(
                 payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
             )
@@ -71,40 +89,10 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
-    @pytest.mark.parametrize("env", ["staging", "development"])
-    def test_send_hubject_request_when_status_code_gte_300_retry_sending_request(
-        self, monkeypatch, payload_json, env, celery_worker
-    ):
-        monkeypatch.setenv("ENV", env)
-        celery_worker.app.conf.task_always_eager = False
-
-        responses.add(
-            responses.POST,
-            TestSendHubjectRequest.HUBJECT_URL,
-            json={"success": False, "error": "Bad Request"},
-            status=400,
-            match=[matchers.json_params_matcher(payload_json)],
-        )
-
-        with patch("ocpi22.tasks.send_hubject_request.retry") as mock_retry:
-            mock_retry.side_effect = Retry()
-
-            with pytest.raises(Retry):
-                send_hubject_request(
-                    payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
-                )
-
-            mock_retry.assert_called_once()
-
-    @responses.activate
-    @pytest.mark.django_db
     @pytest.mark.parametrize("status_code", [500, 502, 503])
     def test_send_hubject_request_when_status_code_gte_500_retry_sending_request(
-        self, monkeypatch, payload_json, status_code, celery_worker
+        self, payload_json, status_code
     ):
-        monkeypatch.setenv("ENV", "production")
-        celery_worker.app.conf.task_always_eager = False
-
         responses.add(
             responses.POST,
             TestSendHubjectRequest.HUBJECT_URL,
@@ -113,25 +101,28 @@ class TestSendHubjectRequest:
             match=[matchers.json_params_matcher(payload_json)],
         )
 
-        with patch("ocpi22.tasks.send_hubject_request.retry") as mock_retry:
-            mock_retry.side_effect = Retry()
+        mock_retry = Mock(side_effect=Retry("Server error retry"))
 
+        with (
+            patch.object(send_hubject_request, "retry", mock_retry),
+            patch.object(send_hubject_request, "app") as mock_app,
+            patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
+        ):
+            mock_app.conf.task_always_eager = False
             with pytest.raises(Retry):
                 send_hubject_request(
                     payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
                 )
-
             mock_retry.assert_called_once()
+            call_args = mock_retry.call_args
+            assert "Server Error" in str(call_args.kwargs["exc"])
 
     @responses.activate
     @pytest.mark.django_db
     @pytest.mark.parametrize("status_code", [300, 400])
-    def test_send_hubject_request_when_status_code_lt_500_does_not_retry_sending_request_in_production(
-        self, monkeypatch, payload_json, status_code, celery_worker
+    def test_send_hubject_request_when_status_code_lt_500_does_not_retry_sending_request(
+        self, payload_json, status_code
     ):
-        monkeypatch.setenv("ENV", "production")
-        celery_worker.app.conf.task_always_eager = False
-
         responses.add(
             responses.POST,
             TestSendHubjectRequest.HUBJECT_URL,
@@ -140,11 +131,37 @@ class TestSendHubjectRequest:
             match=[matchers.json_params_matcher(payload_json)],
         )
 
-        with patch("ocpi22.tasks.send_hubject_request.retry") as mock_retry:
-            mock_retry.side_effect = Retry()
+        mock_retry = Mock(side_effect=Retry("Server error retry"))
 
+        with (
+            patch.object(send_hubject_request, "retry", mock_retry),
+            patch.object(send_hubject_request, "app") as mock_app,
+            patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
+        ):
+            mock_app.conf.task_always_eager = False
             send_hubject_request(
                 payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
             )
 
             mock_retry.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_send_hubject_request_when_raised_request_exception_retry_sending_request(
+        self, payload_json
+    ):
+        mock_retry = Mock(side_effect=Retry("Server error retry"))
+
+        with (
+            patch(
+                "integrations.hubject.services.HubjectService.client.session.request",
+                side_effect=RequestException("Request failed"),
+            ),
+            patch.object(send_hubject_request, "retry", mock_retry),
+            patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
+        ):
+            with pytest.raises(Retry):
+                send_hubject_request(
+                    payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                )
+
+                mock_retry.assert_called()

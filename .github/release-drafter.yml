@@ -1,6 +1,5 @@
 name-template: 'v$RESOLVED_VERSION 😎'
 tag-template: 'v$RESOLVED_VERSION'
-
 categories:
   - title: 💥 Breaking changes
     labels:
@@ -32,7 +31,7 @@ categories:
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'skip-changelog'
-
+exclude-title: '(?i)production update'
 version-resolver:
   major:
     labels: [ 'major', 'breaking-change' ]  # If PR has 'major', bump major (e.g., v1.0.0 → v2.0.0)
@@ -41,10 +40,6 @@ version-resolver:
   patch:
     labels: [ 'bug', 'fix' ]  # Bumps patch (e.g., v1.2.3 → v1.2.4)
   default: patch  # Default bump if no labels match
-
-replacers:
-  - search: '(?i)^production update$'
-    replace: ''
 
 template: |
   ## What’s Changed

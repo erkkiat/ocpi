@@ -1,7 +1,9 @@
 import os
 import random
+import ssl
 from datetime import timedelta, datetime
 from logging import getLogger
+from typing import Literal
 from urllib.parse import urlparse
 
 import celery
@@ -162,7 +164,7 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Response:
+) -> Response | None:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -173,7 +175,13 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    request_session = get_request_session(credentials_id)
+    try:
+        request_session = get_request_session(credentials_id)
+    except ssl.SSLError:
+        logger.exception(f"SSL error while connecting to {url}.")
+        # Don't retry on SSL errors as they're likely configuration issues
+        return None
+
     function = getattr(request_session, method.lower())
     if not function:
         raise NotImplementedError(
@@ -206,49 +214,39 @@ def send_hubject_request(
     self,
     payload_json,
     url: str,
-    method: str = "put",
-    **kwargs,
-) -> Response:
-    from integrations.hubject.services import HubjectService
+    method: Literal["get", "post", "put", "patch", "delete"] = "put",
+) -> dict | None:
+    try:
+        from integrations.hubject.services import HubjectService
 
-    request_session = HubjectService.client.session
-    function = getattr(request_session, method.lower(), None)
-    if not function:
-        raise NotImplementedError(
-            f"Method {method} is not supported for send_hubject_request"
+        logger.info(f"Sending hubject {method} request to {url}")
+        response = HubjectService.client.session.request(
+            method=method,
+            url=url,
+            json=payload_json,
+            timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
-
-    logger.info(f"Sending hubject {method} request to {url}")
-    response: requests.Response = function(url, json=payload_json, **kwargs)
-    if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
-    retry_count = self.request.retries
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(
-            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
-        )
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
-    if response.status_code >= 500 and env == "production":
-        logger.warning(
-            f"Got {response.status_code} for {response.url}: Retrying({retry_count})"
-        )
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
-
-    return (
-        response.json()
-        if response.status_code < 300
-        else {
-            "success": False,
-            "errorType": "HTTP Error",
-            "error": f"{response.status_code} : {response.text}",
-            "retry_count": retry_count,
-        }
-    )
+        if self.app.conf.task_always_eager:
+            return response.json() if response.text else None
+        retry_count = self.request.retries
+        if response.status_code >= 500:
+            logger.warning(
+                f"Hubject responded {response.status_code} for {response.url}: Retrying({retry_count})"
+            )
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+        if response.status_code >= 400:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: {response.json()}"
+            )
+    except RequestException as e:
+        retry_count = self.request.retries
+        logger.warning(f"Request failed for {url}")
+        if retry_count < self.max_retries:
+            raise self.retry(exc=e)
 
 
 @shared_task(max_retries=2, retry_backoff=2)
