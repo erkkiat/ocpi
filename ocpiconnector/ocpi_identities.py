@@ -198,17 +198,11 @@ def create_credentialsrole(
     any Credentials tokens set, and communication will not be possible.
     """
     from ocpi22.models.business_details import BusinessDetails
-    from ocpi22.models.credentials import CredentialsRole, Credentials
+    from ocpi22.models.credentials import CredentialsRole
 
     bt, _created = BusinessDetails.objects.get_or_create(
         name__iexact=business_name, defaults=dict(name=business_name, website=website)
     )
-    if not credentials:
-        credentials = Credentials.objects.create(
-            country_code=party.country_code,
-            party_id=party.party_id,
-            business_details=bt,
-        )
     credentialsrole, _created = CredentialsRole.objects.get_or_create(
         country_code__iexact=party.country_code,
         party_id__iexact=party.party_id,
