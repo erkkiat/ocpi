@@ -28,8 +28,9 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
-    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
-    def test_send_hubject_request_successfully(self, payload_json):
+    # @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
+    def test_send_hubject_request_successfully(self, payload_json, monkeypatch):
+        monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "False")
         responses.add(
             responses.PUT,
             TestSendHubjectRequest.HUBJECT_URL,
