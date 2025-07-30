@@ -937,6 +937,7 @@ class ERoamingAuthorizeRemoteStart(BaseModel):
 
 
 class ERoamingAuthorizeStart(BaseModel):
+    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
     session_id: Optional[SessionID] = Field(None, alias="SessionID")
     operator_id: OperatorID = Field(..., alias="OperatorID")
     cpo_partner_session_id: Optional[str] = Field(
@@ -955,6 +956,7 @@ class ERoamingAuthorizeStart(BaseModel):
 
 
 class ERoamingAuthorizeStop(BaseModel):
+    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
     session_id: SessionID = Field(None, alias="SessionID")
     cpo_partner_session_id: Optional[str] = Field(
         None,
