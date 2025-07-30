@@ -226,7 +226,7 @@ def send_hubject_request(
             json=payload_json,
             timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
-        if self.request.is_eager:
+        if self.app.conf.task_always_eager:
             return response.json() if response.text else None
         retry_count = self.request.retries
         if response.status_code >= 500:
