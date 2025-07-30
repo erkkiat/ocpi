@@ -60,6 +60,7 @@ class CeleryConfig:
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
 app = Celery("mqtt_tasks", task_cls=RefreshTokenBaseTask)
+app.conf.worker_hijack_root_logger = False
 app.conf.task_queues = (
     Queue("HIGH", Exchange("HIGH"), routing_key="HIGH"),
     # Add other queues as needed
