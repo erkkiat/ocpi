@@ -4,6 +4,8 @@ import pytest
 
 import responses
 from celery.exceptions import Retry
+from django.test import override_settings
+from requests import RequestException
 from responses import matchers
 
 from ocpi22.tasks import send_hubject_request
@@ -26,6 +28,7 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     def test_send_hubject_request_successfully(self, payload_json):
         responses.add(
             responses.PUT,
@@ -39,6 +42,7 @@ class TestSendHubjectRequest:
         assert result is None
 
     @responses.activate
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     def test_send_hubject_request_unsupported_method(self, payload_json, caplog):
         responses.add(
             url=TestSendHubjectRequest.HUBJECT_URL,
@@ -59,11 +63,10 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
     def test_send_hubject_request_eager_mode_does_not_retry(
         self, payload_json, monkeypatch
     ):
-        monkeypatch.setenv("ENV", "production")
-
         responses.add(
             responses.POST,
             TestSendHubjectRequest.HUBJECT_URL,
@@ -82,6 +85,7 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @pytest.mark.parametrize("status_code", [500, 502, 503])
     def test_send_hubject_request_when_status_code_gte_500_retry_sending_request(
         self, payload_json, status_code
@@ -98,7 +102,6 @@ class TestSendHubjectRequest:
 
         with (
             patch.object(send_hubject_request, "retry", mock_retry),
-            patch("ocpi22.tasks.send_hubject_request.request.is_eager", False),
             patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
         ):
             with pytest.raises(Retry):
@@ -111,6 +114,7 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
     @pytest.mark.parametrize("status_code", [300, 400])
     def test_send_hubject_request_when_status_code_lt_500_does_not_retry_sending_request(
         self, payload_json, status_code
@@ -127,7 +131,6 @@ class TestSendHubjectRequest:
 
         with (
             patch.object(send_hubject_request, "retry", mock_retry),
-            patch("ocpi22.tasks.send_hubject_request.request.is_eager", False),
             patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
         ):
             send_hubject_request(
@@ -135,3 +138,25 @@ class TestSendHubjectRequest:
             )
 
             mock_retry.assert_not_called()
+
+    @pytest.mark.django_db
+    @override_settings(CELERY_TASK_ALWAYS_EAGER=False)
+    def test_send_hubject_request_when_raised_request_exception_retry_sending_request(
+        self, payload_json
+    ):
+        mock_retry = Mock(side_effect=Retry("Server error retry"))
+
+        with (
+            patch(
+                "integrations.hubject.services.HubjectService.client.session.request",
+                side_effect=RequestException("Request failed"),
+            ),
+            patch.object(send_hubject_request, "retry", mock_retry),
+            patch("ocpi22.tasks.send_hubject_request.request.retries", 0),
+        ):
+            with pytest.raises(Retry):
+                send_hubject_request(
+                    payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                )
+
+                mock_retry.assert_called()
