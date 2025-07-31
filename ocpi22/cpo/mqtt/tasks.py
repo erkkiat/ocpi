@@ -108,5 +108,5 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     evse.status = status
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
-    evse.send_status_updates()
+    EvseServices.send_status_updates(evse)
     return
