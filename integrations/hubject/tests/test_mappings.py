@@ -702,8 +702,10 @@ class TestMappings:
     def test_convert_ocpi_evse_status_invalid_status_returns_unknown_status(
         self, invalid_status
     ):
-        result = self._ocpi_to_oicp_converter.convert_ocpi_evse_status(invalid_status)
-        assert result == OICPEvseStatus.Unknown
+        with pytest.raises(
+            ValueError, match=f"Invalid OCPI status \\[{invalid_status}\\] found"
+        ):
+            self._ocpi_to_oicp_converter.convert_ocpi_evse_status(invalid_status)
 
 
 class TestConvertOCPICDRToERoamingCDR:

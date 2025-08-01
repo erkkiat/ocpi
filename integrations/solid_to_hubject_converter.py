@@ -633,15 +633,24 @@ class SolidToHubjectConverter:
         return eroaming_cdr
 
     def convert_ocpi_evse_status(self, status: str) -> OICPEvseStatus:
-        mapping = {
-            "AVAILABLE": OICPEvseStatus.Available,
-            "PREPARING": OICPEvseStatus.Occupied,
-            "CHARGING": OICPEvseStatus.Occupied,
-            "SUSPENDEDEV": OICPEvseStatus.Occupied,
-            "SUSPENDEDEVSE": OICPEvseStatus.Occupied,
-            "FINISHING": OICPEvseStatus.Occupied,
-            "RESERVED": OICPEvseStatus.Reserved,
-            "UNAVAILABLE": OICPEvseStatus.Occupied,
-            "FAULTED": OICPEvseStatus.OutOfService,
-        }
-        return mapping.get(status.upper(), OICPEvseStatus.Unknown)
+        match status.upper():
+            case "AVAILABLE":
+                return OICPEvseStatus.Available
+            case "PREPARING":
+                return OICPEvseStatus.Occupied
+            case "CHARGING":
+                return OICPEvseStatus.Occupied
+            case "SUSPENDEDEV":
+                return OICPEvseStatus.Occupied
+            case "SUSPENDEDEVSE":
+                return OICPEvseStatus.Occupied
+            case "FINISHING":
+                return OICPEvseStatus.Occupied
+            case "RESERVED":
+                return OICPEvseStatus.Reserved
+            case "UNAVAILABLE":
+                return OICPEvseStatus.Occupied
+            case "FAULTED":
+                return OICPEvseStatus.OutOfService
+            case _:
+                raise ValueError(f"Invalid OCPI status [{status}] found")

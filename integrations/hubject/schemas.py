@@ -1043,9 +1043,10 @@ class ERoamingChargeDetailRecord(
     hub_provider_id: Optional[ProviderID] = Field(None, alias="HubProviderID")
 
 
-class ChargingNotificationBase(HubjectBaseModel):
+class ChargingNotificationBase(BaseModel):
     model_config = ConfigDict(
-        **HubjectBaseModel.model_config,
+        alias_generator=to_pascal,
+        populate_by_name=True,
         json_encoders={
             AwareDatetime: lambda date_time: date_time.strftime(
                 settings.OICP_DATE_FORMAT
