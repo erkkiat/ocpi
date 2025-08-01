@@ -163,7 +163,7 @@ class HubjectService:
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
         payload = ERoamingAuthorizeStart(
-            OperatorID=OperatorID(root=operator_id),
+            operator_id=OperatorID(root=operator_id),
             identification=Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=token_id)
