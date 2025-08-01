@@ -915,31 +915,17 @@ class TestPushEvseStatus:
             ),
         )
 
-    def test_get_payload_with_invalid_evse_status_return_unknown_status(self):
+    def test_get_payload_with_invalid_evse_status_return_value_error(self):
         evse = EvseFactory(status="INVALID")
         ocpi_master = evse.location.ocpi_master
         operator_id = Party(
             country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
         )
 
-        result = HubjectService._get_evse_status_update_payload(
-            evse, str(operator_id), "HelsinkiOperator"
-        )
-
-        assert result == ERoamingPushEvseStatus(
-            action_type=ActionType.update,
-            operator_evse_status=OperatorEvseStatus(
-                operator_id=OperatorID(root=str(operator_id)),
-                operator_name="HelsinkiOperator",
-                evse_status_record=[
-                    EvseStatusRecordItem(
-                        EvseID=EvseID(root=evse.evse_id),
-                        evse_id=evse.evse_id,
-                        evse_status=EvseStatus.Unknown,
-                    )
-                ],
-            ),
-        )
+        with pytest.raises(ValueError, match="Invalid OCPI status \\[INVALID\\] found"):
+            HubjectService._get_evse_status_update_payload(
+                evse, str(operator_id), "HelsinkiOperator"
+            )
 
     @pytest.mark.parametrize("operator_id", ["DE*SMPW", "KL1*CPO", "INVALID", None])
     def test_get_payload_with_invalid_operator_id(self, operator_id):
