@@ -16,7 +16,7 @@ def map_oicp_authorization_response_to_ocpi_221(
     authorization_status = oicp_response.get("AuthorizationStatus")
     country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
     authorization_reference = oicp_response.get(
-        "AuthorizationReference", "HUBJECT-OMITTED"
+        "EMPPartnerSessionID", "HUBJECT-OMITTED"
     )
 
     if authorization_status and country_code and party_id:
