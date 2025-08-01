@@ -83,7 +83,6 @@ class TestEvseServices:
             ocpi_master = evse.location.ocpi_master
 
             assert actual_data == evse_patch_payload
-            # How are we able to send updates of someone else location. Should we restrict this?
             assert (
                 call_args[1]
                 == f"https://localhost/ocpi/locations/{ocpi_master.country_code}/{ocpi_master.party_id}/{evse.location.uid}/{evse.uid}"
@@ -106,3 +105,26 @@ class TestEvseServices:
                     "OperatorName": f"{ocpi_master.business_details.name}",
                 },
             }
+
+    @pytest.mark.django_db
+    def test_send_status_updates_with_naive_timezone_converts_the_timezone_to_utc(
+        self, evse
+    ):
+        evse.last_updated = datetime(2023, 12, 25, 15, 30, 45)
+        evse.status = "CHARGING"
+
+        expected_data = {
+            "status": "CHARGING",
+            "last_updated": "2023-12-25T15:30:45+00:00",
+        }
+
+        with patch(
+            "ocpi22.ocpi.util.OcpiModule.send_all_updates"
+        ) as mock_send_all_updates:
+            EvseServices.send_status_updates(evse)
+
+            mock_send_all_updates.assert_called_once_with(
+                data=expected_data,
+                method="patch",
+                path_components=["DE", "TST", evse.location.uid, evse.uid],
+            )
