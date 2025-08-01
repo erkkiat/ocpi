@@ -45,7 +45,9 @@ class TestMqttTasks:
         self, monkeypatch, db
     ):
         monkeypatch.setenv("CPO", "FI*CPO")
-        with patch.object(Evse, "send_status_updates") as mock_send_status_updates:
+        with patch(
+            "ocpi22.locations.services.EvseServices.send_status_updates"
+        ) as mock_send_status_updates:
             save_and_send_evse_status_updates("100000002", "Available")
             mock_send_status_updates.assert_not_called()
 
@@ -63,7 +65,9 @@ class TestMqttTasks:
     ):
         evse = create_evse(uid="100000004", status="RESERVED")
         monkeypatch.setenv("CPO", "FI*CPO")
-        with patch.object(Evse, "send_status_updates") as mock_send_status_updates:
+        with patch(
+            "ocpi22.locations.services.EvseServices.send_status_updates"
+        ) as mock_send_status_updates:
             save_and_send_evse_status_updates.run("100000004", "AVAILABLE")
             evse.refresh_from_db()
             assert evse.status == "AVAILABLE"

@@ -30,7 +30,7 @@ from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
-from ocpi22.locations.services import LocationService
+from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.routing import find_route_from_credentials
@@ -419,7 +419,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     #     # Let's free up the charger for the OCPI network, in case we are out of sync
                     #     close_active_sessions_for_evse(evse.uid)
 
-                    evse.send_status_updates()
+                    EvseServices.send_status_updates(evse)
 
                     messages.success(
                         request,
