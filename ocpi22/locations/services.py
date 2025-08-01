@@ -48,7 +48,7 @@ class EvseServices:
         last_updated_serialized = evse.last_updated.replace(
             tzinfo=zoneinfo.ZoneInfo("UTC")
         ).isoformat()
-        data = dict(status=evse.status, last_updated=last_updated_serialized)
+        data = {"status": evse.status, "last_updated": last_updated_serialized}
         location = evse.location
         location.send_all_updates(
             data=data,
