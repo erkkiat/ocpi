@@ -326,5 +326,7 @@ def test_route_through_oicp_true_invokes_send_update(
         result = session.send_updates(
             update_type=notification_type,
         )
-    mock_send.assert_called_once_with(session=session, update_type=notification_type)
+    mock_send.assert_called_once_with(
+        session=session, notification_type=notification_type
+    )
     assert result is None
