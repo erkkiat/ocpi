@@ -1,4 +1,3 @@
-import json
 import zoneinfo
 from datetime import datetime
 from unittest.mock import patch
@@ -61,7 +60,7 @@ class TestEvseServices:
     def test_send_status_updates_successfully(self, evse_patch_payload, evse):
         with (
             patch(
-                "ocpi22.tasks.send_ocpi_request.apply_async"
+                "ocpi22.ocpi.util.OcpiModule.send_all_updates"
             ) as mock_send_ocpi_request,
             patch(
                 "ocpi22.tasks.send_hubject_request.delay"
@@ -77,17 +76,18 @@ class TestEvseServices:
             )
 
             mock_send_ocpi_request.assert_called_once()
-            call_args = mock_send_ocpi_request.call_args[0][0]
-            actual_data = json.loads(call_args[0])
+            args = mock_send_ocpi_request.call_args[1]
 
             ocpi_master = evse.location.ocpi_master
 
-            assert actual_data == evse_patch_payload
-            assert (
-                call_args[1]
-                == f"https://localhost/ocpi/locations/{ocpi_master.country_code}/{ocpi_master.party_id}/{evse.location.uid}/{evse.uid}"
-            )
-            assert call_args[3:8] == ("NL", "TST", "FI", "CPO", "patch")
+            assert args.get("data") == evse_patch_payload
+            assert args.get("method") == "patch"
+            assert args.get("path_components") == [
+                "DE",
+                "TST",
+                evse.location.uid,
+                evse.uid,
+            ]
 
             assert mock_send_hubject_request.call_count == 1
             call_args = mock_send_hubject_request.call_args[0][0]
