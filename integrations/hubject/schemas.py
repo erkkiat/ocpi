@@ -939,8 +939,7 @@ class ERoamingAuthorizeRemoteStart(BaseModel):
     PartnerProductID: Optional[ProductID] = None
 
 
-class ERoamingAuthorizeStart(BaseModel):
-    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
+class ERoamingAuthorizeStart(HubjectBaseModel):
     session_id: Optional[SessionID] = Field(None, alias="SessionID")
     operator_id: OperatorID = Field(..., alias="OperatorID")
     cpo_partner_session_id: Optional[str] = Field(
@@ -958,8 +957,7 @@ class ERoamingAuthorizeStart(BaseModel):
     partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
-class ERoamingAuthorizeStop(BaseModel):
-    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
+class ERoamingAuthorizeStop(HubjectBaseModel):
     session_id: SessionID = Field(None, alias="SessionID")
     cpo_partner_session_id: Optional[str] = Field(
         None,
