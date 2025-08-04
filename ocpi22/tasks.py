@@ -208,7 +208,7 @@ def send_ocpi_request(
 @shared_task(
     bind=True,
     retry_backoff=1,
-    max_retries=10,
+    max_retries=3,
 )
 def send_hubject_request(
     self,

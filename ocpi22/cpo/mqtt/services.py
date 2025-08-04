@@ -6,6 +6,7 @@ from functools import wraps
 
 from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
 from ocpi22.cpo.api import process_meter_values
@@ -144,7 +145,14 @@ def _publish_not_allowed_auth_response(correlation_id: str):
 def _authorize_and_publish(
     token_auth_message: TokenAuthorizationMessageIn, message: str
 ):
-    evse = find_our_evse(token_auth_message.evse_id)
+    try:
+        evse = find_our_evse(token_auth_message.evse_id)
+    except DjangoValidationError as e:
+        logger.warning(
+            f"Cannot authorize non existent evse {token_auth_message.evse_id}",
+            exc_info=e,
+        )
+        return
     if not evse:
         logger.error(
             f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found",
