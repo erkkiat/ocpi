@@ -8,8 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
-from pydantic import ValidationError
-from pydantic_core import PydanticSerializationError
+from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
 from integrations.hubject.client import HubjectClient
@@ -168,16 +167,19 @@ class HubjectService:
     ) -> tuple[Any, dict | None, Any]:
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
-        payload = ERoamingAuthorizeStart(
-            OperatorID=OperatorID(root=operator_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=token_id)
-                )
-            ),
-        )
-        payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
-
+        try:
+            payload = ERoamingAuthorizeStart(
+                operator_id=OperatorID(root=operator_id),
+                identification=Identification(
+                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=token_id)
+                    )
+                ),
+            )
+            payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
+        except ValidationError:
+            logger.exception()
+            raise
         try:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}

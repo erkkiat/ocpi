@@ -64,3 +64,5 @@ DATABASES = {
         "OPTIONS": {"ssl_mode": "REQUIRED"},
     }
 }
+
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
