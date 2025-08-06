@@ -14,8 +14,6 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
-CELERY_TASK_ALWAYS_EAGER = True
-
 HUBJECT_URL = "https://service-qa.hubject.com/api/oicp/"
 
 FIXIE_URL = os.getenv("FIXIE_URL", "")
@@ -44,3 +42,5 @@ DATABASES = {
 }
 
 DATABASES.update({"gdpr_log": DATABASES.get("default")})
+
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")

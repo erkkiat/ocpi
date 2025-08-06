@@ -60,6 +60,10 @@ the charge point location due to the need for time based charging fees.
 """
 
 
+class HubjectBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
+
+
 class AuthorizationStatus(Enum):
     Authorized = "Authorized"
     NotAuthorized = "NotAuthorized"
@@ -710,22 +714,22 @@ class ERoamingPushEVSEPricing(BaseModel):
     )
 
 
-class EvseStatusRecordItem(BaseModel):
-    EvseID: EvseID
-    EvseStatus: EvseStatus
+class EvseStatusRecordItem(HubjectBaseModel):
+    evse_id: EvseID = Field(..., alias="EvseID")
+    evse_status: EvseStatus
 
 
-class OperatorEvseStatus(BaseModel):
-    OperatorID: OperatorID
-    OperatorName: Optional[str] = Field(None, description="Free text for operator")
-    EvseStatusRecord: List[EvseStatusRecordItem] = Field(
+class OperatorEvseStatus(HubjectBaseModel):
+    operator_id: OperatorID = Field(..., alias="OperatorID")
+    operator_name: Optional[str] = Field(None, description="Free text for operator")
+    evse_status_record: List[EvseStatusRecordItem] = Field(
         ..., description="EvseStatus list"
     )
 
 
-class ERoamingPushEvseStatus(BaseModel):
-    ActionType: ActionType
-    OperatorEvseStatus: OperatorEvseStatus
+class ERoamingPushEvseStatus(HubjectBaseModel):
+    action_type: ActionType
+    operator_evse_status: OperatorEvseStatus
 
 
 class PricingProductData(BaseModel):
@@ -935,7 +939,7 @@ class ERoamingAuthorizeRemoteStart(BaseModel):
     PartnerProductID: Optional[ProductID] = None
 
 
-class ERoamingAuthorizeStart(BaseModel):
+class ERoamingAuthorizeStart(HubjectBaseModel):
     session_id: Optional[SessionID] = Field(None, alias="SessionID")
     operator_id: OperatorID = Field(..., alias="OperatorID")
     cpo_partner_session_id: Optional[str] = Field(
@@ -953,7 +957,7 @@ class ERoamingAuthorizeStart(BaseModel):
     partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
-class ERoamingAuthorizeStop(BaseModel):
+class ERoamingAuthorizeStop(HubjectBaseModel):
     session_id: SessionID = Field(None, alias="SessionID")
     cpo_partner_session_id: Optional[str] = Field(
         None,
@@ -971,15 +975,13 @@ class ERoamingAuthorizeStop(BaseModel):
 
 
 class ERoamingChargeDetailRecord(
-    BaseModel,
+    HubjectBaseModel,
     ConsumedEnergyValidatorMixin,
     ChargingEndValidatorMixin,
     SessionEndValidatorMixin,
     MeterValueEndValidatorMixin,
     ChargingStartValidatorMixin,
 ):
-    model_config = {"alias_generator": to_pascal, "populate_by_name": True}
-
     session_id: SessionID = Field(
         ..., alias="SessionID", description="The hubject session ID."
     )
