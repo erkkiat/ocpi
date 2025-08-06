@@ -62,7 +62,7 @@ def on_message(client, userdata, message):
     except Exception:
         logger.error(
             "MQTT message processing failed - subscriber continues running",
-            extra={"message": message},
+            extra={"mqtt_message": message},
             exc_info=True,
         )
         return
