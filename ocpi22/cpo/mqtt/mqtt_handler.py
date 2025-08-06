@@ -32,30 +32,42 @@ def on_message(client, userdata, message):
     METER_TOPIC = get_topic("SMAPPEE_METER_VALUES_TOPIC")
     STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
     AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
-
-    if METER_TOPIC.split("/")[-1] in message.topic:
-        logger.info("Received meter value message")
-        process_meter_values_data(message)
-        logger.info(
-            f"Processed meter value message {message.payload} on topic {message.topic}"
-        )
-    elif STATUS_TOPIC.split("/")[-1] in message.topic:
-        logger.info("Received status update message")
-        process_status_update_data(message)
-        logger.info(
-            f"Processed status update message {message.payload} on topic {message.topic}"
-        )
-    elif AUTH_REQUEST_TOPIC.split("/")[-1] in message.topic:
-        enable_mqtt_authorize = strtobool(os.getenv("ENABLE_MQTT_AUTHORIZE", "False"))
-        if not enable_mqtt_authorize:
-            logger.warning(
-                f"Authorizing over mqtt is not enabled for {os.getenv('ENV')}, please use http authorize instead"
+    try:
+        if METER_TOPIC.split("/")[-1] in message.topic:
+            logger.info("Received meter value message")
+            process_meter_values_data(message)
+            logger.info(
+                f"Processed meter value message {message.payload} on topic {message.topic}"
             )
+        elif STATUS_TOPIC.split("/")[-1] in message.topic:
+            logger.info("Received status update message")
+            process_status_update_data(message)
+            logger.info(
+                f"Processed status update message {message.payload} on topic {message.topic}"
+            )
+        elif AUTH_REQUEST_TOPIC.split("/")[-1] in message.topic:
+            enable_mqtt_authorize = strtobool(
+                os.getenv("ENABLE_MQTT_AUTHORIZE", "False")
+            )
+            if not enable_mqtt_authorize:
+                logger.warning(
+                    f"Authorizing over mqtt is not enabled for {os.getenv('ENV')}, please use http authorize instead"
+                )
+                return
+            logger.info("Received authorize message")
+            process_authorize_data(message)
+            logger.info(
+                f"Processed auth message {message.payload} on topic {message.topic}"
+            )
+        else:
+            logger.error(f"Unknown topic {message.topic}")
             return
-        logger.info("Received authorize message")
-        process_authorize_data(message)
-    else:
-        logger.error(f"Unknown topic {message.topic}")
+    except Exception:
+        logger.error(
+            "MQTT message processing failed - subscriber continues running",
+            extra={"mqtt_message": message},
+            exc_info=True,
+        )
         return
 
 
