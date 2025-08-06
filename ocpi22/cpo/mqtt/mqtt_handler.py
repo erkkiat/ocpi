@@ -56,6 +56,9 @@ def on_message(client, userdata, message):
                 return
             logger.info("Received authorize message")
             process_authorize_data(message)
+            logger.info(
+                f"Processed auth message {message.payload} on topic {message.topic}"
+            )
         else:
             logger.error(f"Unknown topic {message.topic}")
             return
