@@ -53,8 +53,8 @@ class CeleryConfig:
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
-    task_time_limit = 15
-    task_soft_time_limit = 10
+    task_time_limit = 300
+    task_soft_time_limit = 240
     task_always_eager = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 
 
