@@ -65,6 +65,7 @@ def on_message(client, userdata, message):
             extra={"message": message},
             exc_info=True,
         )
+        return
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
