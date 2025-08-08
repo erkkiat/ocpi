@@ -399,10 +399,12 @@ class HubjectService:
             payload = cls._get_evse_status_update_payload(
                 evse, operator_id, operator_name
             )
-    except ValidationError, ValueError as e:
-        logger.error(f"Failed to create payload for EVSE status update", exc_info=True)
-        return
-           
+        except (ValidationError, ValueError):
+            logger.error(
+                "Failed to create payload for EVSE status update", exc_info=True
+            )
+            return
+
         payload_json = payload.model_dump(mode="json", by_alias=True)
 
         url = (
