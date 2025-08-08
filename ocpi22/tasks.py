@@ -217,9 +217,6 @@ def send_hubject_request(
     method: Literal["get", "post", "put", "patch", "delete"] = "put",
 ) -> dict | None:
     try:
-        if not settings.ENABLE_HUBJECT:
-            return None
-
         from integrations.hubject.services import HubjectService
 
         logger.info(f"Sending hubject {method} request to {url}")
