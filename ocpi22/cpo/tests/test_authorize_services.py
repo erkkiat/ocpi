@@ -1,14 +1,12 @@
 from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
-import responses
 from django.test import override_settings
-from responses import matchers
 
+from ocpi22.locations.services import EvseServices
 from ocpi22.tokens.token_async import authorize_with_msps
 from ocpiconnector.party import Party
 
-from ocpi22.tasks import send_hubject_request
 
 from ocpi22.models.token import Token
 
@@ -90,27 +88,17 @@ class TestHubjectFeatureFlag:
                         mock_hubject_service.post_authorize_request.assert_not_called()
 
     @override_settings(ENABLE_HUBJECT=False)
-    def test_send_hubject_request_returns_none_when_disabled(self):
-        result = send_hubject_request({}, "http://example.com", "post")
-        assert result is None
+    def test_post_eroaming_push_evse_status_does_not_execute_when_disabled(self):
+        with patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+        ) as mock_post:
+            EvseServices.send_status_updates(MagicMock())
+            mock_post.assert_not_called()
 
-    @responses.activate
-    @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True)
-    def test_send_hubject_request_successfully(self, caplog):
-        HUBJECT_URL = "https://hubject-api.com/endpoint"
-        responses.add(
-            responses.PUT,
-            HUBJECT_URL,
-            json={"success": True},
-            status=200,
-            match=[matchers.json_params_matcher({"key": "value"})],
-        )
-        with patch.object(send_hubject_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
-            result = send_hubject_request({"key": "value"}, HUBJECT_URL)
-            assert result is None
-            assert (
-                "Sending hubject put request to https://hubject-api.com/endpoint"
-                in caplog.text
-            )
+    def test_post_eroaming_push_evse_status_execute_once_when_enabled(self):
+        with patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+        ) as mock_post:
+            EvseServices.send_status_updates(MagicMock())
+            mock_post.assert_called_once()
