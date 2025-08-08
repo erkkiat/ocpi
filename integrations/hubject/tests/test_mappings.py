@@ -660,14 +660,14 @@ class TestMappings:
         "ocpi_status,expected_oicp_status",
         [
             ("AVAILABLE", OICPEvseStatus.Available),
-            ("PREPARING", OICPEvseStatus.Occupied),
+            ("BLOCKED", OICPEvseStatus.Occupied),
             ("CHARGING", OICPEvseStatus.Occupied),
-            ("SUSPENDEDEV", OICPEvseStatus.Occupied),
-            ("SUSPENDEDEVSE", OICPEvseStatus.Occupied),
-            ("FINISHING", OICPEvseStatus.Occupied),
+            ("INOPERATIVE", OICPEvseStatus.OutOfService),
+            ("OUTOFORDER", OICPEvseStatus.OutOfService),
+            ("PLANNED", OICPEvseStatus.Occupied),
+            ("REMOVED", OICPEvseStatus.OutOfService),
             ("RESERVED", OICPEvseStatus.Reserved),
-            ("UNAVAILABLE", OICPEvseStatus.Occupied),
-            ("FAULTED", OICPEvseStatus.OutOfService),
+            ("UNKNOWN", OICPEvseStatus.Unknown),
         ],
     )
     def test_convert_ocpi_evse_status_successfully_returns_expected_oicp_status(
