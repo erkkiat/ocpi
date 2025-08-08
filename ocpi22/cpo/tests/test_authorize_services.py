@@ -3,6 +3,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 from django.test import override_settings
 
+from ocpi22.locations.services import EvseServices
 from ocpi22.tokens.token_async import authorize_with_msps
 from ocpiconnector.party import Party
 
@@ -24,7 +25,7 @@ def sample_auth_data():
 
 class TestHubjectFeatureFlag:
     @pytest.mark.asyncio
-    @override_settings(ENABLE_HUBJECT_AUTHORIZE=True, HUBJECT_OPERATOR_ID="DE*ICE")
+    @override_settings(ENABLE_HUBJECT=True, HUBJECT_OPERATOR_ID="DE*ICE")
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
         self, mock_token, sample_auth_data
     ):
@@ -64,7 +65,7 @@ class TestHubjectFeatureFlag:
                                 )
 
     @pytest.mark.asyncio
-    @override_settings(ENABLE_HUBJECT_AUTHORIZE=False)
+    @override_settings(ENABLE_HUBJECT=False)
     async def test_authorize_with_msps_does_not_create_hubject_authorize_task_when_disabled(
         self, mock_token, sample_auth_data
     ):
@@ -85,3 +86,19 @@ class TestHubjectFeatureFlag:
                         await authorize_with_msps(mock_token, sample_auth_data, [])
 
                         mock_hubject_service.post_authorize_request.assert_not_called()
+
+    @override_settings(ENABLE_HUBJECT=False)
+    def test_post_eroaming_push_evse_status_does_not_execute_when_disabled(self):
+        with patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+        ) as mock_post:
+            EvseServices.send_status_updates(MagicMock())
+            mock_post.assert_not_called()
+
+    @override_settings(ENABLE_HUBJECT=True)
+    def test_post_eroaming_push_evse_status_execute_once_when_enabled(self):
+        with patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+        ) as mock_post:
+            EvseServices.send_status_updates(MagicMock())
+            mock_post.assert_called_once()

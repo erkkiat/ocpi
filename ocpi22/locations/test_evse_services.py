@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 import responses
+from django.test import override_settings
 
 from ocpi22.locations.services import EvseServices
 from ocpi22.models.location import Evse
@@ -57,6 +58,7 @@ class TestEvseServices:
 
     @pytest.mark.django_db
     @responses.activate
+    @override_settings(ENABLE_HUBJECT=True)
     def test_send_status_updates_successfully(self, evse_patch_payload, evse):
         with (
             patch(
@@ -107,6 +109,7 @@ class TestEvseServices:
             }
 
     @pytest.mark.django_db
+    @override_settings(ENABLE_HUBJECT=True)
     def test_send_status_updates_with_naive_timezone_converts_the_timezone_to_utc(
         self, evse
     ):

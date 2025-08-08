@@ -1,6 +1,7 @@
 # TODO refactor this to have ddomain speicific services
 import zoneinfo
 
+from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
@@ -61,7 +62,8 @@ class EvseServices:
             ],
         )
 
-        HubjectService.post_eroaming_push_evse_status(evse)
+        if settings.ENABLE_HUBJECT:
+            HubjectService.post_eroaming_push_evse_status(evse)
 
 
 class LocationService:
