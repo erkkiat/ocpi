@@ -152,7 +152,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     # Get all roles up front
     prefetched_roles = await prefetch_roles()
     hubject_task = []
-    if settings.ENABLE_HUBJECT_AUTHORIZE:
+    if settings.ENABLE_HUBJECT:
         hubject_task.append(
             asyncio.create_task(
                 HubjectService.post_authorize_request(
