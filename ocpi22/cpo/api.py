@@ -501,7 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
                     data["token"] = get_token_id(token)
                     authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request
+                        token, evse.location, request=request, evse_id=evse.evse_id
                     )
 
                     if (
@@ -640,7 +640,8 @@ class ChargePointViewSet(FlowchartViewSet):
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
                     authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid
+                        session.cdr_token.uid,
+                        evse_id=session.evse.evse_id if session.evse else None,
                     )
                     if not authorization:
                         return Response(
