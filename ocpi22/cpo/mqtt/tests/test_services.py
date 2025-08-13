@@ -582,7 +582,7 @@ class TestAuthorizeAndPublish:
             _authorize_and_publish(token_auth_message, auth_request_message)
 
             mock_authorize_token.assert_called_once_with(
-                token_auth_message.token_id, evse.location
+                token_auth_message.token_id, evse.location, evse_id=evse.evse_id
             )
 
     @pytest.mark.django_db
@@ -980,4 +980,6 @@ class TestCreateAndSaveSession:
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
             _authorize_and_publish(token_auth_message, auth_request_message)
-            mock_authorize_token.assert_called_once_with(token, evse.location)
+            mock_authorize_token.assert_called_once_with(
+                token, evse.location, evse_id=evse.evse_id
+            )
