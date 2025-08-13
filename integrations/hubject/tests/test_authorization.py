@@ -49,6 +49,19 @@ class TestMapOICPAuthorizationResponseToOCPI221:
         except ValueError:
             pytest.fail("last_updated field is not in the correct date format")
 
+    def test_mapping_with_provider_id_none_results_in_none_ocpi_221_response(self):
+        token_id = "TEST123456"
+        oicp_response = {
+            "AuthorizationStatus": "Authorized",
+            "ProviderID": None,
+            "StatusCode": {"Code": "000"},
+            "SessionID": "HUBJECT-SESSION-1234",
+            "EMPPartnerSessionID": "DE*ICE",
+        }
+
+        result = map_oicp_authorization_response_to_ocpi_221(oicp_response, token_id)
+        assert result is None
+
     def test_mapping_with_authorization_status_none_results_in_hubject_emp_id(self):
         token_id = "TEST123456"
         oicp_response = {

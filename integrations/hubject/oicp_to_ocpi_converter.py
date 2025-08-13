@@ -14,7 +14,7 @@ def map_oicp_authorization_response_to_ocpi_221(
     if not oicp_response:
         return None
     authorization_status = oicp_response.get("AuthorizationStatus")
-    country_code, party_id = oicp_response.get("ProviderID", "*").split("*")
+    country_code, party_id = (oicp_response.get("ProviderID", "*") or "*").split("*")
     if settings.HUBJECT_EMP_ID:
         authorization_reference = (
             oicp_response.get("EMPPartnerSessionID", None) or settings.HUBJECT_EMP_ID
