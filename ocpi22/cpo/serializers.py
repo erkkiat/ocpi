@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -34,6 +35,8 @@ from ocpi22.util import (
 )
 
 from ocpiconnector.party import Party
+
+logger = logging.getLogger(__name__)
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -147,6 +150,7 @@ class SessionIdSerializer(fields.CharField):
     """To be used only for CPO API, cannot handle overlapping IDs"""
 
     def to_internal_value(self, data):
+        logger.info(f"Got session id {data}")
         if data:
             return Session.objects.get(uid=data.upper())
         return None
