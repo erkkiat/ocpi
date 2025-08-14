@@ -351,6 +351,9 @@ class HubjectService:
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
             logger.error(f"HTTP error: {e.response.status_code}")
+            logger.debug(
+                f"Failed ChargingNotification Response content: {e.response.text}"
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
