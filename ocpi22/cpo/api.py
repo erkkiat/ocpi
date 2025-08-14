@@ -630,6 +630,9 @@ class ChargePointViewSet(FlowchartViewSet):
             next_url = reverse("chargepoint-meter-values")
 
             if request.method == "POST":
+                logger.info(
+                    f"Debugging: start_transaction incoming data before serializer: {request.data}"
+                )
                 serializer = StartTransactionSerializer(
                     data=request.data,
                     context={"version": request.version, "request": request},
@@ -643,6 +646,10 @@ class ChargePointViewSet(FlowchartViewSet):
                         session.cdr_token.uid,
                         evse_id=session.evse.evse_id if session.evse else None,
                     )
+                    logger.info(
+                        f"Debugging: start_transaction incoming data after serializer: {serializer.validated_data}"
+                    )
+
                     if not authorization:
                         return Response(
                             dict(
