@@ -350,8 +350,10 @@ class HubjectService:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
-            logger.warning(f"HTTP error: {e.response.status_code}, {e.response.text}")
+            logger.error(
+                f"HTTP error: {e.response.status_code}",
+                extra={"hubject_response": e.response.text},
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
