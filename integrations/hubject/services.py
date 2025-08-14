@@ -352,6 +352,7 @@ class HubjectService:
         except requests.exceptions.HTTPError as e:
             logger.error(
                 f"HTTP error: {e.response.status_code}",
+                exc_info=True,
                 extra={"hubject_response": e.response.text},
             )
         except requests.exceptions.RequestException as e:
