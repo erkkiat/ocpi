@@ -212,6 +212,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
+        hub_session_id=authorization.hub_session_id,
     )
     save_to_session_cache(
         route=find_route_from_credentials(
