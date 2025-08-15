@@ -440,6 +440,11 @@ class PriceMinSerializer(PriceSerializer):
     key = "price_per_min"
 
 
+class PriceHourSerializer(PriceSerializer):
+    tariff_type = "TIME"
+    key = "price_per_hr"
+
+
 class PriceFlatSerializer(PriceSerializer):
     tariff_type = "FLAT"
     key = "price_flat"
@@ -448,6 +453,11 @@ class PriceFlatSerializer(PriceSerializer):
 class ParkingPricePerMinSerializer(PriceSerializer):
     tariff_type = "PARKING_TIME"
     key = "parking_price_per_min"
+
+
+class ParkingPricePerHourSerializer(PriceSerializer):
+    tariff_type = "PARKING_TIME"
+    key = "parking_price_per_hr"
 
 
 class SolidTariffSerializer(SerializerCleanedUp):
@@ -461,34 +471,50 @@ class SolidTariffSerializer(SerializerCleanedUp):
     price_per_kwh = PriceKwhSerializer(
         source="*",
         max_digits=8,
-        decimal_places=4,
+        decimal_places=2,
         required=False,
         allow_null=True,
         help_text="The price per kWh of electricity charged excluding tax",
     )
     price_per_min = PriceMinSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=4,
+        max_digits=15,
+        decimal_places=10,
         required=False,
         allow_null=True,
         help_text="The price per minute of charging, excluding parking and tax",
     )
+    price_per_hour = PriceHourSerializer(
+        source="*",
+        max_digits=8,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        help_text="The price per hour of charging, excluding parking and tax",
+    )
     price_flat = PriceFlatSerializer(
         source="*",
         max_digits=8,
-        decimal_places=4,
+        decimal_places=2,
         required=False,
         allow_null=True,
         help_text="The flat price per started charging session excluding tax",
     )
     parking_price_per_min = ParkingPricePerMinSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=4,
+        max_digits=15,
+        decimal_places=10,
         required=False,
         allow_null=True,
         help_text="The parking price per min excluding tax",
+    )
+    parking_price_per_hr = ParkingPricePerMinSerializer(
+        source="*",
+        max_digits=8,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        help_text="The parking price per hour excluding tax",
     )
     parking_grace_period = serializers.IntegerField(
         required=False,
