@@ -1,7 +1,7 @@
 from django_cryptography.fields import encrypt
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MaxValueValidator, MinValueValidator
 import base64
 import re
 
@@ -250,7 +250,6 @@ class WebhookAuth(models.Model):
 class Webhook(models.Model):
     type = models.CharField(
         max_length=25,
-        unique=True,
         choices=WebhookType.choices,
     )
     command_type = models.CharField(
@@ -271,6 +270,20 @@ class Webhook(models.Model):
         blank=True,
         null=True,
         help_text="Authentication configuration for this webhook",
+    )
+    max_retries = models.PositiveSmallIntegerField(
+        default=3,
+        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        help_text="Maximum number of retry attempts for failed webhook calls (0-10)",
+    )
+    timeout_seconds = models.PositiveSmallIntegerField(
+        default=30,
+        validators=[MinValueValidator(1), MaxValueValidator(180)],
+        help_text="Timeout in seconds for webhook HTTP requests",
+    )
+    active = models.BooleanField(
+        default=False,
+        help_text="Whether this webhook is active and should receive notifications",
     )
 
     class Meta:
@@ -295,6 +308,11 @@ class Webhook(models.Model):
             models.CheckConstraint(
                 check=(models.Q(auth__isnull=True) | models.Q(auth__expired=False)),
                 name="webhook_auth_must_not_be_expired",
+            ),
+            models.UniqueConstraint(
+                fields=["url"],
+                condition=models.Q(active=True),
+                name="unique_active_webhook_url",
             ),
         ]
 
