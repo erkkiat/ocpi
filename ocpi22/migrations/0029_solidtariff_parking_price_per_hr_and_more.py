@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='solidtariff',
-            name='price_per_hour',
+            name='price_per_hr',
             field=models.DecimalField(blank=True, decimal_places=2, max_digits=8, null=True),
         ),
         migrations.AlterField(

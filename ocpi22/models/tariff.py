@@ -520,7 +520,7 @@ class SolidTariff(models.Model):
     price_per_min = models.DecimalField(
         max_digits=15, decimal_places=10, blank=True, null=True
     )
-    price_per_hour = models.DecimalField(
+    price_per_hr = models.DecimalField(
         max_digits=8, decimal_places=2, blank=True, null=True
     )
     price_flat = models.DecimalField(
