@@ -515,16 +515,22 @@ class SolidTariff(models.Model):
         default="EUR",
     )
     price_per_kwh = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     price_per_min = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=15, decimal_places=10, blank=True, null=True
+    )
+    price_per_hour = models.DecimalField(
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     price_flat = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     parking_price_per_min = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=15, decimal_places=10, blank=True, null=True
+    )
+    parking_price_per_hr = models.DecimalField(
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     parking_grace_period = models.IntegerField(
         blank=True, null=True, validators=[MinValueValidator(0)]
