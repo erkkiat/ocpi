@@ -570,11 +570,15 @@ class SolidTariff(models.Model):
         match tariff_type:
             case "ENERGY":
                 return self.price_per_kwh
-            case "TIME":
+            case "TIME_MIN":
                 return self.price_per_min
+            case "TIME_HR":
+                return self.price_per_hr
             case "FLAT":
                 return self.price_flat
-            case "PARKING_TIME":
+            case "PARKING_TIME_MIN":
                 return self.parking_price_per_min
+            case "PARKING_TIME_HR":
+                return self.parking_price_per_hr
             case _:
                 return None

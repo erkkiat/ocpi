@@ -436,12 +436,12 @@ class PriceKwhSerializer(PriceSerializer):
 
 
 class PriceMinSerializer(PriceSerializer):
-    tariff_type = "TIME"
+    tariff_type = "TIME_MIN"
     key = "price_per_min"
 
 
 class PriceHourSerializer(PriceSerializer):
-    tariff_type = "TIME"
+    tariff_type = "TIME_HR"
     key = "price_per_hr"
 
 
@@ -451,12 +451,12 @@ class PriceFlatSerializer(PriceSerializer):
 
 
 class ParkingPricePerMinSerializer(PriceSerializer):
-    tariff_type = "PARKING_TIME"
+    tariff_type = "PARKING_TIME_MIN"
     key = "parking_price_per_min"
 
 
 class ParkingPricePerHourSerializer(PriceSerializer):
-    tariff_type = "PARKING_TIME"
+    tariff_type = "PARKING_TIME_HR"
     key = "parking_price_per_hr"
 
 
