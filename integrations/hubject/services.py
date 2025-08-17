@@ -425,8 +425,10 @@ class HubjectService:
         )
 
     @classmethod
-    def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
-        if not evse:
+    def post_eroaming_push_evse_status(
+        cls, evse: Evse, retries=3, full_load=False
+    ) -> None:
+        if not evse and not full_load:
             logger.warning("No EVSE provided for hubject status update")
             return
         ocpi_master = evse.location.ocpi_master
@@ -434,9 +436,14 @@ class HubjectService:
         operator_name = ocpi_master.business_details.name
 
         try:
-            payload = cls._get_evse_status_update_payload(
-                evse, operator_id, operator_name
-            )
+            if full_load:
+                payload = cls._get_evse_status_full_load_payload(
+                    operator_id, operator_name
+                )
+            else:
+                payload = cls._get_evse_status_update_payload(
+                    evse, operator_id, operator_name
+                )
         except (ValidationError, ValueError):
             logger.error(
                 "Failed to create payload for EVSE status update", exc_info=True
