@@ -391,6 +391,40 @@ class HubjectService:
         )
 
     @classmethod
+    def _get_evse_status_full_load_payload(
+        cls, operator_id: str, operator_name: str
+    ) -> ERoamingPushEvseStatus | None:
+        our_credentials_role = Party.from_str(
+            get_our_identity("CPO")
+        ).get_role_if_exists()
+        if not our_credentials_role:
+            logger.error("Cannot determine our credentials role for CPO")
+            return None
+
+        evse_record_items = []
+
+        for e in (
+            Evse.objects.values_list("id", "status")
+            .filter(location__ocpi_master=our_credentials_role)
+            .iterator(chunk_size=100)
+        ):
+            evse_record_items.append(
+                EvseStatusRecordItem(
+                    evse_id=EvseID(root=e[0]),
+                    evse_status=cls.converter.convert_ocpi_evse_status(e[1]),
+                )
+            )
+
+        return ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=operator_id),
+                operator_name=operator_name,
+                evse_status_record=evse_record_items,
+            ),
+        )
+
+    @classmethod
     def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
         if not evse:
             logger.warning("No EVSE provided for hubject status update")
