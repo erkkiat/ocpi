@@ -316,3 +316,104 @@ class Webhook(models.Model):
 
     def __str__(self):
         return f"{self.get_type_display()} - {self.url}"
+
+
+class WebhookEventStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    SUCCESS = "success", "Success"
+    FAILED = "failed", "Failed"
+    EXHAUSTED = "exhausted", "Retries Exhausted"
+
+
+class WebhookEventType:
+    CHARGE_POINT_STATUS_CHANGED = "charge_point.status_changed"
+    CHARGE_POINT_CREATED = "charge_point.created"
+    CHARGE_POINT_UPDATED = "charge_point.updated"
+    SESSION_STARTED = "session.started"
+    SESSION_STOPPED = "session.stopped"
+    SESSION_AUTHORIZED = "session.authorized"
+    TOKEN_AUTHORIZED = "token.authorized"
+    TOKEN_BLOCKED = "token.blocked"
+    REMOTE_START_REQUESTED = "remote_command.start_requested"
+    REMOTE_STOP_REQUESTED = "remote_command.stop_requested"
+    INVOICE_GENERATED = "invoice.generated"
+    INVOICE_SENT = "invoice.sent"
+
+    @classmethod
+    def get_all_standard_types(cls):
+        return [
+            getattr(cls, attr)
+            for attr in dir(cls)
+            if not attr.startswith("_") and isinstance(getattr(cls, attr), str)
+        ]
+
+    @classmethod
+    def is_standard_type(cls, event_type):
+        return event_type in cls.get_all_standard_types()
+
+
+class WebhookEvent(models.Model):
+    webhook = models.ForeignKey(
+        Webhook,
+        on_delete=models.CASCADE,
+        related_name="events",
+        help_text="The webhook configuration that triggered this event",
+    )
+
+    event_type = models.CharField(
+        max_length=100,
+        help_text="Type of event (e.g., 'charge_point.status_changed'). Use WebhookEventType constants for standard events.",
+    )
+
+    payload = models.JSONField(help_text="The JSON payload sent to the webhook URL")
+
+    status = models.CharField(
+        max_length=20,
+        choices=WebhookEventStatus.choices,
+        default=WebhookEventStatus.PENDING,
+    )
+
+    attempt_count = models.PositiveSmallIntegerField(
+        default=0, help_text="Number of delivery attempts made"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_attempted_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    error_message = models.TextField(
+        blank=True, help_text="Error message from the last failed attempt"
+    )
+
+    response_status_code = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="HTTP status code from the last attempt"
+    )
+
+    response_time_ms = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Response time in milliseconds from the last attempt",
+    )
+
+    class Meta:
+        db_table = "webhook_events"
+        indexes = [
+            models.Index(fields=["webhook", "status"]),
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["event_type"]),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"WebhookEvent {self.id} - {self.webhook.url} ({self.status})"
+
+    @property
+    def can_retry(self):
+        return (
+            self.status == WebhookEventStatus.FAILED
+            and self.attempt_count < self.webhook.max_retries
+        )
+
+    @property
+    def is_completed(self):
+        return self.status in [WebhookEventStatus.SUCCESS, WebhookEventStatus.EXHAUSTED]
