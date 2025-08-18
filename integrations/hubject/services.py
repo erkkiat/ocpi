@@ -392,15 +392,8 @@ class HubjectService:
 
     @classmethod
     def _get_evse_status_full_load_payload(
-        cls, operator_id: str, operator_name: str
+        cls, operator_id: str, our_credentials_role: CredentialsRole | None = None
     ) -> ERoamingPushEvseStatus | None:
-        our_credentials_role = Party.from_str(
-            get_our_identity("CPO")
-        ).get_role_if_exists()
-        if not our_credentials_role:
-            logger.error("Cannot determine our credentials role for CPO")
-            return None
-
         evse_record_items = []
 
         for e in (
@@ -416,10 +409,10 @@ class HubjectService:
             )
 
         return ERoamingPushEvseStatus(
-            action_type=ActionType.update,
+            action_type=ActionType.fullLoad,
             operator_evse_status=OperatorEvseStatus(
                 operator_id=OperatorID(root=operator_id),
-                operator_name=operator_name,
+                operator_name=our_credentials_role.business_details.name,
                 evse_status_record=evse_record_items,
             ),
         )
