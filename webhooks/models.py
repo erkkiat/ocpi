@@ -21,6 +21,86 @@ api_key_header_validator = RegexValidator(
 )
 
 
+class WebhookAuthValidator:
+    @staticmethod
+    def validate_required_fields(
+        auth_type: str, username: str, password: str, api_key: str, api_key_header: str
+    ) -> None:
+        errors = {}
+
+        if auth_type == WebhookAuthType.BASIC:
+            if not username or not password:
+                errors["auth_type"] = (
+                    "Username and password are required for basic authentication"
+                )
+
+        elif auth_type == WebhookAuthType.BEARER:
+            if not api_key:
+                errors["api_key"] = (
+                    "API key is required for bearer token authentication"
+                )
+
+        elif auth_type == WebhookAuthType.API_KEY:
+            if not api_key:
+                errors["api_key"] = "API key is required for API key authentication"
+            if not api_key_header:
+                errors["api_key_header"] = (
+                    "Header name is required for API key authentication"
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    @staticmethod
+    def validate_api_key_header_format(api_key_header: str) -> None:
+        if api_key_header and api_key_header != "X-API-Key":
+            if not re.match(r"^[A-Za-z][A-Za-z0-9\-_]*$", api_key_header):
+                raise ValidationError(
+                    {
+                        "api_key_header": "Invalid header name format. Must start with a letter and contain only letters, numbers, hyphens, and underscores."
+                    }
+                )
+
+    @classmethod
+    def validate_auth_configuration(
+        cls,
+        auth_type: str,
+        username: str,
+        password: str,
+        api_key: str,
+        api_key_header: str,
+    ) -> None:
+        cls.validate_required_fields(
+            auth_type, username, password, api_key, api_key_header
+        )
+        cls.validate_api_key_header_format(api_key_header)
+
+
+class WebhookValidator:
+    @staticmethod
+    def validate_remote_command_requirements(
+        webhook_type: str, command_type: str
+    ) -> None:
+        if webhook_type == WebhookType.REMOTE_COMMAND and not command_type:
+            raise ValidationError(
+                {"command_type": "Command type is required for remote command webhooks"}
+            )
+
+    @staticmethod
+    def validate_auth_not_expired(auth) -> None:
+        if auth and auth.expired:
+            raise ValidationError(
+                {"auth": "Cannot use expired authentication configuration"}
+            )
+
+    @classmethod
+    def validate_webhook_configuration(
+        cls, webhook_type: str, command_type: str, auth
+    ) -> None:
+        cls.validate_remote_command_requirements(webhook_type, command_type)
+        cls.validate_auth_not_expired(auth)
+
+
 class WebhookAuth(models.Model):
     name = models.CharField(
         max_length=100,
@@ -117,108 +197,18 @@ class WebhookAuth(models.Model):
                 ),
                 name="api_key_auth_requires_header",
             ),
-            models.CheckConstraint(
-                check=(
-                    ~models.Q(auth_type=WebhookAuthType.NONE)
-                    | (
-                        models.Q(auth_type=WebhookAuthType.NONE)
-                        & (models.Q(username__isnull=True) | models.Q(username=""))
-                        & (models.Q(password__isnull=True) | models.Q(password=""))
-                        & (models.Q(api_key__isnull=True) | models.Q(api_key=""))
-                    )
-                ),
-                name="none_auth_has_no_credentials",
-            ),
-            models.CheckConstraint(
-                check=(
-                    ~models.Q(auth_type=WebhookAuthType.BASIC)
-                    | (
-                        models.Q(auth_type=WebhookAuthType.BASIC)
-                        & (models.Q(api_key__isnull=True) | models.Q(api_key=""))
-                    )
-                ),
-                name="basic_auth_has_no_api_key",
-            ),
-            models.CheckConstraint(
-                check=(
-                    ~models.Q(
-                        auth_type__in=[WebhookAuthType.BEARER, WebhookAuthType.API_KEY]
-                    )
-                    | (
-                        models.Q(
-                            auth_type__in=[
-                                WebhookAuthType.BEARER,
-                                WebhookAuthType.API_KEY,
-                            ]
-                        )
-                        & (models.Q(username__isnull=True) | models.Q(username=""))
-                        & (models.Q(password__isnull=True) | models.Q(password=""))
-                    )
-                ),
-                name="token_auth_has_no_basic_credentials",
-            ),
         ]
 
     def clean(self):
         super().clean()
 
-        if self.auth_type == WebhookAuthType.BASIC:
-            if not self.username or not self.password:
-                raise ValidationError(
-                    {
-                        "auth_type": "Username and password are required for basic authentication"
-                    }
-                )
-            if self.api_key:
-                raise ValidationError(
-                    {"api_key": "API key should not be set for basic authentication"}
-                )
-
-        elif self.auth_type == WebhookAuthType.BEARER:
-            if not self.api_key:
-                raise ValidationError(
-                    {"api_key": "API key is required for bearer token authentication"}
-                )
-            if self.username or self.password:
-                raise ValidationError(
-                    {
-                        "username": "Username and password should not be set for bearer authentication"
-                    }
-                )
-
-        elif self.auth_type == WebhookAuthType.API_KEY:
-            if not self.api_key:
-                raise ValidationError(
-                    {"api_key": "API key is required for API key authentication"}
-                )
-            if not self.api_key_header:
-                raise ValidationError(
-                    {
-                        "api_key_header": "Header name is required for API key authentication"
-                    }
-                )
-            if self.username or self.password:
-                raise ValidationError(
-                    {
-                        "username": "Username and password should not be set for API key authentication"
-                    }
-                )
-
-        elif self.auth_type == WebhookAuthType.NONE:
-            if self.username or self.password or self.api_key:
-                raise ValidationError(
-                    {
-                        "auth_type": "No credentials should be set when authentication type is 'None'"
-                    }
-                )
-
-        if self.api_key_header and self.api_key_header != "X-API-Key":
-            if not re.match(r"^[A-Za-z][A-Za-z0-9\-_]*$", self.api_key_header):
-                raise ValidationError(
-                    {
-                        "api_key_header": "Invalid header name format. Must start with a letter and contain only letters, numbers, hyphens, and underscores."
-                    }
-                )
+        WebhookAuthValidator.validate_auth_configuration(
+            auth_type=self.auth_type,
+            username=self.username,
+            password=self.password,
+            api_key=self.api_key,
+            api_key_header=self.api_key_header,
+        )
 
     def get_auth_headers(self):
         headers = {}
@@ -299,13 +289,6 @@ class Webhook(models.Model):
                 name="remote_command_requires_command_type",
             ),
             models.CheckConstraint(
-                check=(
-                    models.Q(type=WebhookType.REMOTE_COMMAND)
-                    | models.Q(command_type__isnull=True)
-                ),
-                name="command_type_only_for_remote_command",
-            ),
-            models.CheckConstraint(
                 check=(models.Q(auth__isnull=True) | models.Q(auth__expired=False)),
                 name="webhook_auth_must_not_be_expired",
             ),
@@ -319,21 +302,9 @@ class Webhook(models.Model):
     def clean(self):
         super().clean()
 
-        if self.type == WebhookType.REMOTE_COMMAND and not self.command_type:
-            raise ValidationError(
-                {"command_type": "Command type is required for remote command webhooks"}
-            )
-        elif self.type != WebhookType.REMOTE_COMMAND and self.command_type:
-            raise ValidationError(
-                {
-                    "command_type": "Command type should only be set for remote command webhooks"
-                }
-            )
-
-        if self.auth and self.auth.expired:
-            raise ValidationError(
-                {"auth": "Cannot use expired authentication configuration"}
-            )
+        WebhookValidator.validate_webhook_configuration(
+            webhook_type=self.type, command_type=self.command_type, auth=self.auth
+        )
 
     def get_auth_headers(self):
         if not self.auth or self.auth.expired:
