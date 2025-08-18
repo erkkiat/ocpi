@@ -288,10 +288,6 @@ class Webhook(models.Model):
                 ),
                 name="remote_command_requires_command_type",
             ),
-            models.CheckConstraint(
-                check=(models.Q(auth__isnull=True) | models.Q(auth__expired=False)),
-                name="webhook_auth_must_not_be_expired",
-            ),
             models.UniqueConstraint(
                 fields=["url"],
                 condition=models.Q(active=True),
