@@ -157,37 +157,6 @@ class WebhookAuth(models.Model):
         constraints = [
             models.CheckConstraint(
                 check=(
-                    ~models.Q(auth_type=WebhookAuthType.BASIC)
-                    | (
-                        models.Q(auth_type=WebhookAuthType.BASIC)
-                        & ~models.Q(username__isnull=True)
-                        & ~models.Q(username="")
-                        & ~models.Q(password__isnull=True)
-                        & ~models.Q(password="")
-                    )
-                ),
-                name="basic_auth_requires_username_and_password",
-            ),
-            models.CheckConstraint(
-                check=(
-                    ~models.Q(
-                        auth_type__in=[WebhookAuthType.BEARER, WebhookAuthType.API_KEY]
-                    )
-                    | (
-                        models.Q(
-                            auth_type__in=[
-                                WebhookAuthType.BEARER,
-                                WebhookAuthType.API_KEY,
-                            ]
-                        )
-                        & ~models.Q(api_key__isnull=True)
-                        & ~models.Q(api_key="")
-                    )
-                ),
-                name="bearer_and_api_key_auth_require_api_key",
-            ),
-            models.CheckConstraint(
-                check=(
                     ~models.Q(auth_type=WebhookAuthType.API_KEY)
                     | (
                         models.Q(auth_type=WebhookAuthType.API_KEY)
