@@ -2,6 +2,7 @@ from django_cryptography.fields import encrypt
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator, MaxValueValidator, MinValueValidator
+from django.conf import settings
 import base64
 import re
 
@@ -77,6 +78,8 @@ class WebhookAuthValidator:
 
 
 class WebhookValidator:
+    MAX_ACTIVE_WEBHOOKS_PER_TYPE = getattr(settings, "WEBHOOK_MAX_ACTIVE_PER_TYPE", 5)
+
     @staticmethod
     def validate_remote_command_requirements(
         webhook_type: str, command_type: str
@@ -99,6 +102,25 @@ class WebhookValidator:
     ) -> None:
         cls.validate_remote_command_requirements(webhook_type, command_type)
         cls.validate_auth_not_expired(auth)
+
+    @classmethod
+    def validate_webhook_activation_limits(cls, webhook) -> None:
+        if not webhook.active:
+            return
+        other_active_count = (
+            Webhook.objects.filter(type=webhook.type, active=True)
+            .exclude(pk=webhook.pk)
+            .count()
+        )
+
+        if other_active_count >= cls.MAX_ACTIVE_WEBHOOKS_PER_TYPE:
+            raise ValidationError(
+                {
+                    "active": f"Cannot activate webhook. Maximum {cls.MAX_ACTIVE_WEBHOOKS_PER_TYPE} "
+                    f"active webhooks allowed per type. Currently have {other_active_count} "
+                    f"other active webhooks of type {webhook.get_type_display()}."
+                }
+            )
 
 
 class WebhookAuth(models.Model):
@@ -270,6 +292,11 @@ class Webhook(models.Model):
         WebhookValidator.validate_webhook_configuration(
             webhook_type=self.type, command_type=self.command_type, auth=self.auth
         )
+        WebhookValidator.validate_webhook_activation_limits(self)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def get_auth_headers(self):
         if not self.auth or self.auth.expired:
