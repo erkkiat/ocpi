@@ -67,7 +67,7 @@ def test_get_charging_periods_returns_valid_charging_periods_list(
 def test_get_charging_periods_creates_charging_periods_when_session_has_no_charging_periods(
     mock_session, caplog
 ):
-    caplog.set_level(logging.ERROR)
+    caplog.set_level(logging.WARNING)
 
     ChargingPeriod.objects.all().delete()
     result = CdrService._get_charging_periods(mock_session)
