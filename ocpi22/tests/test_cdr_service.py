@@ -198,7 +198,7 @@ def test_get_or_create_cdr_from_session_sets_end_date_when_missing(mock_session)
 def test_get_or_create_cdr_from_session_logs_warning_when_no_total_cost(
     mock_session, caplog
 ):
-    caplog.set_level(logging.ERROR)
+    caplog.set_level(logging.WARNING)
     mock_session.total_cost_excl_vat = None
     CdrService.get_or_create_cdr(mock_session)
 
