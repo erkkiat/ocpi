@@ -212,7 +212,7 @@ class CdrService:
         ).data
 
         if not session.chargingperiods.exists():
-            logger.error(
+            logger.warning(
                 f"No charging periods found for session {session.uid} to create CDR."
             )
             session.update_charging_periods(
