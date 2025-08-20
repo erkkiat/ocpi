@@ -162,7 +162,7 @@ def test_get_or_create_cdr_from_session_returns_none_when_no_connector_assigned_
     caplog.set_level(logging.ERROR)
     mock_session.connector = None
 
-    result = CdrService.get_or_create_cdr_from_session(mock_session)
+    result = CdrService.get_or_create_cdr(mock_session)
 
     assert result is None
     assert (
@@ -176,7 +176,7 @@ def test_get_or_create_cdr_from_session_returns_existing_cdr(mock_session):
     mock_cdr = Mock()
 
     with patch("ocpi22.cpo.services.CdrService._get_cdr", return_value=mock_cdr):
-        result = CdrService.get_or_create_cdr_from_session(mock_session)
+        result = CdrService.get_or_create_cdr(mock_session)
 
     assert result == mock_cdr
 
@@ -188,7 +188,7 @@ def test_get_or_create_cdr_from_session_sets_end_date_when_missing(mock_session)
     mock_cdr = Mock()
 
     with patch("ocpi22.cpo.services.CdrService._create_cdr", return_value=mock_cdr):
-        result = CdrService.get_or_create_cdr_from_session(mock_session)
+        result = CdrService.get_or_create_cdr(mock_session)
 
     assert result == mock_cdr
     assert mock_session.end_date_time == datetime(2023, 1, 1, 15, 0, 0, tzinfo=pytz.UTC)
@@ -200,7 +200,7 @@ def test_get_or_create_cdr_from_session_logs_warning_when_no_total_cost(
 ):
     caplog.set_level(logging.ERROR)
     mock_session.total_cost_excl_vat = None
-    CdrService.get_or_create_cdr_from_session(mock_session)
+    CdrService.get_or_create_cdr(mock_session)
 
     assert f"Session {mock_session} has no total cost" in caplog.text
 
@@ -213,7 +213,7 @@ def test_get_or_create_cdr_from_session_sends_updates_after_creation(mock_sessio
         patch("ocpi22.cpo.services.CdrService._get_cdr", return_value=None),
         patch("ocpi22.cpo.services.CdrService._create_cdr", return_value=mock_cdr),
     ):
-        result = CdrService.get_or_create_cdr_from_session(mock_session)
+        result = CdrService.get_or_create_cdr(mock_session)
 
     assert result == mock_cdr
     mock_cdr.send_updates.assert_called_once()

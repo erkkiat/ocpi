@@ -1254,7 +1254,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = CdrService.get_or_create_cdr_from_session(session)
+        cdr1: Cdr = CdrService.get_or_create_cdr(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1288,7 +1288,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = CdrService.get_or_create_cdr_from_session(session)
+        cdr: Cdr = CdrService.get_or_create_cdr(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(

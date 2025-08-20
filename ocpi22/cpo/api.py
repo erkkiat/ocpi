@@ -859,7 +859,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     # Create the corresponding CDR (it will also be sent to other party)
                     from ocpi22.cpo.services import CdrService
 
-                    CdrService.get_or_create_cdr_from_session(
+                    CdrService.get_or_create_cdr(
                         session
                     )  # Todo: Do this in a celery task
 

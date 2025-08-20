@@ -243,7 +243,7 @@ class CdrService:
                     cdr_tariffs.append(tariff)
                 else:
                     logger.warning(f"Tariff with uid {tariff_id} not found.")
-        if not len(cdr_tariffs):
+        if not cdr_tariffs:
             logger.warning(
                 "Charging period does not have a tariff_id, using default tariffs"
             )
@@ -286,20 +286,19 @@ class CdrService:
         return cdr
 
     @classmethod
-    def get_or_create_cdr_from_session(cls, session: Session) -> Optional["Cdr"]:
+    def get_or_create_cdr(cls, session: Session) -> Optional["Cdr"]:
         if not session.connector:
             logging.error(
                 f"Not creating a CDR from Session {session.uid} since no Connector is specified"
             )
             return None
 
-        # Was there already a CDR created for this Session?
         cdr = cls._get_cdr(session.uid)
         if cdr:
             return cdr
 
         if session.total_cost_excl_vat is None:
-            logger.error(f"Session {session} has no total cost")
+            logger.warning(f"Session {session} has no total cost")
         if not session.end_date_time:
             session.end_date_time = datetime.now(pytz.utc)
 
