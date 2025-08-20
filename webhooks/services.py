@@ -27,49 +27,15 @@ class WebhookService:
         return webhook
 
     @classmethod
-    def update_webhook(cls, webhook: Webhook, **update_data) -> Webhook:
-        for field, value in update_data.items():
-            setattr(webhook, field, value)
-
-        webhook.save()
-        return webhook
-
-    @classmethod
     def get_active_webhooks_by_type(cls, webhook_type: str) -> list[Webhook]:
         return list(Webhook.objects.filter(type=webhook_type, active=True))
-
-    @classmethod
-    def get_webhook_counts_by_type(cls) -> dict[str, dict[str, int]]:
-        from collections import defaultdict
-        from webhooks.choices import WebhookType
-
-        counts = defaultdict(lambda: {"active": 0, "inactive": 0, "total": 0})
-
-        for webhook_type, _ in WebhookType.choices:
-            active_count = Webhook.objects.filter(
-                type=webhook_type, active=True
-            ).count()
-            inactive_count = Webhook.objects.filter(
-                type=webhook_type, active=False
-            ).count()
-            total_count = active_count + inactive_count
-
-            counts[webhook_type] = {
-                "active": active_count,
-                "inactive": inactive_count,
-                "total": total_count,
-            }
-
-        return dict(counts)
 
 
 class WebhookEventService:
     @classmethod
     def create_event(cls, webhook: Webhook, event_type: str, payload: dict):
         if not WebhookEventType.is_standard_type(event_type):
-            logger.info(
-                f"Using custom event type: {event_type}. Consider adding to WebhookEventType if this will be used frequently."
-            )
+            logger.info(f"Cannot use custom event type: {event_type}")
 
         return WebhookEvent.objects.create(
             webhook=webhook, event_type=event_type, payload=payload
@@ -77,9 +43,7 @@ class WebhookEventService:
 
     @classmethod
     def get_pending_events(cls, webhook: Webhook):
-        return webhook.events.filter(
-            status__in=[WebhookEventStatus.PENDING, WebhookEventStatus.FAILED]
-        )
+        return webhook.events.filter(status=WebhookEventStatus.PENDING)
 
     @classmethod
     def mark_attempt_started(cls, event: WebhookEvent):
@@ -125,25 +89,33 @@ class WebhookEventService:
 
 class WebhookExecutionService:
     @classmethod
-    def trigger_webhooks(cls, webhook_type: str, event_type: str, payload: dict):
-        active_webhooks = Webhook.objects.filter(type=webhook_type, active=True)
+    def trigger_webhook_by_id(cls, webhook_id: int, event_type: str, payload: dict):
+        try:
+            webhook = Webhook.objects.get(id=webhook_id)
+        except Webhook.DoesNotExist:
+            logger.error(f"Webhook with ID {webhook_id} does not exist")
+            return None
 
-        events = []
-        for webhook in active_webhooks:
-            try:
-                event = WebhookEventService.create_event(
-                    webhook=webhook, event_type=event_type, payload=payload
-                )
-                events.append(event)
+        if not webhook.active:
+            logger.warning(
+                f"Webhook with ID {webhook_id} is not active, skipping execution"
+            )
+            return None
 
-                cls.execute_webhook_event(event)
+        try:
+            event = WebhookEventService.create_event(
+                webhook=webhook, event_type=event_type, payload=payload
+            )
 
-            except Exception as e:
-                logger.error(
-                    f"Failed to create/execute webhook event for {webhook.url}: {e}"
-                )
+            cls.execute_webhook_event(event)
+            return event
 
-        return events
+        except Exception:
+            logger.error(
+                f"Failed to create/execute webhook event for webhook ID {webhook_id}",
+                exc_info=True,
+            )
+            return None
 
     @classmethod
     def execute_webhook_event(cls, event: WebhookEvent):
