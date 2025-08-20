@@ -9,12 +9,6 @@ logger = logging.getLogger(__name__)
 
 class WebhookService:
     @classmethod
-    def create_webhook(cls, **webhook_data) -> Webhook:
-        webhook = Webhook(**webhook_data)
-        webhook.save()
-        return webhook
-
-    @classmethod
     def activate_webhook(cls, webhook: Webhook) -> Webhook:
         webhook.active = True
         webhook.save()
@@ -25,10 +19,6 @@ class WebhookService:
         webhook.active = False
         webhook.save()
         return webhook
-
-    @classmethod
-    def get_active_webhooks_by_type(cls, webhook_type: str) -> list[Webhook]:
-        return list(Webhook.objects.filter(type=webhook_type, active=True))
 
 
 class WebhookEventService:
