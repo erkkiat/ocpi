@@ -92,12 +92,10 @@ jobs:
       - name: Save Release Tag
         run: |
           RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
-
           if [ -z "$RELEASE_TAG" ]; then
             echo "Error: Release tag missing!"
             exit 1
           fi
-
           echo "$RELEASE_TAG" > release_tag.txt
 
       - name: Upload Release Data
@@ -207,6 +205,16 @@ jobs:
           git config user.email "github-actions@users.noreply.github.com"
           git tag "$RELEASE_TAG"
           git push origin "$RELEASE_TAG"
+
+      - name: Create Sentry Release (production)
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ env.RELEASE_TAG }}
 
       - name: Publish Draft Release
         run: |
