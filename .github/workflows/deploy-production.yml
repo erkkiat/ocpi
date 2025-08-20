@@ -215,7 +215,8 @@ jobs:
         with:
           environment: production
           version: ${{ env.RELEASE_TAG }}
-
+          set_commits: "auto"
+          finalize: true
       - name: Publish Draft Release
         run: |
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
