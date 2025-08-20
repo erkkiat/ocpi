@@ -157,3 +157,15 @@ jobs:
 
               echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
+
+      - name: Create Sentry Release (staging)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: staging
+          version: ${{ env.IMAGE_TAG }}
+          set_commits: auto
+          finalize: true
