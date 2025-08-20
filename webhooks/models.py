@@ -401,10 +401,7 @@ class WebhookEvent(models.Model):
 
     @property
     def can_retry(self):
-        return (
-            self.status == WebhookEventStatus.FAILED
-            and self.attempt_count < self.webhook.max_retries
-        )
+        return self.attempt_count < self.webhook.max_retries
 
     @property
     def is_completed(self):
