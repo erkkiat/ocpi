@@ -101,7 +101,6 @@ class WebhookValidator:
         cls, webhook_type: str, command_type: str, auth
     ) -> None:
         cls.validate_remote_command_requirements(webhook_type, command_type)
-        cls.validate_auth_not_expired(auth)
 
     @classmethod
     def validate_webhook_activation_limits(cls, webhook) -> None:
