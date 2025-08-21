@@ -62,10 +62,18 @@ class TestOnMessageAuthRequest:
         ) as mock_process_authorize:
             mock_process_authorize.side_effect = Exception("Processing failed")
 
-            with pytest.raises(Exception, match="Processing failed"):
-                on_message(None, None, auth_request_message)
+            result = on_message(None, None, auth_request_message)
+
+            mock_process_authorize.assert_called_once_with(auth_request_message)
 
             assert "Received authorize message" in caplog.text
+            assert (
+                "MQTT message processing failed - subscriber continues running"
+                in caplog.text
+            )
+            assert "Processing failed" in caplog.text
+
+            assert result is None
 
     @pytest.mark.parametrize(
         "mqtt_authorize,env_name",

@@ -62,5 +62,8 @@ DATABASES = {
         "HOST": db_url,
         "PORT": "3306",
         "OPTIONS": {"ssl_mode": "REQUIRED"},
+        "CONN_MAX_AGE": 300,
     }
 }
+
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")

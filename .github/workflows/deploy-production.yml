@@ -4,15 +4,11 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types: [opened, ]
-    branches:
-      - main
 
 jobs:
   lint:
     name: Lint Code
-    runs-on: ubuntu-latest-m
+    runs-on: linux-arm64
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -30,7 +26,7 @@ jobs:
 
   test:
     name: Run Tests
-    runs-on: ubuntu-latest-m
+    runs-on: linux-arm64
     needs: lint
     services:
       redis:
@@ -74,8 +70,8 @@ jobs:
         run: pytest -n auto
 
   tag-and-release-draft:
-    name: Create and Tag Draft Release
-    runs-on: ubuntu-latest-m
+    name: Create Draft Release
+    runs-on: linux-arm64
     needs: test
     permissions:
       contents: write
@@ -87,24 +83,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create or Update Draft Release
+      - name: Create Draft Release
         id: draft_release
         uses: release-drafter/release-drafter@v6
-        with:
-          publish: false
-          config-name: release-drafter.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Save Release Tag
         run: |
           RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
-
           if [ -z "$RELEASE_TAG" ]; then
             echo "Error: Release tag missing!"
             exit 1
           fi
-
           echo "$RELEASE_TAG" > release_tag.txt
 
       - name: Upload Release Data
@@ -114,9 +105,8 @@ jobs:
           path: release_tag.txt
 
   build-and-deploy:
-    if: github.event_name == 'push'
     name: Build and Deploy to Production
-    runs-on: ubuntu-latest-m
+    runs-on: linux-arm64
     needs: tag-and-release-draft
 
     env:
@@ -188,9 +178,8 @@ jobs:
           done
 
   publish-release:
-    if: github.event_name == 'push'
     name: Tag and Publish GitHub Release
-    runs-on: ubuntu-latest-m
+    runs-on: linux-arm64
     needs: build-and-deploy
     permissions:
       contents: write
@@ -217,6 +206,17 @@ jobs:
           git tag "$RELEASE_TAG"
           git push origin "$RELEASE_TAG"
 
+      - name: Create Sentry Release (production)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ env.RELEASE_TAG }}
+          set_commits: "auto"
+          finalize: true
       - name: Publish Draft Release
         run: |
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"

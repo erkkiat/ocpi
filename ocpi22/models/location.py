@@ -1,5 +1,4 @@
 import uuid
-import zoneinfo
 from collections import Counter
 from django.utils.datetime_safe import datetime
 
@@ -365,23 +364,6 @@ class Evse(models.Model, ModelUtilMixin):
             return util.reverse("cpo-evse-by-id", args=[self.uid])
         except NoReverseMatch:
             return ""
-
-    def send_status_updates(self) -> None:
-        last_updated_serialized = self.last_updated.replace(
-            tzinfo=zoneinfo.ZoneInfo("UTC")
-        ).isoformat()
-        data = dict(status=self.status, last_updated=last_updated_serialized)
-        location = self.location
-        location.send_all_updates(
-            data=data,
-            method="patch",
-            path_components=[
-                location.ocpi_master.country_code,
-                location.ocpi_master.party_id,
-                location.uid,
-                self.uid,
-            ],
-        )
 
     def save(self, *args, **kwargs):
         self.change_fields_to_upper_case()

@@ -351,7 +351,19 @@ class TestChargePointAPI:
             "connector_id": session.connector_id,
             "start_kwh": 0,
         }
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
+        with patch("ocpi22.cpo.api.authorize_token") as mock_authorize_token:
+            mock_authorize_token.return_value = TokenAuthorization(
+                allowed="ALLOWED",
+                token=session.cdr_token,
+                responding_party=session.billed_to.party_str(),
+                authorization_reference=session.authorization_reference,
+                auth_method=session.auth_method,
+                billed_to=session.billed_to.party_str(),
+                msp=session.billed_to,
+            )
+            response = admin_user_client.post(
+                self.start_transaction_url, data=request_body
+            )
         assert response.status_code == 200
         assert response.json() == {
             "session_id": "SESSION_ID_1234",

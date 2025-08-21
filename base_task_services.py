@@ -12,46 +12,37 @@ logger = logging.getLogger(__name__)
 
 
 class RefreshTokenBaseTask(Task):
-    """Base task to be used by rest of the tasks, mainly handles the db token and refresh
-    when there is a connection failure due to the expired/invalid token"""
+    """
+    Custom Celery base task that:
+    - Refreshes RDS token before task execution
+    - Automatically retries on OperationalError
+    """
 
     autoretry_for = (OperationalError,)
-    retry_backoff = 5
-    max_retries = 3
-
-    def __call__(self, *args, **kwargs):
-        if not env_bool("REFRESH_RDS_TOKEN_FOR_TASKS", True):
-            return super().__call__(*args, **kwargs)
-        try:
-            return super().__call__(*args, **kwargs)
-        except self.autoretry_for as exc:
-            retries = self.request.retries
-            if retries < self.max_retries:
-                countdown = self.retry_backoff * (retries + 1)
-                logger.warning(
-                    f"Task {self.name} failed with {exc}. Retrying in {countdown} seconds "
-                    f"(attempt {retries + 1}/{self.max_retries})"
-                )
-                raise self.retry(exc=exc, countdown=countdown)
-            else:
-                logger.error(
-                    f"Task {self.name} failed after {self.max_retries} retries."
-                )
-                raise
+    retry_backoff = True
+    retry_kwargs = {"max_retries": 3}
 
     def before_start(self, task_id, args, kwargs):
-        """Refresh the database connection before starting the task."""
+        """
+        Refresh the RDS token if needed before the task runs.
+        """
         if not env_bool("REFRESH_RDS_TOKEN_FOR_TASKS", True):
             return super().before_start(task_id, args, kwargs)
+
         try:
             connections["default"].ensure_connection()
         except OperationalError:
             _, _, token = RDSTokenManager.get_db_url_user_and_token()
             logger.warning(
-                "Database connection issue detected before task start. Retrying..."
+                "DB connection issue before task start. Refreshing RDS token."
             )
             connections["default"].settings_dict["PASSWORD"] = token
-        super().before_start(task_id, args, kwargs)
+
+        return super().before_start(task_id, args, kwargs)
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        logger.exception(f"Task {self.name} failed")
+        return super().on_failure(exc, task_id, args, kwargs, einfo)
 
 
 @worker_process_init.connect
