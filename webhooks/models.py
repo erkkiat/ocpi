@@ -336,7 +336,24 @@ class WebhookEventType:
             getattr(cls, attr)
             for attr in dir(cls)
             if not attr.startswith("_") and isinstance(getattr(cls, attr), str)
-        ]
+    STANDARD_TYPES = (
+        CHARGE_POINT_STATUS_CHANGED,
+        CHARGE_POINT_CREATED,
+        CHARGE_POINT_UPDATED,
+        SESSION_STARTED,
+        SESSION_STOPPED,
+        SESSION_AUTHORIZED,
+        TOKEN_AUTHORIZED,
+        TOKEN_BLOCKED,
+        REMOTE_START_REQUESTED,
+        REMOTE_STOP_REQUESTED,
+        INVOICE_GENERATED,
+        INVOICE_SENT,
+    )
+
+    @classmethod
+    def get_all_standard_types(cls):
+        return cls.STANDARD_TYPES
 
     @classmethod
     def is_standard_type(cls, event_type):
