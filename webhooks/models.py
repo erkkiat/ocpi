@@ -54,13 +54,15 @@ class WebhookAuthValidator:
 
     @staticmethod
     def validate_api_key_header_format(api_key_header: str) -> None:
-        if api_key_header and api_key_header != "X-API-Key":
-            if not re.match(r"^[A-Za-z][A-Za-z0-9\-_]*$", api_key_header):
-                raise ValidationError(
-                    {
-                        "api_key_header": "Invalid header name format. Must start with a letter and contain only letters, numbers, hyphens, and underscores."
-                    }
-                )
+        if not api_key_header:
+            return
+
+        if not re.match(r"^[A-Za-z][A-Za-z0-9\-_]*$", api_key_header):
+            raise ValidationError(
+                {
+                    "api_key_header": "Invalid header name format. Must start with a letter and contain only letters, numbers, hyphens, and underscores."
+                }
+            )
 
     @classmethod
     def validate_auth_configuration(
