@@ -231,15 +231,14 @@ class WebhookAuth(models.Model):
 
 class Webhook(models.Model):
     type = models.CharField(
-        max_length=25,
-        choices=WebhookType.choices,
+        max_length=25, choices=WebhookType.choices, default=WebhookType.REMOTE_COMMAND
     )
     command_type = models.CharField(
         max_length=25,
         choices=RemoteCommandType.choices,
         blank=True,
         null=True,
-        verbose_name="Remote Command Type",
+        verbose_name="Command Type",
         help_text="Required only for Remote Command webhooks",
     )
     url = models.URLField(help_text="Full URL where webhook notifications will be sent")
