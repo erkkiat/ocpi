@@ -29,9 +29,8 @@ from rest_framework.exceptions import ValidationError
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
-from ocpi22.cpo.services import CdrService
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
-from ocpi22.locations.services import LocationService
+from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.routing import find_route_from_credentials
@@ -420,7 +419,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     #     # Let's free up the charger for the OCPI network, in case we are out of sync
                     #     close_active_sessions_for_evse(evse.uid)
 
-                    evse.send_status_updates()
+                    EvseServices.send_status_updates(evse)
 
                     messages.success(
                         request,
@@ -502,7 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
                     data["token"] = get_token_id(token)
                     authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request
+                        token, evse.location, request=request, evse_id=evse.evse_id
                     )
 
                     if (
@@ -631,6 +630,9 @@ class ChargePointViewSet(FlowchartViewSet):
             next_url = reverse("chargepoint-meter-values")
 
             if request.method == "POST":
+                logger.info(
+                    f"Debugging: start_transaction incoming data before serializer: {request.data}"
+                )
                 serializer = StartTransactionSerializer(
                     data=request.data,
                     context={"version": request.version, "request": request},
@@ -641,8 +643,13 @@ class ChargePointViewSet(FlowchartViewSet):
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
                     authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid
+                        session.cdr_token.uid,
+                        evse_id=session.evse.evse_id if session.evse else None,
                     )
+                    logger.info(
+                        f"Debugging: start_transaction incoming data after serializer: {serializer.validated_data}"
+                    )
+
                     if not authorization:
                         return Response(
                             dict(
@@ -858,7 +865,9 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
 
                     # Create the corresponding CDR (it will also be sent to other party)
-                    CdrService.get_cdr_from_session(
+                    from ocpi22.cpo.services import CdrService
+
+                    CdrService.get_or_create_cdr(
                         session
                     )  # Todo: Do this in a celery task
 

@@ -6,6 +6,7 @@ from functools import wraps
 
 from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
 from ocpi22.cpo.api import process_meter_values
@@ -144,7 +145,14 @@ def _publish_not_allowed_auth_response(correlation_id: str):
 def _authorize_and_publish(
     token_auth_message: TokenAuthorizationMessageIn, message: str
 ):
-    evse = find_our_evse(token_auth_message.evse_id)
+    try:
+        evse = find_our_evse(token_auth_message.evse_id)
+    except DjangoValidationError as e:
+        logger.warning(
+            f"Cannot authorize non existent evse {token_auth_message.evse_id}",
+            exc_info=e,
+        )
+        return
     if not evse:
         logger.error(
             f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found",
@@ -157,7 +165,9 @@ def _authorize_and_publish(
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )
     try:
-        authorization: TokenAuthorization = authorize_token(token, evse.location)
+        authorization: TokenAuthorization = authorize_token(
+            token, evse.location, evse_id=evse.evse_id
+        )
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
@@ -202,6 +212,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
+        hub_session_id=authorization.hub_session_id,
     )
     save_to_session_cache(
         route=find_route_from_credentials(

@@ -42,3 +42,5 @@ DATABASES = {
 }
 
 DATABASES.update({"gdpr_log": DATABASES.get("default")})
+
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")

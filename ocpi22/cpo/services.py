@@ -1,23 +1,24 @@
 import logging
+import typing
 import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytz
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.cdrlocation import CdrLocation
-from ocpi22.models.session import Session, ChargingPeriodSerializer
+from ocpi22.models.session import ChargingPeriodSerializer
 from ocpi22.models.tariff import SolidTariff, Tariff, TariffElement, PriceComponent
 from ocpi22.ocpi.util import generate_cdr_uid
+from ocpi22.models.session import Session
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
 
 
@@ -205,35 +206,57 @@ class SolidTariffService:
 
 class CdrService:
     @classmethod
-    def get_cdr_from_session(cls, session: Session) -> Optional["Cdr"]:
-        if not session.connector:
-            logger.error(
-                f"Not creating a CDR from Session {session.uid} since no Connector is specified"
+    def _get_charging_periods(cls, session: Session) -> list:
+        if not session.chargingperiods.exists():
+            logger.warning(
+                f"No charging periods found for session {session.uid} to create CDR."
             )
-            return None
-        # Was there already a CDR created for this Session?
-        from ocpi22.models.cdr import Cdr
-
-        cdr = Cdr.objects.filter(session_id=session.uid)
-        if cdr.exists():
-            return cdr.first()
-        if session.total_cost_excl_vat is None:
-            logging.error(f"{settings.HOSTNAME}: Session {session} has no total cost")
-        if not session.end_date_time:
-            session.end_date_time = datetime.now(pytz.utc)
-
-        cdr_location = CdrLocation.get_or_create_from_session(session)
-        charging_periods_json = ChargingPeriodSerializer(
-            session.chargingperiods, many=True
-        ).data
-
-        if not charging_periods_json:
             session.update_charging_periods(
                 kwh=session.kwh, timestamp=session.start_date_time
             )
-            charging_periods_json = ChargingPeriodSerializer(
-                session.chargingperiods.all(), many=True
-            ).data
+
+        charging_periods = ChargingPeriodSerializer(
+            session.chargingperiods.all(), many=True
+        ).data
+
+        return charging_periods
+
+    @classmethod
+    def _get_cdr(cls, session_id: str) -> Optional["Cdr"]:
+        from ocpi22.models.cdr import Cdr
+
+        return Cdr.objects.filter(session_id=session_id).first()
+
+    @classmethod
+    def _get_cdr_tariffs(
+        cls, charging_periods: list[dict], standard: str
+    ) -> list[Tariff]:
+        cdr_tariffs = []
+        for charging_period in charging_periods:
+            tariff_id = charging_period.get("tariff_id")
+            if tariff_id:
+                tariff = Tariff.objects.get_if_exists(uid=tariff_id)
+                if tariff:
+                    cdr_tariffs.append(tariff)
+                else:
+                    logger.warning(f"Tariff with uid {tariff_id} not found.")
+        if not cdr_tariffs:
+            logger.warning(
+                "Charging period does not have a tariff_id, using default tariffs"
+            )
+            cdr_tariffs = list(Tariff.get_default_tariffs(standard).all())
+
+        return cdr_tariffs
+
+    @classmethod
+    def _create_cdr(cls, session: Session) -> Optional["Cdr"]:
+        from ocpi22.models.cdr import Cdr
+
+        cdr_location = CdrLocation.get_or_create_from_session(session)
+        charging_periods_json = cls._get_charging_periods(session)
+        cdr_tariffs = cls._get_cdr_tariffs(
+            charging_periods_json, session.connector.standard
+        )
 
         cdr = Cdr.objects.create(
             uid=generate_cdr_uid(),
@@ -246,8 +269,8 @@ class CdrService:
             auth_method=session.auth_method,
             authorization_reference=session.authorization_reference,
             currency=session.currency,
-            total_cost_excl_vat=session.total_cost_excl_vat or 0.0,
-            total_cost_incl_vat=session.total_cost_incl_vat or 0.0,
+            total_cost_excl_vat=session.total_cost_excl_vat,
+            total_cost_incl_vat=session.total_cost_incl_vat,
             total_energy=session.kwh,
             credentials=session.credentials,
             ocpi_master=session.ocpi_master,
@@ -255,22 +278,30 @@ class CdrService:
             last_updated=datetime.now(pytz.utc),
         )
 
-        tariffs = session.connector.tariff_ids.all()
-        if tariffs.count():
-            cdr_tariffs = Tariff.make_copies(tariffs)
-        else:
-            cdr_tariffs = Tariff.make_copies(
-                Tariff.get_default_tariffs(session.connector.standard)
-            )
         cdr.tariffs.set(cdr_tariffs)
 
-        if cdr.route_through_oicp:
-            from integrations.hubject.services import HubjectService
+        return cdr
 
-            HubjectService.post_eroaming_charge_detail_record(
-                cdr.ocpi_master.party_str(), cdr
+    @classmethod
+    def get_or_create_cdr(cls, session: Session) -> Optional["Cdr"]:
+        if not session.connector:
+            logging.error(
+                f"Not creating a CDR from Session {session.uid} since no Connector is specified"
             )
-        else:
-            cdr.send_updates()
+            return None
+
+        cdr = cls._get_cdr(session.uid)
+        if cdr:
+            return cdr
+
+        if session.total_cost_excl_vat is None:
+            logger.error(f"Session {session} has no total cost")
+            return None
+        if not session.end_date_time:
+            session.end_date_time = datetime.now(pytz.utc)
+
+        cdr = cls._create_cdr(session)
+
+        cdr.send_updates()
 
         return cdr

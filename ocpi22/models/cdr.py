@@ -274,7 +274,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
             if not Cdr.objects.filter(session_id=instance.uid).exists():
-                CdrService.get_cdr_from_session(instance)
+                CdrService.get_or_create_cdr(instance)
 
     def cost(self) -> str:
         return format_cost(

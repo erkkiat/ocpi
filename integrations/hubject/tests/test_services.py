@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 import pytz
@@ -44,6 +44,10 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     HubjectDefaultTariff,
     HubjectPriceComponent,
+    ERoamingPushEvseStatus,
+    OperatorEvseStatus,
+    EvseStatusRecordItem,
+    EvseStatus,
 )
 from integrations.hubject.services import (
     HubjectService,
@@ -882,6 +886,102 @@ class TestOICPDynamicPricingService:
                 ),
             ],
         )
+
+
+@pytest.mark.django_db
+class TestPushEvseStatus:
+    def test_get_payload_successfully(self, monkeypatch):
+        evse = EvseFactory(status="AVAILABLE")
+        ocpi_master = evse.location.ocpi_master
+        operator_id = Party(
+            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
+        )
+        result = HubjectService._get_evse_status_update_payload(
+            evse, str(operator_id), "HelsinkiOperator"
+        )
+
+        assert result == ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=str(operator_id)),
+                operator_name="HelsinkiOperator",
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        EvseID=EvseID(root=evse.evse_id),
+                        evse_id=evse.evse_id,
+                        evse_status=EvseStatus.Available,
+                    )
+                ],
+            ),
+        )
+
+    def test_get_payload_with_invalid_evse_status_return_value_error(self):
+        evse = EvseFactory(status="INVALID")
+        ocpi_master = evse.location.ocpi_master
+        operator_id = Party(
+            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
+        )
+
+        with pytest.raises(ValueError, match="Invalid OCPI status \\[INVALID\\] found"):
+            HubjectService._get_evse_status_update_payload(
+                evse, str(operator_id), "HelsinkiOperator"
+            )
+
+    @pytest.mark.parametrize("operator_id", ["DE*SMPW", "KL1*CPO", "INVALID", None])
+    def test_get_payload_with_invalid_operator_id(self, operator_id):
+        evse = EvseFactory(status="INVALID")
+        with pytest.raises(ValidationError):
+            HubjectService._get_evse_status_update_payload(
+                evse, str(operator_id), "HelsinkiOperator"
+            )
+
+    @responses.activate
+    def test_post_evse_status_success(self):
+        evse = EvseFactory(status="AVAILABLE")
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/FI*CPO/status-records",
+            json={"success": True},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    HubjectService._get_evse_status_update_payload(
+                        evse, "FI*CPO", evse.location.ocpi_master.business_details.name
+                    ).model_dump(mode="json", by_alias=True)
+                )
+            ],
+        )
+        with patch(
+            "integrations.hubject.services.send_hubject_request.delay",
+            return_value=AsyncMock(),
+        ) as mock_send_request:
+            HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            assert mock_send_request.call_count == 1
+
+    def test_post_evse_status_without_evse(self, caplog):
+        HubjectService.post_eroaming_push_evse_status(None, retries=0)
+        assert caplog.records[0].message == "No EVSE provided for hubject status update"
+
+    def test_post_evse_status_with_incorrect_payload(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+        evse.evse_id = "INVALID_EVSE_ID"
+        HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+        assert (
+            "Failed to create payload for EVSE status update"
+            in caplog.records[0].message
+        )
+
+    def test_post_evse_status_with_value_error_in_payload_returns_none(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+        evse.evse_id = "INVALID_EVSE_ID"
+        with patch(
+            "integrations.hubject.services.HubjectService._get_evse_status_update_payload",
+            side_effect=ValueError("Invalid OCPI status [INVALID_EVSE_ID] found"),
+        ):
+            result = HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            assert result is None
+            assert "Invalid OCPI status [INVALID_EVSE_ID] found" in caplog.text
 
 
 class TestPostEroamingChargeDetailRecord:

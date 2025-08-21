@@ -7,9 +7,8 @@ import pytz
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
-from pydantic_core import PydanticSerializationError
+from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
 from integrations.hubject.client import HubjectClient
@@ -25,6 +24,8 @@ from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
+    PricingProductData,
+    ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
     Identification,
@@ -32,8 +33,10 @@ from integrations.hubject.schemas import (
     RFIDMifareFamilyIdentificationClass,
     ChargingNotificationType,
     ChargingNotificationBase,
-    PricingProductData,
-    ERoamingPushPricingProductData,
+    ERoamingPushEvseStatus,
+    OperatorEvseStatus,
+    EvseStatusRecordItem,
+    EvseID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -48,12 +51,12 @@ from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import Any, TYPE_CHECKING, Optional
+from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
     from ocpi22.models.cdr import Cdr
 
-from ocpi22.tasks import send_hubject_request
 
 logger = logging.getLogger(__name__)
 
@@ -166,16 +169,19 @@ class HubjectService:
     ) -> tuple[Any, dict | None, Any]:
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
-        payload = ERoamingAuthorizeStart(
-            OperatorID=OperatorID(root=operator_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=token_id)
-                )
-            ),
-        )
-        payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
-
+        try:
+            payload = ERoamingAuthorizeStart(
+                operator_id=OperatorID(root=operator_id),
+                identification=Identification(
+                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=token_id)
+                    )
+                ),
+            )
+            payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
+        except ValidationError:
+            logger.exception()
+            raise
         try:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}
@@ -346,7 +352,11 @@ class HubjectService:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
+            logger.error(
+                f"HTTP error: {e.response.status_code}",
+                exc_info=True,
+                extra={"hubject_response": e.response.text},
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
@@ -363,6 +373,51 @@ class HubjectService:
         )
         response.raise_for_status()
         return response
+
+    @classmethod
+    def _get_evse_status_update_payload(
+        cls, evse: Evse, operator_id: str, operator_name: str
+    ) -> ERoamingPushEvseStatus:
+        return ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=operator_id),
+                operator_name=operator_name,
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        evse_id=EvseID(root=evse.evse_id),
+                        evse_status=cls.converter.convert_ocpi_evse_status(evse.status),
+                    )
+                ],
+            ),
+        )
+
+    @classmethod
+    def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
+        if not evse:
+            logger.warning("No EVSE provided for hubject status update")
+            return
+        ocpi_master = evse.location.ocpi_master
+        operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
+        operator_name = ocpi_master.business_details.name
+
+        try:
+            payload = cls._get_evse_status_update_payload(
+                evse, operator_id, operator_name
+            )
+        except (ValidationError, ValueError):
+            logger.error(
+                "Failed to create payload for EVSE status update", exc_info=True
+            )
+            return
+
+        payload_json = payload.model_dump(mode="json", by_alias=True)
+
+        url = (
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
+        )
+
+        send_hubject_request.delay(payload_json, url, "post")
 
     @staticmethod
     def post_eroaming_charge_detail_record(

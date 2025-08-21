@@ -37,6 +37,7 @@ from ocpi22.tests.factories import (
     OCPISessionFactory,
     SolidTariffFactory,
 )
+from integrations.hubject.schemas import EvseStatus as OICPEvseStatus
 
 
 def load_tests(_loader, tests, _ignore):
@@ -654,6 +655,57 @@ class TestMappings:
                 ],
             },
         }
+
+    @pytest.mark.parametrize(
+        "ocpi_status,expected_oicp_status",
+        [
+            ("AVAILABLE", OICPEvseStatus.Available),
+            ("BLOCKED", OICPEvseStatus.Occupied),
+            ("CHARGING", OICPEvseStatus.Occupied),
+            ("INOPERATIVE", OICPEvseStatus.OutOfService),
+            ("OUTOFORDER", OICPEvseStatus.OutOfService),
+            ("PLANNED", OICPEvseStatus.Occupied),
+            ("REMOVED", OICPEvseStatus.OutOfService),
+            ("RESERVED", OICPEvseStatus.Reserved),
+            ("UNKNOWN", OICPEvseStatus.Unknown),
+        ],
+    )
+    def test_convert_ocpi_evse_status_successfully_returns_expected_oicp_status(
+        self, ocpi_status, expected_oicp_status
+    ):
+        result = self._ocpi_to_oicp_converter.convert_ocpi_evse_status(ocpi_status)
+        assert result == expected_oicp_status
+
+    @pytest.mark.parametrize(
+        "ocpi_status",
+        [
+            "available",
+            "Available",
+            "AVAILABLE",
+        ],
+    )
+    def test_convert_ocpi_evse_status_case_insensitive_returns_expected_oicp_status(
+        self, ocpi_status
+    ):
+        result = self._ocpi_to_oicp_converter.convert_ocpi_evse_status(ocpi_status)
+        assert result == OICPEvseStatus.Available
+
+    @pytest.mark.parametrize(
+        "invalid_status",
+        [
+            "UNKNOWN_STATUS",
+            "INVALID",
+            "",
+            "RANDOM_STRING",
+        ],
+    )
+    def test_convert_ocpi_evse_status_invalid_status_returns_unknown_status(
+        self, invalid_status
+    ):
+        with pytest.raises(
+            ValueError, match=f"Invalid OCPI status \\[{invalid_status}\\] found"
+        ):
+            self._ocpi_to_oicp_converter.convert_ocpi_evse_status(invalid_status)
 
 
 class TestConvertOCPICDRToERoamingCDR:
