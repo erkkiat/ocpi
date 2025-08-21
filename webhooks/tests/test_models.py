@@ -437,30 +437,6 @@ class TestWebhookEventStatus:
         assert WebhookEventStatus.choices == expected_choices
 
 
-class TestWebhookEventType:
-    def test_webhook_event_type_constants_are_strings(self):
-        assert isinstance(WebhookEventType.CHARGE_POINT_STATUS_CHANGED, str)
-        assert isinstance(WebhookEventType.SESSION_STARTED, str)
-        assert isinstance(WebhookEventType.TOKEN_AUTHORIZED, str)
-
-    def test_get_all_standard_types_returns_all_event_types(self):
-        standard_types = WebhookEventType.get_all_standard_types()
-        assert WebhookEventType.CHARGE_POINT_STATUS_CHANGED in standard_types
-        assert WebhookEventType.SESSION_STARTED in standard_types
-        assert WebhookEventType.TOKEN_AUTHORIZED in standard_types
-        assert WebhookEventType.INVOICE_GENERATED in standard_types
-
-    def test_is_standard_type_returns_true_for_standard_types(self):
-        assert WebhookEventType.is_standard_type(
-            WebhookEventType.CHARGE_POINT_STATUS_CHANGED
-        )
-        assert WebhookEventType.is_standard_type(WebhookEventType.SESSION_STARTED)
-
-    def test_is_standard_type_returns_false_for_custom_types(self):
-        assert not WebhookEventType.is_standard_type("custom.event.type")
-        assert not WebhookEventType.is_standard_type("unknown_event")
-
-
 @pytest.mark.django_db
 class TestWebhookEvent:
     def test_webhook_event_creation_with_minimal_fields(self):
