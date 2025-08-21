@@ -78,7 +78,7 @@ class WebhookAuthValidator:
 
 
 class WebhookValidator:
-    MAX_ACTIVE_WEBHOOKS_PER_TYPE = getattr(settings, "WEBHOOK_MAX_ACTIVE_PER_TYPE", 5)
+    MAX_ACTIVE_WEBHOOKS_PER_TYPE = settings.MAX_ACTIVE_WEBHOOKS_PER_TYPE
 
     @staticmethod
     def validate_remote_command_requirements(

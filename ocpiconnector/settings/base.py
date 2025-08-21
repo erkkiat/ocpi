@@ -550,3 +550,6 @@ LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
     "/api-auth/login/",
     "/portal/admin/",
 ]
+
+
+MAX_ACTIVE_WEBHOOKS_PER_TYPE = os.getenv("MAX_ACTIVE_WEBHOOKS_PER_TYPE", 5)
