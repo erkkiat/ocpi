@@ -25,7 +25,7 @@ def mock_session():
 
 
 @pytest.fixture
-def expected_charging_periods_json():
+def expected_charging_periods():
     return [
         {
             "start_date_time": "2023-01-01T12:00:00Z",
@@ -48,7 +48,7 @@ def expected_charging_periods_json():
 
 @pytest.mark.django_db
 def test_get_charging_periods_returns_valid_charging_periods_list(
-    mock_session, expected_charging_periods_json
+    mock_session, expected_charging_periods
 ):
     tariff1 = TariffFactory(uid="CP1")
     charging_period = ChargingPeriodFactory.create_batch(
@@ -60,7 +60,7 @@ def test_get_charging_periods_returns_valid_charging_periods_list(
     mock_session.save()
 
     result = CdrService._get_charging_periods(mock_session)
-    assert result == expected_charging_periods_json
+    assert result == expected_charging_periods
 
 
 @pytest.mark.django_db
@@ -84,12 +84,12 @@ def test_get_charging_periods_creates_charging_periods_when_session_has_no_charg
 def test_get_cdr_tariffs_returns_a_list_of_tariffs_from_charging_periods():
     tariff1 = TariffFactory(uid="CP1")
     tariff2 = TariffFactory(uid="CP2")
-    charging_periods_json = ChargingPeriodSerializer(
+    charging_periods = ChargingPeriodSerializer(
         [ChargingPeriodFactory(tariff=tariff1), ChargingPeriodFactory(tariff=tariff2)],
         many=True,
     ).data
 
-    result = CdrService._get_cdr_tariffs(charging_periods_json, "IEC_62196_T2")
+    result = CdrService._get_cdr_tariffs(charging_periods, "IEC_62196_T2")
 
     assert result == [tariff1, tariff2]
 
@@ -99,7 +99,7 @@ def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
     caplog.set_level(logging.WARNING)
     tariff1 = TariffFactory(uid="CP1")
     tariff2 = TariffFactory(uid="CP2")
-    charging_periods_json = ChargingPeriodSerializer(
+    charging_periods = ChargingPeriodSerializer(
         [ChargingPeriodFactory(tariff=tariff1), ChargingPeriodFactory(tariff=tariff2)],
         many=True,
     ).data
@@ -111,22 +111,22 @@ def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
 
     standard = "IEC_62196_T2"
 
-    CdrService._get_cdr_tariffs(charging_periods_json, standard)
+    CdrService._get_cdr_tariffs(charging_periods, standard)
 
     assert "Tariff with uid CP2 not found." in caplog.text
 
 
 @pytest.mark.django_db
 def test_get_cdr_tariffs_uses_default_tariffs_when_no_tariffs_found():
-    charging_periods_json = ChargingPeriodSerializer(
-        ChargingPeriodFactory(tariff=None)
+    charging_periods = ChargingPeriodSerializer(
+        [ChargingPeriodFactory(tariff=None)], many=True
     ).data
 
     standard = "IEC_62196_T2"
     tariff = TariffFactory(uid="DefaultTariff")
     DefaultTariffsFactory(standard=standard, tariffs=[tariff])
 
-    result = CdrService._get_cdr_tariffs(charging_periods_json, standard)
+    result = CdrService._get_cdr_tariffs(charging_periods, standard)
 
     assert result[0] == tariff
 

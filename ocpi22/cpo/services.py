@@ -207,10 +207,6 @@ class SolidTariffService:
 class CdrService:
     @classmethod
     def _get_charging_periods(cls, session: Session) -> list:
-        charging_periods_json = ChargingPeriodSerializer(
-            session.chargingperiods, many=True
-        ).data
-
         if not session.chargingperiods.exists():
             logger.warning(
                 f"No charging periods found for session {session.uid} to create CDR."
@@ -218,11 +214,12 @@ class CdrService:
             session.update_charging_periods(
                 kwh=session.kwh, timestamp=session.start_date_time
             )
-            charging_periods_json = ChargingPeriodSerializer(
-                session.chargingperiods.all(), many=True
-            ).data
 
-        return charging_periods_json
+        charging_periods = ChargingPeriodSerializer(
+            session.chargingperiods.all(), many=True
+        ).data
+
+        return charging_periods
 
     @classmethod
     def _get_cdr(cls, session_id: str) -> Optional["Cdr"]:
@@ -231,11 +228,11 @@ class CdrService:
         return Cdr.objects.filter(session_id=session_id).first()
 
     @classmethod
-    def _get_cdr_tariffs(cls, charging_periods_json, standard) -> list[Tariff]:
+    def _get_cdr_tariffs(
+        cls, charging_periods: list[dict], standard: str
+    ) -> list[Tariff]:
         cdr_tariffs = []
-        if isinstance(charging_periods_json, dict):
-            charging_periods_json = [charging_periods_json]
-        for charging_period in charging_periods_json:
+        for charging_period in charging_periods:
             tariff_id = charging_period.get("tariff_id")
             if tariff_id:
                 tariff = Tariff.objects.get_if_exists(uid=tariff_id)
@@ -298,7 +295,8 @@ class CdrService:
             return cdr
 
         if session.total_cost_excl_vat is None:
-            logger.warning(f"Session {session} has no total cost")
+            logger.error(f"Session {session} has no total cost")
+            return None
         if not session.end_date_time:
             session.end_date_time = datetime.now(pytz.utc)
 
