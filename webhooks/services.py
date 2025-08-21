@@ -1,6 +1,8 @@
 import requests
 import logging
 
+from django.core.exceptions import ValidationError
+
 from webhooks.models import Webhook, WebhookEvent, WebhookEventStatus, WebhookEventType
 from django.utils import timezone
 
@@ -24,9 +26,8 @@ class WebhookService:
 class WebhookEventService:
     @classmethod
     def create_event(cls, webhook: Webhook, event_type: str, payload: dict):
-        if not WebhookEventType.is_standard_type(event_type):
-            logger.info(f"Cannot use custom event type: {event_type}")
-
+        if event_type not in WebhookEventType:
+            raise ValidationError(f"Invalid event type: {event_type}")
         return WebhookEvent.objects.create(
             webhook=webhook, event_type=event_type, payload=payload
         )

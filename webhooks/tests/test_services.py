@@ -4,6 +4,7 @@ from django.utils import timezone
 import time_machine
 import requests
 import responses
+from django.core.exceptions import ValidationError
 
 from webhooks.services import (
     WebhookService,
@@ -61,17 +62,15 @@ class TestWebhookEventService:
         assert event.status == WebhookEventStatus.PENDING
         assert event.attempt_count == 0
 
-    @patch("webhooks.services.logger")
-    def test_create_event_logs_info_for_custom_event_type(self, mock_logger):
+    def test_create_event_raises_on_invalid_event_type(self):
         webhook = WebhookFactory()
         custom_event_type = "custom.event.type"
         payload = {"data": "test"}
 
-        WebhookEventService.create_event(webhook, custom_event_type, payload)
-
-        mock_logger.info.assert_called_once_with(
-            f"Cannot use custom event type: {custom_event_type}"
-        )
+        with pytest.raises(
+            ValidationError, match=f"Invalid event type: {custom_event_type}"
+        ):
+            WebhookEventService.create_event(webhook, custom_event_type, payload)
 
     def test_get_pending_events_returns_only_pending_events_for_webhook(self):
         webhook = WebhookFactory()
