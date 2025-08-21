@@ -47,7 +47,7 @@ from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity
+from ocpiconnector.ocpi_identities import get_our_identity, get_our_credentialsrole
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import Any, TYPE_CHECKING
@@ -397,7 +397,7 @@ class HubjectService:
         evse_record_items = []
 
         for e in (
-            Evse.objects.values_list("id", "status")
+            Evse.objects.values_list("evse_id", "status")
             .filter(location__ocpi_master=our_credentials_role)
             .iterator(chunk_size=100)
         ):
@@ -430,8 +430,9 @@ class HubjectService:
 
         try:
             if full_load:
+                our_credentials_role = get_our_credentialsrole(OcpiRolesEnum.CPO.value)
                 payload = cls._get_evse_status_full_load_payload(
-                    operator_id, operator_name
+                    operator_id, our_credentials_role
                 )
             else:
                 payload = cls._get_evse_status_update_payload(

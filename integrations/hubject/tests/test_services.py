@@ -62,7 +62,7 @@ from ocpi22.tests.factories import (
     PricingProductDataFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import Party
 
 
@@ -982,3 +982,29 @@ class TestPushEvseStatus:
             result = HubjectService.post_eroaming_push_evse_status(evse, retries=0)
             assert result is None
             assert "Invalid OCPI status [INVALID_EVSE_ID] found" in caplog.text
+
+    def test_post_evse_status_with_full_load_true_uses_full_load_payload(self):
+        evse = EvseFactory(status="AVAILABLE")
+        get_our_credentialsrole.cache_clear()
+        our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/FI*CPO/status-records",
+            json={"success": True},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    HubjectService._get_evse_status_full_load_payload(
+                        f"{our_role.country_code}*{our_role.party_id}", our_role
+                    ).model_dump(mode="json", by_alias=True)
+                )
+            ],
+        )
+        with patch(
+            "integrations.hubject.services.send_hubject_request.delay",
+            return_value=AsyncMock(),
+        ) as mock_send_request:
+            HubjectService.post_eroaming_push_evse_status(
+                evse, retries=0, full_load=True
+            )
+            assert mock_send_request.call_count == 1
