@@ -54,7 +54,7 @@ from integrations.hubject.services import (
 )
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.models.location import Location
+from ocpi22.models.location import Location, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.tests.factories import (
     EvseFactory,
@@ -1003,8 +1003,57 @@ class TestPushEvseStatus:
         with patch(
             "integrations.hubject.services.send_hubject_request.delay",
             return_value=AsyncMock(),
-        ) as mock_send_request:
-            HubjectService.post_eroaming_push_evse_status(
-                evse, retries=0, full_load=True
+        ):
+            with patch(
+                "integrations.hubject.services.HubjectService._get_evse_status_full_load_payload"
+            ) as mock_get_payload:
+                HubjectService.post_eroaming_push_evse_status(
+                    evse, retries=0, full_load=True
+                )
+                assert mock_get_payload.call_count == 1
+
+    def test_get_evse_status_full_load_payload_success(self, operator_fi_cpo):
+        get_our_credentialsrole.cache_clear()
+        our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        location = LocationFactory(uid="porvoo", ocpi_master=operator_fi_cpo)
+        EvseFactory(uid="Evse1", status="AVAILABLE", location=location)
+        EvseFactory(uid="Evse2", status="AVAILABLE", location=location)
+        result = HubjectService._get_evse_status_full_load_payload(
+            f"{our_role.country_code}*{our_role.party_id}", our_role
+        )
+        assert result.model_dump(mode="json", by_alias=True) == {
+            "ActionType": "fullLoad",
+            "OperatorEvseStatus": {
+                "EvseStatusRecord": [
+                    {"EvseID": "FI*CPO*EEVSE1", "EvseStatus": "Available"},
+                    {"EvseID": "FI*CPO*EEVSE2", "EvseStatus": "Available"},
+                ],
+                "OperatorID": "FI*CPO",
+                "OperatorName": "Smappee Pvt Ltd",
+            },
+        }
+
+    def test_get_evse_status_full_load_payload_with_no_evses(self, caplog):
+        get_our_credentialsrole.cache_clear()
+        our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        Evse.objects.all().delete()
+        result = HubjectService._get_evse_status_full_load_payload(
+            f"{our_role.country_code}*{our_role.party_id}", our_role
+        )
+        assert result is None
+        assert "No EVSE records found" in caplog.text
+
+    def test_get_evse_status_full_load_payload_with_invalid_evse_id(
+        self, caplog, operator_fi_cpo
+    ):
+        get_our_credentialsrole.cache_clear()
+        our_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        location = LocationFactory(uid="porvoo", ocpi_master=operator_fi_cpo)
+        EvseFactory(uid="Evse1", status="INVALID", location=location)
+        with pytest.raises(ValueError, match="Invalid OCPI status \\[INVALID\\] found"):
+            HubjectService._get_evse_status_full_load_payload(
+                f"{our_role.country_code}*{our_role.party_id}", our_role
             )
-            assert mock_send_request.call_count == 1
+            HubjectService._get_evse_status_full_load_payload(
+                f"{our_role.country_code}*{our_role.party_id}", our_role
+            )
