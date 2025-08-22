@@ -151,7 +151,7 @@ class EVSE(BaseSchema):
     ] = None
     status: EVSEStatus
     status_schedule: Optional[List[StatusSchedule]] = None
-    capabilities: Optional[List[OCPICapability]] = None
+    capabilities: List[OCPICapability] = Field(..., min_length=1)
     connectors: List[Connector] = Field(
         ..., description="List of connectors for this EVSE"
     )

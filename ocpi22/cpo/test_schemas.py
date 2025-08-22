@@ -56,7 +56,7 @@ def evse_data(connector_data):
         "status": "AVAILABLE",
         "last_updated": datetime(2023, 10, 1, 12, 0),
         "connectors": [],
-        "capabilities": None,
+        "capabilities": ["RFID_READER"],
     }
 
 
@@ -96,6 +96,7 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
+    data.get("evses", [])[0]["capabilities"] = ["RFID_READER"]
     location = LocationIn(**data)
     assert location.country == "SWE"
 
@@ -223,3 +224,24 @@ def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_err
 
     error_msg = str(exc_info.value)
     assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_empty_evse_capability_raises_validation_error(evse_data):
+    evse_data["capabilities"] = []
+    with pytest.raises(ValidationError) as exc_info:
+        EVSE(**evse_data)
+
+    error_msg = str(exc_info.value)
+    assert (
+        "1 validation error for EVSE\ncapabilities\n  List should have at least 1 item after validation, not 0 "
+        in error_msg
+    )
+
+
+def test_evse_capability_none_raises_validation_error(evse_data):
+    evse_data["capabilities"] = None
+    with pytest.raises(ValidationError) as exc_info:
+        EVSE(**evse_data)
+
+    error_msg = str(exc_info.value)
+    assert "EVSE\ncapabilities\n  Input should be a valid list" in error_msg
