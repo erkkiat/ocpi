@@ -114,6 +114,9 @@ def location_example(ocpi_master):
         }
     )
 
+    data["evses"][0].update({"capabilities": ["RFID_READER"]})
+    data["evses"][1].update({"capabilities": ["RFID_READER"]})
+
     return data
 
 
