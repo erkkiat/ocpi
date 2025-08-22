@@ -408,6 +408,10 @@ class HubjectService:
                 )
             )
 
+        if not evse_record_items:
+            logger.warning("No EVSE records found")
+            return None
+
         return ERoamingPushEvseStatus(
             action_type=ActionType.fullLoad,
             operator_evse_status=OperatorEvseStatus(
@@ -442,6 +446,10 @@ class HubjectService:
             logger.error(
                 "Failed to create payload for EVSE status update", exc_info=True
             )
+            return
+
+        if not payload:
+            logger.warning("No payload created for EVSE status update")
             return
 
         payload_json = payload.model_dump(mode="json", by_alias=True)
