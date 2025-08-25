@@ -35,10 +35,10 @@ class SolidTariffService:
             grace_period,
         ) = self._extract_pricing_data(validated_data)
 
-        per_hr = self._convert_to_hourly(per_min) if not per_hour else per_hour
+        per_hr = self._convert_to_hourly(per_min) if per_hour is None else per_hour
         parking_price_per_hr = (
             self._convert_to_hourly(parking_price_per_min)
-            if not parking_price_per_hr
+            if parking_price_per_hr is None
             else parking_price_per_hr
         )
 
