@@ -33,7 +33,7 @@ from integrations.hubject.schemas import (
     PricingProductData,
     PricingProductDataRecord,
 )
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -41,9 +41,16 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
+from ocpi22.models.session import Session, CdrDimension, ChargingPeriod
+from ocpi22.models.tariff import (
+    Tariff,
+    SolidTariff,
+    TariffElement,
+    PriceComponent,
+    DefaultTariffs,
+)
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import Ocpi
 
 fake = Faker()
 
@@ -621,3 +628,71 @@ class TokenFactory(factory.django.DjangoModelFactory):
     updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     customer = factory.SubFactory(UserFactory)
+
+
+class CdrDimensionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrDimension
+
+    type = CdrDimensionEnum.ENERGY.value
+    volume = 10.0
+
+
+class ChargingPeriodFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ChargingPeriod
+
+    start_date_time = factory.LazyFunction(lambda: datetime.now(pytz.UTC))
+    session = factory.SubFactory(OCPISessionFactory)
+    tariff = factory.SubFactory(TariffFactory)
+
+    @factory.post_generation
+    def dimensions(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for dimension in extracted:
+                self.dimensions.add(dimension)
+        else:
+            CdrDimensionFactory(
+                chargingperiod=self, type=CdrDimensionEnum.ENERGY.value, volume=10.0
+            )
+            CdrDimensionFactory(
+                chargingperiod=self, type=CdrDimensionEnum.TIME.value, volume=1.5
+            )
+
+    @classmethod
+    def create_with_dimensions(cls, energy_volume=10.0, time_volume=1.5, **kwargs):
+        period = cls.create(**kwargs)
+
+        CdrDimensionFactory(
+            chargingperiod=period,
+            type=CdrDimensionEnum.ENERGY.value,
+            volume=energy_volume,
+        )
+
+        CdrDimensionFactory(
+            chargingperiod=period, type=CdrDimensionEnum.TIME.value, volume=time_volume
+        )
+
+        return period
+
+
+class DefaultTariffsFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DefaultTariffs
+
+    standard = factory.LazyFunction(Ocpi.STANDARD_CHOICES[0][0])
+
+    @factory.post_generation
+    def tariffs(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for tariff in extracted:
+                self.tariffs.add(tariff)
+        else:
+            tariff1 = TariffFactory()
+            self.tariffs.add(tariff1)

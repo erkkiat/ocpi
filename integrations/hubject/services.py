@@ -350,7 +350,11 @@ class HubjectService:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
+            logger.error(
+                f"HTTP error: {e.response.status_code}",
+                exc_info=True,
+                extra={"hubject_response": e.response.text},
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
@@ -399,9 +403,12 @@ class HubjectService:
             payload = cls._get_evse_status_update_payload(
                 evse, operator_id, operator_name
             )
-        except ValidationError as e:
-            logger.warning(f"Failed to create payload for EVSE status update: {e}")
+        except (ValidationError, ValueError):
+            logger.error(
+                "Failed to create payload for EVSE status update", exc_info=True
+            )
             return
+
         payload_json = payload.model_dump(mode="json", by_alias=True)
 
         url = (

@@ -501,7 +501,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
                     data["token"] = get_token_id(token)
                     authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request
+                        token, evse.location, request=request, evse_id=evse.evse_id
                     )
 
                     if (
@@ -630,6 +630,9 @@ class ChargePointViewSet(FlowchartViewSet):
             next_url = reverse("chargepoint-meter-values")
 
             if request.method == "POST":
+                logger.info(
+                    f"Debugging: start_transaction incoming data before serializer: {request.data}"
+                )
                 serializer = StartTransactionSerializer(
                     data=request.data,
                     context={"version": request.version, "request": request},
@@ -640,8 +643,13 @@ class ChargePointViewSet(FlowchartViewSet):
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
                     authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid
+                        session.cdr_token.uid,
+                        evse_id=session.evse.evse_id if session.evse else None,
                     )
+                    logger.info(
+                        f"Debugging: start_transaction incoming data after serializer: {serializer.validated_data}"
+                    )
+
                     if not authorization:
                         return Response(
                             dict(
@@ -857,9 +865,11 @@ class ChargePointViewSet(FlowchartViewSet):
                     )
 
                     # Create the corresponding CDR (it will also be sent to other party)
-                    from ocpi22.models.cdr import Cdr
+                    from ocpi22.cpo.services import CdrService
 
-                    Cdr.from_session(session)  # Todo: Do this in a celery task
+                    CdrService.get_or_create_cdr(
+                        session
+                    )  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,

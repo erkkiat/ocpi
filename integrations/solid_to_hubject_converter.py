@@ -636,21 +636,21 @@ class SolidToHubjectConverter:
         match status.upper():
             case "AVAILABLE":
                 return OICPEvseStatus.Available
-            case "PREPARING":
+            case "BLOCKED":
                 return OICPEvseStatus.Occupied
             case "CHARGING":
                 return OICPEvseStatus.Occupied
-            case "SUSPENDEDEV":
+            case "INOPERATIVE":
+                return OICPEvseStatus.OutOfService
+            case "OUTOFORDER":
+                return OICPEvseStatus.OutOfService
+            case "PLANNED":
                 return OICPEvseStatus.Occupied
-            case "SUSPENDEDEVSE":
-                return OICPEvseStatus.Occupied
-            case "FINISHING":
-                return OICPEvseStatus.Occupied
+            case "REMOVED":
+                return OICPEvseStatus.OutOfService
             case "RESERVED":
                 return OICPEvseStatus.Reserved
-            case "UNAVAILABLE":
-                return OICPEvseStatus.Occupied
-            case "FAULTED":
-                return OICPEvseStatus.OutOfService
+            case "UNKNOWN":
+                return OICPEvseStatus.Unknown
             case _:
                 raise ValueError(f"Invalid OCPI status [{status}] found")

@@ -233,13 +233,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         return new_tariff
 
     @classmethod
-    def make_copies(cls, tariffs):
-        result = []
-        for t in tariffs:
-            result.append(cls.make_copy(t))
-        return result
-
-    @classmethod
     def get_default_tariffs(cls, standard) -> QuerySet:
         try:
             default_tariffs = DefaultTariffs.objects.get(standard=standard)

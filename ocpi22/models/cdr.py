@@ -1,8 +1,3 @@
-import pytz
-from django.utils.datetime_safe import datetime
-
-import ocpi22.ocpi_logging as logging
-
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
@@ -10,12 +5,12 @@ from django.dispatch import receiver
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
+from ocpi22.cpo.services import CdrService
 from ocpi22.models import enum
 from ocpi22.models.cdrlocation import CdrLocation
-from ocpi22.models.tariff import Tariff
-from ocpi22.models.session import Session, ChargingPeriodSerializer
+from ocpi22.models.session import Session
 from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHOICES
-from ocpi22.ocpi.util import OcpiModule, generate_cdr_uid, Ocpi
+from ocpi22.ocpi.util import OcpiModule, Ocpi
 
 from django.utils.translation import gettext_lazy as _
 
@@ -270,68 +265,6 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def total_session_time(self):
         return hours_minutes(self.total_time)
 
-    @classmethod
-    def from_session(cls, session: Session) -> "Cdr":
-        if not session.connector:
-            logging.error(
-                f"Not creating a CDR from Session {session.uid} since no Connector is specified"
-            )
-            return None
-        # Was there already a CDR created for this Session?
-        cdr = cls.objects.filter(session_id=session.uid)
-        if cdr.exists():
-            return cdr.first()
-        if session.total_cost_excl_vat is None:
-            logging.error(f"{settings.HOSTNAME}: Session {session} has no total cost")
-        if not session.end_date_time:
-            session.end_date_time = datetime.now(pytz.utc)
-
-        cdr_location = CdrLocation.get_or_create_from_session(session)
-        charging_periods_json = ChargingPeriodSerializer(
-            session.chargingperiods, many=True
-        ).data
-
-        if not charging_periods_json:
-            session.update_charging_periods(
-                kwh=session.kwh, timestamp=session.start_date_time
-            )
-            charging_periods_json = ChargingPeriodSerializer(
-                session.chargingperiods.all(), many=True
-            ).data
-
-        cdr = cls.objects.create(
-            uid=generate_cdr_uid(),
-            start_date_time=session.start_date_time,
-            end_date_time=session.end_date_time,
-            session_id=session.uid,
-            cdr_location=cdr_location,
-            cdr_token=session.cdr_token,
-            charging_periods=charging_periods_json,
-            auth_method=session.auth_method,
-            authorization_reference=session.authorization_reference,
-            currency=session.currency,
-            total_cost_excl_vat=session.total_cost_excl_vat or 0.0,
-            total_cost_incl_vat=session.total_cost_incl_vat or 0.0,
-            total_energy=session.kwh,
-            credentials=session.credentials,
-            ocpi_master=session.ocpi_master,
-            billed_to=session.billed_to,
-            last_updated=datetime.now(pytz.utc),
-        )
-
-        tariffs = session.connector.tariff_ids.all()
-        if tariffs.count():
-            cdr_tariffs = Tariff.make_copies(tariffs)
-        else:
-            cdr_tariffs = Tariff.make_copies(
-                Tariff.get_default_tariffs(session.connector.standard)
-            )
-        cdr.tariffs.set(cdr_tariffs)
-
-        cdr.send_updates()
-
-        return cdr
-
     def send_updates(self, data=None, method="post", path_components=[]) -> None:
         return self.send_update_to_interested_parties(
             method=method, path_components=path_components
@@ -341,7 +274,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
             if not Cdr.objects.filter(session_id=instance.uid).exists():
-                Cdr.from_session(instance)
+                CdrService.get_or_create_cdr(instance)
 
     def cost(self) -> str:
         return format_cost(

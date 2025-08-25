@@ -971,3 +971,14 @@ class TestPushEvseStatus:
             "Failed to create payload for EVSE status update"
             in caplog.records[0].message
         )
+
+    def test_post_evse_status_with_value_error_in_payload_returns_none(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+        evse.evse_id = "INVALID_EVSE_ID"
+        with patch(
+            "integrations.hubject.services.HubjectService._get_evse_status_update_payload",
+            side_effect=ValueError("Invalid OCPI status [INVALID_EVSE_ID] found"),
+        ):
+            result = HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            assert result is None
+            assert "Invalid OCPI status [INVALID_EVSE_ID] found" in caplog.text
