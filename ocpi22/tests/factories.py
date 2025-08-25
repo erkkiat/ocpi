@@ -457,6 +457,9 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     currency = "EUR"
     price_per_kwh = 0.2
     price_per_min = 0.3
+    price_per_hr = 0.3
+    parking_price_per_min = 0.1
+    parking_price_per_hr = 0.2
     price_flat = 0.3
     vat_percentage = 0.2
     msp = factory.SubFactory(

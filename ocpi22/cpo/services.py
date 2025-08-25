@@ -23,12 +23,24 @@ class SolidTariffService:
 
         operator = validated_data.pop("ocpi_master")
         validated_data["operator"] = operator
-        per_kwh, per_min, flat, parking_price, vat, currency, grace_period = (
-            self._extract_pricing_data(validated_data)
-        )
+        (
+            per_kwh,
+            per_min,
+            per_hour,
+            flat,
+            parking_price_per_min,
+            parking_price_per_hr,
+            vat,
+            currency,
+            grace_period,
+        ) = self._extract_pricing_data(validated_data)
 
-        per_hr = self._convert_to_hourly(per_min)
-        parking_price_per_hr = self._convert_to_hourly(parking_price)
+        per_hr = self._convert_to_hourly(per_min) if per_hour is None else per_hour
+        parking_price_per_hr = (
+            self._convert_to_hourly(parking_price_per_min)
+            if parking_price_per_hr is None
+            else parking_price_per_hr
+        )
 
         self._set_missing_fields(validated_data)
 
@@ -51,7 +63,7 @@ class SolidTariffService:
             per_min,
             per_hr,
             flat,
-            parking_price,
+            parking_price_per_min,
             parking_price_per_hr,
             vat,
             grace_period,
@@ -71,18 +83,32 @@ class SolidTariffService:
             PriceMinSerializer,
             PriceFlatSerializer,
             VatSerializer,
+            PriceHourSerializer,
             ParkingPricePerMinSerializer,
+            ParkingPricePerHourSerializer,
         )
 
         per_kwh = validated_data.get(PriceKwhSerializer.key)
         per_min = validated_data.get(PriceMinSerializer.key)
+        per_hour = validated_data.get(PriceHourSerializer.key)
         flat = validated_data.get(PriceFlatSerializer.key)
-        parking_price = validated_data.get(ParkingPricePerMinSerializer.key)
+        parking_price_per_min = validated_data.get(ParkingPricePerMinSerializer.key)
+        parking_price_per_hr = validated_data.get(ParkingPricePerHourSerializer.key)
         vat = validated_data.get(VatSerializer.key)
         currency = validated_data.get(CurrencySerializer.key)
         grace_period = validated_data.get("parking_grace_period")
 
-        return per_kwh, per_min, flat, parking_price, vat, currency, grace_period
+        return (
+            per_kwh,
+            per_min,
+            per_hour,
+            flat,
+            parking_price_per_min,
+            parking_price_per_hr,
+            vat,
+            currency,
+            grace_period,
+        )
 
     def _convert_to_hourly(self, per_minute_value):
         try:
@@ -114,7 +140,7 @@ class SolidTariffService:
         per_min,
         per_hr,
         flat,
-        parking_price,
+        parking_price_per_min,
         parking_price_per_hr,
         vat,
         grace_period,
@@ -139,8 +165,10 @@ class SolidTariffService:
                 currency=currency,
                 price_per_kwh=per_kwh,
                 price_per_min=per_min,
+                price_per_hr=per_hr,
                 price_flat=flat,
-                parking_price_per_min=parking_price,
+                parking_price_per_min=parking_price_per_min,
+                parking_price_per_hr=parking_price_per_hr,
                 parking_grace_period=grace_period,
                 vat_percentage=vat,
                 ocpi_tariff=ocpi_tariff,
