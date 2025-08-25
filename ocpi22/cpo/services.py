@@ -6,6 +6,7 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 import pytz
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -329,6 +330,16 @@ class CdrService:
             session.end_date_time = datetime.now(pytz.utc)
 
         cdr = cls._create_cdr(session)
+
+        if settings.ENABLE_HUBJECT:
+            if session.route_through_oicp:
+                from integrations.hubject.services import HubjectService
+
+                HubjectService.post_eroaming_charge_detail_record(
+                    cdr.ocpi_master.party_str(), cdr
+                )
+
+                return cdr
 
         cdr.send_updates()
 

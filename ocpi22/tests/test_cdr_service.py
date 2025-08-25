@@ -6,6 +6,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import time_machine
+from django.test import override_settings
 
 from ocpi22.models.session import ChargingPeriod, ChargingPeriodSerializer
 from ocpi22.cpo.services import CdrService
@@ -15,6 +16,8 @@ from ocpi22.tests.factories import (
     TariffFactory,
     DefaultTariffsFactory,
     CdrTokenFactory,
+    CredentialsFactory,
+    CredentialsRoleFactory,
 )
 
 
@@ -217,3 +220,33 @@ def test_get_or_create_cdr_from_session_sends_updates_after_creation(mock_sessio
 
     assert result == mock_cdr
     mock_cdr.send_updates.assert_called_once()
+
+
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
+def test_get_or_create_cdr_from_session_sends_hubject_eroaming_charge_detail_record(
+    mock_session,
+):
+    mock_cdr = Mock()
+    mock_cdr.ocpi_master = Mock()
+    mock_cdr.ocpi_master.party_str.return_value = "DE*ICE"
+
+    role = CredentialsRoleFactory(
+        credentials=CredentialsFactory(), country_code="DE", party_id="ICE"
+    )
+    mock_session.credentials = role.credentials
+
+    with (
+        patch("ocpi22.cpo.services.CdrService._get_cdr", return_value=None),
+        patch("ocpi22.cpo.services.CdrService._create_cdr", return_value=mock_cdr),
+        patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+        ) as mock_eroaming_cdr,
+    ):
+        result = CdrService.get_or_create_cdr(mock_session)
+
+    assert result == mock_cdr
+    mock_cdr.send_updates.assert_not_called()
+    mock_eroaming_cdr.assert_called_once_with(
+        mock_cdr.ocpi_master.party_str(), mock_cdr
+    )
