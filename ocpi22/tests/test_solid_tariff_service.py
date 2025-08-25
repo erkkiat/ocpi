@@ -111,7 +111,7 @@ def test_convert_to_hourly(
 
 
 @pytest.mark.django_db
-def test_create_returns_solid_tariff_with_vali_data(
+def test_create_returns_solid_tariff_with_valid_data(
     solid_tariff_service_instance, smp1_solid_tariff_validated_json
 ):
     solid_tariff = solid_tariff_service_instance.create(
