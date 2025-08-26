@@ -421,7 +421,7 @@ class HubjectService:
 
     @staticmethod
     def post_eroaming_charge_detail_record(
-        operator_id: str, cdr: Optional["Cdr"] | None, session_id=None, retries=3
+        operator_id: str, cdr: Optional["Cdr"], session_id=None, retries=3
     ) -> dict:
         from ocpi22.models.cdr import Cdr
 
@@ -447,10 +447,7 @@ class HubjectService:
                     "error": f"CDR with session id {session_id} has not routed through OICP",
                 }
 
-        url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
-        )
+        url = f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record"
 
         try:
             payload = (
