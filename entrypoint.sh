@@ -7,8 +7,6 @@ case "$1" in
     django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
-        echo "Applying migrations"
-        python manage.py migrate --noinput
         echo "Starting Django server with New Relic monitoring..."
         exec newrelic-admin run-program gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;
