@@ -7,6 +7,7 @@ services:
     container_name: django-migrations
     env_file:
       - ./django-app.env
+    entrypoint: []
     command: [ "python", "manage.py", "migrate", "--noinput" ]
     restart: "no"
 
