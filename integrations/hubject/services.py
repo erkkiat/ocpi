@@ -50,11 +50,13 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Optional
 from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
+    from ocpi22.models.cdr import Cdr
+
 
 logger = logging.getLogger(__name__)
 
@@ -416,3 +418,58 @@ class HubjectService:
         )
 
         send_hubject_request.delay(payload_json, url, "post")
+
+    @staticmethod
+    def post_eroaming_charge_detail_record(
+        operator_id: str, cdr: Optional["Cdr"], session_id=None, retries=3
+    ) -> dict:
+        from ocpi22.models.cdr import Cdr
+
+        if cdr is None:
+            if session_id is None:
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": "Either CDR or session_id must be provided.",
+                }
+
+            cdr = Cdr.objects.filter(session_id=session_id).first()
+            if not cdr:
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": f"No CDR found for session_id {session_id}.",
+                }
+            if not cdr.route_through_oicp:
+                return {
+                    "success": False,
+                    "errorType": "Incompatible CDR",
+                    "error": f"CDR with session id {session_id} has not routed through OICP",
+                }
+
+        url = f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record"
+
+        try:
+            payload = (
+                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
+                    cdr
+                )
+            )
+            payload_json = payload.model_dump(
+                mode="json", exclude_none=True, by_alias=True
+            )
+        except ValidationError as ve:
+            return {
+                "success": False,
+                "errorType": "Validation Error",
+                "error": str(ve),
+            }
+
+        retry_policy = dict(max_retries=retries, interval_start=5)
+        send_hubject_request.apply_async(
+            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
+        )
+        return {
+            "success": True,
+            "message": "Sent CDR to hubject",
+        }

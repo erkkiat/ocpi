@@ -1,5 +1,6 @@
 import functools
 import regex
+import logging
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -48,6 +49,8 @@ from ocpi22.choices import OCPICapability
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
@@ -626,6 +629,9 @@ class SolidToHubjectConverter:
             == CalibrationLawDataAvailability.External
         ):
             if eroaming_cdr.signed_metering_values is None:
+                logger.error(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External in ERoamingChargeDetailRecord."
+                )
                 raise ValidationError(
                     "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
                 )
