@@ -6,6 +6,7 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import time_machine
+from django.core.exceptions import ObjectDoesNotExist
 from django.test import override_settings
 from rest_framework.exceptions import ValidationError
 
@@ -99,7 +100,7 @@ def test_get_cdr_tariffs_returns_a_list_of_tariffs_from_charging_periods():
 
 
 @pytest.mark.django_db
-def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
+def test_get_cdr_tariffs_raises_does_not_exists_error_when_nonexistent_tariffs(caplog):
     caplog.set_level(logging.WARNING)
     tariff1 = TariffFactory(uid="CP1")
     tariff2 = TariffFactory(uid="CP2")
@@ -115,9 +116,10 @@ def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
 
     standard = "IEC_62196_T2"
 
-    CdrService._get_cdr_tariffs(charging_periods, standard)
-
-    assert "Tariff with uid CP2 not found." in caplog.text
+    with pytest.raises(
+        ObjectDoesNotExist, match="Tariff with UID CP2 doesn't exist in the database"
+    ):
+        CdrService._get_cdr_tariffs(charging_periods, standard)
 
 
 @pytest.mark.django_db
