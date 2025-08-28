@@ -264,7 +264,9 @@ class CdrService:
         for charging_period in charging_periods:
             tariff_id = charging_period.get("tariff_id")
             if tariff_id:
-                tariff = Tariff.objects.get_if_exists(uid=tariff_id)
+                tariff = Tariff.objects.get_if_exists(
+                    uid=tariff_id, archived=False, raise_exception=True
+                )
                 if tariff:
                     cdr_tariffs.append(tariff)
                 else:
