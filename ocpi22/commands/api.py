@@ -1,5 +1,3 @@
-# ocpi22/commands/api.py - API Layer: Just validate and call service
-
 from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
 
@@ -20,18 +18,14 @@ from ocpiconnector.exception_handler import ocpi_exception_handler
 
 
 class CommandsViewSet(GenericViewSet):
-    """API layer - just validate data and call services"""
-
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     def start_session(self, request, **kwargs):
-        # Check if we have data
         if not request.data:
             return OCPIResponse(
                 {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Validate the data
         serializer = StartSessionSerializer(
             data=request.data, context={"request": request}
         )
@@ -42,7 +36,6 @@ class CommandsViewSet(GenericViewSet):
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Call service to do the work
         service = StartSessionService()
         return service.start_session(request, serializer.validated_data)
 
