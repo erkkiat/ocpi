@@ -1,7 +1,6 @@
 from builtins import list
 from typing import Union, Optional
 
-import pytz
 from logging import getLogger
 from django.views.decorators.csrf import csrf_exempt
 
@@ -15,19 +14,19 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
-from ocpi22.commands.cpo_simulator import start_simulated_session
-from ocpi22.commands.services import process_remote_command
+from ocpi22.commands.services import (
+    StartSessionService,
+    StopSessionService,
+    ReserveNowService,
+)
 from ocpi22.decorators import requires_sender_role
-from ocpi22.models import enum
 from ocpi22.msp.models import Authorization
-from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
 
 from ocpi22.util import OCPIVersioning
-from ocpi22.cpo.api import close_active_sessions_for_evse
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
@@ -39,16 +38,10 @@ from ocpi22.commands.serializers import (
     CommandResultSerializer,
     ReserveNowSerializer,
 )
-from ocpi22.cpo.serializers import (
-    CPOStartWebhookSerializer,
-    CPOStopWebhookSerializer,
-    CPOReserveNowWebhookSerializer,
-)
 from ocpi22.models.location import Evse, Location
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route, Route
-from ocpi22.sessions.util import create_session
 from ocpi22.ocpi.util import (
     ocpi_post,
     OCPIResponse,
@@ -96,7 +89,7 @@ class CommandsViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Command {self.kwargs.get("uid")}'
+            return f"Command {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Commands"
@@ -112,75 +105,49 @@ class CommandsViewSet(GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     def start_session(self, request, **_kwargs):
-        return process_remote_command(
-            request,
-            command_serializer=StartSessionSerializer,
-            webhook_serializer=CPOStartWebhookSerializer,
-            command_prefix="START",
-            extra_actions=self.start_session_extra_actions,
+        if not request.data:
+            return OCPIResponse(
+                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = StartSessionSerializer(
+            data=request.data, context={"request": request, "version": request.version}
         )
-
-    @staticmethod
-    def create_session(request, token, connector_id, billed_to, evse_uid, serializer):
-        from ocpi22.models.credentials import CredentialsRole
-
-        assert isinstance(billed_to, CredentialsRole)
-        params = serializer.validated_data.copy()
-        params.update(
-            dict(
-                ad_hoc_token=AdhocToken.from_dict(token),
-                billed_to=billed_to.get_party(),
-                authorization_method=enum.AuthMethodChoices.COMMAND,
-                credentials=request.credentials,
-                connector_id=connector_id,
+        if not serializer.is_valid():
+            return OCPIResponse(
+                serializer.errors,
+                status_message="Please check your request parameters",
+                http_status=status.HTTP_400_BAD_REQUEST,
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
             )
-        )
-        params.pop("token")
 
-        close_active_sessions_for_evse(evse_uid)
-        session: Session = create_session(**params)
+        service = StartSessionService()
+        return service.start_session(request, serializer.validated_data)
 
-        return session
-
-    def reserve_now_extra_actions(self, request, session, **kwargs):
-        if not session:
-            session = self.create_session(request, **kwargs)
-            logger.info(
-                f"Created reservation session {session.uid} based on remote command from MSP."
-            )
-        else:
-            logger.info(f"Found an existing session {session.uid}.")
-
-    def start_session_extra_actions(self, request, session, **kwargs):
-        if not session:
-            session = self.create_session(request, **kwargs)
-            logger.info(
-                f"Created session {session.uid} based on remote command from MSP."
-            )
-        else:
-            logger.info(f"Found an existing session {session.uid}.")
-            # raise APIException(f'Session already exists')
-
-        # Reservation may have started earlier, but charging session starts now
-        session.start_date_time = datetime.now(pytz.utc)
-        session.save(update_fields=["start_date_time"])
-
-        if settings.CPO_SIMULATOR:
-            start_simulated_session(session, **kwargs)
+    # These methods have been moved to the service classes
+    # Keeping them for reference but they're not used anymore
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     def reserve_now(self, request, **_kwargs):
-        # TODO: If this Token is of type RFID, the CPO SHALL NOT do a realtime authorization at the eMSP for
-        #  this Token at the given EVSE/Charge Point within 15 minutes after having received this ReserveNow.
+        if not request.data:
+            return OCPIResponse(
+                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-        return process_remote_command(
-            request,
-            command_serializer=ReserveNowSerializer,
-            webhook_serializer=CPOReserveNowWebhookSerializer,
-            command_prefix="RESERVE",
-            extra_actions=self.reserve_now_extra_actions,
+        serializer = ReserveNowSerializer(
+            data=request.data, context={"request": request, "version": request.version}
         )
+        if not serializer.is_valid():
+            return OCPIResponse(
+                serializer.errors,
+                status_message="Please check your request parameters",
+                http_status=status.HTTP_400_BAD_REQUEST,
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+            )
+
+        service = ReserveNowService()
+        return service.reserve_now(request, serializer.validated_data)
 
     @ocpi_exception_handler
     @csrf_exempt
@@ -229,23 +196,27 @@ class CommandsViewSet(GenericViewSet):
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
     def stop_session(self, request, **_kwargs):
-        return process_remote_command(
-            request,
-            command_serializer=StopSessionSerializer,
-            webhook_serializer=CPOStopWebhookSerializer,
-            command_prefix="STOP",
-            extra_actions=self.stop_session_extra_actions,
-        )
+        if not request.data:
+            return OCPIResponse(
+                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-    @staticmethod
-    def stop_session_extra_actions(_request, session: Session, **_kwargs):
-        """
-        This method is called from the process_remote_command
-        """
-        session.status = Session.COMPLETED
-        session.end_date_time = datetime.now(pytz.utc)
-        session.save(update_fields=["status", "end_date_time"])
-        session.send_updates()
+        serializer = StopSessionSerializer(
+            data=request.data, context={"request": request, "version": request.version}
+        )
+        if not serializer.is_valid():
+            return OCPIResponse(
+                serializer.errors,
+                status_message="Please check your request parameters",
+                http_status=status.HTTP_400_BAD_REQUEST,
+                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+            )
+
+        service = StopSessionService()
+        return service.stop_session(request, serializer.validated_data)
+
+    # This method has been moved to StopSessionService
+    # Keeping for reference but not used anymore
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.EMSP)
@@ -305,8 +276,8 @@ class CommandsViewSet(GenericViewSet):
             message = serializer.validated_data.get("message")
             session.update(message=message)
             logger.info(
-                f'Received CommandResult {result} and '
-                f'message {message or "N/A"} for command {command} ID {command_id}'
+                f"Received CommandResult {result} and "
+                f"message {message or 'N/A'} for command {command} ID {command_id}"
             )
             # Todo: Embed any error or success text to the Session status response
             return OCPIResponse(
