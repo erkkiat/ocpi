@@ -18,6 +18,7 @@ from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.mqtt.services import ensure_db_connection
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import create_credentialsrole, ocpi_identities
 from ocpiconnector.party import Party
@@ -137,6 +138,7 @@ def check_auth_token(request, token: str) -> bool:
         credentials.pk if credentials else None, party, role
     ),
 )  # Ignore the create flag
+@ensure_db_connection
 def get_credentialsrole(
     credentials: Optional[Credentials] = None,
     party: Party = None,

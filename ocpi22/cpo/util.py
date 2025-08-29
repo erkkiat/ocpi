@@ -1,10 +1,12 @@
 from django.core.exceptions import ValidationError
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.mqtt.services import ensure_db_connection
 from ocpi22.models.location import Evse
 from ocpiconnector.ocpi_identities import get_our_party
 
 
+@ensure_db_connection
 def find_our_evse(evse_uid) -> Evse:
     """
     Return our latest EVSE that matches the given UID
