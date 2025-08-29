@@ -864,12 +864,15 @@ class ChargePointViewSet(FlowchartViewSet):
                         f"{extra_information}",
                     )
 
-                    # Create the corresponding CDR (it will also be sent to other party)
-                    from ocpi22.cpo.services import CdrService
+                    try:
+                        # Create the corresponding CDR (it will also be sent to other party)
+                        from ocpi22.cpo.services import CdrService
 
-                    CdrService.get_or_create_cdr(
-                        session
-                    )  # Todo: Do this in a celery task
+                        CdrService.get_or_create_cdr(
+                            session
+                        )  # Todo: Do this in a celery task
+                    except ValidationError as e:
+                        logger.error(e)
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,

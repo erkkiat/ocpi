@@ -1,7 +1,11 @@
+import logging
+
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from rest_framework.exceptions import ValidationError
+
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
@@ -13,6 +17,8 @@ from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHO
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 
 from django.utils.translation import gettext_lazy as _
+
+logger = logging.getLogger(__name__)
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -274,7 +280,10 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
             if not Cdr.objects.filter(session_id=instance.uid).exists():
-                CdrService.get_or_create_cdr(instance)
+                try:
+                    CdrService.get_or_create_cdr(instance)
+                except ValidationError as e:
+                    logger.error(e)
 
     def cost(self) -> str:
         return format_cost(

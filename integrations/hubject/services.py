@@ -427,6 +427,9 @@ class HubjectService:
 
         if cdr is None:
             if session_id is None:
+                logger.warning(
+                    "Neither CDR nor session_id provided for CDR post for Hubject"
+                )
                 return {
                     "success": False,
                     "errorType": "Invalid Input",
@@ -435,12 +438,16 @@ class HubjectService:
 
             cdr = Cdr.objects.filter(session_id=session_id).first()
             if not cdr:
+                logger.warning(f"No CDR found for session_id {session_id}")
                 return {
                     "success": False,
                     "errorType": "Invalid Input",
                     "error": f"No CDR found for session_id {session_id}.",
                 }
             if not cdr.route_through_oicp:
+                logger.warning(
+                    f"CDR for session_id {session_id} has not routed through OICP"
+                )
                 return {
                     "success": False,
                     "errorType": "Incompatible CDR",
@@ -459,6 +466,7 @@ class HubjectService:
                 mode="json", exclude_none=True, by_alias=True
             )
         except ValidationError as ve:
+            logger.error("Failed to create payload for Hubject CDR", exc_info=True)
             return {
                 "success": False,
                 "errorType": "Validation Error",
@@ -469,6 +477,7 @@ class HubjectService:
         send_hubject_request.apply_async(
             args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
         )
+        logger.info("Hubject CDR post task queued")
         return {
             "success": True,
             "message": "Sent CDR to hubject",

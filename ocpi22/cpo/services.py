@@ -264,11 +264,10 @@ class CdrService:
         for charging_period in charging_periods:
             tariff_id = charging_period.get("tariff_id")
             if tariff_id:
-                tariff = Tariff.objects.get_if_exists(uid=tariff_id)
-                if tariff:
-                    cdr_tariffs.append(tariff)
-                else:
-                    logger.warning(f"Tariff with uid {tariff_id} not found.")
+                tariff = Tariff.objects.get_if_exists(
+                    uid=tariff_id, archived=False, raise_exception=True
+                )
+                cdr_tariffs.append(tariff)
         if not cdr_tariffs:
             logger.warning(
                 "Charging period does not have a tariff_id, using default tariffs"
