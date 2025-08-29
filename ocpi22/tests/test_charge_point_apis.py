@@ -496,12 +496,12 @@ class TestChargePointAPI:
         assert response.json()["end_date_time"] == "2025-03-31T06:26:58Z"
 
     @pytest.mark.django_db
-    def test_stop_transaction_post_with_duplicate_tariffs_returns_400(
-        self, admin_user_client, session
+    def test_stop_transaction_post_with_duplicate_tariffs_returns_200(
+        self, admin_user_client, session, caplog
     ):
         TariffFactory(uid="CP1")
-        Tariff = TariffFactory(uid="CP1")
-        session.connector.tariff_ids.set([Tariff])
+        tariff = TariffFactory(uid="CP1")
+        session.connector.tariff_ids.set([tariff])
         session.save()
 
         request_body = {
@@ -510,8 +510,20 @@ class TestChargePointAPI:
             "timestamp": "2025-03-31T06:26:58Z",
         }
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
-        assert response.status_code == 400
+        assert response.status_code == 200
         assert (
-            response.json()[0]
-            == "There are more than one Tariff with the criteria {'uid': 'CP1', 'archived': False} in the database"
+            "There are more than one Tariff with the criteria {'uid': 'CP1', 'archived': False} in the database"
+            in caplog.text
         )
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_with_no_tariffs_returns_200(
+        self, admin_user_client, session, caplog
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 100,
+            "timestamp": "2025-03-31T06:26:58Z",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
