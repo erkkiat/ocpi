@@ -4,7 +4,6 @@ from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from rest_framework.exceptions import ValidationError
 
 import util
 
@@ -280,10 +279,7 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
     def session_changed(cls, instance: Session) -> None:
         if instance.status == Session.COMPLETED and instance.is_ours():
             if not Cdr.objects.filter(session_id=instance.uid).exists():
-                try:
-                    CdrService.get_or_create_cdr(instance)
-                except ValidationError as e:
-                    logger.error(e)
+                CdrService.get_or_create_cdr(instance)
 
     def cost(self) -> str:
         return format_cost(

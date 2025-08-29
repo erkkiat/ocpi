@@ -7,8 +7,9 @@ from zoneinfo import ZoneInfo
 
 import pytz
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.db import transaction
+from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
 
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.cdrlocation import CdrLocation
@@ -312,34 +313,38 @@ class CdrService:
 
     @classmethod
     def get_or_create_cdr(cls, session: Session) -> Optional["Cdr"]:
-        if not session.connector:
-            logging.error(
-                f"Not creating a CDR from Session {session.uid} since no Connector is specified"
-            )
-            return None
-
-        cdr = cls._get_cdr(session.uid)
-        if cdr:
-            return cdr
-
-        if session.total_cost_excl_vat is None:
-            logger.error(f"Session {session} has no total cost")
-            return None
-        if not session.end_date_time:
-            session.end_date_time = datetime.now(pytz.utc)
-
-        cdr = cls._create_cdr(session)
-
-        if settings.ENABLE_HUBJECT:
-            if session.route_through_oicp:
-                from integrations.hubject.services import HubjectService
-
-                HubjectService.post_eroaming_charge_detail_record(
-                    cdr.ocpi_master.party_str(), cdr
+        try:
+            if not session.connector:
+                logging.error(
+                    f"Not creating a CDR from Session {session.uid} since no Connector is specified"
                 )
+                return None
 
+            cdr = cls._get_cdr(session.uid)
+            if cdr:
                 return cdr
 
-        cdr.send_updates()
+            if session.total_cost_excl_vat is None:
+                logger.error(f"Session {session} has no total cost")
+                return None
+            if not session.end_date_time:
+                session.end_date_time = datetime.now(pytz.utc)
 
-        return cdr
+            cdr = cls._create_cdr(session)
+
+            if settings.ENABLE_HUBJECT:
+                if session.route_through_oicp:
+                    from integrations.hubject.services import HubjectService
+
+                    HubjectService.post_eroaming_charge_detail_record(
+                        cdr.ocpi_master.party_str(), cdr
+                    )
+
+                    return cdr
+
+            cdr.send_updates()
+
+            return cdr
+        except (RestFrameworkValidationError, ObjectDoesNotExist) as e:
+            logger.error(e)
+            return None
