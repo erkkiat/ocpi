@@ -63,8 +63,8 @@ DATABASES = {
         "PORT": "3306",
         "OPTIONS": {"ssl_mode": "REQUIRED"},
         "CONN_MAX_AGE": 200,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
 HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
-CONN_HEALTH_CHECKS = True
