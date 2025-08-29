@@ -29,7 +29,7 @@ from ocpi22.ocpi.util import (
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
 from util import OCPIVersion

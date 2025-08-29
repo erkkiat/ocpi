@@ -92,7 +92,7 @@ from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
 
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str, Party
 

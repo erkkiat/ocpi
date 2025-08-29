@@ -31,7 +31,7 @@ from ocpi22.choices import (
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
