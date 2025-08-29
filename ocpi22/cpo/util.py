@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.cpo.mqtt.services import ensure_db_connection
+from ocpiconnector.db_services import ensure_db_connection
 from ocpi22.models.location import Evse
 from ocpiconnector.ocpi_identities import get_our_party
 

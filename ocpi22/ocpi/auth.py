@@ -18,7 +18,7 @@ from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.cpo.mqtt.services import ensure_db_connection
+from ocpiconnector.db_services import ensure_db_connection
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import create_credentialsrole, ocpi_identities
 from ocpiconnector.party import Party

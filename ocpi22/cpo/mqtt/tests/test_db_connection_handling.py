@@ -4,10 +4,10 @@ import pytest
 from django.db.utils import OperationalError, InterfaceError
 
 from ocpi22.cpo.mqtt.services import (
-    ensure_db_connection,
     process_meter_values_data,
     process_status_update_data,
 )
+from ocpiconnector.db_services import ensure_db_connection
 
 
 class TestDatabaseConnectionHandling:
