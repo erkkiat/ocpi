@@ -4,10 +4,10 @@ import pytest
 from django.db.utils import OperationalError, InterfaceError
 
 from ocpi22.cpo.mqtt.services import (
-    ensure_db_connection,
     process_meter_values_data,
     process_status_update_data,
 )
+from ocpiconnector.db_services import ensure_db_connection
 
 
 class TestDatabaseConnectionHandling:
@@ -166,8 +166,8 @@ class TestDatabaseConnectionHandling:
         result = test_function("test", "value", kwarg1="param")
         assert result == "test-value-param"
 
-    @patch("ocpi22.cpo.mqtt.services.time")
-    @patch("ocpi22.cpo.mqtt.services.close_old_connections")
+    @patch("ocpiconnector.db_services.time")
+    @patch("ocpiconnector.db_services.close_old_connections")
     def test_decorator_calls_close_connections_and_sleeps_on_retry(
         self, mock_close, mock_time
     ):

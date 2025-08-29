@@ -1,13 +1,9 @@
-import time
-
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
-from functools import wraps
 
-from django.db import close_old_connections
-from django.db.utils import OperationalError as DjangoOperationalError, InterfaceError
+from django.db.utils import OperationalError as DjangoOperationalError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
@@ -30,41 +26,10 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
+from ocpiconnector.db_services import logger, ensure_db_connection
 from ocpiconnector.party import Party
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-def ensure_db_connection(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (DjangoOperationalError, InterfaceError) as e:
-            error_msg = str(e).lower()
-
-            if any(
-                err in error_msg for err in ["server has gone away", "2006", "2013"]
-            ):
-                logger.warning(
-                    f"Database connection lost in {func.__name__}, retrying once: {e}"
-                )
-
-                close_old_connections()
-                time.sleep(0.1)
-
-                try:
-                    return func(*args, **kwargs)
-                except Exception as retry_error:
-                    logger.error(
-                        f"Database retry failed in {func.__name__}: {retry_error}"
-                    )
-                    raise
-            else:
-                raise
-
-    return wrapper
 
 
 def _decode_message(message):
