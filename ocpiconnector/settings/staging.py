@@ -62,6 +62,8 @@ DATABASES = {
         "HOST": db_url,
         "PORT": "3306",
         "OPTIONS": {"ssl_mode": "REQUIRED"},
+        "CONN_MAX_AGE": 200,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 

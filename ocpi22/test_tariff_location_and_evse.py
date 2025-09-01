@@ -39,6 +39,7 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
+from ocpi22.cpo.services import CdrService
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
@@ -1253,7 +1254,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.from_session(session)
+        cdr1: Cdr = CdrService.get_or_create_cdr(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1287,7 +1288,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.from_session(session)
+        cdr: Cdr = CdrService.get_or_create_cdr(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(

@@ -10,6 +10,7 @@ from enum import Enum
 from typing import List, Optional
 
 from django.conf import settings
+from ninja import Schema
 from pydantic import (
     BaseModel,
     Field,
@@ -1231,3 +1232,9 @@ class HubjectDefaultTariff(BaseModel):
                 return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")
+
+
+class HubjectCDRError(Schema):
+    success: bool
+    errorType: str
+    error: str

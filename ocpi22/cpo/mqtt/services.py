@@ -2,9 +2,7 @@ from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
-from functools import wraps
 
-from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
@@ -28,28 +26,10 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
+from ocpiconnector.db_services import logger, ensure_db_connection
 from ocpiconnector.party import Party
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-def ensure_db_connection(func):
-    """Decorator to handle database connection errors in MQTT message processing"""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except DjangoOperationalError as e:
-            if "server has gone away" in str(e).lower() or "2006" in str(e):
-                logger.warning("Database connection lost, reconnecting...")
-                close_old_connections()
-                return func(*args, **kwargs)
-            else:
-                raise
-
-    return wrapper
 
 
 def _decode_message(message):

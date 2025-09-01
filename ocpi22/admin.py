@@ -40,7 +40,6 @@ from ocpiconnector.ocpi_identities import (
     get_our_credentialsrole,
 )
 from ocpiconnector.party import Party
-from webhooks.models import Webhook
 from payment.models import Payment
 
 admin.site.site_header = "Roaming Admin"
@@ -954,13 +953,6 @@ class AuthorizationAdmin(SolidModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-@admin.register(Webhook)
-class WebhookAdmin(admin.ModelAdmin):
-    model = Webhook
-    list_display = ["event", "url", "created_at", "updated_at"]
-    search_fields = ["event", "url"]
 
 
 admin.site.register(Token, TokenAdmin)
