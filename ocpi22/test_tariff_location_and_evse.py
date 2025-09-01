@@ -2406,7 +2406,7 @@ class TestSession(TestCase):
 
                 with (
                     patch("ocpi22.util.redis_store.get") as mock_get,
-                    patch("ocpi22.webhooks.requests.put") as webhook_post_mock,
+                    patch("ocpi22.legacy_webhooks.requests.put") as webhook_post_mock,
                 ):
                     mock_get.return_value = "http://localhost/session/"
                     response = SessionViewSet().patch(request, **kwargs)
@@ -2550,7 +2550,7 @@ class TestCpoApi(TestCase):
     @patch("ocpi22.ocpi.util.uuid.uuid4", return_value=MockUuid4())
     # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(AuthorizeData.accept_authorization)])
     @patch("ocpi22.tokens.token_async.post_request", new_callable=AsyncMock)
-    @patch("ocpi22.webhooks.requests.put")
+    @patch("ocpi22.legacy_webhooks.requests.put")
     def test_rfid_charging_flow(
         self,
         _webhook_post_mock: Mock,
