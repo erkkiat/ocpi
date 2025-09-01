@@ -50,7 +50,7 @@ class StartSessionService:
             )
 
         try:
-            webhook_response = self._send_to_charger_system(
+            webhook_response = self.send_command_webhook(
                 request,
                 billed_to,
                 session,
@@ -94,7 +94,7 @@ class StartSessionService:
 
         return None
 
-    def _send_to_charger_system(
+    def send_command_webhook(
         self, request, billed_to, session, validated_data, command_type
     ):
         if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
@@ -293,7 +293,7 @@ class StopSessionService:
 
         start_service = StartSessionService()  # Reuse the webhook logic
         try:
-            webhook_response = start_service._send_to_charger_system(
+            webhook_response = start_service.send_command_webhook(
                 request, None, session, validated_data, RemoteCommandType.STOP_SESSION
             )
         except Exception as e:
@@ -323,7 +323,7 @@ class ReserveNowService:
         start_service = StartSessionService()
 
         try:
-            webhook_response = start_service._send_to_charger_system(
+            webhook_response = start_service.send_command_webhook(
                 request, None, None, validated_data, RemoteCommandType.RESERVE_NOW
             )
         except Exception as e:
