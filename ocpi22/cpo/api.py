@@ -92,7 +92,7 @@ from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
 
-from ocpi22.legacy_webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str, Party
 
@@ -1292,7 +1292,7 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
     try:
         if settings.ENV != "test":
             cdr_serializer = CdrSerializer(instance)
-            send_to_webhook(
+            send_to_webhook_legacy(
                 serialized_data=cdr_serializer.data,
                 serializer=InvoicingCallbackSerializer,
             )

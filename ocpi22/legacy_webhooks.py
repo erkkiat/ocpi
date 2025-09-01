@@ -13,27 +13,7 @@ from ocpi22.util import build_callback_request
 logger = getLogger(__name__)
 
 
-def send_to_webhook(
-    data: Union[dict, Location, Evse] = None,
-    serializer=None,
-    serialized_data=None,
-    outbound_serializer=None,
-    timeout=10,
-    ocpi_master=None,
-) -> Optional[dict]:
-    """
-    Webhook function - temporarily disabled.
-    Only remote command webhooks are handled by the new webhook system.
-    """
-    if settings.PERFORMANCE_TEST:
-        return {}
-
-    serializer_name = serializer.__class__.__name__ if serializer else "Unknown"
-    logger.info(f"Webhook disabled for serializer: {serializer_name}")
-    return {}
-
-
-def send_to_webhook_legacy_for_reference_only(
+def send_to_webhook_legacy(
     data: Union[dict, Location, Evse] = None,
     serializer=None,
     serialized_data=None,
@@ -48,7 +28,7 @@ def send_to_webhook_legacy_for_reference_only(
         # Send updates for all EVSEs at this Location
         list(
             map(
-                lambda evse: send_to_webhook(
+                lambda evse: send_to_webhook_legacy(
                     evse,
                     serializer,
                     serialized_data,
@@ -62,7 +42,7 @@ def send_to_webhook_legacy_for_reference_only(
         return {}
     if isinstance(data, Evse):
         ocpi_master = ocpi_master or data.location.ocpi_master
-        return send_to_webhook(
+        return send_to_webhook_legacy(
             dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
             serializer,
             serialized_data,

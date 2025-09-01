@@ -29,7 +29,7 @@ from ocpi22.ocpi.util import (
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 
-from ocpi22.legacy_webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
 from util import OCPIVersion
@@ -177,7 +177,9 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
             Location.objects.prefetch_related(
                 "evses", "evses__connectors", "evses__connectors__tariff_ids"
             ).get(pk=saved_location.pk)
-            send_to_webhook(saved_location, MSPChargePointStatusCallbackSerializer)
+            send_to_webhook_legacy(
+                saved_location, MSPChargePointStatusCallbackSerializer
+            )
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
 
             # Was Location posted from the CPO backend using OCPI Locations endpoint, not from a roaming partner?
@@ -379,7 +381,7 @@ class EvseViewSet(GenericViewSet):
                 "status": evse.status,
             }
             if ocpi_platform.is_emsp:
-                send_to_webhook(
+                send_to_webhook_legacy(
                     data,
                     MSPChargePointStatusCallbackSerializer,
                     ocpi_master=credentialsrole,
