@@ -59,9 +59,11 @@ class StartSessionService:
                 RemoteCommandType.START_SESSION,
             )
         except Exception as e:
+            # debugging
+            logger.exception(e)
             return OCPIResponse(
                 None,
-                status_message=f"Could not communicate with charger system: {str(e)}",
+                status_message="Could not communicate with charger system",
                 http_status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
