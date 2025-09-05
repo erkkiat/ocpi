@@ -7,6 +7,7 @@ from rest_framework import status
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.models.session import Session
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
+from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.util import command_store
 from ocpi22.choices import MessageTexts
 from ocpi22.ocpi.auth import get_credentialsrole
@@ -69,21 +70,16 @@ class StartSessionService:
 
         return self._create_ocpi_response(webhook_response, "START")
 
-    def _get_request_info(self, request, validated_data):
-        billed_to = get_credentialsrole(party=self._get_sender_party(request))
-
-        session = self._find_existing_session(validated_data)
-
-        return billed_to, session
-
-    def _get_sender_party(self, request):
-        billed_to = get_credentialsrole(party=request.META)
+    @staticmethod
+    def _get_sender_party(request):
+        billed_to = get_sender_party(request.META)
         assert (
             isinstance(billed_to, Party) and len(str(billed_to)) == 6
         ), f"Billed_to needs to be set with party ID: {billed_to}."
         return billed_to
 
-    def _find_existing_session(self, validated_data) -> Optional[Session]:
+    @staticmethod
+    def _find_existing_session(validated_data) -> Optional[Session]:
         auth_ref = validated_data.get("authorization_reference")
         session_id = validated_data.get("session_id")
 
@@ -93,6 +89,14 @@ class StartSessionService:
             return Session.objects.filter(uid=session_id).first()
 
         return None
+
+    def _get_request_info(self, request, validated_data):
+        party = self._get_sender_party(request)
+        billed_to = get_credentialsrole(party=party)
+
+        session = self._find_existing_session(validated_data)
+
+        return billed_to, session
 
     def send_command_webhook(
         self, request, billed_to, session, validated_data, command_type
@@ -108,7 +112,8 @@ class StartSessionService:
 
         return self._send_webhook_and_save_event(webhook, payload, command_type)
 
-    def _prepare_payload(self, request, billed_to, session, validated_data):
+    @staticmethod
+    def _prepare_payload(request, billed_to, session, validated_data):
         command_id = (
             validated_data.get("authorization_reference") or generate_random_token()
         )
@@ -147,7 +152,8 @@ class StartSessionService:
         payload.update(validated_data)
         return payload
 
-    def _create_webhook_event_safe(self, webhook, event_type, payload):
+    @staticmethod
+    def _create_webhook_event_safe(webhook, event_type, payload):
         return WebhookEvent.objects.create(
             webhook=webhook, event_type=event_type, payload=payload
         )
@@ -217,7 +223,8 @@ class StartSessionService:
 
             start_simulated_session(session, **validated_data)
 
-    def _create_new_session(self, request, validated_data, billed_to):
+    @staticmethod
+    def _create_new_session(request, validated_data, billed_to):
         session_data = validated_data.copy()
         evse_uid = validated_data.get("evse_uid")
         connector_id = validated_data.get("connector_id")
@@ -236,7 +243,8 @@ class StartSessionService:
         close_active_sessions_for_evse(evse_uid)
         return create_session(**session_data)
 
-    def _create_ocpi_response(self, webhook_response, command_name):
+    @staticmethod
+    def _create_ocpi_response(webhook_response, command_name):
         timeout = webhook_response.get("timeout", 60)
         result = webhook_response.get("result", "REJECTED").upper()
 
@@ -341,14 +349,6 @@ class ReserveNowService:
             logger.info(f"Created reservation session {session.uid}")
 
         return start_service._create_ocpi_response(webhook_response, "RESERVE")
-
-
-def get_sender_party(request):
-    billed_to = get_credentialsrole(party=request.META)
-    assert (
-        isinstance(billed_to, Party) and len(str(billed_to)) == 6
-    ), f"Billed_to needs to be set with party ID: {billed_to}."
-    return billed_to
 
 
 def fill_msp_information(token: dict, billed_to):
