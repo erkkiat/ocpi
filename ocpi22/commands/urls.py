@@ -14,12 +14,12 @@ urlpatterns = [
         CommandsViewSet.as_view({"get": "stop_session", "post": "stop_session"}),
         name="commands-stop-session",
     ),
-    path(
-        "commands/RESERVE_NOW",
-        CommandsViewSet.as_view({"get": "reserve_now", "post": "reserve_now"}),
-        name="commands-reserve-now",
-    ),
-    #  Legacy
+    # path(
+    #     "commands/RESERVE_NOW",
+    #     CommandsViewSet.as_view({"get": "reserve_now", "post": "reserve_now"}),
+    #     name="commands-reserve-now",
+    # ),
+    # #  Legacy
     path(
         "commands/",
         LegacyCommandsViewSet.as_view({"get": "list"}),

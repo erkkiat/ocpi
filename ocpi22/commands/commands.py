@@ -14,11 +14,6 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.response import Response
 
-from ocpi22.commands.services import (
-    StartSessionService,
-    StopSessionService,
-    ReserveNowService,
-)
 from ocpi22.decorators import requires_sender_role
 from ocpi22.msp.models import Authorization
 from ocpi22.tasks import send_ocpi_request
@@ -102,52 +97,30 @@ class CommandsViewSet(GenericViewSet):
         timeout=60,
     )
 
-    @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.EMSP)
-    def start_session(self, request, **_kwargs):
-        if not request.data:
-            return OCPIResponse(
-                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        serializer = StartSessionSerializer(
-            data=request.data, context={"request": request, "version": request.version}
-        )
-        if not serializer.is_valid():
-            return OCPIResponse(
-                serializer.errors,
-                status_message="Please check your request parameters",
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-        service = StartSessionService()
-        return service.start_session(request, serializer.validated_data)
-
     # These methods have been moved to the service classes
     # Keeping them for reference but they're not used anymore
 
-    @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.EMSP)
-    def reserve_now(self, request, **_kwargs):
-        if not request.data:
-            return OCPIResponse(
-                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        serializer = ReserveNowSerializer(
-            data=request.data, context={"request": request, "version": request.version}
-        )
-        if not serializer.is_valid():
-            return OCPIResponse(
-                serializer.errors,
-                status_message="Please check your request parameters",
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-        service = ReserveNowService()
-        return service.reserve_now(request, serializer.validated_data)
+    # @ocpi_exception_handler
+    # @requires_sender_role(OcpiRolesEnum.EMSP)
+    # def reserve_now(self, request, **_kwargs):
+    #     if not request.data:
+    #         return OCPIResponse(
+    #             {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
+    #         )
+    #
+    #     serializer = ReserveNowSerializer(
+    #         data=request.data, context={"request": request, "version": request.version}
+    #     )
+    #     if not serializer.is_valid():
+    #         return OCPIResponse(
+    #             serializer.errors,
+    #             status_message="Please check your request parameters",
+    #             http_status=status.HTTP_400_BAD_REQUEST,
+    #             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+    #         )
+    #
+    #     service = ReserveNowService()
+    #     return service.reserve_now(request, serializer.validated_data)
 
     @ocpi_exception_handler
     @csrf_exempt
@@ -193,27 +166,27 @@ class CommandsViewSet(GenericViewSet):
 
     # Exception handling is done in the calling method, no need for it here
 
-    @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.EMSP)
-    def stop_session(self, request, **_kwargs):
-        if not request.data:
-            return OCPIResponse(
-                {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        serializer = StopSessionSerializer(
-            data=request.data, context={"request": request, "version": request.version}
-        )
-        if not serializer.is_valid():
-            return OCPIResponse(
-                serializer.errors,
-                status_message="Please check your request parameters",
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-        service = StopSessionService()
-        return service.stop_session(request, serializer.validated_data)
+    # @ocpi_exception_handler
+    # @requires_sender_role(OcpiRolesEnum.EMSP)
+    # def stop_session(self, request, **_kwargs):
+    #     if not request.data:
+    #         return OCPIResponse(
+    #             {"status_message": options_message}, status=status.HTTP_400_BAD_REQUEST
+    #         )
+    #
+    #     serializer = StopSessionSerializer(
+    #         data=request.data, context={"request": request, "version": request.version}
+    #     )
+    #     if not serializer.is_valid():
+    #         return OCPIResponse(
+    #             serializer.errors,
+    #             status_message="Please check your request parameters",
+    #             http_status=status.HTTP_400_BAD_REQUEST,
+    #             status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+    #         )
+    #
+    #     service = StopSessionService()
+    #     return service.stop_session(request, serializer.validated_data)
 
     # This method has been moved to StopSessionService
     # Keeping for reference but not used anymore
