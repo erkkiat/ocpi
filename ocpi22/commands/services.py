@@ -135,14 +135,11 @@ class StartSessionService:
         session: Optional[Session],
         validated_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Prepare webhook payload with all necessary data."""
         command_id = (
             validated_data.get("authorization_reference") or generate_random_token()
         )
         token = validated_data.get("token", {})
 
-        # Convert Party objects to strings where needed for the payload
-        # For some commands (like stop_session), billed_to might be None
         if billed_to and "billed_to" not in token:
             token["billed_to"] = str(billed_to.get_party())
         if billed_to and "ocpi_master" not in token:
@@ -150,34 +147,34 @@ class StartSessionService:
 
         command_store[command_id] = validated_data
 
+        # Get token_type and ensure it's a string
+        token_type_value = (
+            session.cdr_token.token_type
+            if session
+            else get_token_type(token, TokenType.APP_USER)
+        )
+
         payload = {
             "response_url": build_absolute_uri(
                 reverse("chargepoint-remote-command-result", args=(command_id,))
             ),
             "token_id": session.cdr_token.uid if session else get_token_id(token),
-            "token_type": (
-                session.cdr_token.token_type
-                if session
-                else get_token_type(token, TokenType.APP_USER)
-            ),
+            "token_type": str(token_type_value),
             "authorization_reference": (
                 session.authorization_reference
                 if session
                 else validated_data.get("authorization_reference")
             ),
-            "auth_method": enum.AuthMethodChoices.COMMAND,
+            "auth_method": str(enum.AuthMethodChoices.COMMAND),
             "from_party": ocpi_party.party_str(),
             "evse_id": session.evse.uid if session else validated_data.get("evse_uid"),
             "connector_id": session.connector.uid
             if session
             else validated_data.get("connector_id"),
         }
-
-        # Only add billed_to if it exists
         if billed_to:
             payload["billed_to"] = str(billed_to.get_party())
 
-        payload.update(validated_data)
         return payload
 
     @staticmethod
