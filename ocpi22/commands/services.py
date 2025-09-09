@@ -2,10 +2,12 @@ from logging import getLogger
 from typing import Optional, Dict, Any
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from rest_framework import status
 
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.models.session import Session
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.util import command_store
@@ -36,12 +38,33 @@ import requests
 logger = getLogger(__name__)
 
 
+class InvalidSenderPartyError(Exception):
+    pass
+
+
+def get_validated_sender_party(request_meta: Dict[str, Any]) -> Party | None:
+    sender_party = get_sender_party(request_meta)
+
+    if not isinstance(sender_party, Party) and len(str(sender_party)) != 6:
+        raise InvalidSenderPartyError(
+            f"Sender party must be a Party object, got: {type(sender_party)}"
+        )
+    return sender_party
+
+
 class StartSessionService:
     def __init__(self):
         self.webhook_repository = WebhookRepository()
 
-    def start_session(self, request, validated_data: Dict[str, Any]) -> OCPIResponse:
-        billed_to, session = self._get_request_info(request, validated_data)
+    def start_session(
+        self,
+        sender_party: Party,
+        ocpi_party: CredentialsRole,
+        credentials: Credentials,
+        validated_data: Dict[str, Any],
+    ) -> OCPIResponse:
+        billed_to = self._get_billed_to_from_sender_party(sender_party)
+        session = self._find_existing_session(validated_data)
 
         if session and session.status == Session.COMPLETED:
             return OCPIResponse(
@@ -50,38 +73,29 @@ class StartSessionService:
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            webhook_response = self.send_command_webhook(
-                request,
-                billed_to,
-                session,
-                validated_data,
-                RemoteCommandType.START_SESSION,
-            )
-        except Exception as e:
-            # debugging
-            logger.exception(e)
-            return OCPIResponse(
-                None,
-                status_message="Could not communicate with charger system",
-                http_status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        webhook_response = self.send_command_webhook(
+            ocpi_party=ocpi_party,
+            billed_to=billed_to,
+            session=session,
+            validated_data=validated_data,
+            command_type=RemoteCommandType.START_SESSION,
+        )
 
         if webhook_response.get("result") == "ACCEPTED":
-            self._handle_successful_start(request, session, validated_data, billed_to)
+            self._handle_successful_start(
+                credentials=credentials,
+                session=session,
+                validated_data=validated_data,
+                billed_to=billed_to,
+            )
 
         return self._create_ocpi_response(webhook_response, "START")
 
-    @staticmethod
-    def _get_sender_party(request):
-        billed_to = get_sender_party(request.META)
-        assert (
-            isinstance(billed_to, Party) and len(str(billed_to)) == 6
-        ), f"Billed_to needs to be set with party ID: {billed_to}."
-        return billed_to
+    def _get_billed_to_from_sender_party(self, sender_party: Party) -> CredentialsRole:
+        return get_credentialsrole(party=sender_party)
 
     @staticmethod
-    def _find_existing_session(validated_data) -> Optional[Session]:
+    def _find_existing_session(validated_data: Dict[str, Any]) -> Optional[Session]:
         auth_ref = validated_data.get("authorization_reference")
         session_id = validated_data.get("session_id")
 
@@ -92,39 +106,50 @@ class StartSessionService:
 
         return None
 
-    def _get_request_info(self, request, validated_data):
-        party = self._get_sender_party(request)
-        billed_to = get_credentialsrole(party=party)
-
-        session = self._find_existing_session(validated_data)
-
-        return billed_to, session
-
     def send_command_webhook(
-        self, request, billed_to, session, validated_data, command_type
-    ):
+        self,
+        ocpi_party: CredentialsRole,
+        billed_to: Optional[CredentialsRole],
+        session: Optional[Session],
+        validated_data: Dict[str, Any],
+        command_type: RemoteCommandType,
+    ) -> Dict[str, Any]:
+        """Send webhook command and return response."""
         if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
             return {"timeout": 90, "result": "ACCEPTED"}
 
         webhook = self.webhook_repository.get_remote_command_webhook(command_type)
         if not webhook or not webhook.active:
-            raise Exception(f"No webhook configured for {command_type}")
+            raise ValidationError(f"No webhook configured for {command_type}")
 
-        payload = self._prepare_payload(request, billed_to, session, validated_data)
+        payload = self._prepare_payload(
+            ocpi_party=ocpi_party,
+            billed_to=billed_to,
+            session=session,
+            validated_data=validated_data,
+        )
 
         return self._send_webhook_and_save_event(webhook, payload, command_type)
 
     @staticmethod
-    def _prepare_payload(request, billed_to, session, validated_data):
+    def _prepare_payload(
+        ocpi_party: CredentialsRole,
+        billed_to: Optional[CredentialsRole],
+        session: Optional[Session],
+        validated_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Prepare webhook payload with all necessary data."""
         command_id = (
             validated_data.get("authorization_reference") or generate_random_token()
         )
-        token = validated_data.get("token", "")
+        token = validated_data.get("token", {})
 
-        if "billed_to" not in token:
-            token["billed_to"] = billed_to.get_party()
-        if "ocpi_master" not in token:
-            token["ocpi_master"] = billed_to
+        # Convert Party objects to strings where needed for the payload
+        # For some commands (like stop_session), billed_to might be None
+        if billed_to and "billed_to" not in token:
+            token["billed_to"] = str(billed_to.get_party())
+        if billed_to and "ocpi_master" not in token:
+            token["ocpi_master"] = str(billed_to.get_party())
 
         command_store[command_id] = validated_data
 
@@ -144,13 +169,17 @@ class StartSessionService:
                 else validated_data.get("authorization_reference")
             ),
             "auth_method": enum.AuthMethodChoices.COMMAND,
-            "from_party": request.ocpi_party.party_str(),
+            "from_party": ocpi_party.party_str(),
             "evse_id": session.evse.uid if session else validated_data.get("evse_uid"),
             "connector_id": session.connector.uid
             if session
             else validated_data.get("connector_id"),
-            "billed_to": billed_to,
         }
+
+        # Only add billed_to if it exists
+        if billed_to:
+            payload["billed_to"] = str(billed_to.get_party())
+
         payload.update(validated_data)
         return payload
 
@@ -204,15 +233,22 @@ class StartSessionService:
             else:
                 error = f"HTTP {response.status_code}: {response.text[:100]}"
                 WebhookEventService.mark_failed(event, error, response.status_code)
-                raise Exception(error)
+                raise
 
         except requests.exceptions.RequestException as e:
             WebhookEventService.mark_failed(event, f"Request failed: {str(e)}")
-            raise Exception(f"Network error: {str(e)}")
+            raise
 
-    def _handle_successful_start(self, request, session, validated_data, billed_to):
+    def _handle_successful_start(
+        self,
+        credentials: Credentials,
+        session: Optional[Session],
+        validated_data: Dict[str, Any],
+        billed_to: CredentialsRole,
+    ):
+        """Handle successful webhook response by updating or creating session."""
         if not session:
-            session = self._create_new_session(request, validated_data, billed_to)
+            session = self._create_new_session(credentials, validated_data, billed_to)
             logger.info(f"Created new session {session.uid}")
         else:
             logger.info(f"Found existing session {session.uid}")
@@ -226,7 +262,12 @@ class StartSessionService:
             start_simulated_session(session, **validated_data)
 
     @staticmethod
-    def _create_new_session(request, validated_data, billed_to):
+    def _create_new_session(
+        credentials: Credentials,
+        validated_data: Dict[str, Any],
+        billed_to: CredentialsRole,
+    ) -> Session:
+        """Create a new charging session."""
         session_data = validated_data.copy()
         evse_uid = validated_data.get("evse_uid")
         connector_id = validated_data.get("connector_id")
@@ -236,7 +277,7 @@ class StartSessionService:
                 "ad_hoc_token": AdhocToken.from_dict(validated_data.get("token")),
                 "billed_to": billed_to.get_party(),
                 "authorization_method": enum.AuthMethodChoices.COMMAND,
-                "credentials": request.credentials,
+                "credentials": credentials,
                 "connector_id": connector_id,
             }
         )
@@ -283,7 +324,13 @@ class StopSessionService:
     def __init__(self):
         self.webhook_repository = WebhookRepository()
 
-    def stop_session(self, request, validated_data: Dict[str, Any]) -> OCPIResponse:
+    def stop_session(
+        self,
+        sender_party: Party,
+        ocpi_party: CredentialsRole,
+        credentials: Credentials,
+        validated_data: Dict[str, Any],
+    ) -> OCPIResponse:
         session_id = validated_data.get("session_id")
         session = Session.objects.filter(uid=session_id).first()
 
@@ -304,7 +351,12 @@ class StopSessionService:
         start_service = StartSessionService()  # Reuse the webhook logic
         try:
             webhook_response = start_service.send_command_webhook(
-                request, None, session, validated_data, RemoteCommandType.STOP_SESSION
+                sender_party=sender_party,
+                ocpi_party=ocpi_party,
+                billed_to=None,  # Not needed for stop session
+                session=session,
+                validated_data=validated_data,
+                command_type=RemoteCommandType.STOP_SESSION,
             )
         except Exception as e:
             return OCPIResponse(
@@ -329,12 +381,23 @@ class ReserveNowService:
     def __init__(self):
         self.webhook_repository = WebhookRepository()
 
-    def reserve_now(self, request, validated_data: Dict[str, Any]) -> OCPIResponse:
+    def reserve_now(
+        self,
+        sender_party: Party,
+        ocpi_party: CredentialsRole,
+        credentials: Credentials,
+        validated_data: Dict[str, Any],
+    ) -> OCPIResponse:
         start_service = StartSessionService()
 
         try:
             webhook_response = start_service.send_command_webhook(
-                request, None, None, validated_data, RemoteCommandType.RESERVE_NOW
+                sender_party=sender_party,
+                ocpi_party=ocpi_party,
+                billed_to=None,  # Will be calculated if needed
+                session=None,
+                validated_data=validated_data,
+                command_type=RemoteCommandType.RESERVE_NOW,
             )
         except Exception as e:
             return OCPIResponse(
@@ -344,9 +407,10 @@ class ReserveNowService:
             )
 
         if webhook_response.get("result") == "ACCEPTED":
-            billed_to, _ = start_service._get_request_info(request, validated_data)
+            # Use the already calculated billed_to from the passed sender_party
+            billed_to = get_credentialsrole(party=sender_party)
             session = start_service._create_new_session(
-                request, validated_data, billed_to
+                credentials, validated_data, billed_to
             )
             logger.info(f"Created reservation session {session.uid}")
 
