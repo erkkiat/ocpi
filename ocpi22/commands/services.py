@@ -346,7 +346,7 @@ class StopSessionService:
             )
 
         billed_to = get_credentialsrole(party=sender_party)
-        start_service = StartSessionService()  # Reuse the webhook logic
+        start_service = StartSessionService()
         try:
             webhook_response = start_service.send_command_webhook(
                 ocpi_party=ocpi_party,
@@ -365,7 +365,40 @@ class StopSessionService:
         if webhook_response.get("result") == "ACCEPTED":
             self._complete_session(session)
 
-        return start_service._create_ocpi_response(webhook_response, "STOP")
+        return self._create_ocpi_response(webhook_response, "STOP")
+
+    @staticmethod
+    def _create_ocpi_response(webhook_response, command_name):
+        timeout = webhook_response.get("timeout", 60)
+        result = webhook_response.get("result", "REJECTED").upper()
+
+        message = MessageTexts.get(
+            f"{command_name}_{result}",  # e.g., "STOP_ACCEPTED"
+            MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", "Command processed"),
+        )
+
+        if result == "ACCEPTED":
+            ocpi_status = Ocpi.OK
+            http_status = status.HTTP_200_OK
+        else:
+            ocpi_status = 2000
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+
+        response_serializer = CommandResponse(
+            data={"result": result, "timeout": timeout, "message": message}
+        )
+
+        if not response_serializer.is_valid():
+            logger.error(f"Response serializer error: {response_serializer.errors}")
+            return OCPIResponse(
+                None,
+                status_message="Internal error",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return OCPIResponse(
+            response_serializer.data, status_code=ocpi_status, http_status=http_status
+        )
 
     def _complete_session(self, session):
         session.status = Session.COMPLETED
