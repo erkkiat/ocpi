@@ -349,7 +349,6 @@ class StopSessionService:
         start_service = StartSessionService()  # Reuse the webhook logic
         try:
             webhook_response = start_service.send_command_webhook(
-                sender_party=sender_party,
                 ocpi_party=ocpi_party,
                 billed_to=billed_to,
                 session=session,
@@ -390,7 +389,6 @@ class ReserveNowService:
 
         try:
             webhook_response = start_service.send_command_webhook(
-                sender_party=sender_party,
                 ocpi_party=ocpi_party,
                 billed_to=None,  # Will be calculated if needed
                 session=None,
