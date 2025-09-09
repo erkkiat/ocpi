@@ -63,7 +63,7 @@ class StartSessionService:
         credentials: Credentials,
         validated_data: Dict[str, Any],
     ) -> OCPIResponse:
-        billed_to = self._get_billed_to_from_sender_party(sender_party)
+        billed_to = get_credentialsrole(party=sender_party)
         session = self._find_existing_session(validated_data)
 
         if session and session.status == Session.COMPLETED:
@@ -90,9 +90,6 @@ class StartSessionService:
             )
 
         return self._create_ocpi_response(webhook_response, "START")
-
-    def _get_billed_to_from_sender_party(self, sender_party: Party) -> CredentialsRole:
-        return get_credentialsrole(party=sender_party)
 
     @staticmethod
     def _find_existing_session(validated_data: Dict[str, Any]) -> Optional[Session]:
@@ -348,12 +345,13 @@ class StopSessionService:
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
 
+        billed_to = get_credentialsrole(party=sender_party)
         start_service = StartSessionService()  # Reuse the webhook logic
         try:
             webhook_response = start_service.send_command_webhook(
                 sender_party=sender_party,
                 ocpi_party=ocpi_party,
-                billed_to=None,  # Not needed for stop session
+                billed_to=billed_to,
                 session=session,
                 validated_data=validated_data,
                 command_type=RemoteCommandType.STOP_SESSION,
