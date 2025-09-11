@@ -17,7 +17,7 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from webhooks.choices import RemoteCommandType
 from webhooks.repository import WebhookRepository
 
-from webhooks.services import WebhookEventService
+from webhooks.services import WebhookEventService, WebhookExecutionService
 from webhooks.models import WebhookEventType
 from rest_framework.reverse import reverse
 from ocpi22.util import build_absolute_uri, generate_random_token
@@ -33,7 +33,6 @@ from django.utils.timezone import now
 
 from ocpiconnector.party import Party
 
-import requests
 
 logger = getLogger(__name__)
 
@@ -81,14 +80,13 @@ class StartSessionService:
             command_type=RemoteCommandType.START_SESSION,
         )
 
-        if webhook_response.get("result") == "ACCEPTED":
+        if webhook_response.get("data", {}).get("result") == "ACCEPTED":
             self._handle_successful_start(
                 credentials=credentials,
                 session=session,
                 validated_data=validated_data,
                 billed_to=billed_to,
             )
-
         return self._create_ocpi_response(webhook_response, "START")
 
     @staticmethod
@@ -113,7 +111,7 @@ class StartSessionService:
     ) -> Dict[str, Any]:
         """Send webhook command and return response."""
         if settings.PERFORMANCE_TEST or settings.CPO_SIMULATOR:
-            return {"timeout": 90, "result": "ACCEPTED"}
+            return {"data": {"timeout": 90, "result": "ACCEPTED"}}
 
         webhook = self.webhook_repository.get_remote_command_webhook(command_type)
         if not webhook or not webhook.active:
@@ -126,7 +124,8 @@ class StartSessionService:
             validated_data=validated_data,
         )
 
-        return self._send_webhook_and_save_event(webhook, payload, command_type)
+        response = self._send_webhook_and_save_event(webhook, payload, command_type)
+        return response
 
     @staticmethod
     def _prepare_payload(
@@ -189,49 +188,16 @@ class StartSessionService:
             RemoteCommandType.STOP_SESSION: WebhookEventType.REMOTE_STOP_REQUESTED,
         }
 
-        if command_type in event_type_mapping:
-            event_type = event_type_mapping[command_type]
+        event_type = event_type_mapping.get(
+            command_type,
+            f"remote_command.{str(command_type).lower()}_requested",
+        )
 
-            event = WebhookEventService.create_event(
-                webhook=webhook, event_type=event_type, payload=payload
-            )
-        else:
-            event_type = f"remote_command.{command_type.lower()}_requested"
-            event = self._create_webhook_event_safe(webhook, event_type, payload)
-
-        WebhookEventService.mark_attempt_started(event)
-
-        try:
-            headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                **webhook.get_auth_headers(),
-            }
-
-            response = requests.post(
-                webhook.url,
-                json=payload,
-                headers=headers,
-                timeout=webhook.timeout_seconds,
-            )
-
-            if response.status_code < 400:
-                WebhookEventService.mark_success(
-                    event, status_code=response.status_code
-                )
-
-                try:
-                    return response.json()
-                except (ValueError, TypeError):
-                    return {"timeout": 90, "result": "ACCEPTED"}
-            else:
-                error = f"HTTP {response.status_code}: {response.text[:100]}"
-                WebhookEventService.mark_failed(event, error, response.status_code)
-                raise
-
-        except requests.exceptions.RequestException as e:
-            WebhookEventService.mark_failed(event, f"Request failed: {str(e)}")
-            raise
+        event = WebhookEventService.create_event(
+            webhook=webhook, event_type=event_type, payload=payload
+        )
+        response_json = WebhookExecutionService().execute_webhook_event(event)
+        return response_json
 
     def _handle_successful_start(
         self,
@@ -261,29 +227,23 @@ class StartSessionService:
         validated_data: Dict[str, Any],
         billed_to: CredentialsRole,
     ) -> Session:
-        """Create a new charging session."""
-        session_data = validated_data.copy()
         evse_uid = validated_data.get("evse_uid")
-        connector_id = validated_data.get("connector_id")
-
-        session_data.update(
-            {
-                "ad_hoc_token": AdhocToken.from_dict(validated_data.get("token")),
-                "billed_to": billed_to.get_party(),
-                "authorization_method": enum.AuthMethodChoices.COMMAND,
-                "credentials": credentials,
-                "connector_id": connector_id,
-            }
-        )
-        session_data.pop("token")  # Remove token, we converted it
-
         close_active_sessions_for_evse(evse_uid)
-        return create_session(**session_data)
+        return create_session(
+            location_id=validated_data["location_id"],
+            evse_uid=validated_data.get("evse_uid"),
+            connector_id=validated_data.get("connector_id"),
+            billed_to=billed_to.get_party(),
+            credentials=credentials,
+            authorization_reference=validated_data.get("authorization_reference"),
+            authorization_method=enum.AuthMethodChoices.COMMAND,
+            ad_hoc_token=AdhocToken.from_dict(validated_data["token"]),
+        )
 
     @staticmethod
     def _create_ocpi_response(webhook_response, command_name):
         timeout = webhook_response.get("timeout", 60)
-        result = webhook_response.get("result", "REJECTED").upper()
+        result = webhook_response.get("data", {}).get("result", "REJECTED").upper()
 
         message = MessageTexts.get(
             f"{command_name}_{result}",  # e.g., "START_ACCEPTED"
@@ -295,7 +255,7 @@ class StartSessionService:
             http_status = status.HTTP_200_OK
         else:
             ocpi_status = 2000
-            http_status = status.HTTP_503_SERVICE_UNAVAILABLE
+            http_status = status.HTTP_200_OK
 
         response_serializer = CommandResponse(
             data={"result": result, "timeout": timeout, "message": message}
