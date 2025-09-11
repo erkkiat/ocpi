@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.viewsets import GenericViewSet
 
@@ -18,6 +20,8 @@ from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.ocpi.util import OCPIResponse, options_message, OCPIBadRequestResponse
 from ocpi22.util import OCPIVersioning
 from ocpiconnector.exception_handler import ocpi_exception_handler
+
+logger = logging.getLogger(__name__)
 
 
 class CommandsViewSet(GenericViewSet):
@@ -47,6 +51,7 @@ class CommandsViewSet(GenericViewSet):
         try:
             sender_party = get_validated_sender_party(request.META)
         except InvalidSenderPartyError as e:
+            logger.exception(e)
             return OCPIBadRequestResponse(status_message=e.args[0])
 
         service = StartSessionService()
