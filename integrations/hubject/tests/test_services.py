@@ -1068,3 +1068,22 @@ class TestPostEroamingChargeDetailRecord:
             operator_id, ocpi_cdr
         )
         assert result == cdr_successful_response
+
+
+@pytest.mark.parametrize(
+    "provider_id, expected",
+    [
+        (None, (None, None)),
+        ("US*ABC", ("US", "ABC")),
+        ("DE-XYZ", ("DE", "XYZ")),
+        ("FR123", ("FR", "123")),
+    ],
+)
+def test_decode_valid(provider_id, expected):
+    assert HubjectService.decode_country_code_and_party_id(provider_id) == expected
+
+
+def test_decode_invalid_raises():
+    with pytest.raises(ValueError) as exc:
+        HubjectService.decode_country_code_and_party_id("INVALID_FORMAT")
+    assert "Invalid ProviderID format" in str(exc.value)
