@@ -150,10 +150,10 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        with pytest.raises(KeyError):
-            map_successful_oicp_authorization_response_to_ocpi_221(
-                oicp_response, token_id
-            )
+        result = map_successful_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
+        assert result is None
 
     def test_mapping_with_missing_status_code_succeeds(self):
         """Test mapping when StatusCode is missing"""
@@ -274,7 +274,7 @@ class TestMapOICPAuthorizationResponseToOCPI221:
             "SessionID": "HUBJECT-SESSION-1234",
         }
 
-        with pytest.raises(KeyError):
-            map_successful_oicp_authorization_response_to_ocpi_221(
-                oicp_response, token_id
-            )
+        result = map_successful_oicp_authorization_response_to_ocpi_221(
+            oicp_response, token_id
+        )
+        assert result is None
