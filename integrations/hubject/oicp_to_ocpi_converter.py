@@ -16,9 +16,16 @@ def map_successful_oicp_authorization_response_to_ocpi_221(
     if not oicp_response:
         return None
     authorization_status = oicp_response.get("AuthorizationStatus")
-    country_code, party_id = HubjectService.decode_country_code_and_party_id(
-        oicp_response.get("ProviderID")
-    )
+    try:
+        country_code, party_id = HubjectService.decode_country_code_and_party_id(
+            oicp_response.get("ProviderID")
+        )
+    except ValueError as e:
+        logger.error(
+            "Failed to decode country code and party ID from ProviderID.",
+            extra={"ProviderID": oicp_response.get("ProviderID"), "error": str(e)},
+        )
+        return None
     if settings.HUBJECT_EMP_ID:
         authorization_reference = (
             oicp_response.get("EMPPartnerSessionID", None) or settings.HUBJECT_EMP_ID
