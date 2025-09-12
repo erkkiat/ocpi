@@ -157,7 +157,7 @@ class TestWebhookExecutionService:
         with responses.RequestsMock() as rsps:
             rsps.add(responses.POST, webhook.url, json={"success": True}, status=200)
 
-            event = WebhookExecutionService.trigger_webhook_by_id(
+            event = WebhookExecutionService().trigger_webhook_by_id(
                 webhook.id, event_type, payload
             )
 
@@ -172,7 +172,7 @@ class TestWebhookExecutionService:
     ):
         non_existent_id = 99999
 
-        result = WebhookExecutionService.trigger_webhook_by_id(
+        result = WebhookExecutionService().trigger_webhook_by_id(
             non_existent_id, WebhookEventType.SESSION_STARTED, {"test": "data"}
         )
 
@@ -187,7 +187,7 @@ class TestWebhookExecutionService:
     ):
         inactive_webhook = WebhookInactiveFactory()
 
-        result = WebhookExecutionService.trigger_webhook_by_id(
+        result = WebhookExecutionService().trigger_webhook_by_id(
             inactive_webhook.id, WebhookEventType.SESSION_STARTED, {"test": "data"}
         )
 
@@ -205,7 +205,7 @@ class TestWebhookExecutionService:
         with patch("webhooks.services.WebhookEventService.create_event") as mock_create:
             mock_create.side_effect = Exception("Database error")
 
-            result = WebhookExecutionService.trigger_webhook_by_id(
+            result = WebhookExecutionService().trigger_webhook_by_id(
                 webhook.id, WebhookEventType.SESSION_STARTED, {"test": "data"}
             )
 
