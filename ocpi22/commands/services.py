@@ -223,8 +223,6 @@ class StopCommandServices(RemoteCommandServices):
         self.session_repo = SessionRepository()
         self.webhook_repo = WebhookRepository()
 
-    #
-
     def send_stop_command_webhook(self, payload: dict, command_type: RemoteCommandType):
         webhook = self.webhook_repo.get_remote_command_webhook(command_type)
         if not webhook or not webhook.active:
@@ -249,7 +247,9 @@ class StopCommandServices(RemoteCommandServices):
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
-        self._create_ocpi_response(response, RemoteCommandType.STOP_SESSION.value())
+        return self.create_ocpi_response(
+            response, RemoteCommandType.STOP_SESSION.value()
+        )
 
 
 def process_remote_command(

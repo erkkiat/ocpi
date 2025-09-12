@@ -92,9 +92,8 @@ class CommandsViewSet(GenericViewSet):
         try:
             stop_command_service = StopCommandServices()
             response = stop_command_service.stop_session(validated_data=serializer.data)
-            stop_command_service.create_ocpi_response(
-                response, RemoteCommandType.STOP_SESSION
-            )
+            return response
+
         except Exception:
             logger.error("Could not process remote stop command", exc_info=True)
             return RemoteCommandServices().create_ocpi_response({}, "STOP")
