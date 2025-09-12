@@ -355,7 +355,7 @@ def simulate_surrounding_world(func):
             patch(
                 "ocpi22.util.redis_store",
             ) as redis_store,
-            patch("ocpi22.webhooks.requests") as webhook_requests,
+            patch("ocpi22.legacy_webhooks.requests") as webhook_requests,
             patch("ocpi22.ocpi.util.uuid.uuid4", return_value=MockUuid4()) as uuid4,
             patch("ocpi22.ocpi.util.requests") as ocpi_requests,
             patch("ocpi22.ocpi_logging.error") as logging_error,
