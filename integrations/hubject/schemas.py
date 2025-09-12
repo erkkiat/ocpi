@@ -640,19 +640,22 @@ class OpeningTimes(BaseModel):
     )
 
 
-class ERoamingAcknowledgment(BaseModel):
-    Result: bool = Field(
+class ERoamingAcknowledgment(HubjectBaseModel):
+    result: bool = Field(
         ...,
+        alias="Result",
         description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
-    StatusCode: StatusCode
-    SessionID: Optional[SessionID] = None
-    CPOPartnerSessionID: Optional[str] = Field(
+    status_code: StatusCode = Field(..., alias="StatusCode")
+    sessionID: Optional[SessionID] = Field(None, alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
 
@@ -924,20 +927,22 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     )
 
 
-class ERoamingAuthorizeRemoteStart(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStart(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
-    Identification: Identification
-    PartnerProductID: Optional[ProductID] = None
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
+    identification: Identification = Field(..., alias="Identification")
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
 class ERoamingAuthorizeStart(HubjectBaseModel):
