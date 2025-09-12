@@ -218,7 +218,7 @@ class TestWebhookExecutionService:
     def test_execute_webhook_event_returns_true_when_event_already_completed(self):
         webhook_event = WebhookEventSuccessFactory()
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is True
 
@@ -226,7 +226,7 @@ class TestWebhookExecutionService:
         inactive_webhook = WebhookInactiveFactory()
         webhook_event = WebhookEventFactory(webhook=inactive_webhook, attempt_count=1)
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is False
         webhook_event.refresh_from_db()
@@ -245,7 +245,7 @@ class TestWebhookExecutionService:
 
         responses.add(responses.POST, webhook.url, json={"received": True}, status=200)
 
-        result = WebhookExecutionService.execute_webhook_event(event)
+        result = WebhookExecutionService().execute_webhook_event(event)
 
         assert result is True
         assert len(responses.calls) == 1
@@ -270,7 +270,7 @@ class TestWebhookExecutionService:
 
         responses.add(responses.POST, webhook.url, json={"received": True}, status=201)
 
-        result = WebhookExecutionService.execute_webhook_event(event)
+        result = WebhookExecutionService().execute_webhook_event(event)
 
         assert result is True
         assert len(responses.calls) == 1
@@ -294,7 +294,7 @@ class TestWebhookExecutionService:
 
         responses.add(responses.POST, webhook.url, json={"received": True}, status=200)
 
-        result = WebhookExecutionService.execute_webhook_event(event)
+        result = WebhookExecutionService().execute_webhook_event(event)
 
         assert result is True
         assert len(responses.calls) == 1
@@ -314,7 +314,7 @@ class TestWebhookExecutionService:
 
         responses.add(responses.POST, webhook.url, json={"received": True}, status=200)
 
-        result = WebhookExecutionService.execute_webhook_event(event)
+        result = WebhookExecutionService().execute_webhook_event(event)
 
         assert result is True
         assert len(responses.calls) == 1
@@ -333,7 +333,7 @@ class TestWebhookExecutionService:
             status=500,
         )
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is False
         webhook_event.refresh_from_db()
@@ -348,7 +348,7 @@ class TestWebhookExecutionService:
 
         responses.add(responses.POST, webhook.url, body=requests.exceptions.Timeout())
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is False
         webhook_event.refresh_from_db()
@@ -366,7 +366,7 @@ class TestWebhookExecutionService:
             body=requests.exceptions.ConnectionError("Connection refused"),
         )
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is False
         webhook_event.refresh_from_db()
@@ -384,7 +384,7 @@ class TestWebhookExecutionService:
             body=requests.exceptions.RequestException("Generic request error"),
         )
 
-        result = WebhookExecutionService.execute_webhook_event(webhook_event)
+        result = WebhookExecutionService().execute_webhook_event(webhook_event)
 
         assert result is False
         webhook_event.refresh_from_db()

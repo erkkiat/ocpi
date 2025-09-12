@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from django.db.models import Q
 
 from ocpi22.models.session import Session
@@ -32,12 +32,18 @@ class SessionRepository:
 
         return Session.get_if_exists(combined_query)
 
-    def get_active_sessions_for_evse(self, evse_uid: str) -> list[Session]:
-        return list(
-            Session.objects.filter(
-                evse__uid=evse_uid, status__in=[Session.PENDING, Session.ACTIVE]
-            )
-        )
+    def find_session_by_uid(self, uid: str):
+        return Session.objects.filter(uid=uid).first()
+
+    @staticmethod
+    def find_session_by_auth_ref_and_token_uid(
+        validated_data: Dict[str, Any],
+    ) -> Optional[Session]:
+        auth_ref = validated_data["authorization_reference"]
+        token_uid = validated_data["token"]["uid"]
+        return Session.objects.filter(
+            authorization_reference=auth_ref, cdr_token__uid=token_uid
+        ).first()
 
 
 class CommandRepository:
