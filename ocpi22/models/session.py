@@ -505,7 +505,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if self.status == Session.PENDING:
             return  # Don't send updates for pending sessions per OCPI 2.2.1 specifications
         if self.route_through_oicp:
-            HubjectService.send_update(session=self, update_type=update_type)
+            HubjectService.send_update(session=self, notification_type=update_type)
             return
         if isinstance(data, list):
             # We have a list of stuff, is it by any chance ChargingPeriods?

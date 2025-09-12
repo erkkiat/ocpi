@@ -8,7 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
-from pydantic_core import PydanticSerializationError
+from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
 from integrations.hubject.client import HubjectClient
@@ -28,11 +28,15 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
-    IdentificationClass,
+    Identification,
     UID,
     RFIDMifareFamilyIdentificationClass,
     ChargingNotificationType,
     ChargingNotificationBase,
+    ERoamingPushEvseStatus,
+    OperatorEvseStatus,
+    EvseStatusRecordItem,
+    EvseID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -46,12 +50,14 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Optional
+from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
+    from ocpi22.models.cdr import Cdr
 
-logging.basicConfig(level=logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,16 +169,19 @@ class HubjectService:
     ) -> tuple[Any, dict | None, Any]:
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
-        payload = ERoamingAuthorizeStart(
-            OperatorID=OperatorID(root=operator_id),
-            Identification=IdentificationClass(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=token_id)
-                )
-            ),
-        )
-        payload_dict = payload.model_dump(exclude_none=True)
-
+        try:
+            payload = ERoamingAuthorizeStart(
+                operator_id=OperatorID(root=operator_id),
+                identification=Identification(
+                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=token_id)
+                    )
+                ),
+            )
+            payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
+        except ValidationError:
+            logger.exception()
+            raise
         try:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}
@@ -194,7 +203,9 @@ class HubjectService:
 
         try:
             response_json = response.json()
-            logging.info(response)
+            logger.info(
+                f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
+            )
             status_code = response_json.get("StatusCode", {}).get("Code")
             mapped_response = None
             ocpi_master = None
@@ -343,7 +354,11 @@ class HubjectService:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
+            logger.error(
+                f"HTTP error: {e.response.status_code}",
+                exc_info=True,
+                extra={"hubject_response": e.response.text},
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
@@ -355,6 +370,117 @@ class HubjectService:
         payload,
     ) -> Response:
         url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
-        response = HubjectService.client.post(url, json=payload.model_dump(mode="json"))
+        response = HubjectService.client.post(
+            url, json=payload.model_dump(mode="json", by_alias=True)
+        )
         response.raise_for_status()
         return response
+
+    @classmethod
+    def _get_evse_status_update_payload(
+        cls, evse: Evse, operator_id: str, operator_name: str
+    ) -> ERoamingPushEvseStatus:
+        return ERoamingPushEvseStatus(
+            action_type=ActionType.update,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=operator_id),
+                operator_name=operator_name,
+                evse_status_record=[
+                    EvseStatusRecordItem(
+                        evse_id=EvseID(root=evse.evse_id),
+                        evse_status=cls.converter.convert_ocpi_evse_status(evse.status),
+                    )
+                ],
+            ),
+        )
+
+    @classmethod
+    def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
+        if not evse:
+            logger.warning("No EVSE provided for hubject status update")
+            return
+        ocpi_master = evse.location.ocpi_master
+        operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
+        operator_name = ocpi_master.business_details.name
+
+        try:
+            payload = cls._get_evse_status_update_payload(
+                evse, operator_id, operator_name
+            )
+        except (ValidationError, ValueError):
+            logger.error(
+                "Failed to create payload for EVSE status update", exc_info=True
+            )
+            return
+
+        payload_json = payload.model_dump(mode="json", by_alias=True)
+
+        url = (
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
+        )
+
+        send_hubject_request.delay(payload_json, url, "post")
+
+    @staticmethod
+    def post_eroaming_charge_detail_record(
+        operator_id: str, cdr: Optional["Cdr"], session_id=None, retries=3
+    ) -> dict:
+        from ocpi22.models.cdr import Cdr
+
+        if cdr is None:
+            if session_id is None:
+                logger.warning(
+                    "Neither CDR nor session_id provided for CDR post for Hubject"
+                )
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": "Either CDR or session_id must be provided.",
+                }
+
+            cdr = Cdr.objects.filter(session_id=session_id).first()
+            if not cdr:
+                logger.warning(f"No CDR found for session_id {session_id}")
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": f"No CDR found for session_id {session_id}.",
+                }
+            if not cdr.route_through_oicp:
+                logger.warning(
+                    f"CDR for session_id {session_id} has not routed through OICP"
+                )
+                return {
+                    "success": False,
+                    "errorType": "Incompatible CDR",
+                    "error": f"CDR with session id {session_id} has not routed through OICP",
+                }
+
+        url = f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record"
+
+        try:
+            payload = (
+                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
+                    cdr
+                )
+            )
+            payload_json = payload.model_dump(
+                mode="json", exclude_none=True, by_alias=True
+            )
+        except ValidationError as ve:
+            logger.error("Failed to create payload for Hubject CDR", exc_info=True)
+            return {
+                "success": False,
+                "errorType": "Validation Error",
+                "error": str(ve),
+            }
+
+        retry_policy = dict(max_retries=retries, interval_start=5)
+        send_hubject_request.apply_async(
+            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
+        )
+        logger.info("Hubject CDR post task queued")
+        return {
+            "success": True,
+            "message": "Sent CDR to hubject",
+        }

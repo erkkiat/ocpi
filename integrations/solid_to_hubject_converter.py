@@ -1,7 +1,8 @@
 import functools
-import re
+import regex
+import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import pytz
 from django.conf import settings
@@ -35,24 +36,39 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     AdditionalReference,
     AdditionalReferenceChoice,
+    ERoamingChargeDetailRecord,
+    OperatorID,
+    ProviderID,
+    Identification,
+    UID,
+    ProductID,
+    RFIDMifareFamilyIdentificationClass,
+    EvseStatus as OICPEvseStatus,
 )
 from ocpi22.choices import OCPICapability
+from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
+
+logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from ocpi22.models.cdr import Cdr
 
 
 class SolidToHubjectConverter:
     def __init__(self, oicp_version: str = None, ocpi_version: str = None):
         self.oicp_version = oicp_version
         self.ocpi_version = ocpi_version
-        self.address_pattern = re.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
+        self.address_pattern = regex.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
-        self.general_address_pattern = re.compile(
-            r"(?P<street>[A-Za-z\s.-]+?)\s+(?P<house>\d+[A-Za-z]?(?:-\d+)?)"
+        self.general_address_pattern = regex.compile(
+            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
+            regex.IGNORECASE,
         )
-        self.france_pattern = re.compile(
-            r"(?P<house>\d+[A-Za-z]?)\s+(?P<street>(?:Rue|Avenue|Boulevard|Chemin)\s+[A-Za-z\s.-]+)",
-            re.IGNORECASE,
+        self.france_pattern = regex.compile(
+            r"^\s*(?P<house>\d{1,4})[\s,]+(?P<street>[A-Za-zÀ-ÖØ-öø-ÿ\s.'’\-]+)$",
+            regex.IGNORECASE,
         )
 
     def convert_to_operator_evse_data(self, location: Location) -> OperatorEvseData:
@@ -160,7 +176,7 @@ class SolidToHubjectConverter:
         >>> oicp_converter.get_evse_id("FI*SMP*34567")
         EvseID(root='FI*SMP*E34567')
         """
-        hubject_evse_id = re.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
+        hubject_evse_id = regex.sub(r"^([A-Z]{2}\*[A-Z]+\*)(?!E)", r"\1E", evse_id)
         return EvseID(hubject_evse_id)
 
     def get_operator_name(self, location: Location) -> str:
@@ -375,7 +391,9 @@ class SolidToHubjectConverter:
                 return match.group("house"), match.group("street").strip()
             return extract_general_address(addr)
 
-        return dict(FRA=extract_french_address).get(country, extract_general_address)
+        if country == "FRA":
+            return extract_french_address
+        return extract_general_address
 
     def get_address_components(self, address: str, country: str) -> (str, str):
         """
@@ -548,3 +566,97 @@ class SolidToHubjectConverter:
 
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
+
+    def convert_cdr_to_eroaming_charging_detail_record(
+        self, cdr: "Cdr"
+    ) -> ERoamingChargeDetailRecord:
+        from ocpi22.cpo.api import applying_tariff_element
+        from ocpi22.models.session import Session
+
+        session = Session.objects.filter(uid__iexact=cdr.session_id).first()
+        if not session:
+            raise ValidationError(f"No session found for ID {cdr.session_id}")
+
+        msp_party_str = cdr.billed_to.party_str()
+        operator_party_str = cdr.ocpi_master.party_str()
+
+        current_tariff_element = applying_tariff_element(session)
+        solid_tariff = SolidTariffRepository.find_by_ocpi_tariff_id(
+            current_tariff_element.tariff.uid
+        )
+        partner_product_id = None
+        if solid_tariff:
+            partner_product_id = self.get_pricing_product_id(
+                solid_tariff.external_id,
+                HubjectPriceComponent.KWH,
+                operator_party_str,
+                msp_party_str,
+            )
+
+        eroaming_cdr = ERoamingChargeDetailRecord(
+            session_id=session.hub_session_id,
+            cpo_partner_session_id=session.uid,
+            emp_partner_session_id=session.reservation_id,
+            partner_product_id=(
+                ProductID(root=partner_product_id) if partner_product_id else None
+            ),
+            evse_id=EvseID(root=cdr.evse_id),
+            identification=Identification(
+                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                    UID=UID(root=session.token_id)
+                ),
+            ),
+            charging_start=cdr.start_date_time,
+            charging_end=cdr.end_date_time,
+            session_start=cdr.start_date_time,
+            session_end=cdr.end_date_time,
+            meter_value_start=session.start_kwh,
+            meter_value_end=session.stop_kwh,
+            meter_value_in_between=None,
+            consumed_energy=cdr.total_energy,
+            signed_metering_values=None,
+            calibration_law_verification_info=None,
+            hub_operator_id=OperatorID(root=operator_party_str),
+            hub_provider_id=ProviderID(root=msp_party_str),
+        )
+
+        evse_data_record = self._convert_to_evse_data_record(
+            session.evse, session.location
+        )
+
+        if (
+            evse_data_record.CalibrationLawDataAvailability
+            == CalibrationLawDataAvailability.External
+        ):
+            if eroaming_cdr.signed_metering_values is None:
+                logger.error(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External in ERoamingChargeDetailRecord."
+                )
+                raise ValidationError(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
+                )
+
+        return eroaming_cdr
+
+    def convert_ocpi_evse_status(self, status: str) -> OICPEvseStatus:
+        match status.upper():
+            case "AVAILABLE":
+                return OICPEvseStatus.Available
+            case "BLOCKED":
+                return OICPEvseStatus.Occupied
+            case "CHARGING":
+                return OICPEvseStatus.Occupied
+            case "INOPERATIVE":
+                return OICPEvseStatus.OutOfService
+            case "OUTOFORDER":
+                return OICPEvseStatus.OutOfService
+            case "PLANNED":
+                return OICPEvseStatus.Occupied
+            case "REMOVED":
+                return OICPEvseStatus.OutOfService
+            case "RESERVED":
+                return OICPEvseStatus.Reserved
+            case "UNKNOWN":
+                return OICPEvseStatus.Unknown
+            case _:
+                raise ValueError(f"Invalid OCPI status [{status}] found")

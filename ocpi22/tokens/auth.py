@@ -170,7 +170,12 @@ class TokenAuthorization:
 
 
 def authorize_token(
-    token: Union[str, Token], location=None, request=None, max_age=15, rfid=False
+    token: Union[str, Token],
+    location=None,
+    request=None,
+    max_age=15,
+    rfid=False,
+    evse_id=None,
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not rfid and not isinstance(token, Token):
@@ -210,7 +215,7 @@ def authorize_token(
 
         # Not AD HOC, so Token should be found from database
         authorization: TokenAuthorization = _authorize_token(
-            token, location, request=request
+            token, location, request=request, evse_id=evse_id
         )
         if (
             authorization
@@ -240,7 +245,7 @@ def authorize_token(
     else True,
 )
 def _authorize_token(
-    token: Union[Token, str], location=None, request=None
+    token: Union[Token, str], location=None, request=None, evse_id=None
 ) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes

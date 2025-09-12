@@ -66,5 +66,6 @@ DATABASES = {
         "PORT": "3306",
         "CONN_MAX_AGE": 780,
         "OPTIONS": {"ssl_mode": "REQUIRED"},
+        "CONN_HEALTH_CHECKS": True,
     }
 }
