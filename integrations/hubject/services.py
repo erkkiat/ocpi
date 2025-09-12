@@ -37,6 +37,7 @@ from integrations.hubject.schemas import (
     OperatorEvseStatus,
     EvseStatusRecordItem,
     EvseID,
+    ERoamingAcknowledgment,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -482,3 +483,6 @@ class HubjectService:
             "success": True,
             "message": "Sent CDR to hubject",
         }
+
+    def process_remote_start_command(self, remote_start_command):
+        return ERoamingAcknowledgment()
