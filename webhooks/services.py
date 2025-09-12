@@ -79,6 +79,10 @@ class WebhookEventService:
         )
 
 
+class WebHookExecutionError(Exception):
+    pass
+
+
 class WebhookExecutionService:
     def trigger_webhook_by_id(self, webhook_id: int, event_type: str, payload: dict):
         try:
@@ -121,12 +125,17 @@ class WebhookExecutionService:
     def execute_webhook_event(self, event: WebhookEvent):
         if event.is_completed:
             logger.warning(f"Attempted to execute completed event {event.id}")
-            return event.status == WebhookEventStatus.SUCCESS
+            raise WebHookExecutionError("Cannot send to completed event")
 
         webhook = event.webhook
         if not webhook.active:
             WebhookEventService.mark_failed(event, "Webhook is not active")
-            return False
+            logger.warning(
+                f"Cannot send webhook request to inactive webhook {webhook.id} - {webhook.url}, "
+            )
+            raise WebHookExecutionError(
+                f"Cannot send webhook request to a inactive webhook configuration id: {webhook.id} - url:{webhook.url}"
+            )
 
         WebhookEventService.mark_attempt_started(event)
         response = self._send_webhook(webhook, event)
