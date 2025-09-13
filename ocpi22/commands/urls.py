@@ -1,7 +1,7 @@
 from django.urls import path
 
 from ocpi22.commands.api import CommandsViewSet
-from ocpi22.commands.commands import CommandsViewSet as LegacyCommandsViewSet
+from ocpi22.commands.commands import CommandsViewSetLegacy as LegacyCommandsViewSet
 
 urlpatterns = [
     path(

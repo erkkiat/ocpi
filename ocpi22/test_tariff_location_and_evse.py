@@ -83,7 +83,7 @@ from ocpi22.choices import (
     OcpiRolesEnum,
     AuthorizationEnum,
 )
-from ocpi22.commands.commands import CommandsViewSet
+from ocpi22.commands.commands import CommandsViewSetLegacy
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
@@ -1323,7 +1323,7 @@ class CommandTests(TestCase):
     @simulate_surrounding_world
     def test_start_stop_session(self, simulation):
         url = reverse("commands-start-session")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
         request = api_factory.get(url, sender=Party("FI", "MSP"))
@@ -1444,7 +1444,7 @@ class CommandTests(TestCase):
     def test_reserve_now(self, simulation):
         return  # Reservations are not in use (yet)
         url = reverse("commands-reserve-now")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
         request = api_factory.get(url, sender=Party("FI", "MSP"))
@@ -2891,7 +2891,7 @@ class TestCpoApi(TestCase):
         mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         url = reverse("commands-start-session")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Load up the test message and send it
         data = load_example("data/examples/command_start_session_adhoc.json")
@@ -3544,7 +3544,7 @@ def start_session(data, user):
     )
     request.data = data
     request.user = user
-    return CommandsViewSet.start_session(request)
+    return CommandsViewSetLegacy.start_session(request)
 
 
 def stop_session(data, user):
@@ -3553,13 +3553,13 @@ def stop_session(data, user):
     )
     request.data = data
     request.user = user
-    return CommandsViewSet().stop_session(request)
+    return CommandsViewSetLegacy().stop_session(request)
 
 
 def send_command_result(data, url, command, command_id):
     request = api_factory.post(url)
     request.data = data
-    return CommandsViewSet().command_result(request, command, command_id)
+    return CommandsViewSetLegacy().command_result(request, command, command_id)
 
 
 class TestMspMap(TestCase):
