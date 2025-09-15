@@ -1,7 +1,7 @@
 from django.urls import path
 
 from ocpi22.commands.api import CommandsViewSet
-from ocpi22.commands.commands import CommandsViewSetLegacy as LegacyCommandsViewSet
+from ocpi22.commands.commands import CommandsViewSetLegacy
 
 urlpatterns = [
     path(
@@ -22,24 +22,24 @@ urlpatterns = [
     # #  Legacy
     path(
         "commands/",
-        LegacyCommandsViewSet.as_view({"get": "list"}),
+        CommandsViewSetLegacy.as_view({"get": "list"}),
         name="commands-list",
     ),
     path(
         "commands/UNLOCK_CONNECTOR",
-        LegacyCommandsViewSet.as_view(
+        CommandsViewSetLegacy.as_view(
             {"get": "unlock_connector", "post": "unlock_connector"}
         ),
         name="commands-unlock-connector",
     ),
     path(
         "commands/hubresponse/<str:command_id>",
-        LegacyCommandsViewSet.as_view({"post": "hubresponse"}),
+        CommandsViewSetLegacy.as_view({"post": "hubresponse"}),
         name="commands-hubresponse",
     ),
     path(
         "commands/COMMAND_RESULT/<str:command>/<str:command_id>",
-        LegacyCommandsViewSet.as_view(
+        CommandsViewSetLegacy.as_view(
             {"get": "command_result", "post": "command_result"}
         ),
         name="commands-command-result",
