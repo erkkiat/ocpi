@@ -51,7 +51,7 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity, get_our_party
+from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import Any, TYPE_CHECKING, Optional
@@ -509,13 +509,17 @@ class HubjectService:
         self, remote_start_command: ERoamingAuthorizeRemoteStart
     ):
         from ocpi22.commands.serializers import StartSessionSerializer
-        from ocpi22.commands.services import StartSessionService
+        from ocpi22.commands.services import StartCommandService
+        from ocpi22.commands.repository import SessionRepository
+
+        logger.info(
+            "Remote start command received from Hubject",
+            extra={"command": remote_start_command},
+        )
 
         sender_country_code, sender_party_id = self.decode_country_code_and_party_id(
             remote_start_command.provider_id.root
         )
-        sender_party = Party.from_str(f"{sender_country_code}*{sender_party_id}")
-        our_role = get_our_party().get_role_if_exists()
 
         evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
 
@@ -524,9 +528,9 @@ class HubjectService:
             return ERoamingAcknowledgment(
                 result=False,
                 status_code="603",
-                session_id="",
+                session_id=remote_start_command.session_id,
                 cpo_partner_session_id="",
-                emp_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
             )
 
         command_id = remote_start_command.emp_partner_session_id
@@ -550,17 +554,27 @@ class HubjectService:
 
         serializer = StartSessionSerializer(data=data)
 
-        service = StartSessionService()
+        sender_party = Party.from_str(f"{sender_country_code}*{sender_party_id}")
+        hubject_party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
+        # There is no hub authentication in OCPI 2.x
+        credentials_role = get_credentialsrole(
+            credentials=None, party=hubject_party, create=True
+        )
+
+        service = StartCommandService()
         service.start_session(
             sender_party=sender_party,
-            ocpi_party=our_role,
-            credentials=our_role.credentials,
+            credentials=credentials_role.credentials,
             validated_data=serializer.validated_data,
+        )
+
+        session = SessionRepository.find_session_by_auth_ref_and_token_uid(
+            serializer.validated_data
         )
         return ERoamingAcknowledgment(
             result=True,
             status_code="000",
-            session_id="",
-            cpo_partner_session_id="",
-            emp_partner_session_id="",
+            session_id=remote_start_command.session_id,
+            cpo_partner_session_id=session.uid if session else "",
+            emp_partner_session_id=remote_start_command.emp_partner_session_id,
         )
