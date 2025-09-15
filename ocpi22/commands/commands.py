@@ -62,7 +62,7 @@ class ResponseData:
     timeout: int
 
 
-class CommandsViewSet(GenericViewSet):
+class CommandsViewSetLegacy(GenericViewSet):
     # root_view_name = 'commands'
     queryset = (
         Session.objects.none()
