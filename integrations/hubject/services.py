@@ -8,6 +8,7 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
+from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
@@ -48,6 +49,7 @@ from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
+from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity, get_our_party
 from ocpiconnector.party import Party
@@ -527,8 +529,11 @@ class HubjectService:
                 emp_partner_session_id="",
             )
 
+        command_id = remote_start_command.emp_partner_session_id
         data = {
-            "response_url": "",
+            "response_url": build_absolute_uri(
+                reverse("chargepoint-remote-command-result", args=(command_id,))
+            ),
             "token": {
                 "uid": remote_start_command.identification.RFIDMifareFamilyIdentification.UID.root,
                 "country_code": sender_country_code,
