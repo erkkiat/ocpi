@@ -636,7 +636,8 @@ class HubjectService:
         )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
-            validated_data
+            validated_data.get("authorization_reference"),
+            validated_data["token"]["uid"],
         )
         return ERoamingAcknowledgment(
             result=True,
