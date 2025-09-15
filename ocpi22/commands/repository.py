@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional
 from django.db.models import Q
 
 from ocpi22.models.session import Session
@@ -37,12 +37,10 @@ class SessionRepository:
 
     @staticmethod
     def find_session_by_auth_ref_and_token_uid(
-        validated_data: Dict[str, Any],
+        auth_reference: str, token_uid: str
     ) -> Optional[Session]:
-        auth_ref = validated_data["authorization_reference"]
-        token_uid = validated_data["token"]["uid"]
         return Session.objects.filter(
-            authorization_reference=auth_ref, cdr_token__uid=token_uid
+            authorization_reference=auth_reference, cdr_token__uid=token_uid
         ).first()
 
 
