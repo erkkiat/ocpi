@@ -30,7 +30,11 @@ def convert_to_charging_notification_base_data(ocpi_session: "Session") -> dict:
         "identification": Identification(
             RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                 UID=UID(root=ocpi_session.cdr_token.uid)
-            )
+            ),
+            RemoteIdentification=None,
+            QRCodeIdentification=None,
+            RFIDIdentification=None,
+            PlugAndChargeIdentification=None,
         ),
         "meter_value_start": ocpi_session.start_kwh or 0.0,
     }

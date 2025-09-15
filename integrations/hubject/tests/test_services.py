@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, Mock
 
 import pytest
 import pytz
@@ -48,6 +48,13 @@ from integrations.hubject.schemas import (
     OperatorEvseStatus,
     EvseStatusRecordItem,
     EvseStatus,
+    ERoamingAuthorizeRemoteStart,
+    Identification,
+    ERoamingAcknowledgment,
+    ProviderID,
+    StatusCode,
+    RemoteIdentification,
+    EvcoID,
 )
 from integrations.hubject.services import (
     HubjectService,
@@ -60,6 +67,7 @@ from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
     PricingProductDataFactory,
+    CredentialsRoleFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
@@ -1087,3 +1095,181 @@ def test_decode_invalid_raises():
     with pytest.raises(ValueError) as exc:
         HubjectService.decode_country_code_and_party_id("INVALID_FORMAT")
     assert "Invalid ProviderID format" in str(exc.value)
+
+
+class TestHubjectAuthorizeRemoteStart:
+    hubject_service = HubjectService()
+
+    @pytest.fixture
+    def mock_remote_start_command(self):
+        return ERoamingAuthorizeRemoteStart(
+            session_id="f98efba4-02d8-4fa0-b810-9a9d50d2c527",
+            emp_partner_session_id="MSPSession",
+            evse_id=EvseID(root="DE*ABC*E123456"),
+            provider_id=ProviderID(root="DE*MSP"),
+            identification=Identification(
+                RemoteIdentification=RemoteIdentification(
+                    EvcoID=EvcoID(root="AB-VDC-C1234ABCDA")
+                ),
+                RFIDMifareFamilyIdentification=None,
+                QRCodeIdentification=None,
+                RFIDIdentification=None,
+                PlugAndChargeIdentification=None,
+            ),
+        )
+
+    @pytest.fixture
+    def evse(self):
+        EvseFactory(
+            uid="123456",
+            location=LocationFactory(
+                ocpi_master=CredentialsRoleFactory(country_code="DE", party_id="ABC")
+            ),
+        )
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_evse_not_found(
+        self, mock_remote_start_command
+    ):
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result == ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="603"),
+            session_id="f98efba4-02d8-4fa0-b810-9a9d50d2c527",
+            cpo_partner_session_id="",
+            emp_partner_session_id="MSPSession",
+        )
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_provider_id_decode_fails(
+        self, evse, mock_remote_start_command
+    ):
+        mock_remote_start_command.provider_id.root = "INVALID_FORMAT"
+
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert isinstance(result, ERoamingAcknowledgment)
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="300")
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_serializer_invalid(
+        self, mock_remote_start_command, evse
+    ):
+        invalid_data = {
+            "response_url": "http://example12345.com/response",
+            "token": {
+                "uid": "",
+            },
+            "location_id": "",
+            "evse_uid": "",
+            "connector_id": "",
+            "authorization_reference": "",
+        }
+        with patch(
+            "integrations.hubject.services.HubjectService._prepare_start_session_data",
+            return_value=invalid_data,
+        ):
+            result = self.hubject_service.process_remote_start_command(
+                mock_remote_start_command
+            )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="022")
+
+    @patch("integrations.hubject.services.HubjectService._start_session")
+    @pytest.mark.django_db
+    def test_process_remote_start_command_calls_start_session_when_valid(
+        self, mock_start_session, mock_remote_start_command, evse
+    ):
+        expected_acknowledgment = Mock(spec=ERoamingAcknowledgment)
+        mock_start_session.return_value = expected_acknowledgment
+
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        mock_start_session.assert_called_once()
+        assert result == expected_acknowledgment
+
+    # def test_decode_country_code_and_party_id_returns_none_when_provider_id_none(
+    #         self
+    # ):
+    #     country_code, party_id = self.hubject_service.decode_country_code_and_party_id(None)
+    #
+    #     assert country_code is None
+    #     assert party_id is None
+    #
+    # @pytest.mark.parametrize("provider_id,expected_country,expected_party", [
+    #     ("DE*MSP", "DE", "MSP"),
+    #     ("NL-ABC", "NL", "ABC"),
+    #     ("FRXYZ", "FR", "XYZ"),
+    # ])
+    # @pytest.mark.django_db
+    # def test_decode_country_code_and_party_id_parses_valid_formats(
+    #         self, provider_id, expected_country, expected_party
+    # ):
+    #     country_code, party_id = self.hubject_service.decode_country_code_and_party_id(provider_id)
+    #
+    #     assert country_code == expected_country
+    #     assert party_id == expected_party
+    #
+    # @pytest.mark.parametrize("invalid_provider_id", [
+    #     "INVALID",
+    #     "TOO-LONG-FORMAT",
+    #     "123",
+    #     "",
+    # ])
+    # @pytest.mark.django_db
+    # def test_decode_country_code_and_party_id_raises_error_for_invalid_format(
+    #         self, invalid_provider_id
+    # ):
+    #     with pytest.raises(ValueError, match="Invalid ProviderID format"):
+    #         self.hubject_service.decode_country_code_and_party_id(invalid_provider_id)
+    #
+    # @patch('integrations.hubject.services.build_absolute_uri')
+    # @pytest.mark.django_db
+    # def test_prepare_start_session_data_builds_correct_structure(
+    #         self, mock_build_uri, mock_remote_start_command, mock_evse
+    # ):
+    #     mock_build_uri.return_value = "http://test.com/callback"
+    #     sender_party = Party(country_code="DE", party_id="MSP")
+    #
+    #     result = self.hubject_service._prepare_start_session_data(
+    #         mock_remote_start_command, mock_evse, sender_party
+    #     )
+    #
+    #     expected_data = {
+    #         "response_url": "http://test.com/callback",
+    #         "token": {
+    #             "uid": "1234ABCD",
+    #             "country_code": "DE",
+    #             "party_id": "MSP",
+    #             "type": "APP_USER",
+    #         },
+    #         "location_id": "location-uid-456",
+    #         "evse_uid": "evse-uid-123",
+    #         "connector_id": "connector-uid-789",
+    #         "authorization_reference": "emp-session-456",
+    #     }
+    #     assert result == expected_data
+    #
+    # @patch('integrations.hubject.services.build_absolute_uri')
+    # @pytest.mark.django_db
+    # def test_prepare_start_session_data_handles_no_connectors(
+    #         self, mock_build_uri, mock_remote_start_command, mock_evse
+    # ):
+    #     mock_build_uri.return_value = "http://test.com/callback"
+    #     mock_evse.connectors.exists.return_value = False
+    #     sender_party = Party(country_code="DE", party_id="MSP")
+    #
+    #     result = self.hubject_service._prepare_start_session_data(
+    #         mock_remote_start_command, mock_evse, sender_party
+    #     )
+    #
+    #     assert result["connector_id"] == ""

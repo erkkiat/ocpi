@@ -22,7 +22,11 @@ class TestIdentificationValidation:
         identification = Identification(
             RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                 UID=UID(root="7568290FFF765F")
-            )
+            ),
+            RemoteIdentification=None,
+            QRCodeIdentification=None,
+            RFIDIdentification=None,
+            PlugAndChargeIdentification=None,
         )
         assert identification.RFIDMifareFamilyIdentification is not None
 
@@ -38,7 +42,11 @@ class TestChargingNotificationStart:
             "identification": Identification(
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root="7568290FFF765F")
-                )
+                ),
+                RemoteIdentification=None,
+                QRCodeIdentification=None,
+                RFIDIdentification=None,
+                PlugAndChargeIdentification=None,
             ),
         }
         defaults.update(overrides)
@@ -85,7 +93,11 @@ class TestChargingNotificationStart:
         identification = Identification(
             RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                 UID=UID(root="7568290FFF765F")
-            )
+            ),
+            RemoteIdentification=None,
+            QRCodeIdentification=None,
+            RFIDIdentification=None,
+            PlugAndChargeIdentification=None,
         )
         notification = self.create_valid_charging_notification_start(
             identification=identification

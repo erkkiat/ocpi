@@ -605,6 +605,10 @@ class SolidToHubjectConverter:
                 RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                     UID=UID(root=session.token_id)
                 ),
+                RemoteIdentification=None,
+                QRCodeIdentification=None,
+                RFIDIdentification=None,
+                PlugAndChargeIdentification=None,
             ),
             charging_start=cdr.start_date_time,
             charging_end=cdr.end_date_time,

@@ -180,7 +180,11 @@ class HubjectService:
                 identification=Identification(
                     RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                         UID=UID(root=token_id)
-                    )
+                    ),
+                    RemoteIdentification=None,
+                    QRCodeIdentification=None,
+                    RFIDIdentification=None,
+                    PlugAndChargeIdentification=None,
                 ),
             )
             payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
