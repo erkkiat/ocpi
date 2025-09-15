@@ -40,6 +40,7 @@ from integrations.hubject.schemas import (
     EvseID,
     ERoamingAcknowledgment,
     ERoamingAuthorizeRemoteStart,
+    StatusCode,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -505,44 +506,25 @@ class HubjectService:
         else:
             raise ValueError(f"Invalid ProviderID format: {provider_id}")
 
-    def process_remote_start_command(
-        self, remote_start_command: ERoamingAuthorizeRemoteStart
-    ):
-        from ocpi22.commands.serializers import StartSessionSerializer
-        from ocpi22.commands.services import StartCommandService
-        from ocpi22.commands.repository import SessionRepository
-
-        logger.info(
-            "Remote start command received from Hubject",
-            extra={"command": remote_start_command},
-        )
-
-        sender_country_code, sender_party_id = self.decode_country_code_and_party_id(
-            remote_start_command.provider_id.root
-        )
-
-        evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
-
-        if not evse:
-            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
-            return ERoamingAcknowledgment(
-                result=False,
-                status_code="603",
-                session_id=remote_start_command.session_id,
-                cpo_partner_session_id="",
-                emp_partner_session_id=remote_start_command.emp_partner_session_id,
-            )
-
+    def _prepare_start_session_data(
+        self, remote_start_command, evse: Evse, sender_party: Party
+    ) -> dict:
         command_id = remote_start_command.emp_partner_session_id
-        data = {
+        contract_id = (
+            remote_start_command.identification.RemoteIdentification.EvcoID.root
+        )
+        if not contract_id:
+            raise ValidationError("EvcoID is required for remote start command")
+        return {
             "response_url": build_absolute_uri(
                 reverse("chargepoint-remote-command-result", args=(command_id,))
             ),
             "token": {
-                "uid": remote_start_command.identification.RFIDMifareFamilyIdentification.UID.root,
-                "country_code": sender_country_code,
-                "party_id": sender_party_id,
+                "uid": contract_id,  # Hubject does not send a token UID for remote start
+                "country_code": sender_party.country_code,
+                "party_id": sender_party.party_id,
                 "type": TokenType.APP_USER.value,
+                "contract_id": contract_id,
             },
             "location_id": evse.location.uid,
             "evse_uid": evse.uid,
@@ -552,9 +534,90 @@ class HubjectService:
             "authorization_reference": remote_start_command.emp_partner_session_id,
         }
 
-        serializer = StartSessionSerializer(data=data)
+    def process_remote_start_command(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ):
+        from ocpi22.commands.serializers import StartSessionSerializer
+
+        logger.info(
+            "Remote start command received from Hubject",
+            extra={"command": remote_start_command},
+        )
+
+        evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
+
+        if not evse:
+            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="603"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            )
+
+        try:
+            sender_country_code, sender_party_id = (
+                self.decode_country_code_and_party_id(
+                    remote_start_command.provider_id.root
+                )
+            )
+        except ValueError as ve:
+            logger.error(f"Failed to decode ProviderID: {ve}")
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="300"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            )
 
         sender_party = Party.from_str(f"{sender_country_code}*{sender_party_id}")
+
+        try:
+            data = self._prepare_start_session_data(
+                remote_start_command, evse, sender_party
+            )
+        except ValidationError as ve:
+            logger.error(
+                f"Validation error preparing start session data for Hubject: {ve}"
+            )
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            )
+
+        serializer = StartSessionSerializer(data=data)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            return self._start_session(
+                sender_party, remote_start_command, validated_data
+            )
+        else:
+            logger.error(
+                "Invalid data for starting remote session for Hubject",
+                extra={"errors": serializer.errors, "data": data},
+            )
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            )
+
+    def _start_session(
+        self,
+        sender_party,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        validated_data: dict,
+    ) -> ERoamingAcknowledgment:
+        from ocpi22.commands.services import StartCommandService
+        from ocpi22.commands.repository import SessionRepository
+
         hubject_party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
         # There is no hub authentication in OCPI 2.x
         credentials_role = get_credentialsrole(
@@ -565,15 +628,15 @@ class HubjectService:
         service.start_session(
             sender_party=sender_party,
             credentials=credentials_role.credentials,
-            validated_data=serializer.validated_data,
+            validated_data=validated_data,
         )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
-            serializer.validated_data
+            validated_data
         )
         return ERoamingAcknowledgment(
             result=True,
-            status_code="000",
+            status_code=StatusCode(Code="000"),
             session_id=remote_start_command.session_id,
             cpo_partner_session_id=session.uid if session else "",
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
