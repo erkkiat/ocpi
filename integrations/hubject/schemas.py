@@ -647,7 +647,7 @@ class ERoamingAcknowledgment(HubjectBaseModel):
         description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
     status_code: StatusCode = Field(..., alias="StatusCode")
-    sessionID: Optional[SessionID] = Field(None, alias="SessionID")
+    session_id: Optional[SessionID] = Field(None, alias="SessionID")
     cpo_partner_session_id: Optional[str] = Field(
         None,
         alias="CPOPartnerSessionID",

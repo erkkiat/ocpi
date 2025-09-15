@@ -38,17 +38,18 @@ from integrations.hubject.schemas import (
     EvseStatusRecordItem,
     EvseID,
     ERoamingAcknowledgment,
+    ERoamingAuthorizeRemoteStart,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity
+from ocpiconnector.ocpi_identities import get_our_identity, get_our_party
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import Any, TYPE_CHECKING, Optional
@@ -502,5 +503,59 @@ class HubjectService:
         else:
             raise ValueError(f"Invalid ProviderID format: {provider_id}")
 
-    def process_remote_start_command(self, remote_start_command):
-        return ERoamingAcknowledgment()
+    def process_remote_start_command(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ):
+        from ocpi22.commands.serializers import StartSessionSerializer
+        from ocpi22.commands.services import StartSessionService
+
+        sender_country_code, sender_party_id = self.decode_country_code_and_party_id(
+            remote_start_command.provider_id.root
+        )
+        sender_party = Party.from_str(f"{sender_country_code}*{sender_party_id}")
+        our_role = get_our_party().get_role_if_exists()
+
+        evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
+
+        if not evse:
+            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code="603",
+                session_id="",
+                cpo_partner_session_id="",
+                emp_partner_session_id="",
+            )
+
+        data = {
+            "response_url": "",
+            "token": {
+                "uid": remote_start_command.identification.RFIDMifareFamilyIdentification.UID.root,
+                "country_code": sender_country_code,
+                "party_id": sender_party_id,
+                "type": TokenType.APP_USER.value,
+            },
+            "location_id": evse.location.uid,
+            "evse_uid": evse.uid,
+            "connector_id": evse.connectors.first().uid
+            if evse.connectors.exists()
+            else "",
+            "authorization_reference": remote_start_command.emp_partner_session_id,
+        }
+
+        serializer = StartSessionSerializer(data=data)
+
+        service = StartSessionService()
+        service.start_session(
+            sender_party=sender_party,
+            ocpi_party=our_role,
+            credentials=our_role.credentials,
+            validated_data=serializer.validated_data,
+        )
+        return ERoamingAcknowledgment(
+            result=True,
+            status_code="000",
+            session_id="",
+            cpo_partner_session_id="",
+            emp_partner_session_id="",
+        )
