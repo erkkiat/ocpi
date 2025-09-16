@@ -11,7 +11,6 @@ from ocpi22.models.session import Session
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpi22.util import command_store
 from ocpi22.choices import MessageTexts
 from ocpi22.ocpi.auth import get_credentialsrole
 
@@ -110,6 +109,9 @@ class StartCommandService(RemoteCommandServices):
     ) -> Session:
         evse_uid = validated_data.get("evse_uid")
         close_active_sessions_for_evse(evse_uid)
+        adhoc_token_dict = validated_data["token"]
+        adhoc_token_dict["billed_to"] = billed_to.get_party()
+        adhoc_token_dict["ocpi_master"] = billed_to
         session = create_session(
             location_id=validated_data["location_id"],
             evse_uid=validated_data.get("evse_uid"),
@@ -118,7 +120,7 @@ class StartCommandService(RemoteCommandServices):
             credentials=credentials,
             authorization_reference=validated_data.get("authorization_reference"),
             authorization_method=enum.AuthMethodChoices.COMMAND,
-            ad_hoc_token=AdhocToken.from_dict(validated_data["token"]),
+            ad_hoc_token=AdhocToken.from_dict(adhoc_token_dict),
         )
         logger.info(
             f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['token']['authorization_reference']}"
@@ -134,7 +136,7 @@ class StartCommandService(RemoteCommandServices):
         billed_to = get_credentialsrole(party=sender_party)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
-            token_uid=validated_data["token"]["token_uid"],
+            token_uid=validated_data["token"]["uid"],
         )
 
         if not session:
@@ -150,7 +152,7 @@ class StartCommandService(RemoteCommandServices):
 
         if session.status == Session.ACTIVE:
             logger.info(
-                f"Found existing active session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['token']['authorization_reference']}"
+                f"Found existing active session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['authorization_reference']}"
             )
             return OCPIResponse(
                 None,
@@ -159,7 +161,7 @@ class StartCommandService(RemoteCommandServices):
             )
         if session.status in [Session.PENDING, Session.RESERVATION]:
             logger.info(
-                f"Retrying existing {session.status} session for remote start with token_uid: {validated_data['token']['uid']} and auth_reference: {validated_data['token']['authorization_reference']}"
+                f"Retrying existing {session.status} session for remote start with token_uid: {validated_data['token']['uid']} and auth_reference: {validated_data['authorization_reference']}"
             )
             webhook_response = self.send_start_command_webhook(
                 billed_to=billed_to,
@@ -178,18 +180,18 @@ class StartCommandService(RemoteCommandServices):
         billed_to: Optional[CredentialsRole],
         validated_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        command_id = (
+        validated_data["authorization_reference"] = (
             validated_data.get("authorization_reference") or generate_random_token()
         )
-        token_copy = validated_data["token"].copy
-
-        command_store[command_id] = validated_data
-        token_copy["type"] = str(token_copy["type"])
+        validated_data["token"]["type"] = str(validated_data["token"]["type"])
         payload = {
             "response_url": build_absolute_uri(
-                reverse("chargepoint-remote-command-result", args=(command_id,))
+                reverse(
+                    "chargepoint-remote-command-result",
+                    args=(validated_data["authorization_reference"],),
+                )
             ),
-            "token": token_copy,
+            "token": validated_data,
             "authorization_reference": validated_data["authorization_reference"],
             "evse_uid": validated_data.get("evse_uid"),
             "connector_id": validated_data.get("connector_uid"),
