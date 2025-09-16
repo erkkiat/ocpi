@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import requests
 from django.conf import settings
-from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ValidationError
 
 from ocpi22.models.location import Location, Evse
 from ocpi22.serializers.util import CallbacksSerializer
@@ -13,7 +13,7 @@ from ocpi22.util import build_callback_request
 logger = getLogger(__name__)
 
 
-def send_to_webhook(
+def send_to_webhook_legacy(
     data: Union[dict, Location, Evse] = None,
     serializer=None,
     serialized_data=None,
@@ -28,7 +28,7 @@ def send_to_webhook(
         # Send updates for all EVSEs at this Location
         list(
             map(
-                lambda evse: send_to_webhook(
+                lambda evse: send_to_webhook_legacy(
                     evse,
                     serializer,
                     serialized_data,
@@ -42,7 +42,7 @@ def send_to_webhook(
         return {}
     if isinstance(data, Evse):
         ocpi_master = ocpi_master or data.location.ocpi_master
-        return send_to_webhook(
+        return send_to_webhook_legacy(
             dict(location_id=data.location.uid, evse_id=data.uid, status=data.status),
             serializer,
             serialized_data,

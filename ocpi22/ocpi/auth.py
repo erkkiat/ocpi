@@ -99,8 +99,11 @@ def check_auth_token(request, token: str) -> bool:
                     if settings.DEBUG
                     else ""
                 )
-
-        sender_party = get_sender_party(request.headers)
+        try:
+            sender_party = get_sender_party(request.headers)
+        except ValueError:
+            logger.warning("Invalid country code or party")
+            raise NotAuthenticated("Invalid Party provided")
         if not sender_party and credentials.roles.count() == 1:
             sender_party = credentials.roles.first().get_party()
 

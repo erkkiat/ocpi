@@ -2,6 +2,7 @@ import requests
 import logging
 
 from django.core.exceptions import ValidationError
+from requests import Response
 
 from webhooks.models import Webhook, WebhookEvent, WebhookEventStatus, WebhookEventType
 from django.utils import timezone
@@ -78,9 +79,12 @@ class WebhookEventService:
         )
 
 
+class WebHookExecutionError(Exception):
+    pass
+
+
 class WebhookExecutionService:
-    @classmethod
-    def trigger_webhook_by_id(cls, webhook_id: int, event_type: str, payload: dict):
+    def trigger_webhook_by_id(self, webhook_id: int, event_type: str, payload: dict):
         try:
             webhook = Webhook.objects.get(id=webhook_id)
         except Webhook.DoesNotExist:
@@ -98,7 +102,7 @@ class WebhookExecutionService:
                 webhook=webhook, event_type=event_type, payload=payload
             )
 
-            cls.execute_webhook_event(event)
+            self.execute_webhook_event(event)
             return event
 
         except Exception:
@@ -108,19 +112,36 @@ class WebhookExecutionService:
             )
             return None
 
-    @classmethod
-    def execute_webhook_event(cls, event: WebhookEvent):
+    @staticmethod
+    def _get_response(response: Response, webhook_event_id: int):
+        try:
+            return response.json()
+        except Exception:
+            logger.exception(
+                f"Failed to parse webhook response for event {webhook_event_id} for status {response.status_code}"
+            )
+            return {}
+
+    def execute_webhook_event(self, event: WebhookEvent):
         if event.is_completed:
             logger.warning(f"Attempted to execute completed event {event.id}")
-            return event.status == WebhookEventStatus.SUCCESS
+            raise WebHookExecutionError("Cannot send to completed event")
 
         webhook = event.webhook
         if not webhook.active:
             WebhookEventService.mark_failed(event, "Webhook is not active")
-            return False
+            logger.warning(
+                f"Cannot send webhook request to inactive webhook {webhook.id} - {webhook.url}, "
+            )
+            raise WebHookExecutionError(
+                f"Cannot send webhook request to a inactive webhook configuration id: {webhook.id} - url:{webhook.url}"
+            )
 
         WebhookEventService.mark_attempt_started(event)
+        response = self._send_webhook(webhook, event)
+        return response
 
+    def _send_webhook(self, webhook: Webhook, event: WebhookEvent):
         try:
             headers = {
                 "Content-Type": "application/json",
@@ -133,40 +154,50 @@ class WebhookExecutionService:
                 json=event.payload,
                 headers=headers,
                 timeout=webhook.timeout_seconds,
+                allow_redirects=False,
             )
 
-            if response.status_code < 400:
+            if 200 <= response.status_code < 300:
                 WebhookEventService.mark_success(
                     event, status_code=response.status_code
                 )
                 logger.info(
-                    f"Webhook event {event.id} delivered successfully to {webhook.url}"
+                    "Webhook event %s delivered successfully to %s",
+                    event.id,
+                    webhook.url,
                 )
-                return True
-            else:
-                error_msg = f"HTTP {response.status_code}: {response.text[:500]}"
+                return self._get_response(response, event.id)
+            elif 400 <= response.status_code < 500:
+                error_msg = (
+                    f"Webhook event {event.id} failed with HTTP {response.status_code}"
+                )
+                logger.warning(error_msg)
                 WebhookEventService.mark_failed(
                     event, error_msg, status_code=response.status_code
                 )
-                logger.warning(
+                return self._get_response(response, event.id)
+            else:
+                error_msg = (
                     f"Webhook event {event.id} failed with HTTP {response.status_code}"
                 )
-                return False
-
+                WebhookEventService.mark_failed(
+                    event, error_msg, status_code=response.status_code
+                )
+                logger.warning(error_msg)
+                return {}
         except requests.exceptions.Timeout:
             error_msg = f"Request timeout after {webhook.timeout_seconds} seconds"
             WebhookEventService.mark_failed(event, error_msg)
             logger.warning(f"Webhook event {event.id} timed out")
-            return False
+            return {}
 
         except requests.exceptions.RequestException as e:
             error_msg = f"Request error: {str(e)}"
             WebhookEventService.mark_failed(event, error_msg)
             logger.error(f"Webhook event {event.id} request failed", exc_info=True)
-            return False
+            return {}
 
-    @classmethod
-    def retry_failed_events(cls, webhook_id=None):
+    def retry_failed_events(self, webhook_id=None):
         failed_events = WebhookEvent.objects.filter(status=WebhookEventStatus.FAILED)
 
         if webhook_id:
@@ -175,7 +206,7 @@ class WebhookExecutionService:
         processed = 0
         for event in failed_events:
             if event.can_retry:
-                cls.execute_webhook_event(event)
+                self.execute_webhook_event(event)
                 processed += 1
 
         return processed
