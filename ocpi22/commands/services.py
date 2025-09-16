@@ -134,7 +134,7 @@ class StartCommandService(RemoteCommandServices):
         billed_to = get_credentialsrole(party=sender_party)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
-            token_uid=validated_data["token"]["token_uid"],
+            token_uid=validated_data["token"]["uid"],
         )
 
         if not session:

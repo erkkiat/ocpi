@@ -500,6 +500,17 @@ class HubjectService:
     ) -> tuple[str | None, str | None]:
         if provider_id is None:
             return None, None
+
+        asterisk_count = provider_id.count("*")
+        dash_count = provider_id.count("-")
+
+        if (
+            asterisk_count > 1
+            or dash_count > 1
+            or (asterisk_count > 0 and dash_count > 0)
+        ):
+            raise ValueError(f"Invalid ProviderID format: {provider_id}")
+
         if "*" in provider_id:
             return tuple(provider_id.split("*", 1))
         elif "-" in provider_id:
