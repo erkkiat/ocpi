@@ -181,7 +181,7 @@ class StartCommandService(RemoteCommandServices):
         command_id = (
             validated_data.get("authorization_reference") or generate_random_token()
         )
-        token_copy = validated_data["token"].copy
+        token_copy = validated_data["token"].copy()
 
         command_store[command_id] = validated_data
         token_copy["type"] = str(token_copy["type"])

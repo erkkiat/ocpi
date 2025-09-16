@@ -1159,7 +1159,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result == ERoamingAcknowledgment(
-            result=False,
+            result=True,
             status_code=StatusCode(Code="000"),
             session_id=mock_remote_start_command.session_id,
             cpo_partner_session_id="",
