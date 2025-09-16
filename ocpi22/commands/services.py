@@ -123,7 +123,7 @@ class StartCommandService(RemoteCommandServices):
             ad_hoc_token=AdhocToken.from_dict(adhoc_token_dict),
         )
         logger.info(
-            f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['token']['authorization_reference']}"
+            f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['authorization_reference']}"
         )
         return session
 
