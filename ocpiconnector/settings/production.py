@@ -14,9 +14,10 @@ ENV = os.getenv("ENV", "production").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 HUBJECT_URL = "Add the hubject production base url"
+HUBJECT_HOSTS = ["18.194.114.107", "35.157.60.250"]
 
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.smappee.net"]
-ALLOWED_HOSTS = get_allowed_hosts()
+ALLOWED_HOSTS = get_allowed_hosts().extend(HUBJECT_HOSTS)
 
 USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True
