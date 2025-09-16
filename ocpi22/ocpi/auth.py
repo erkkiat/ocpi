@@ -12,7 +12,9 @@ from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from django.conf import settings
 from django.contrib.auth import authenticate
-from ninja.security import HttpBasicAuth
+from django.http import HttpRequest
+from ninja.errors import HttpError
+from ninja.security import HttpBasicAuth, HttpBearer
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -247,3 +249,21 @@ class NinjaBasicAuth(HttpBasicAuth):
             return None
         except exceptions.AuthenticationFailed:
             return None
+
+
+class HubjectCertAuth(HttpBearer):
+    def authenticate(self, request: HttpRequest, token: str = None):
+        if settings.ENV == "development":
+            return {"ip": "", "cert": "development-mode"}
+
+        ip = request.META.get("REMOTE_ADDR")
+        if ip not in settings.HUBJECT_HOSTS:
+            raise HttpError(403, "Forbidden: IP not allowed")
+
+        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
+        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
+
+        if verify_status != "SUCCESS" or not cert_pem:
+            raise HttpError(403, "Forbidden: Invalid client certificate")
+
+        return {"ip": ip, "cert": cert_pem}

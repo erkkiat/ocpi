@@ -11,7 +11,7 @@ from integrations.hubject.schemas import (
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.tariff import SolidTariff
-from ocpi22.ocpi.auth import NinjaBasicAuth
+from ocpi22.ocpi.auth import NinjaBasicAuth, HubjectCertAuth
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
 
@@ -101,10 +101,10 @@ def send_charge_detail_record(request, session_id: str):
         return 200, result
 
 
-# TODO: Remove auth temporarily for testing with Hubject
 @api.post(
     "/remote/start/",
     url_name="hubject-remote-start",
+    auth=HubjectCertAuth(),
     response={
         200: ERoamingAcknowledgment,
         400: HubjectCDRError,
