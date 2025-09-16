@@ -81,12 +81,7 @@ class TokenType(str, Enum):
     OTHER = "OTHER"
 
 
-TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
-]
+TOKEN_TYPE_CHOICES = [(t.value, t.name.replace("_", " ").title()) for t in TokenType]
 
 
 class OcpiModuleEnum(Enum):
