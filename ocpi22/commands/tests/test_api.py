@@ -1,5 +1,6 @@
 import base64
 import json
+import uuid
 
 import pytest
 import responses
@@ -71,7 +72,7 @@ def valid_start_session_data():
     return {
         "response_url": "https://example.com/callback",
         "token": {
-            "uid": "TOKEN123",
+            "uid": uuid.uuid4(),
             "country_code": "NL",
             "party_id": "TST",
             "type": "RFID",
@@ -80,7 +81,7 @@ def valid_start_session_data():
         "location_id": "LOC001",
         "evse_uid": "EVSE001",
         "connector_id": "CONN001",
-        "authorization_reference": "AUTH123",
+        "authorization_reference": uuid.uuid4(),
     }
 
 
@@ -242,7 +243,7 @@ class TestStartSessionAPI:
         assert response_data["data"]["result"] == "ACCEPTED"
 
         session = Session.objects.filter(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         ).first()
 
@@ -276,9 +277,7 @@ class TestStartSessionAPI:
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
         evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
-        _ = ConnectorFactory(
-            uid=valid_start_session_data["connector_id"], evse=evse
-        )
+        _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         response = client.post(
             "/ocpi/2.2.1/commands/START_SESSION",
@@ -293,7 +292,7 @@ class TestStartSessionAPI:
         assert response_data["data"]["result"] == "REJECTED"
 
         session = Session.objects.filter(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         ).first()
         assert session
@@ -307,7 +306,7 @@ class TestStartSessionAPI:
         client.credentials = nl_tst_credentials_role.credentials
 
         OCPISessionFactory(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             status=Session.ACTIVE,
             billed_to=nl_tst_credentials_role,
             cdr_token__uid=valid_start_session_data["token"]["uid"],
@@ -336,7 +335,7 @@ class TestStartSessionAPI:
         client.credentials = nl_tst_credentials_role.credentials
 
         existing_session = OCPISessionFactory(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             status=Session.PENDING,
             billed_to=nl_tst_credentials_role,
             cdr_token__uid=valid_start_session_data["token"]["uid"],
@@ -555,7 +554,7 @@ class TestStartSessionAPI:
         ), f"Expected 1 webhook call, got {len(responses.calls)}. Response: {response_data}"
 
         created_session = Session.objects.filter(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         ).first()
         assert created_session
@@ -575,7 +574,7 @@ class TestStartSessionAPI:
         client.credentials = nl_tst_credentials_role.credentials
 
         existing_session = OCPISessionFactory(
-            authorization_reference="AUTH123",
+            authorization_reference=valid_start_session_data["authorization_reference"],
             status=Session.PENDING,
             billed_to=nl_tst_credentials_role,
             cdr_token__uid=valid_start_session_data["token"]["uid"],
