@@ -14,7 +14,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpRequest
 from ninja.errors import HttpError
-from ninja.security import HttpBasicAuth, HttpBearer
+from ninja.security import HttpBasicAuth
+from ninja.security.http import HttpAuthBase
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -251,19 +252,30 @@ class NinjaBasicAuth(HttpBasicAuth):
             return None
 
 
-class HubjectCertAuth(HttpBearer):
-    def authenticate(self, request: HttpRequest, token: str = None):
-        if settings.ENV == "development":
-            return {"ip": "", "cert": "development-mode"}
+class HubjectCertAuth(HttpAuthBase):
+    def __call__(self, request: HttpRequest):
+        return self.authenticate(request)
 
-        ip = request.META.get("REMOTE_ADDR")
-        if ip not in settings.HUBJECT_HOSTS:
-            raise HttpError(403, "Forbidden: IP not allowed")
+    def authenticate(self, request: HttpRequest):
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        if not ip:
+            ip = request.META.get("REMOTE_ADDR")
+
+        if not ip or ip not in settings.HUBJECT_HOSTS:
+            raise HttpError(403, f"Forbidden: IP {ip} not allowed")
 
         cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
         verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
 
-        if verify_status != "SUCCESS" or not cert_pem:
-            raise HttpError(403, "Forbidden: Invalid client certificate")
+        if verify_status != "SUCCESS":
+            raise HttpError(
+                403, f"Forbidden: Certificate verification failed: {verify_status}"
+            )
+
+        if not cert_pem:
+            raise HttpError(403, "Forbidden: No client certificate provided")
+
+        # Add additional certificate validation here
+        # Check the certificate subject, issuer, etc.
 
         return {"ip": ip, "cert": cert_pem}
