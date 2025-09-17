@@ -51,7 +51,7 @@ class RemoteCommandServices:
         result = webhook_response.get("data", {}).get("result", "REJECTED").upper()
 
         message = MessageTexts.get(
-            f"{command_name}_{result}",  # e.g., "START_ACCEPTED"
+            f"{command_name}_{result}",
             MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", "Command processed"),
         )
 
@@ -177,7 +177,7 @@ class StartCommandService(RemoteCommandServices):
     @staticmethod
     def _prepare_start_session_payload(
         validated_data: Dict[str, Any],
-        session: Session,  # Now required since we always create session first
+        session: Session,
     ) -> Dict[str, Any]:
         validated_data["authorization_reference"] = (
             validated_data.get("authorization_reference") or generate_random_token()
@@ -203,7 +203,7 @@ class StartCommandService(RemoteCommandServices):
         self,
         validated_data: Dict[str, Any],
         command_type: RemoteCommandType,
-        session: Session,  # Now required
+        session: Session,
     ) -> Dict[str, Any]:
         webhook = self.webhook_repo.get_remote_command_webhook(command_type)
         if not webhook or not webhook.active:

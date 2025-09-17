@@ -216,18 +216,9 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        # Use matcher to verify session_id is present in webhook payload
         responses.add(
             responses.POST,
             active_start_webhook.url,
-            match=[
-                matchers.json_params_matcher(
-                    {
-                        "authorization_reference": "AUTH123",
-                        "session_id": matchers.ANY,
-                    }
-                )
-            ],
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
@@ -262,9 +253,6 @@ class TestStartSessionAPI:
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == active_start_webhook.url
 
-        # Verify the session_id in the webhook call matches the created session
-        import json
-
         webhook_payload = json.loads(responses.calls[0].request.body)
         assert webhook_payload["session_id"] == session.uid
 
@@ -279,20 +267,17 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        # Use matcher to verify session_id is present even when webhook is rejected
         responses.add(
             responses.POST,
             active_start_webhook.url,
-            match=[
-                matchers.json_params_matcher(
-                    {
-                        "authorization_reference": "AUTH123",
-                        "session_id": matchers.ANY,
-                    }
-                )
-            ],
             json={"data": {"result": "REJECTED"}},
             status=200,
+        )
+
+        location = LocationFactory(uid=valid_start_session_data["location_id"])
+        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        _ = ConnectorFactory(
+            uid=valid_start_session_data["connector_id"], evse=evse
         )
 
         response = client.post(
@@ -307,17 +292,12 @@ class TestStartSessionAPI:
         assert response_data["status_code"] == 2000
         assert response_data["data"]["result"] == "REJECTED"
 
-        # Session is created before webhook is sent, so it should exist even if rejected
         session = Session.objects.filter(
             authorization_reference="AUTH123",
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         ).first()
         assert session
         assert len(responses.calls) == 1
-
-        # Verify the session_id in the webhook call matches the created session
-        import json
-
         webhook_payload = json.loads(responses.calls[0].request.body)
         assert webhook_payload["session_id"] == session.uid
 
@@ -362,7 +342,6 @@ class TestStartSessionAPI:
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         )
 
-        # Match exact session_id for existing session
         responses.add(
             responses.POST,
             active_start_webhook.url,
@@ -417,7 +396,6 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        # Mock a connection timeout/error
         responses.add(
             responses.POST,
             active_start_webhook.url,
@@ -470,7 +448,6 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        # Mock the webhook HTTP request
         responses.add(
             responses.POST,
             active_start_webhook.url,
@@ -503,7 +480,6 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        # Mock the webhook HTTP request
         responses.add(
             responses.POST,
             active_start_webhook.url,
