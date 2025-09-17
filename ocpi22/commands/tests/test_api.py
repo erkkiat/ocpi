@@ -1,8 +1,10 @@
 import base64
+import json
 
 import pytest
 import responses
 from rest_framework import status
+from responses import matchers
 
 from ocpi22.models.session import Session
 from ocpi22.tests.factories import (
@@ -214,12 +216,22 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
+        # Use matcher to verify session_id is present in webhook payload
         responses.add(
             responses.POST,
             active_start_webhook.url,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "authorization_reference": "AUTH123",
+                        "session_id": matchers.ANY,
+                    }
+                )
+            ],
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
+
         location = LocationFactory(uid=valid_start_session_data["location_id"])
         evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
         connector = ConnectorFactory(
@@ -250,8 +262,14 @@ class TestStartSessionAPI:
         assert len(responses.calls) == 1
         assert responses.calls[0].request.url == active_start_webhook.url
 
+        # Verify the session_id in the webhook call matches the created session
+        import json
+
+        webhook_payload = json.loads(responses.calls[0].request.body)
+        assert webhook_payload["session_id"] == session.uid
+
     @responses.activate
-    def test_start_session_with_valid_data_webhook_rejected_no_session_created(
+    def test_start_session_with_valid_data_webhook_rejected_session_still_created(
         self,
         client,
         nl_tst_credentials_role,
@@ -261,9 +279,18 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
+        # Use matcher to verify session_id is present even when webhook is rejected
         responses.add(
             responses.POST,
             active_start_webhook.url,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "authorization_reference": "AUTH123",
+                        "session_id": matchers.ANY,
+                    }
+                )
+            ],
             json={"data": {"result": "REJECTED"}},
             status=200,
         )
@@ -280,9 +307,19 @@ class TestStartSessionAPI:
         assert response_data["status_code"] == 2000
         assert response_data["data"]["result"] == "REJECTED"
 
-        assert not Session.objects.filter(authorization_reference="AUTH123").exists()
-
+        # Session is created before webhook is sent, so it should exist even if rejected
+        session = Session.objects.filter(
+            authorization_reference="AUTH123",
+            cdr_token__uid=valid_start_session_data["token"]["uid"],
+        ).first()
+        assert session
         assert len(responses.calls) == 1
+
+        # Verify the session_id in the webhook call matches the created session
+        import json
+
+        webhook_payload = json.loads(responses.calls[0].request.body)
+        assert webhook_payload["session_id"] == session.uid
 
     def test_start_session_with_existing_active_session_returns_bad_request(
         self, client, nl_tst_credentials_role, ocpi_headers, valid_start_session_data
@@ -318,16 +355,25 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
-        OCPISessionFactory(
+        existing_session = OCPISessionFactory(
             authorization_reference="AUTH123",
             status=Session.PENDING,
             billed_to=nl_tst_credentials_role,
             cdr_token__uid=valid_start_session_data["token"]["uid"],
         )
 
+        # Match exact session_id for existing session
         responses.add(
             responses.POST,
             active_start_webhook.url,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "authorization_reference": "AUTH123",
+                        "session_id": existing_session.uid,
+                    }
+                )
+            ],
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
@@ -342,7 +388,6 @@ class TestStartSessionAPI:
         assert response.status_code == status.HTTP_200_OK
         response_data = response.json()
         assert response_data["data"]["result"] == "ACCEPTED"
-
         assert len(responses.calls) == 1
 
     def test_start_session_without_webhook_returns_internal_server_error(
@@ -497,3 +542,89 @@ class TestStartSessionAPI:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @responses.activate
+    def test_start_session_webhook_payload_always_includes_session_id_for_new_session(
+        self,
+        client,
+        nl_tst_credentials_role,
+        ocpi_headers,
+        valid_start_session_data,
+        active_start_webhook,
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+
+        responses.add(
+            responses.POST,
+            active_start_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        location = LocationFactory(uid=valid_start_session_data["location_id"])
+        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/START_SESSION",
+            data=valid_start_session_data,
+            format="json",
+            **ocpi_headers,
+        )
+
+        response_data = response.json()
+        assert response.status_code == status.HTTP_200_OK, f"Response: {response_data}"
+        assert (
+            len(responses.calls) == 1
+        ), f"Expected 1 webhook call, got {len(responses.calls)}. Response: {response_data}"
+
+        created_session = Session.objects.filter(
+            authorization_reference="AUTH123",
+            cdr_token__uid=valid_start_session_data["token"]["uid"],
+        ).first()
+        assert created_session
+
+        webhook_payload = json.loads(responses.calls[0].request.body)
+        assert webhook_payload["session_id"] == created_session.uid
+
+    @responses.activate
+    def test_start_session_webhook_payload_includes_session_id_for_existing_session(
+        self,
+        client,
+        nl_tst_credentials_role,
+        ocpi_headers,
+        valid_start_session_data,
+        active_start_webhook,
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+
+        existing_session = OCPISessionFactory(
+            authorization_reference="AUTH123",
+            status=Session.PENDING,
+            billed_to=nl_tst_credentials_role,
+            cdr_token__uid=valid_start_session_data["token"]["uid"],
+        )
+
+        responses.add(
+            responses.POST,
+            active_start_webhook.url,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "session_id": existing_session.uid,
+                    }
+                )
+            ],
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/START_SESSION",
+            data=valid_start_session_data,
+            format="json",
+            **ocpi_headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(responses.calls) == 1
