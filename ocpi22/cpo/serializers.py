@@ -490,16 +490,16 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
     price_per_hr = PriceHourSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=2,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The price per hour of charging, excluding parking and tax",
     )
     price_flat = PriceFlatSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=2,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The flat price per started charging session excluding tax",
@@ -514,8 +514,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
     parking_price_per_hr = ParkingPricePerHourSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=2,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The parking price per hour excluding tax",
