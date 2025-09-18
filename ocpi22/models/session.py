@@ -393,7 +393,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if not self.chargingperiods.count():
             session_hours = self.total_time_float
             session_kwh: Decimal = self.kwh
-            assert session_kwh >= 0.0, f"Invalid session kwh {session_kwh}"
+            assert session_kwh >= Decimal(0.0), f"Invalid session kwh {session_kwh}"
             cp_incl_vat, cp_excl_vat = _calculate_price(
                 session_kwh, Decimal(session_hours), self.start_date_time, flat_fee=True
             )
