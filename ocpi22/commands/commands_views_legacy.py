@@ -157,7 +157,6 @@ class CommandsViewSetLegacy(GenericViewSet):
         command_data = command_store[command_id]
         if command_data:
             route_dict = command_data.get("route_back")
-            print(f"{route_dict=}")
             route: Route = Route(**route_dict)
             our_hub_party: Party = get_our_party(OcpiRolesEnum.HUB)
 
