@@ -536,6 +536,12 @@ class SolidTariffSerializer(SerializerCleanedUp):
         required=False,
         allow_null=True,
     )
+    ocpi_tariff = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False,
+        allow_null=True,
+        help_text="The OCPI identifier of the tariff",
+    )
     last_updated = UTCDateTimeField(required=False)
 
 
