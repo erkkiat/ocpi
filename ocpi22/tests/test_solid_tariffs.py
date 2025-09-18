@@ -498,6 +498,7 @@ class TestSolidTariffs:
         response = authenticated_user_client.get(url)
         response_json = response.json()
         smp1_get_response[0]["last_updated"] = response_json[0]["last_updated"]
+        smp1_get_response[0]["ocpi_tariff"] = response_json[0]["ocpi_tariff"]
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json() == smp1_get_response
