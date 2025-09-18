@@ -59,11 +59,9 @@ def session_factory(nl_tst_credentials_role, db):
 @pytest.fixture(autouse=True)
 def clean_session_data():
     """Ensure clean session data for each test to avoid foreign key violations"""
-    # Clean up before each test
     Session.objects.all().delete()
     CdrToken.objects.all().delete()
     yield
-    # Clean up after each test
     Session.objects.all().delete()
     CdrToken.objects.all().delete()
 
