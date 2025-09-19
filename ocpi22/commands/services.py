@@ -1,5 +1,6 @@
+from copy import deepcopy
 from logging import getLogger
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from django.core.exceptions import ValidationError
 from rest_framework import status
@@ -50,7 +51,7 @@ class RemoteCommandServices:
         result = webhook_response.get("data", {}).get("result", "REJECTED").upper()
 
         message = MessageTexts.get(
-            f"{command_name}_{result}",  # e.g., "START_ACCEPTED"
+            f"{command_name}_{result}",
             MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", "Command processed"),
         )
 
@@ -109,7 +110,7 @@ class StartCommandService(RemoteCommandServices):
     ) -> Session:
         evse_uid = validated_data.get("evse_uid")
         close_active_sessions_for_evse(evse_uid)
-        adhoc_token_dict = validated_data["token"]
+        adhoc_token_dict = deepcopy(validated_data["token"])
         adhoc_token_dict["billed_to"] = billed_to.get_party()
         adhoc_token_dict["ocpi_master"] = billed_to
         session = create_session(
@@ -140,14 +141,12 @@ class StartCommandService(RemoteCommandServices):
         )
 
         if not session:
+            session = self._create_new_session(credentials, validated_data, billed_to)
             webhook_response = self.send_start_command_webhook(
-                billed_to=billed_to,
                 validated_data=validated_data,
                 command_type=RemoteCommandType.START_SESSION,
+                session=session,
             )
-
-            if webhook_response.get("data", {}).get("result") == "ACCEPTED":
-                self._create_new_session(credentials, validated_data, billed_to)
             return self.create_ocpi_response(webhook_response, "START")
 
         if session.status == Session.ACTIVE:
@@ -164,9 +163,9 @@ class StartCommandService(RemoteCommandServices):
                 f"Retrying existing {session.status} session for remote start with token_uid: {validated_data['token']['uid']} and auth_reference: {validated_data['authorization_reference']}"
             )
             webhook_response = self.send_start_command_webhook(
-                billed_to=billed_to,
                 validated_data=validated_data,
                 command_type=RemoteCommandType.START_SESSION,
+                session=session,
             )
             return self.create_ocpi_response(webhook_response, "START")
         return OCPIResponse(
@@ -177,8 +176,8 @@ class StartCommandService(RemoteCommandServices):
 
     @staticmethod
     def _prepare_start_session_payload(
-        billed_to: Optional[CredentialsRole],
         validated_data: Dict[str, Any],
+        session: Session,
     ) -> Dict[str, Any]:
         validated_data["authorization_reference"] = (
             validated_data.get("authorization_reference") or generate_random_token()
@@ -196,23 +195,22 @@ class StartCommandService(RemoteCommandServices):
             "evse_uid": validated_data.get("evse_uid"),
             "connector_id": validated_data.get("connector_id"),
         }
-        if billed_to:
-            payload["billed_to"] = str(billed_to.get_party())
+        payload["session_id"] = session.uid
 
         return payload
 
     def send_start_command_webhook(
         self,
-        billed_to: Optional[CredentialsRole],
         validated_data: Dict[str, Any],
         command_type: RemoteCommandType,
+        session: Session,
     ) -> Dict[str, Any]:
         webhook = self.webhook_repo.get_remote_command_webhook(command_type)
         if not webhook or not webhook.active:
             raise ValidationError(f"No webhook configured for {command_type}")
 
         payload = self._prepare_start_session_payload(
-            billed_to=billed_to,
+            session=session,
             validated_data=validated_data,
         )
 

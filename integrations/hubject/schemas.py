@@ -80,6 +80,41 @@ class MeteringStatus(Enum):
     End = "End"
 
 
+STATUS_CODE_TEXT: dict[str, str] = {
+    "000": "Success",
+    "001": "Hubject system error",
+    "002": "Hubject database error",
+    "009": "Data transaction error",
+    "017": "Unauthorized Access",
+    "018": "Inconsistent EvseID",
+    "019": "Inconsistent EvcoID",
+    "021": "System error",
+    "022": "Data error",
+    "101": "QR Code Authentication failed – Invalid Credentials",
+    "102": "RFID Authentication failed – invalid UID",
+    "103": "RFID Authentication failed – card not readable",
+    "105": "PLC Authentication failed - invalid EvcoID",
+    "106": "No positive authentication response",
+    "110": "QR Code App Authentication failed – time out error",
+    "120": "PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID",
+    "121": "PLC (ISO/ IEC 15118) Authentication failed – invalid certificate",
+    "122": "PLC (ISO/ IEC 15118) Authentication failed – time out error",
+    "200": "EvcoID locked",
+    "210": "No valid contract",
+    "300": "Partner not found",
+    "310": "Partner did not respond",
+    "320": "Service not available",
+    "400": "Session is invalid",
+    "501": "Communication to EVSE failed",
+    "510": "No EV connected to EVSE",
+    "601": "EVSE already reserved",
+    "602": "EVSE already in use/ wrong token",
+    "603": "Unknown EVSE ID",
+    "604": "EVSE ID is not Hubject compatible",
+    "700": "EVSE out of service",
+}
+
+
 class SignedMeteringValue(BaseModel):
     SignedMeteringValue: Optional[str] = Field(
         None,
@@ -250,43 +285,7 @@ class RFID(Enum):
 
 
 class StatusCode(BaseModel):
-    Code: str = Field(
-        # I wonder why this is not an enum
-        ...,
-        description="| Option | Description | Area of Usage |"
-        "| -------|-------------|---------------|"
-        "| 000 | Success. | General codes |"
-        "| 001 | Hubject system error. | Internal system codes |"
-        "| 002 | Hubject database error. |Internal system codes|"
-        "| 009 |Data transaction error. | Internal system codes|"
-        "|017 |Unauthorized Access. |Internal system codes |"
-        "|018 |Inconsistent EvseID. |Internal system codes |"
-        "|019 |Inconsistent EvcoID. |Internal system codes |"
-        "|021 |System error. |General codes |"
-        "|022 |Data error. |General codes |"
-        "|101 |QR Code Authentication failed – Invalid Credentials. |Authentication codes |"
-        "|102 |RFID Authentication failed – invalid UID. |Authentication codes |"
-        "|103 |RFID Authentication failed – card not readable. |Authentication codes |"
-        "|105 |PLC Authentication failed - invalid EvcoID. |Authentication codes |"
-        "|106 |No positive authentication response. |Authentication codes / Internal system codes |"
-        "|110 |QR Code App Authentication failed – time out error. |Authentication codes |"
-        "|120 |PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID. |Authentication codes |"
-        "|121 |PLC (ISO/ IEC 15118) Authentication failed – invalid certificate. |Authentication codes |"
-        "|122 |PLC (ISO/ IEC 15118) Authentication failed – time out error. |Authentication codes |"
-        "|200 |EvcoID locked. |Authentication codes |"
-        "|210 |No valid contract. |Session codes |"
-        "|300 |Partner not found. |Session codes |"
-        "|310 |Partner did not respond. |Session codes |"
-        "|320 |Service not available. |Session codes |"
-        "|400 |Session is invalid. |Session codes |"
-        "|501 |Communication to EVSE failed. |EVSE codes |"
-        "|510 |No EV connected to EVSE. |EVSE codes |"
-        "|601 |EVSE already reserved. |EVSE codes |"
-        "|602 |EVSE already in use/ wrong token. |EVSE codes |"
-        "|603 |Unknown EVSE ID. |EVSE codes |"
-        "|604 |EVSE ID is not Hubject compatible. |EVSE codes |"
-        "|700 |EVSE out of service. |EVSE codes |",
-    )
+    Code: str = Field(...)
     Description: Optional[str] = Field(None, description="description")
     AdditionalInfo: Optional[str] = Field(
         None, description="More information can be provided here"
