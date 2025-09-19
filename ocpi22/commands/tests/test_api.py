@@ -637,3 +637,79 @@ class TestStartSessionAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(responses.calls) == 1
+
+    @responses.activate
+    def test_start_session_sends_complete_payload_to_webhook_and_creates_session_on_acceptance(
+        self,
+        client,
+        nl_tst_credentials_role,
+        ocpi_headers,
+        valid_start_session_data,
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+
+        webhook = WebhookWithAuthFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            active=True,
+            url="https://webhook.example.com/start",
+        )
+
+        responses.add(
+            responses.POST,
+            webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        location = LocationFactory(uid=valid_start_session_data["location_id"])
+        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        connector = ConnectorFactory(
+            uid=valid_start_session_data["connector_id"], evse=evse
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/START_SESSION",
+            data=valid_start_session_data,
+            format="json",
+            **ocpi_headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 1000
+        assert response_data["data"]["result"] == "ACCEPTED"
+
+        session = Session.objects.filter(
+            authorization_reference=valid_start_session_data["authorization_reference"],
+            cdr_token__uid=valid_start_session_data["token"]["uid"],
+        ).first()
+
+        assert session is not None
+        assert session.location == location
+        assert session.evse == evse
+        assert session.connector == connector
+        assert session.cdr_token.uid == valid_start_session_data["token"]["uid"]
+        assert session.cdr_token.contract_id == "CONTRACT12"
+
+        assert len(responses.calls) == 1
+        webhook_request = responses.calls[0].request
+        payload = json.loads(webhook_request.body)
+
+        assert payload["response_url"].endswith(
+            "/remote_command_result/{}/".format(
+                valid_start_session_data["authorization_reference"]
+            )
+        )
+        assert payload["token"]["uid"] == valid_start_session_data["token"]["uid"]
+        assert payload["token"]["country_code"] == "NL"
+        assert payload["token"]["party_id"] == "TST"
+        assert payload["token"]["type"] == "RFID"
+        assert payload["token"]["contract_id"] == "CONTRACT12"
+        assert (
+            payload["authorization_reference"]
+            == valid_start_session_data["authorization_reference"]
+        )
+        assert payload["evse_uid"] == "EVSE001"
+        assert payload["connector_id"] == "CONN001"
+        assert payload["session_id"] == session.uid
