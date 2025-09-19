@@ -570,7 +570,8 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
-    def get_identification(self, session: "Session") -> Identification:
+    @staticmethod
+    def get_identification(session: "Session") -> Identification:
         token_type = session.cdr_token.token_type
         identification = Identification(
             RFIDMifareFamilyIdentification=None,
