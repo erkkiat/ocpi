@@ -114,5 +114,11 @@ def send_charge_detail_record(request, session_id: str):
 def receive_remote_start_command(
     request, remote_start_command: ERoamingAuthorizeRemoteStart
 ):
+    # Check the code for other places when remote start is processed.
+    # Start transaction equivalent of hubject uses remote command
+    # Charging notifications use remote command as well
+    # CDR uses remote command as well
+    # Validate all the scenarios such as EVSE in use
+
     result = hubject_service.process_remote_start_command(remote_start_command)
     return 200, result

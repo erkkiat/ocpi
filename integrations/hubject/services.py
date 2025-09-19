@@ -549,9 +549,64 @@ class HubjectService:
             "authorization_reference": remote_start_command.emp_partner_session_id,
         }
 
+    def _get_hubject_error_code(self, evse: Evse) -> str:
+        if not evse:
+            return "603"
+
+        match evse.status:
+            case Evse.AVAILABLE:
+                return "000"  # Success
+            case Evse.BLOCKED:
+                return ""
+            case Evse.CHARGING:
+                return "602"
+            case Evse.INOPERATIVE:
+                return "700"
+            case Evse.OUTOFORDER:
+                return "700"
+            case Evse.PLANNED:
+                return "501"
+            case Evse.REMOVED:
+                return "700"
+            case Evse.RESERVED:
+                return "601"
+            case Evse.UNKNOWN:
+                return "501"
+            case _:
+                return "000"
+
     def process_remote_start_command(
         self, remote_start_command: ERoamingAuthorizeRemoteStart
     ):
+        def _validate_evse() -> tuple[bool, Optional[ERoamingAcknowledgment]]:
+            if not evse:
+                logger.error(
+                    f"EVSE with ID {remote_start_command.evse_id.root} not found"
+                )
+                return (
+                    False,
+                    ERoamingAcknowledgment(
+                        result=False,
+                        status_code=StatusCode(Code="603"),
+                        session_id=remote_start_command.session_id,
+                        cpo_partner_session_id="",
+                        emp_partner_session_id=remote_start_command.emp_partner_session_id,
+                    ),
+                )
+            if evse.status != Evse.AVAILABLE:
+                logger.error(f"EVSE {evse.evse_id} is not available")
+                return (
+                    False,
+                    ERoamingAcknowledgment(
+                        result=False,
+                        status_code=StatusCode(Code=self._get_hubject_error_code(evse)),
+                        session_id=remote_start_command.session_id,
+                        cpo_partner_session_id="",
+                        emp_partner_session_id=remote_start_command.emp_partner_session_id,
+                    ),
+                )
+            return True, None
+
         from ocpi22.commands.serializers import StartSessionSerializer
 
         logger.info(
@@ -561,15 +616,9 @@ class HubjectService:
 
         evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
 
-        if not evse:
-            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
-            return ERoamingAcknowledgment(
-                result=False,
-                status_code=StatusCode(Code="603"),
-                session_id=remote_start_command.session_id,
-                cpo_partner_session_id="",
-                emp_partner_session_id=remote_start_command.emp_partner_session_id,
-            )
+        is_valid, ack = _validate_evse()
+        if not is_valid:
+            return ack
 
         try:
             sender_country_code, sender_party_id = (
