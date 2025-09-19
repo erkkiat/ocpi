@@ -689,7 +689,7 @@ class TestStartSessionAPI:
         assert session.location == location
         assert session.evse == evse
         assert session.connector == connector
-        assert session.cdr_token.uid == valid_start_session_data["token"]["uid"]
+        assert session.cdr_token.uid == str(valid_start_session_data["token"]["uid"])
         assert session.cdr_token.contract_id == "CONTRACT12"
 
         assert len(responses.calls) == 1
@@ -698,17 +698,16 @@ class TestStartSessionAPI:
 
         assert payload["response_url"].endswith(
             "/remote_command_result/{}/".format(
-                valid_start_session_data["authorization_reference"]
+                str(valid_start_session_data["authorization_reference"])
             )
         )
-        assert payload["token"]["uid"] == valid_start_session_data["token"]["uid"]
+        assert payload["token"]["uid"] == str(valid_start_session_data["token"]["uid"])
         assert payload["token"]["country_code"] == "NL"
         assert payload["token"]["party_id"] == "TST"
         assert payload["token"]["type"] == "RFID"
         assert payload["token"]["contract_id"] == "CONTRACT12"
-        assert (
-            payload["authorization_reference"]
-            == valid_start_session_data["authorization_reference"]
+        assert payload["authorization_reference"] == str(
+            valid_start_session_data["authorization_reference"]
         )
         assert payload["evse_uid"] == "EVSE001"
         assert payload["connector_id"] == "CONN001"
