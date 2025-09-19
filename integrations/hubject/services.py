@@ -557,7 +557,7 @@ class HubjectService:
             case Evse.AVAILABLE:
                 return "000"  # Success
             case Evse.BLOCKED:
-                return ""
+                return "501"
             case Evse.CHARGING:
                 return "602"
             case Evse.INOPERATIVE:
@@ -689,11 +689,23 @@ class HubjectService:
         )
 
         service = StartCommandService()
-        service.start_session(
+        response = service.start_session(
             sender_party=sender_party,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
+
+        if response.data.get("data").get("result") != "ACCEPTED":
+            logger.error(
+                f"Hubject remote start command was rejected, {response.data.get('data')}"
+            )
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="021"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
             validated_data.get("authorization_reference"),
