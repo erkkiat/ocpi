@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -12,8 +12,8 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {
@@ -29,8 +29,10 @@ class TestCommandServices:
             "location_id": "LOC001",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert (
             payload["response_url"]
@@ -41,7 +43,7 @@ class TestCommandServices:
         assert payload["authorization_reference"] == "AUTH123"
         assert payload["evse_uid"] == "EVSE001"
         assert payload["connector_id"] == "CONN001"
-        assert payload["billed_to"] == "NL*TST"
+        assert payload["session_id"] == "SESSION_UID_123"
 
     @patch("ocpi22.commands.services.generate_random_token")
     @patch("ocpi22.commands.services.build_absolute_uri")
@@ -53,8 +55,8 @@ class TestCommandServices:
             "http://testserver.test/commands/results/GENERATED_AUTH_456/"
         )
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -62,8 +64,10 @@ class TestCommandServices:
             "evse_uid": "EVSE001",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         mock_generate_token.assert_called_once()
         assert payload["authorization_reference"] == "GENERATED_AUTH_456"
@@ -79,8 +83,8 @@ class TestCommandServices:
             "http://testserver.test/commands/results/GENERATED_AUTH_789/"
         )
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -88,8 +92,10 @@ class TestCommandServices:
             "evse_uid": "EVSE001",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         mock_generate_token.assert_called_once()
         assert payload["authorization_reference"] == "GENERATED_AUTH_789"
@@ -102,8 +108,8 @@ class TestCommandServices:
             "http://testserver.test/commands/results/EXISTING_AUTH/"
         )
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -111,8 +117,10 @@ class TestCommandServices:
             "evse_uid": "EVSE001",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert payload["authorization_reference"] == "EXISTING_AUTH"
 
@@ -122,10 +130,9 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
-        # Token type might come in as an enum or other object
         token_type_enum = MagicMock()
         token_type_enum.__str__ = MagicMock(return_value="RFID")
 
@@ -134,8 +141,10 @@ class TestCommandServices:
             "authorization_reference": "AUTH123",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert payload["token"]["type"] == "RFID"
         assert isinstance(payload["token"]["type"], str)
@@ -155,33 +164,39 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": token_uid, "type": "RFID"},
             "authorization_reference": "AUTH123",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert payload["token"]["uid"] == expected_uid
 
     @patch("ocpi22.commands.services.build_absolute_uri")
-    def test_prepare_start_session_payload_handles_none_billed_to(self, mock_build_uri):
+    def test_prepare_start_session_payload_includes_session_id(self, mock_build_uri):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
+
+        session = MagicMock()
+        session.uid = "UNIQUE_SESSION_ID_456"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
             "authorization_reference": "AUTH123",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(None, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
-        assert "billed_to" not in payload
-        assert payload["token"]["uid"] == "TOKEN123"
+        assert payload["session_id"] == "UNIQUE_SESSION_ID_456"
 
     @patch("ocpi22.commands.services.build_absolute_uri")
     def test_prepare_start_session_payload_maps_connector_id_correctly(
@@ -189,8 +204,8 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -198,8 +213,10 @@ class TestCommandServices:
             "connector_id": "CONNECTOR_FROM_REQUEST",
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert payload["connector_id"] == "CONNECTOR_FROM_REQUEST"
 
@@ -217,8 +234,8 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        billed_to = MagicMock()
-        billed_to.get_party.return_value = "NL*TST"
+        session = MagicMock()
+        session.uid = "SESSION_UID_123"
 
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -227,8 +244,10 @@ class TestCommandServices:
             "connector_id": connector_id,
         }
 
-        service = StartCommandService()
-        payload = service._prepare_start_session_payload(billed_to, validated_data)
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
 
         assert payload["evse_uid"] == evse_uid
         assert payload["connector_id"] == connector_id
