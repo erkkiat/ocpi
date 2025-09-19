@@ -18,6 +18,7 @@ from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpiconnector.db_services import ensure_db_connection
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import create_credentialsrole, ocpi_identities
 from ocpiconnector.party import Party
@@ -98,8 +99,11 @@ def check_auth_token(request, token: str) -> bool:
                     if settings.DEBUG
                     else ""
                 )
-
-        sender_party = get_sender_party(request.headers)
+        try:
+            sender_party = get_sender_party(request.headers)
+        except ValueError:
+            logger.warning("Invalid country code or party")
+            raise NotAuthenticated("Invalid Party provided")
         if not sender_party and credentials.roles.count() == 1:
             sender_party = credentials.roles.first().get_party()
 
@@ -137,6 +141,7 @@ def check_auth_token(request, token: str) -> bool:
         credentials.pk if credentials else None, party, role
     ),
 )  # Ignore the create flag
+@ensure_db_connection
 def get_credentialsrole(
     credentials: Optional[Credentials] = None,
     party: Party = None,

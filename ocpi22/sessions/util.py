@@ -25,7 +25,6 @@ from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
-from ocpi22.tokens.auth import TokenAuthorization, get_session_by_token_uid
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.party import Party
 
@@ -42,6 +41,8 @@ def get_session(
     token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Session:
     token_id = get_token_id(token)
+    from ocpi22.tokens.auth import get_session_by_token_uid
+
     return get_session_by_token_uid(
         token_id, max_age_minutes=365 * 24 * 60, statuses=statuses
     )
@@ -77,9 +78,9 @@ def create_session(
     if not billed_to:
         billed_to = token.ocpi_master
     if isinstance(billed_to, str):
-        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
+        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")), create=True)
     if isinstance(billed_to, Party):
-        billed_to = get_credentialsrole(party=billed_to)
+        billed_to = get_credentialsrole(party=billed_to, create=True)
     if not uid:
         uid = generate_session_uid()
     location = location_id
@@ -95,7 +96,7 @@ def create_session(
         else None
     )
     if not authorization_method:
-        from ocpi22.tokens.auth import authorize_token
+        from ocpi22.tokens.auth import TokenAuthorization, authorize_token
 
         authorization: TokenAuthorization = authorize_token(token.uid, location)
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:

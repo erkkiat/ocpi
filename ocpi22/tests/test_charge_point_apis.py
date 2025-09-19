@@ -13,6 +13,7 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
     LocationFactory,
     CredentialsRoleFactory,
+    TariffFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
 
@@ -351,7 +352,19 @@ class TestChargePointAPI:
             "connector_id": session.connector_id,
             "start_kwh": 0,
         }
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
+        with patch("ocpi22.cpo.api.authorize_token") as mock_authorize_token:
+            mock_authorize_token.return_value = TokenAuthorization(
+                allowed="ALLOWED",
+                token=session.cdr_token,
+                responding_party=session.billed_to.party_str(),
+                authorization_reference=session.authorization_reference,
+                auth_method=session.auth_method,
+                billed_to=session.billed_to.party_str(),
+                msp=session.billed_to,
+            )
+            response = admin_user_client.post(
+                self.start_transaction_url, data=request_body
+            )
         assert response.status_code == 200
         assert response.json() == {
             "session_id": "SESSION_ID_1234",
@@ -481,3 +494,36 @@ class TestChargePointAPI:
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
         assert response.status_code == 200
         assert response.json()["end_date_time"] == "2025-03-31T06:26:58Z"
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_with_duplicate_tariffs_returns_200(
+        self, admin_user_client, session, caplog
+    ):
+        TariffFactory(uid="CP1")
+        tariff = TariffFactory(uid="CP1")
+        session.connector.tariff_ids.set([tariff])
+        session.save()
+
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 100,
+            "timestamp": "2025-03-31T06:26:58Z",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        assert (
+            "There are more than one Tariff with the criteria {'uid': 'CP1', 'archived': False} in the database"
+            in caplog.text
+        )
+
+    @pytest.mark.django_db
+    def test_stop_transaction_post_with_no_tariffs_returns_200(
+        self, admin_user_client, session, caplog
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 100,
+            "timestamp": "2025-03-31T06:26:58Z",
+        }
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200

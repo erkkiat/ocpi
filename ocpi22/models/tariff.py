@@ -233,13 +233,6 @@ class Tariff(models.Model, ModelUtilMixin, OcpiModule):
         return new_tariff
 
     @classmethod
-    def make_copies(cls, tariffs):
-        result = []
-        for t in tariffs:
-            result.append(cls.make_copy(t))
-        return result
-
-    @classmethod
     def get_default_tariffs(cls, standard) -> QuerySet:
         try:
             default_tariffs = DefaultTariffs.objects.get(standard=standard)
@@ -515,16 +508,22 @@ class SolidTariff(models.Model):
         default="EUR",
     )
     price_per_kwh = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     price_per_min = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=15, decimal_places=10, blank=True, null=True
+    )
+    price_per_hr = models.DecimalField(
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     price_flat = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     parking_price_per_min = models.DecimalField(
-        max_digits=8, decimal_places=4, blank=True, null=True
+        max_digits=15, decimal_places=10, blank=True, null=True
+    )
+    parking_price_per_hr = models.DecimalField(
+        max_digits=8, decimal_places=2, blank=True, null=True
     )
     parking_grace_period = models.IntegerField(
         blank=True, null=True, validators=[MinValueValidator(0)]
@@ -564,11 +563,15 @@ class SolidTariff(models.Model):
         match tariff_type:
             case "ENERGY":
                 return self.price_per_kwh
-            case "TIME":
+            case "TIME_MIN":
                 return self.price_per_min
+            case "TIME_HR":
+                return self.price_per_hr
             case "FLAT":
                 return self.price_flat
-            case "PARKING_TIME":
+            case "PARKING_TIME_MIN":
                 return self.parking_price_per_min
+            case "PARKING_TIME_HR":
+                return self.parking_price_per_hr
             case _:
                 return None

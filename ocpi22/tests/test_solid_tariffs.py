@@ -45,8 +45,10 @@ def solid_tariff_smp1_msp1(msp_de_ice, operator_fi_cpo):
         currency="EUR",
         price_per_kwh=0.690,
         price_per_min=0.42,
+        price_per_hr=0.6,
         price_flat=0.56,
         parking_price_per_min=0.54,
+        parking_price_per_hr=0.8,
         parking_grace_period=100,
         vat_percentage=20.0,
         last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
@@ -62,8 +64,10 @@ def solid_tariff_smp1_without_msp():
         currency="EUR",
         price_per_kwh=0.690,
         price_per_min=0.42,
+        price_per_hr=0.6,
         price_flat=0.56,
         parking_price_per_min=0.54,
+        parking_price_per_hr=0.8,
         parking_grace_period=100,
         vat_percentage=20.0,
         last_updated=datetime(2024, 9, 22, 12, 30, 30, 0),
@@ -93,8 +97,10 @@ def smp1_get_response():
             "currency": "EUR",
             "price_per_kwh": 0.69,
             "price_per_min": 0.42,
+            "price_per_hr": 0.6,
             "price_flat": 0.56,
             "parking_price_per_min": 0.54,
+            "parking_price_per_hr": 0.8,
             "parking_grace_period": 100,
             "vat_percentage": 20.0,
             "msp": "DE*ICE",
@@ -109,8 +115,10 @@ def smp1_update_tariff_without_msp_response():
         "currency": "EUR",
         "price_per_kwh": "0.703",
         "parking_price_per_min": "0.54",
+        "parking_price_per_hr": "0.8",
         "parking_grace_period": 100,
         "price_per_min": "0.42",
+        "price_per_hr": "0.6",
         "price_flat": "0.56",
         "vat_percentage": "20.0",
         "last_updated": "2024-09-22T12:30:30Z",
@@ -124,8 +132,10 @@ def smp1_update_response():
         "currency": "EUR",
         "price_per_kwh": "0.703",
         "price_per_min": "0.42",
+        "price_per_hr": "0.6",
         "price_flat": "0.56",
         "parking_price_per_min": "0.54",
+        "parking_price_per_hr": "0.8",
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
@@ -140,8 +150,10 @@ def smp1_create_response_no_msp():
         "currency": "EUR",
         "price_per_kwh": "0.69",
         "price_per_min": "0.42",
+        "price_per_hr": "0.6",
         "price_flat": "0.56",
         "parking_price_per_min": "0.54",
+        "parking_price_per_hr": "0.8",
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "last_updated": "2024-09-22T12:30:30Z",
@@ -392,7 +404,7 @@ class TestSolidTariffs:
             response_json = response.json()
             tariff = Tariff.objects.get(uid=response_json["ocpi_tariff"])
             assert (
-                tariff.price() == "0,69€/kWh + 25,20€/h + 0,56€ flat + 32,40€/h parking"
+                tariff.price() == "0,69€/kWh + 0,60€/h + 0,56€ flat + 0,80€/h parking"
             )
 
             assert response.status_code == status.HTTP_200_OK
@@ -495,6 +507,7 @@ class TestSolidTariffs:
         self, authenticated_user_client, solid_tariff_smp1_msp1
     ):
         from urllib.parse import urljoin
+
         url = urljoin(reverse("solid-tariff-list"), "SMP1/")
         response = authenticated_user_client.get(url)
         response_json = response.json()
@@ -755,7 +768,14 @@ class TestSolidTariffs:
 
     @pytest.mark.parametrize(
         "sd_type,expected_price",
-        [("ENERGY", 0.23), ("TIME", 0.34), ("PARKING_TIME", 0.45), ("FLAT", 0.56)],
+        [
+            ("ENERGY", 0.23),
+            ("TIME_MIN", 0.34),
+            ("TIME_HR", 0.6),
+            ("PARKING_TIME_MIN", 0.45),
+            ("PARKING_TIME_HR", 0.8),
+            ("FLAT", 0.56),
+        ],
     )
     def test_get_type(self, sd_type, expected_price):
         sd = SolidTariff(
@@ -763,8 +783,10 @@ class TestSolidTariffs:
             currency="EUR",
             price_per_kwh=0.23,
             price_per_min=0.34,
+            price_per_hr=0.6,
             price_flat=0.56,
             parking_price_per_min=0.45,
+            parking_price_per_hr=0.8,
             parking_grace_period=0.23,
             vat_percentage=20,
         )

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from django.conf import settings
 import responses
@@ -153,4 +155,71 @@ class TestHubjectApi:
         assert response.json() == {
             "success": False,
             "message": f"No Solid Tariffs found for {str(party)}",
+        }
+
+
+@pytest.mark.django_db
+def test_send_charge_detail_record_returns_401_for_unauthenticated_user(
+    client, ocpi_cdr
+):
+    url = f"/api/hubject/2.3/cdr/?session_id={ocpi_cdr.session_id}/"
+    with patch(
+        "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+    ) as mock_post:
+        mock_post.return_value = {
+            "success": True,
+            "message": "Response from hubject APIs",
+        }
+        response = client.post(url)
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_send_charge_detail_record_success(authenticated_user_client, ocpi_cdr):
+    url = f"/api/hubject/2.3/cdr/?session_id={ocpi_cdr.session_id}/"
+    with patch(
+        "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+    ) as mock_post:
+        mock_post.return_value = {
+            "success": True,
+            "message": "Response from hubject APIs",
+        }
+        response = authenticated_user_client.post(url)
+        assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_send_charge_detail_record_missing_session_id(
+    authenticated_user_client, ocpi_cdr
+):
+    url = "/api/hubject/2.3/cdr/"
+
+    response = authenticated_user_client.post(url)
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {"type": "missing", "loc": ["query", "session_id"], "msg": "Field required"}
+        ]
+    }
+
+
+@pytest.mark.django_db
+def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi_cdr):
+    url = f"/api/hubject/2.3/cdr/?session_id={ocpi_cdr.session_id}/"
+    with patch(
+        "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+    ) as mock_post:
+        mock_post.return_value = {
+            "success": False,
+            "errorType": "Hubject server Error",
+            "error": "Hubject server returned 500. Retrying...",
+        }
+        response = authenticated_user_client.post(url)
+
+        assert response.status_code == 503
+        assert response.json() == {
+            "success": False,
+            "errorType": "Hubject server Error",
+            "error": "Hubject server returned 500. Retrying...",
         }

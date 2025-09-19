@@ -82,10 +82,10 @@ class TokenType(str, Enum):
 
 
 TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
+    (TokenType.AD_HOC_USER.value, "Ad-hoc user"),
+    (TokenType.RFID.value, "RFID"),
+    (TokenType.APP_USER.value, "Application user"),
+    (TokenType.OTHER.value, "Other"),
 ]
 
 

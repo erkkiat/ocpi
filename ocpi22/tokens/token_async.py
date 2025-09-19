@@ -12,7 +12,6 @@ from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
-from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -123,6 +122,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return:
     """
+    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
@@ -151,6 +151,17 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     )
     # Get all roles up front
     prefetched_roles = await prefetch_roles()
+    hubject_task = []
+    if settings.ENABLE_HUBJECT:
+        hubject_task.append(
+            asyncio.create_task(
+                HubjectService.post_authorize_request(
+                    operator_id=str(sender),
+                    token_id=token_id,
+                ),
+                name=settings.HUBJECT_OPERATOR_ID,
+            )
+        )
 
     async with aiohttp.ClientSession() as session:
         tasks = [
@@ -175,17 +186,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 _,  # credentials not needed anymore
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
-
-        tasks.append(
-            # Do SSL context per request, Hubject/Gireve separately
-            asyncio.create_task(
-                HubjectService().post_authorize_request(
-                    operator_id=str(sender),
-                    token_id=token_id,
-                ),
-                name=settings.HUBJECT_OPERATOR_ID,
-            )
-        )
+        tasks.extend(hubject_task)
 
         while tasks:
             done_tasks, pending_tasks = await asyncio.wait(

@@ -2,10 +2,9 @@ from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
 import logging
-from functools import wraps
 
-from django.db import close_old_connections
 from django.db.utils import OperationalError as DjangoOperationalError
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
 from ocpi22.cpo.api import process_meter_values
@@ -27,28 +26,10 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
+from ocpiconnector.db_services import logger, ensure_db_connection
 from ocpiconnector.party import Party
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-def ensure_db_connection(func):
-    """Decorator to handle database connection errors in MQTT message processing"""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except DjangoOperationalError as e:
-            if "server has gone away" in str(e).lower() or "2006" in str(e):
-                logger.warning("Database connection lost, reconnecting...")
-                close_old_connections()
-                return func(*args, **kwargs)
-            else:
-                raise
-
-    return wrapper
 
 
 def _decode_message(message):
@@ -89,8 +70,12 @@ def process_status_update_data(message) -> None:
         return
     try:
         evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
-    except ValidationError:
-        logger.exception(f"Failed to parse {message.topic} message")
+    except ValidationError as e:
+        logger.warning(
+            f"Failed to parse {message.topic} message",
+            extra={"payload": decoded_message},
+            exc_info=e,
+        )
         return
 
     # Todo: Find the Session which may be active on the EVSE
@@ -140,7 +125,14 @@ def _publish_not_allowed_auth_response(correlation_id: str):
 def _authorize_and_publish(
     token_auth_message: TokenAuthorizationMessageIn, message: str
 ):
-    evse = find_our_evse(token_auth_message.evse_id)
+    try:
+        evse = find_our_evse(token_auth_message.evse_id)
+    except DjangoValidationError as e:
+        logger.warning(
+            f"Cannot authorize non existent evse {token_auth_message.evse_id}",
+            exc_info=e,
+        )
+        return
     if not evse:
         logger.error(
             f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found",
@@ -153,7 +145,9 @@ def _authorize_and_publish(
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )
     try:
-        authorization: TokenAuthorization = authorize_token(token, evse.location)
+        authorization: TokenAuthorization = authorize_token(
+            token, evse.location, evse_id=evse.evse_id
+        )
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
@@ -198,6 +192,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
+        hub_session_id=authorization.hub_session_id,
     )
     save_to_session_cache(
         route=find_route_from_credentials(

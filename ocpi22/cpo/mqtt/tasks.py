@@ -53,13 +53,14 @@ class CeleryConfig:
     accept_content = ["json"]
     result_expires = 1
     worker_concurrency = 4
-    task_time_limit = 15
-    task_soft_time_limit = 10
+    task_time_limit = 300
+    task_soft_time_limit = 240
     task_always_eager = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
 app = Celery("mqtt_tasks", task_cls=RefreshTokenBaseTask)
+app.conf.worker_hijack_root_logger = False
 app.conf.task_queues = (
     Queue("HIGH", Exchange("HIGH"), routing_key="HIGH"),
     # Add other queues as needed
@@ -107,5 +108,5 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     evse.status = status
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
-    evse.send_status_updates()
+    EvseServices.send_status_updates(evse)
     return

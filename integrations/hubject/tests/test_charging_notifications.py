@@ -26,17 +26,17 @@ def test_convert_session_to_charging_notification_start_with_defaults_succeeds()
     session = OCPISessionFactory()
     notification = convert_to_charging_notification_start(session)
 
-    assert notification.SessionID.root == session.hub_session_id
-    assert notification.EvseID.root == session.evse.evse_id
-    assert notification.ChargingStart == session.start_date_time
-    assert notification.SessionStart == session.start_date_time
+    assert notification.session_id.root == session.hub_session_id
+    assert notification.evse_id.root == session.evse.evse_id
+    assert notification.charging_start == session.start_date_time
+    assert notification.session_start == session.start_date_time
     expected_operator = f"{session.location.ocpi_master.country_code}*{session.location.ocpi_master.party_id}"
-    assert notification.OperatorID.root == expected_operator
+    assert notification.operator_id.root == expected_operator
     assert (
-        notification.Identification.RFIDMifareFamilyIdentification.UID.root
+        notification.identification.RFIDMifareFamilyIdentification.UID.root
         == session.cdr_token.uid
     )
-    assert notification.MeterValueStart == 0.0
+    assert notification.meter_value_start == 0.0
 
 
 @pytest.mark.django_db
@@ -45,7 +45,7 @@ def test_convert_session_to_charging_notification_start_with_meter_start_succeed
     session = OCPISessionFactory(start_kwh=meter_start_value)
     notification = convert_to_charging_notification_start(session)
 
-    assert notification.MeterValueStart == meter_start_value, notification
+    assert notification.meter_value_start == meter_start_value, notification
 
 
 @pytest.mark.django_db
@@ -54,12 +54,12 @@ def test_convert_session_to_charging_notification_progress_defaults_succeeds():
     session.last_updated = session.start_date_time + timedelta(minutes=5)
     notification = convert_to_charging_notification_progress(session)
 
-    assert notification.Type == ChargingNotificationType.Progress
-    assert notification.SessionID.root == session.hub_session_id
-    assert notification.EvseID.root == session.evse.evse_id
-    assert notification.ChargingStart == session.start_date_time
-    assert notification.EventOccurred == session.last_updated
-    assert notification.ConsumedEnergyProgress == 120.0
+    assert notification.type == ChargingNotificationType.Progress
+    assert notification.session_id.root == session.hub_session_id
+    assert notification.evse_id.root == session.evse.evse_id
+    assert notification.charging_start == session.start_date_time
+    assert notification.event_occurred == session.last_updated
+    assert notification.consumed_energy_progress == 120.0
 
 
 @pytest.mark.django_db
@@ -71,8 +71,8 @@ def test_convert_session_to_charging_notification_progress_with_consumed_energy_
 
     notification = convert_to_charging_notification_progress(session)
 
-    assert notification.EventOccurred == now
-    assert notification.ConsumedEnergyProgress == 12.5
+    assert notification.event_occurred == now
+    assert notification.consumed_energy_progress == 12.5
 
 
 @pytest.mark.django_db
@@ -86,14 +86,14 @@ def test_convert_session_to_charging_notification_progress_with_duration_only_su
     notification = convert_to_charging_notification_progress(session)
 
     expected_ms = int((now - start).total_seconds() * 1000)
-    assert notification.ChargingDuration == expected_ms, (
+    assert notification.charging_duration == expected_ms, (
         type(session),
         session.total_time_float,
         session.start_date_time,
         session.end_date_time,
         now,
     )
-    assert notification.ConsumedEnergyProgress == 120.0
+    assert notification.consumed_energy_progress == 120.0
 
 
 @pytest.mark.django_db
@@ -112,16 +112,16 @@ def test_convert_session_to_charging_notification_end_basic_mapping_succeeds():
     )
     notification = convert_to_charging_notification_end(session)
 
-    assert notification.Type == ChargingNotificationType.End
-    assert notification.SessionID.root == session.hub_session_id
-    assert notification.EvseID.root == session.evse.evse_id
-    assert notification.ChargingStart == start
-    assert notification.ChargingEnd == end
-    assert notification.SessionStart == start
-    assert notification.SessionEnd == end
-    assert notification.MeterValueStart == start_kwh
-    assert notification.MeterValueEnd == stop_kwh
-    assert notification.ConsumedEnergy == pytest.approx(stop_kwh - start_kwh)
+    assert notification.type == ChargingNotificationType.End
+    assert notification.session_id.root == session.hub_session_id
+    assert notification.evse_id.root == session.evse.evse_id
+    assert notification.charging_start == start
+    assert notification.charging_end == end
+    assert notification.session_start == start
+    assert notification.session_end == end
+    assert notification.meter_value_start == start_kwh
+    assert notification.meter_value_end == stop_kwh
+    assert notification.consumed_energy == pytest.approx(stop_kwh - start_kwh)
 
 
 @pytest.mark.django_db
@@ -142,17 +142,17 @@ def test_convert_session_to_charging_notification_end_negative_meter_raises_valu
 def test_create_charging_notification_payload_start_successfully():
     session = OCPISessionFactory()
     expected_payload = {
-        "CPOPartnerSessionID": None,
-        "ChargingStart": "2021-01-01T10:00:00Z",
-        "EMPPartnerSessionID": None,
-        "EvseID": session.evse.evse_id,
-        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
-        "MeterValueStart": 0.0,
-        "OperatorID": "FI*CPO",
-        "PartnerProductID": None,
-        "SessionID": session.hub_session_id,
-        "SessionStart": "2021-01-01T10:00:00Z",
-        "Type": "Start",
+        "cpo_partner_session_id": None,
+        "charging_start": "2021-01-01T10:00:00Z",
+        "emp_partner_session_id": None,
+        "evse_id": session.evse.evse_id,
+        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "meter_value_start": 0.0,
+        "operator_id": "FI*CPO",
+        "partner_product_id": None,
+        "session_id": session.hub_session_id,
+        "session_start": "2021-01-01T10:00:00Z",
+        "type": "Start",
     }
     payload = HubjectService.create_charging_notification_payload(
         session, ChargingNotificationType.Start
@@ -174,21 +174,21 @@ def test_create_charging_notification_payload_start_with_invalid_charging_start_
 def test_create_charging_notification_payload_progress_successfully():
     session = OCPISessionFactory()
     expected_payload = {
-        "CPOPartnerSessionID": None,
-        "ChargingStart": "2021-01-01T10:00:00Z",
-        "EMPPartnerSessionID": None,
-        "EvseID": session.evse.evse_id,
-        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
-        "MeterValueStart": 0.0,
-        "ChargingDuration": hours_to_milliseconds(session.total_time_float),
-        "MeterValueInBetween": None,
-        "EventOccurred": "2021-01-01T12:00:00Z",
-        "ConsumedEnergyProgress": 120.0,
-        "OperatorID": "FI*CPO",
-        "PartnerProductID": None,
-        "SessionID": session.hub_session_id,
-        "SessionStart": "2021-01-01T10:00:00Z",
-        "Type": "Progress",
+        "cpo_partner_session_id": None,
+        "charging_start": "2021-01-01T10:00:00Z",
+        "emp_partner_session_id": None,
+        "evse_id": session.evse.evse_id,
+        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "meter_value_start": 0.0,
+        "charging_duration": hours_to_milliseconds(session.total_time_float),
+        "meter_value_in_between": None,
+        "event_occurred": "2021-01-01T12:00:00Z",
+        "consumed_energy_progress": 120.0,
+        "operator_id": "FI*CPO",
+        "partner_product_id": None,
+        "session_id": session.hub_session_id,
+        "session_start": "2021-01-01T10:00:00Z",
+        "type": "Progress",
     }
     payload = HubjectService.create_charging_notification_payload(
         session, ChargingNotificationType.Progress
@@ -230,23 +230,23 @@ def test_create_charging_notification_payload_end_with_invalid_charging_end_rais
 def test_create_charging_notification_payload_end_successfully():
     session = OCPISessionFactory()
     expected_payload = {
-        "CPOPartnerSessionID": None,
-        "ChargingStart": "2021-01-01T10:00:00Z",
-        "EMPPartnerSessionID": None,
-        "EvseID": session.evse.evse_id,
-        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
-        "MeterValueStart": 0.0,
-        "ChargingEnd": "2021-01-01T12:00:00Z",
-        "SessionEnd": "2021-01-01T12:00:00Z",
-        "MeterValueEnd": 120.0,
-        "ConsumedEnergy": 120.0,
-        "OperatorID": "FI*CPO",
-        "PartnerProductID": None,
-        "PenaltyTimeStart": None,
-        "MeterValueInBetween": None,
-        "SessionID": session.hub_session_id,
-        "SessionStart": "2021-01-01T10:00:00Z",
-        "Type": "End",
+        "cpo_partner_session_id": None,
+        "charging_start": "2021-01-01T10:00:00Z",
+        "emp_partner_session_id": None,
+        "evse_id": session.evse.evse_id,
+        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "meter_value_start": 0.0,
+        "charging_end": "2021-01-01T12:00:00Z",
+        "session_end": "2021-01-01T12:00:00Z",
+        "meter_value_end": 120.0,
+        "consumed_energy": 120.0,
+        "operator_id": "FI*CPO",
+        "partner_product_id": None,
+        "penalty_time_start": None,
+        "meter_value_in_between": None,
+        "session_id": session.hub_session_id,
+        "session_start": "2021-01-01T10:00:00Z",
+        "type": "End",
     }
     payload = HubjectService.create_charging_notification_payload(
         session, ChargingNotificationType.End
@@ -270,7 +270,7 @@ def charge_notification_payload():
         payload = HubjectService.create_charging_notification_payload(
             session, notification_type
         )
-        return payload.model_dump(mode="json")
+        return payload.model_dump(mode="json", by_alias=True)
 
     return generate_payload
 
@@ -326,5 +326,7 @@ def test_route_through_oicp_true_invokes_send_update(
         result = session.send_updates(
             update_type=notification_type,
         )
-    mock_send.assert_called_once_with(session=session, update_type=notification_type)
+    mock_send.assert_called_once_with(
+        session=session, notification_type=notification_type
+    )
     assert result is None

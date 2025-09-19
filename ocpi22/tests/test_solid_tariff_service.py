@@ -5,10 +5,11 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.forms import model_to_dict
 
+from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Connector
-from ocpi22.tests.factories import ConnectorFactory
+from ocpi22.tests.factories import ConnectorFactory, TariffFactory, SolidTariffFactory
 
 from ocpi22.credentials.util import find_endpoints_by_roles
 
@@ -110,7 +111,7 @@ def test_convert_to_hourly(
 
 
 @pytest.mark.django_db
-def test_create_returns_solid_tariff_with_vali_data(
+def test_create_returns_solid_tariff_with_valid_data(
     solid_tariff_service_instance, smp1_solid_tariff_validated_json
 ):
     solid_tariff = solid_tariff_service_instance.create(
@@ -192,3 +193,17 @@ def test_create_solid_tariff_with_same_external_id_replaces_ocpi_tariff_in_conne
 
     connector = Connector.get_if_exists(uid=connector_with_tariff.uid)
     assert connector.get_tariffs().first() == new_solid_tariff.ocpi_tariff
+
+
+@pytest.mark.django_db
+def test_find_by_ocpi_tariff_id_found():
+    ocpi_tariff = TariffFactory(uid="SMP1")
+    solid_tariff = SolidTariffFactory(external_id="SD1", ocpi_tariff=ocpi_tariff)
+    result = SolidTariffRepository.find_by_ocpi_tariff_id("SMP1")
+    assert result == solid_tariff
+
+
+@pytest.mark.django_db
+def test_find_by_ocpi_tariff_id_not_found():
+    result = SolidTariffRepository.find_by_ocpi_tariff_id("nonexistent_uid")
+    assert result is None

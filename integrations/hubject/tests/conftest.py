@@ -41,6 +41,10 @@ from ocpi22.tests.factories import (
     OCPIImageFactory,
     SolidTariffFactory,
     ERoamingPushPricingProductDataFactory,
+    CdrTokenFactory,
+    OCPISessionFactory,
+    CdrFactory,
+    CdrLocationFactory,
 )
 
 
@@ -622,3 +626,47 @@ def pricing_product_data_successful_result():
             ),
         ],
     )
+
+
+@pytest.fixture
+def session_for_cdr():
+    cdr_token = CdrTokenFactory(uid="BAADF00D")
+
+    return OCPISessionFactory(
+        uid="SESSION123",
+        cdr_token=cdr_token,
+    )
+
+
+@pytest.fixture
+def ocpi_cdr(session_for_cdr):
+    cdr_location = CdrLocationFactory(
+        evse_uid="EVSECONVERT", evse_id="FI*CPO*EEVSECONVERT"
+    )
+    cdr = CdrFactory(session_id=session_for_cdr.uid, cdr_location=cdr_location)
+
+    return cdr
+
+
+@pytest.fixture
+def expected_eroaming_cdr():
+    return {
+        "CPOPartnerSessionID": "SESSION123",
+        "CalibrationLawVerificationInfo": None,
+        "ChargingEnd": "2022-02-22T23:22:22Z",
+        "ChargingStart": "2022-02-22T22:22:22Z",
+        "ConsumedEnergy": 120.0,
+        "EMPPartnerSessionID": "EMSPSESSION1",
+        "EvseID": "FI*CPO*EEVSECONVERT",
+        "HubOperatorID": "FI*CPO",
+        "HubProviderID": "FI*MSP",
+        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "BAADF00D"}},
+        "MeterValueEnd": 120.0,
+        "MeterValueInBetween": None,
+        "MeterValueStart": 0.0,
+        "PartnerProductID": None,
+        "SessionEnd": "2022-02-22T23:22:22Z",
+        "SessionID": "b2688855-7f00-0002-6d8e-48d883f6abb6",
+        "SessionStart": "2022-02-22T22:22:22Z",
+        "SignedMeteringValues": None,
+    }
