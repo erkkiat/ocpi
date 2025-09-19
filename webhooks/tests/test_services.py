@@ -757,7 +757,8 @@ class TestWebhookExecutionService:
         WebhookExecutionService().execute_webhook_event(event)
 
         mock_logger.warning.assert_called_once_with(
-            f"Webhook event {event.id} failed with HTTP 400"
+            f"Webhook event {event.id} failed with HTTP 400",
+            extra={"response_content": b""},
         )
 
     @responses.activate
@@ -771,7 +772,7 @@ class TestWebhookExecutionService:
         WebhookExecutionService().execute_webhook_event(event)
 
         mock_logger.warning.assert_called_once_with(
-            f"Webhook event {event.id} failed with HTTP 500"
+            f"Webhook event {event.id} failed with HTTP 500", extra={'response_content': b''}
         )
 
     @patch("webhooks.services.logger")
@@ -823,7 +824,7 @@ class TestWebhookExecutionService:
 
         assert result == {}
         mock_logger.exception.assert_called_once_with(
-            "Failed to parse webhook response for event 123 for status 200"
+            "Failed to parse webhook response for event 123 for status 200", extra={'response_content': mock_response.content}
         )
 
     @pytest.mark.parametrize(
