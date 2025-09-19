@@ -777,25 +777,55 @@ class ApiPutTests(TestCase):
             (
                 "tariff_1_simple_2hour",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
-                5,
-                5.5,
+                Decimal("5"),
+                Decimal("5.5"),
             ),
-            ("tariff_8_simple_025kwh", dict(stop_kwh=20), 5, 5.5),
-            ("tariff_9_025kwh_start", dict(stop_kwh=20), 5.5, 6.1),
-            ("tariff_12_025kwh_min_price", dict(stop_kwh=20), 5, 5.5),
-            ("tariff_12_025kwh_min_price", dict(stop_kwh=1), 0.5, 0.55),
+            ("tariff_8_simple_025kwh", dict(stop_kwh=20), Decimal("5"), Decimal("5.5")),
+            (
+                "tariff_9_025kwh_start",
+                dict(stop_kwh=20),
+                Decimal("5.5"),
+                Decimal("6.1"),
+            ),
+            (
+                "tariff_12_025kwh_min_price",
+                dict(stop_kwh=20),
+                Decimal("5"),
+                Decimal("5.5"),
+            ),
+            (
+                "tariff_12_025kwh_min_price",
+                dict(stop_kwh=1),
+                Decimal("0.5"),
+                Decimal("0.55"),
+            ),
             # ('tariff_10_025kwh_parking_start', dict(stop_kwh=20, parking=40*60), 7, 7.9),
-            ("tariff_6_025kwh_start_max_price", dict(stop_kwh=50), 10, 11),
-            ("tariff_6_025kwh_start_max_price", dict(stop_kwh=30), 8, 8.85),
+            (
+                "tariff_6_025kwh_start_max_price",
+                dict(stop_kwh=50),
+                Decimal("10"),
+                Decimal("11"),
+            ),
+            (
+                "tariff_6_025kwh_start_max_price",
+                dict(stop_kwh=30),
+                Decimal("8"),
+                Decimal("8.85"),
+            ),
             # Parking
             # ('tariff_13_simple_3hour_5parking', dict(stop_kwh=20)),
             (
                 "tariff_2_alt_text",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
-                4.75,
-                5,
+                Decimal("4.75"),
+                Decimal("5"),
             ),
-            ("tariff_3_alt_url", dict(stop_kwh=Decimal(20.45)), 5.63, 6.24),
+            (
+                "tariff_3_alt_url",
+                dict(stop_kwh=Decimal(20.45)),
+                Decimal("5.63"),
+                Decimal("6.24"),
+            ),
             # Parking, weekdays, times
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
         )
@@ -947,7 +977,12 @@ class ApiPutTests(TestCase):
                 first_json_price_component = (
                     data.get("tariffs")[0].get("elements")[0].get("price_components")[0]
                 )
-                first_price_component = dict(price_components[0])
+                first_price_component = {
+                    "price": float(price_components[0].get("price")),
+                    "step_size": price_components[0].get("step_size"),
+                    "type": price_components[0].get("type"),
+                    "vat": float(price_components[0].get("vat")),
+                }
                 assert first_price_component == first_json_price_component, filename
 
                 saved_data = json.loads(json.dumps(saved_data))
@@ -966,6 +1001,10 @@ class ApiPutTests(TestCase):
                 for t in range(0, len(saved_data["tariffs"])):
                     if "tariff_alt_text" in saved_data["tariffs"][t]:
                         del saved_data["tariffs"][t]["tariff_alt_text"]
+                    for el in saved_data["tariffs"][t]["elements"]:
+                        for pc in el["price_components"]:
+                            pc["price"] = float(pc["price"])
+                            pc["vat"] = float(pc["vat"])
                 assert saved_data == data, filename
 
     def test_put_token(self):
@@ -1126,8 +1165,13 @@ class TariffTests(TestCase):
         self.assertEqual(tariffs.count(), 1)
         self.assertIsInstance(tariffs[0], Tariff)
         tariff: Tariff = tariffs[0]
+        expected_price = Decimal("0.22")
+        actual_price = tariff.tariff_elements.all()[0].price_components.all()[0].price
+
         self.assertEqual(
-            tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22
+            actual_price.quantize(Decimal("0.01")),
+            expected_price,
+            f"Expected {expected_price}, got {actual_price}",
         )
 
     @pytest.mark.skip(reason="Fix me!")

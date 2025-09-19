@@ -362,11 +362,13 @@ class PriceComponent(models.Model, ModelUtilMixin):
     type = models.CharField(max_length=12, choices=TYPE_CHOICES)
 
     # Price /unit (excl. VAT) for this tariff dimension.
-    price = models.FloatField()
+    price = models.DecimalField(
+        max_digits=12, decimal_places=6, verbose_name=_("Price excluding tax")
+    )
 
     # Applicable VAT percentage for this tariff dimension. If omitted, no VAT is applicable.
     # Not providing a VAT is different from 0% VAT, which would be a value of 0.0 here.
-    vat = models.FloatField(blank=True, null=True)
+    vat = models.DecimalField(blank=True, null=True, max_digits=8, decimal_places=4)
 
     # Minimum amount to be billed. This unit will be billed in this step_size blocks.
     # Amounts that are less then this step_size are rounded up to the given step_size.
@@ -508,22 +510,22 @@ class SolidTariff(models.Model):
         default="EUR",
     )
     price_per_kwh = models.DecimalField(
-        max_digits=8, decimal_places=2, blank=True, null=True
+        max_digits=12, decimal_places=6, blank=True, null=True
     )
     price_per_min = models.DecimalField(
         max_digits=15, decimal_places=10, blank=True, null=True
     )
     price_per_hr = models.DecimalField(
-        max_digits=8, decimal_places=2, blank=True, null=True
+        max_digits=12, decimal_places=6, blank=True, null=True
     )
     price_flat = models.DecimalField(
-        max_digits=8, decimal_places=2, blank=True, null=True
+        max_digits=12, decimal_places=6, blank=True, null=True
     )
     parking_price_per_min = models.DecimalField(
         max_digits=15, decimal_places=10, blank=True, null=True
     )
     parking_price_per_hr = models.DecimalField(
-        max_digits=8, decimal_places=2, blank=True, null=True
+        max_digits=12, decimal_places=6, blank=True, null=True
     )
     parking_grace_period = models.IntegerField(
         blank=True, null=True, validators=[MinValueValidator(0)]
