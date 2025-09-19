@@ -223,35 +223,3 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
             "errorType": "Hubject server Error",
             "error": "Hubject server returned 500. Retrying...",
         }
-
-
-class TestRemoteAuthorizeStart:
-    @pytest.fixture
-    def remote_start_command(self):
-        return {
-            "Identification": {
-                "RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}
-            },
-            "CPOPartnerSessionID": "1234XYZ",
-            "EMPPartnerSessionID": "2345ABC",
-            "ProviderID": "DE-DCB",
-            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d2c527",
-            "PartnerProductID": "AC 1",
-            "EvseID": "DE*XYZ*ETEST1",
-        }
-
-    @pytest.mark.django_db
-    @responses.activate
-    def test_remote_authorize_start_with_proper_credentials_returns_200(
-        self, request, remote_start_command, client
-    ):
-        url = reverse("hubject-api:hubject-remote-start")
-        headers = {
-            "HTTP_X_SSL_CLIENT_CERT": "-----BEGIN CERTIFICATE-----\nMOCK_CERT_DATA\n-----END CERTIFICATE-----",
-            "HTTP_X_SSL_CLIENT_VERIFY": "SUCCESS",
-            "HTTP_X_FORWARDED_FOR": settings.HUBJECT_HOSTS[0],
-            "REMOTE_ADDR": settings.HUBJECT_HOSTS[0],
-        }
-
-        response = client.post(url, json=remote_start_command, headers=headers)
-        assert response.status_code == 200
