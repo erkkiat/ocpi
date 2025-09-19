@@ -572,29 +572,29 @@ class SolidToHubjectConverter:
 
     def get_identification(self, session: "Session") -> Identification:
         token_type = session.cdr_token.token_type
+        identification = Identification(
+            RFIDMifareFamilyIdentification=None,
+            RFIDIdentification=None,
+            QRCodeIdentification=None,
+            PlugAndChargeIdentification=None,
+            RemoteIdentification=None,
+        )
+
         match token_type:
-            case TokenType.APP_USER.value:
-                return Identification(
-                    RFIDMifareFamilyIdentification=None,
-                    RemoteIdentification=RemoteIdentification(
-                        EvcoID=EvcoID(root=session.cdr_token.contract_id)
-                    ),
-                    QRCodeIdentification=None,
-                    RFIDIdentification=None,
-                    PlugAndChargeIdentification=None,
-                )
-            case TokenType.RFID.value:
-                return Identification(
-                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+            case TokenType.RFID | TokenType.AD_HOC_USER | TokenType.OTHER:
+                identification.RFIDMifareFamilyIdentification = (
+                    RFIDMifareFamilyIdentificationClass(
                         UID=UID(root=session.cdr_token.uid)
-                    ),
-                    RemoteIdentification=None,
-                    QRCodeIdentification=None,
-                    RFIDIdentification=None,
-                    PlugAndChargeIdentification=None,
+                    )
+                )
+            case TokenType.APP_USER:
+                identification.RemoteIdentification = RemoteIdentification(
+                    EvcoID=EvcoID(root=session.cdr_token.contract_id)
                 )
             case _:
                 raise ValidationError(f"Unsupported token type: {token_type}")
+
+        return identification
 
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
@@ -621,33 +621,36 @@ class SolidToHubjectConverter:
                 operator_party_str,
                 msp_party_str,
             )
+        try:
+            eroaming_cdr = ERoamingChargeDetailRecord(
+                session_id=session.hub_session_id,
+                cpo_partner_session_id=session.uid,
+                emp_partner_session_id=session.reservation_id,
+                partner_product_id=(
+                    ProductID(root=partner_product_id) if partner_product_id else None
+                ),
+                evse_id=EvseID(root=cdr.evse_id),
+                identification=self.get_identification(session),
+                charging_start=cdr.start_date_time,
+                charging_end=cdr.end_date_time,
+                session_start=cdr.start_date_time,
+                session_end=cdr.end_date_time,
+                meter_value_start=session.start_kwh,
+                meter_value_end=session.stop_kwh,
+                meter_value_in_between=None,
+                consumed_energy=cdr.total_energy,
+                signed_metering_values=None,
+                calibration_law_verification_info=None,
+                hub_operator_id=OperatorID(root=operator_party_str),
+                hub_provider_id=ProviderID(root=msp_party_str),
+            )
 
-        eroaming_cdr = ERoamingChargeDetailRecord(
-            session_id=session.hub_session_id,
-            cpo_partner_session_id=session.uid,
-            emp_partner_session_id=session.reservation_id,
-            partner_product_id=(
-                ProductID(root=partner_product_id) if partner_product_id else None
-            ),
-            evse_id=EvseID(root=cdr.evse_id),
-            identification=self.get_identification(session),
-            charging_start=cdr.start_date_time,
-            charging_end=cdr.end_date_time,
-            session_start=cdr.start_date_time,
-            session_end=cdr.end_date_time,
-            meter_value_start=session.start_kwh,
-            meter_value_end=session.stop_kwh,
-            meter_value_in_between=None,
-            consumed_energy=cdr.total_energy,
-            signed_metering_values=None,
-            calibration_law_verification_info=None,
-            hub_operator_id=OperatorID(root=operator_party_str),
-            hub_provider_id=ProviderID(root=msp_party_str),
-        )
-
-        evse_data_record = self._convert_to_evse_data_record(
-            session.evse, session.location
-        )
+            evse_data_record = self._convert_to_evse_data_record(
+                session.evse, session.location
+            )
+        except ValidationError:
+            logger.exception(exc_info=True)
+            raise
 
         if (
             evse_data_record.CalibrationLawDataAvailability
