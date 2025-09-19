@@ -193,7 +193,7 @@ class StartCommandService(RemoteCommandServices):
             "token": validated_data["token"],
             "authorization_reference": validated_data["authorization_reference"],
             "evse_uid": validated_data.get("evse_uid"),
-            "connector_id": validated_data.get("connector_uid"),
+            "connector_id": validated_data.get("connector_id"),
         }
         payload["session_id"] = session.uid
 
