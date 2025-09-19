@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
+from rest_framework import status
 
 from integrations.hubject.schemas import (
     ActionType,
@@ -61,8 +62,10 @@ from integrations.hubject.services import (
 )
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.commands.repository import SessionRepository
 from ocpi22.models.location import Location
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
@@ -73,7 +76,8 @@ from ocpi22.tests.factories import (
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
-from webhooks.factories import WebhookRemoteCommandFactory
+from webhooks.choices import WebhookType, RemoteCommandType
+from webhooks.factories import WebhookFactory
 
 
 @pytest.fixture
@@ -1144,25 +1148,48 @@ class TestHubjectAuthorizeRemoteStart:
                 uid="194234D1-0EDD-4B6E-8262-C85BDA16919D",
                 ocpi_master=CredentialsRoleFactory(country_code="DE", party_id="ABC"),
             ),
+            status="AVAILABLE",
         )
 
         ConnectorFactory(evse=e, uid="connector-uid-789")
         return e
 
     @pytest.mark.django_db
+    @responses.activate
     def test_process_remote_start_command_returns_result_true(
         self, evse, mock_remote_start_command
     ):
-        WebhookRemoteCommandFactory()
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session",
+            return_value=OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+            ),
+        ):
+            responses.add(
+                responses.POST,
+                "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                json={"data": {"result": "ACCEPTED"}},
+                status=200,
+            )
         result = self.hubject_service.process_remote_start_command(
             mock_remote_start_command
         )
 
+        session = SessionRepository.find_session_by_auth_ref_and_token_uid(
+            mock_remote_start_command.emp_partner_session_id,
+            mock_remote_start_command.identification.RemoteIdentification.EvcoID.root,
+        )
         assert result == ERoamingAcknowledgment(
             result=True,
             status_code=StatusCode(Code="000"),
             session_id=mock_remote_start_command.session_id,
-            cpo_partner_session_id="",
+            cpo_partner_session_id=session.uid,
             emp_partner_session_id=mock_remote_start_command.emp_partner_session_id,
         )
 

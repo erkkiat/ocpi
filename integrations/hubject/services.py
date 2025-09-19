@@ -695,7 +695,10 @@ class HubjectService:
             validated_data=validated_data,
         )
 
-        if response.data.get("data").get("result") != "ACCEPTED":
+        if (
+            response.data.get("data", None) is None
+            or response.data.get("data").get("result") != "ACCEPTED"
+        ):
             logger.error(
                 f"Hubject remote start command was rejected, {response.data.get('data')}"
             )
