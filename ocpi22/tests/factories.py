@@ -1,4 +1,5 @@
 import time
+import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -587,7 +588,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         role="CPO",
         business_details__name="Test CPO",
     )
-    uid = "SESSION12345"
+    uid = str(uuid.uuid4())
     reservation_id = "EMSPSESSION1"
     hub_session_id = "b2688855-7f00-0002-6d8e-48d883f6abb6"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
