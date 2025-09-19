@@ -191,10 +191,10 @@ class StartCommandService(RemoteCommandServices):
                     args=(validated_data["authorization_reference"],),
                 )
             ),
-            "token": validated_data,
+            "token": validated_data["token"],
             "authorization_reference": validated_data["authorization_reference"],
             "evse_uid": validated_data.get("evse_uid"),
-            "connector_id": validated_data.get("connector_uid"),
+            "connector_id": validated_data.get("connector_id"),
         }
         if billed_to:
             payload["billed_to"] = str(billed_to.get_party())
