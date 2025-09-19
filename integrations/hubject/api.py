@@ -118,7 +118,6 @@ def receive_remote_start_command(
     # Start transaction equivalent of hubject uses remote command
     # Charging notifications use remote command as well
     # CDR uses remote command as well
-    # Validate all the scenarios such as EVSE in use
 
     result = hubject_service.process_remote_start_command(remote_start_command)
     return 200, result

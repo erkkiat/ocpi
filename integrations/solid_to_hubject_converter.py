@@ -44,8 +44,10 @@ from integrations.hubject.schemas import (
     ProductID,
     RFIDMifareFamilyIdentificationClass,
     EvseStatus as OICPEvseStatus,
+    RemoteIdentification,
+    EvcoID,
 )
-from ocpi22.choices import OCPICapability
+from ocpi22.choices import OCPICapability, TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
@@ -54,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
+    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -567,6 +570,32 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
+    def get_identification(self, session: "Session") -> Identification:
+        token_type = session.cdr_token.token_type
+        match token_type:
+            case TokenType.APP_USER.value:
+                return Identification(
+                    RFIDMifareFamilyIdentification=None,
+                    RemoteIdentification=RemoteIdentification(
+                        EvcoID=EvcoID(root=session.cdr_token.contract_id)
+                    ),
+                    QRCodeIdentification=None,
+                    RFIDIdentification=None,
+                    PlugAndChargeIdentification=None,
+                )
+            case TokenType.RFID.value:
+                return Identification(
+                    RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=session.cdr_token.uid)
+                    ),
+                    RemoteIdentification=None,
+                    QRCodeIdentification=None,
+                    RFIDIdentification=None,
+                    PlugAndChargeIdentification=None,
+                )
+            case _:
+                raise ValidationError(f"Unsupported token type: {token_type}")
+
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
@@ -601,15 +630,7 @@ class SolidToHubjectConverter:
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=session.token_id)
-                ),
-                RemoteIdentification=None,
-                QRCodeIdentification=None,
-                RFIDIdentification=None,
-                PlugAndChargeIdentification=None,
-            ),
+            identification=self.get_identification(session),
             charging_start=cdr.start_date_time,
             charging_end=cdr.end_date_time,
             session_start=cdr.start_date_time,
