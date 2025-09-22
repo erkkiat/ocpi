@@ -4069,6 +4069,7 @@ class TestSolidLocation:
             ],
             "operator": {"name": "BeCharged"},
             "time_zone": "Europe/Brussels",
+            "roaming_enabled": True,
             "last_updated": "2015-06-29T20:39:09Z",
         }
 
@@ -4217,7 +4218,9 @@ class TestSolidLocation:
         # In the database it is mapped to ocpi tariff however in the payload it is the solid tariff
         expected_data.get("evses")[0]["connectors"][0]["tariff_ids"] = ["11"]
 
-        assert expected_data, location_payload
+        assert compare_dicts_recursively(
+            expected_data, location_payload
+        ), "The saved location is different from the expected payload"
 
     def test_put_location_with_invalid_data_returns_422(
         self, authenticated_user_client, ocpi_master, location_example
