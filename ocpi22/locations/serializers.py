@@ -485,6 +485,7 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
             if capabilities is not None:
                 evse.capabilities = capabilities
+                evse.save()
 
             for c in connectors:
                 tariff_ids = c.pop("tariff_ids", [])
