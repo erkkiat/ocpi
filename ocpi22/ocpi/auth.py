@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 from logging import getLogger
 
 import binascii
@@ -10,6 +11,9 @@ from typing import Optional
 from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
+from cryptography import x509
+from cryptography.hazmat._oid import NameOID
+from cryptography.hazmat.primitives import serialization
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpRequest
@@ -268,17 +272,56 @@ class HubjectCertAuth(HttpAuthBase):
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
 
         cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
-        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
+        if not cert_pem:
+            raise HttpError(403, "Forbidden: No client certificate provided")
 
+        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
         if verify_status != "SUCCESS":
             raise HttpError(
                 403, f"Forbidden: Certificate verification failed: {verify_status}"
             )
 
-        if not cert_pem:
-            raise HttpError(403, "Forbidden: No client certificate provided")
+        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
+            try:
+                received_cert = base64.b64decode(cert_pem).decode("utf-8")
+            except Exception:
+                raise HttpError(403, "Invalid client certificate format")
+        else:
+            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+        now = datetime.now(timezone.utc)
+        if now < received_cert.not_valid_before or now > received_cert.not_valid_after:
+            raise HttpError(403, "Forbidden: Certificate expired or not yet valid")
 
-        # Add additional certificate validation here
-        # Check the certificate subject, issuer, etc.
+        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
+        if not private_key_pem:
+            raise HttpError(
+                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
+            )
 
-        return {"ip": ip, "cert": cert_pem}
+        private_key = serialization.load_pem_private_key(
+            private_key_pem.encode(), password=None
+        )
+
+        expected_public_key = private_key.public_key()
+        cert_public_key = received_cert.public_key()
+
+        expected_public_key_bytes = expected_public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        cert_public_key_bytes = cert_public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+
+        if expected_public_key_bytes != cert_public_key_bytes:
+            raise HttpError(
+                403,
+                "Forbidden: Provided certificate public key does not match expected private key",
+            )
+
+        subject = received_cert.subject
+        cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        cn_value = cn[0].value if cn else None
+
+        return {"ip": ip, "cert": cert_pem, "cert_cn": cn_value}
