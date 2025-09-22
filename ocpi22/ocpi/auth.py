@@ -263,41 +263,16 @@ class HubjectCertAuth(HttpAuthBase):
     def __call__(self, request: HttpRequest):
         return self.authenticate(request)
 
-    def authenticate(self, request: HttpRequest):
+    def _get_ip_address(self, request: HttpRequest) -> str:
         ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
         if not ip:
             ip = request.META.get("REMOTE_ADDR")
 
         if not ip or ip not in settings.HUBJECT_HOSTS:
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
+        return ip
 
-        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
-        if not cert_pem:
-            raise HttpError(403, "Forbidden: No client certificate provided")
-
-        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
-        if verify_status != "SUCCESS":
-            raise HttpError(
-                403, f"Forbidden: Certificate verification failed: {verify_status}"
-            )
-
-        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
-            try:
-                received_cert = base64.b64decode(cert_pem).decode("utf-8")
-            except Exception:
-                raise HttpError(403, "Invalid client certificate format")
-        else:
-            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
-        now = datetime.now(timezone.utc)
-        if now < received_cert.not_valid_before or now > received_cert.not_valid_after:
-            raise HttpError(403, "Forbidden: Certificate expired or not yet valid")
-
-        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
-        if not private_key_pem:
-            raise HttpError(
-                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
-            )
-
+    def _validate_public_key(self, private_key_pem, received_cert) -> None:
         private_key = serialization.load_pem_private_key(
             private_key_pem.encode(), password=None
         )
@@ -319,6 +294,53 @@ class HubjectCertAuth(HttpAuthBase):
                 403,
                 "Forbidden: Provided certificate public key does not match expected private key",
             )
+        return
+
+    def _validate_expiry_date(self, received_cert) -> None:
+        now = datetime.now(timezone.utc)
+        if (
+            now < received_cert.not_valid_before_utc
+            or now > received_cert.not_valid_after_utc
+        ):
+            raise HttpError(403, "Forbidden: Certificate expired or not yet valid")
+        return
+
+    def authenticate(self, request: HttpRequest):
+        try:
+            ip = self._get_ip_address(request)
+        except HttpError as e:
+            logger.warning(e.args[1], exc_info=True)
+            raise e
+
+        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
+        if not cert_pem:
+            raise HttpError(403, "Forbidden: No client certificate provided")
+
+        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
+        if verify_status != "SUCCESS":
+            raise HttpError(
+                403, f"Forbidden: Certificate verification failed: {verify_status}"
+            )
+
+        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
+            try:
+                received_cert = base64.b64decode(cert_pem).decode("utf-8")
+            except Exception:
+                raise HttpError(403, "Invalid client certificate format")
+        else:
+            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+
+        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
+        if not private_key_pem:
+            raise HttpError(
+                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
+            )
+        try:
+            self._validate_expiry_date(received_cert)
+            self._validate_public_key(private_key_pem, received_cert)
+        except HttpError as e:
+            logger.warning(e.args[1], exc_info=True)
+            raise e
 
         subject = received_cert.subject
         cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
