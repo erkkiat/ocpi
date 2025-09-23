@@ -1311,6 +1311,15 @@ class TestHubjectAuthorizeRemoteStop:
     hubject_service = HubjectService()
 
     @pytest.fixture
+    def mock_data(self):
+        EvseFactory(uid="12345")
+        OCPISessionFactory(
+            uid="OURSESSIONID",
+            route_through=CredentialsRoleFactory(country_code="DE", party_id="ICE"),
+            authorization_reference="emp_session_456",
+        )
+
+    @pytest.fixture
     def remote_stop_command(self):
         return ERoamingAuthorizeRemoteStop(
             evse_id=EvseID(root="FI*CPO*E12345"),
@@ -1342,19 +1351,55 @@ class TestHubjectAuthorizeRemoteStop:
             assert result.emp_partner_session_id == "emp_session_456"
 
     @pytest.mark.django_db
-    def test_process_remote_stop_command_returns_acknowledgment_when_session_not_found(
-        self, remote_stop_command
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_session_not_found(
+        self, remote_stop_command, mock_data
     ):
-        EvseFactory(uid="12345")
-        OCPISessionFactory(
-            uid="OURSESSIONID",
-            route_through=CredentialsRoleFactory(country_code="DE", party_id="ICE"),
-            authorization_reference="emp_session_456",
-        )
-
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
         assert result.result is False
         assert result.status_code.Code == "022"
         assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
         assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_serializer_invalid(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.serializers.StopSessionSerializer"
+        ) as mock_serializer_class:
+            mock_serializer = Mock()
+            mock_serializer.is_valid.return_value = False
+            mock_serializer.errors = {"session_id": ["Invalid session"]}
+            mock_serializer_class.return_value = mock_serializer
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "022"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_stop_session_rejected(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.services.StopCommandServices"
+        ) as mock_service_class:
+            mock_service = Mock()
+            mock_response = Mock()
+            mock_response.data = {"data": {"result": "REJECTED"}}
+            mock_service.stop_session.return_value = mock_response
+            mock_service_class.return_value = mock_service
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "021"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"

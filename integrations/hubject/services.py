@@ -752,7 +752,11 @@ class HubjectService:
             session = SessionRepository.find_session_by_auth_ref(
                 remote_stop_command.emp_partner_session_id
             )
+            command_id = remote_stop_command.emp_partner_session_id
             data = {
+                "response_url": build_absolute_uri(
+                    reverse("chargepoint-remote-command-result", args=(command_id,))
+                ),
                 "session_id": session.uid,
             }
         except ObjectDoesNotExist as ve:
