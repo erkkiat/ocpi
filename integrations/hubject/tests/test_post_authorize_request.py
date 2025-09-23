@@ -60,6 +60,25 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
 
 @responses.activate
 @pytest.mark.asyncio
+async def test_post_authorize_request_logs_warning_when_status_code_not_000(
+    monkeypatch, caplog
+):
+    responses.add(
+        method=responses.POST,
+        url="https://service-qa.hubject.com/api/oicp/charging/v21/operators/DE*XYZ/authorize/start",
+        json={"StatusCode": {"Code": "017"}, "ProviderID": "DE*XYZ"},
+        status=200,
+    )
+    with caplog.at_level("WARNING"):
+        await HubjectService.post_authorize_request("DE*XYZ", "E4CEA229D30A523A19CC")
+    assert (
+        "Authorization failed with status code 200 and Hubject error code 017 (Unauthorized Access)"
+        in caplog.text
+    )
+
+
+@responses.activate
+@pytest.mark.asyncio
 async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch):
     responses.add(
         method=responses.POST,
