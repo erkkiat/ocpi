@@ -20,7 +20,7 @@ from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.choices import MessageTexts, OcpiRolesEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
-from ocpi22.tasks import get_request_session
+from ocpi22.tasks import get_certificate_loaded_request
 
 from webhooks.choices import RemoteCommandType
 from webhooks.repository import WebhookRepository
@@ -239,7 +239,7 @@ class CallBackService:
                 f"From: {sender_party} To: {to_party} Result: {command_result}"
             )
 
-            request = get_request_session(callback.session.credentials.id)
+            request = get_certificate_loaded_request(callback.session.credentials.id)
 
             result = cls.execute_callback_request(
                 callback_url=callback.callback_url,
