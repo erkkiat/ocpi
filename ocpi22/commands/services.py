@@ -236,10 +236,10 @@ class StopCommandServices(RemoteCommandServices):
         self,
         validated_data: Dict[str, Any],
     ) -> OCPIResponse:
-        session = self.session_repo.find_session_by_uid(validated_data["uid"])
+        session = self.session_repo.find_session_by_uid(validated_data["session_id"])
         if not session:
             logger.warning(
-                f"Could not find any session for provided uid: {validated_data['uid']}"
+                f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
             return OCPIResponse(
                 status_message="Session not found",

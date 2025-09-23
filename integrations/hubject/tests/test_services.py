@@ -1403,3 +1403,42 @@ class TestHubjectAuthorizeRemoteStop:
             assert result.status_code.Code == "021"
             assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
             assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_stop_session_data_none(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.services.StopCommandServices"
+        ) as mock_service_class:
+            mock_service = Mock()
+            mock_response = Mock()
+            mock_response.data = {"data": None}
+            mock_service.stop_session.return_value = mock_response
+            mock_service_class.return_value = mock_service
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "021"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_success_acknowledgment_when_stop_session_accepted(
+        self, remote_stop_command, mock_data
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.STOP_SESSION,
+            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/session_uid_789/",
+        )
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
+
+        assert result.result is True
+        assert result.status_code.Code == "000"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.cpo_partner_session_id == "session_uid_789"
+        assert result.emp_partner_session_id == "emp_session_456"
