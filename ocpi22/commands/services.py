@@ -1,19 +1,26 @@
 from copy import deepcopy
 from logging import getLogger
-from typing import Dict, Any
+from typing import Dict, Any, NamedTuple
+import requests
+from requests.exceptions import RequestException, Timeout, ConnectionError
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import status
 from starlette.status import HTTP_200_OK
 
 from ocpi22.commands.repository import SessionRepository
-from ocpi22.commands.serializers import CommandResponse
+from ocpi22.commands.serializers import CommandResponse, CommandResultSerializer
+from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.session import Session
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.ocpi.util_party import get_sender_party
-from ocpi22.choices import MessageTexts
+from ocpi22.choices import MessageTexts, OcpiRolesEnum
 from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.ocpi.headers import make_headers
+from ocpi22.tasks import get_request_session
 
 from webhooks.choices import RemoteCommandType
 from webhooks.repository import WebhookRepository
@@ -28,8 +35,244 @@ from ocpi22.models import enum
 from ocpi22.cpo.api import close_active_sessions_for_evse
 
 from ocpiconnector.party import Party
+from ocpiconnector.ocpi_identities import get_our_party
 
 logger = getLogger(__name__)
+
+
+class CallbackResult(NamedTuple):
+    success: bool
+    status_code: int = None
+    response_body: str = None
+    error_message: str = None
+
+
+class CallBackService:
+    REQUEST_TIMEOUT = 30
+
+    @staticmethod
+    def mark_success(
+        callback: CallBacks, response_status_code=None, response_body=None
+    ):
+        callback.execution_status = CallBackExecutionStatus.SUCCESS
+        callback.executed_at = timezone.now()
+        callback.response_status_code = response_status_code
+        callback.response_body = response_body
+        callback.save(
+            update_fields=[
+                "execution_status",
+                "executed_at",
+                "response_status_code",
+                "response_body",
+                "updated_at",
+            ]
+        )
+
+    @staticmethod
+    def mark_failed(callback: CallBacks, response_status_code=None, response_body=None):
+        callback.execution_status = CallBackExecutionStatus.FAILED
+        callback.executed_at = timezone.now()
+        callback.response_status_code = response_status_code
+        callback.response_body = response_body
+        callback.save(
+            update_fields=[
+                "execution_status",
+                "executed_at",
+                "response_status_code",
+                "response_body",
+                "updated_at",
+            ]
+        )
+
+    @staticmethod
+    def create_callback(session, callback_url, authorization_reference):
+        return CallBacks.objects.create(
+            session=session,
+            callback_url=callback_url,
+            authorization_reference=authorization_reference,
+            execution_status=CallBackExecutionStatus.PENDING,
+        )
+
+    @classmethod
+    def create_command_result_payload(cls, command_result, message=None):
+        data = {
+            "result": command_result.upper(),
+        }
+
+        if message:
+            data["message"] = [{"language": "en", "text": message}]
+
+        serializer = CommandResultSerializer(data=data)
+        if serializer.is_valid():
+            return serializer.validated_data
+        else:
+            logger.error(
+                f"CommandResult serializer validation failed: {serializer.errors}"
+            )
+            return data
+
+    @classmethod
+    def execute_callback_request(
+        cls,
+        callback_url: str,
+        payload: dict,
+        auth_token: str,
+        request: requests.Session,
+        to_party: Party = None,
+        sender_party: Party = None,
+    ) -> CallbackResult:
+        if not callback_url:
+            logger.error("Cannot execute callback: empty callback_url")
+            return CallbackResult(success=False, error_message="Empty callback URL")
+
+        if not auth_token:
+            logger.error("Cannot execute callback: empty auth_token")
+            return CallbackResult(success=False, error_message="Empty auth token")
+
+        try:
+            headers = make_headers(
+                token_base64=auth_token, to=to_party, sender=sender_party
+            )
+
+            logger.info(f"Sending callback to {callback_url}")
+
+            response = request.post(
+                callback_url, json=payload, headers=headers, timeout=cls.REQUEST_TIMEOUT
+            )
+
+            response_body = response.text if response.text else None
+
+            if response.status_code in [200, 201, 202]:
+                logger.info(
+                    f"Callback succeeded: {callback_url} - Status {response.status_code}"
+                )
+                return CallbackResult(
+                    success=True,
+                    status_code=response.status_code,
+                    response_body=response_body,
+                )
+            else:
+                logger.error(
+                    f"Callback failed with HTTP {response.status_code}: {callback_url}"
+                )
+                return CallbackResult(
+                    success=False,
+                    status_code=response.status_code,
+                    response_body=response_body,
+                    error_message=f"HTTP {response.status_code}",
+                )
+
+        except Timeout:
+            error_msg = f"Request timeout after {cls.REQUEST_TIMEOUT} seconds"
+            logger.error(f"Callback timeout: {callback_url}", exc_info=True)
+            return CallbackResult(success=False, error_message=error_msg)
+
+        except ConnectionError:
+            error_msg = "Connection error"
+            logger.error(f"Callback connection error: {callback_url}", exc_info=True)
+            return CallbackResult(success=False, error_message=error_msg)
+
+        except RequestException:
+            error_msg = "Request error"
+            logger.error(f"Callback request error: {callback_url}", exc_info=True)
+            return CallbackResult(success=False, error_message=error_msg)
+
+        except Exception:
+            error_msg = "Unexpected error"
+            logger.error(
+                f"Unexpected error executing callback: {callback_url}", exc_info=True
+            )
+            return CallbackResult(success=False, error_message=error_msg)
+
+    @classmethod
+    def execute_callback(
+        cls, callback: CallBacks, command_result: str, message: str = None
+    ) -> bool:
+        try:
+            payload = cls.create_command_result_payload(command_result, message)
+
+            if not callback.session:
+                logger.error(f"Callback {callback.id} missing session")
+                cls.mark_failed(callback, None, "Missing session")
+                return False
+
+            if not callback.session.credentials:
+                logger.error(
+                    f"Callback {callback.id} session {callback.session.uid} missing credentials"
+                )
+                cls.mark_failed(callback, None, "Missing credentials")
+                return False
+
+            if not callback.session.credentials.theirs:
+                logger.error(
+                    f"Callback {callback.id} credentials missing 'theirs' token"
+                )
+                cls.mark_failed(callback, None, "Missing credentials token")
+                return False
+
+            auth_token = callback.session.credentials.theirs_base64()
+
+            try:
+                sender_party = get_our_party(OcpiRolesEnum.CPO)
+            except Exception as e:
+                logger.error(
+                    f"Failed to get our party info for callback {callback.id}",
+                    exc_info=True,
+                )
+                cls.mark_failed(callback, None, f"Failed to get sender party: {str(e)}")
+                return False
+
+            try:
+                to_party = callback.session.ocpi_master.get_party()
+            except Exception as e:
+                logger.error(
+                    f"Failed to get eMSP party info for callback {callback.id} session {callback.session.uid}",
+                    exc_info=True,
+                )
+                cls.mark_failed(
+                    callback, None, f"Failed to get recipient party: {str(e)}"
+                )
+                return False
+
+            logger.info(
+                f"Executing callback {callback.id} for session {callback.session.uid} - "
+                f"From: {sender_party} To: {to_party} Result: {command_result}"
+            )
+
+            request = get_request_session(callback.session.credentials.id)
+
+            result = cls.execute_callback_request(
+                callback_url=callback.callback_url,
+                payload=payload,
+                auth_token=auth_token,
+                request=request,
+                to_party=to_party,
+                sender_party=sender_party,
+            )
+
+            if result.success:
+                logger.info(f"Callback {callback.id} executed successfully")
+                cls.mark_success(
+                    callback,
+                    response_status_code=result.status_code,
+                    response_body=result.response_body,
+                )
+                return True
+            else:
+                logger.error(f"Callback {callback.id} failed: {result.error_message}")
+                cls.mark_failed(
+                    callback,
+                    response_status_code=result.status_code,
+                    response_body=result.error_message,
+                )
+                return False
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected error executing callback {callback.id}", exc_info=True
+            )
+            cls.mark_failed(callback, None, f"Unexpected error: {str(e)}")
+            return False
 
 
 class InvalidSenderPartyError(Exception):
@@ -128,6 +371,12 @@ class StartCommandService(RemoteCommandServices):
         )
         return session
 
+    def _update_auth_reference(self, validated_data: dict[str, Any]):
+        validated_data["authorization_reference"] = (
+            validated_data.get("authorization_reference") or generate_random_token()
+        )
+        return validated_data
+
     def start_session(
         self,
         sender_party: Party,
@@ -135,13 +384,22 @@ class StartCommandService(RemoteCommandServices):
         validated_data: Dict[str, Any],
     ) -> OCPIResponse:
         billed_to = get_credentialsrole(party=sender_party)
+        validated_data = self._update_auth_reference(validated_data)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],
         )
 
         if not session:
-            session = self._create_new_session(credentials, validated_data, billed_to)
+            with transaction.atomic():
+                session = self._create_new_session(
+                    credentials, validated_data, billed_to
+                )
+                CallBackService.create_callback(
+                    session=session,
+                    authorization_reference=session.authorization_reference,
+                    callback_url=validated_data["response_url"],
+                )
             webhook_response = self.send_start_command_webhook(
                 validated_data=validated_data,
                 command_type=RemoteCommandType.START_SESSION,
@@ -260,10 +518,6 @@ def process_remote_command(
     command_prefix,
     extra_actions=None,
 ):
-    """
-    Old function - use new services instead
-    This is here so existing code doesn't break while we migrate
-    """
     logger.warning(
         "process_remote_command is deprecated - use StartSessionService, StopSessionService, etc."
     )
