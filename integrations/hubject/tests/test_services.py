@@ -56,6 +56,8 @@ from integrations.hubject.schemas import (
     StatusCode,
     RemoteIdentification,
     EvcoID,
+    ERoamingAuthorizeRemoteStop,
+    SessionID,
 )
 from integrations.hubject.services import (
     HubjectService,
@@ -64,6 +66,7 @@ from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.repository import SessionRepository
 from ocpi22.models.location import Location
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.tests.factories import (
@@ -72,6 +75,7 @@ from ocpi22.tests.factories import (
     PricingProductDataFactory,
     CredentialsRoleFactory,
     ConnectorFactory,
+    OCPISessionFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
@@ -1301,3 +1305,56 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result["connector_id"] == ""
+
+
+class TestHubjectAuthorizeRemoteStop:
+    hubject_service = HubjectService()
+
+    @pytest.fixture
+    def remote_stop_command(self):
+        return ERoamingAuthorizeRemoteStop(
+            evse_id=EvseID(root="FI*CPO*E12345"),
+            session_id=SessionID(root="f98efbae-a2d8-rfa0-b810-9a9d50d2c527"),
+            emp_partner_session_id="emp_session_456",
+            provider_id=ProviderID(root="DE*ABC"),
+        )
+
+    @pytest.fixture
+    def mock_session(self):
+        session = Mock(spec=Session)
+        session.uid = "session_uid_789"
+        return session
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_evse_not_found(
+        self, remote_stop_command
+    ):
+        with patch("integrations.hubject.services.Evse.objects.filter") as mock_filter:
+            mock_filter.return_value.first.return_value = None
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "603"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_when_session_not_found(
+        self, remote_stop_command
+    ):
+        EvseFactory(uid="12345")
+        OCPISessionFactory(
+            uid="OURSESSIONID",
+            route_through=CredentialsRoleFactory(country_code="DE", party_id="ICE"),
+            authorization_reference="emp_session_456",
+        )
+
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
+
+        assert result.result is False
+        assert result.status_code.Code == "022"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.emp_partner_session_id == "emp_session_456"

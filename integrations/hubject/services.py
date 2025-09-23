@@ -740,15 +740,12 @@ class HubjectService:
 
         if not evse:
             logger.error(f"EVSE with ID {remote_stop_command.evse_id.root} not found")
-            return (
-                False,
-                ERoamingAcknowledgment(
-                    result=False,
-                    status_code=StatusCode(Code="603"),
-                    session_id=remote_stop_command.session_id,
-                    cpo_partner_session_id="",
-                    emp_partner_session_id=remote_stop_command.emp_partner_session_id,
-                ),
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="603"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
             )
 
         try:
