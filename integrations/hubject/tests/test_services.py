@@ -1427,18 +1427,26 @@ class TestHubjectAuthorizeRemoteStop:
             assert result.emp_partner_session_id == "emp_session_456"
 
     @pytest.mark.django_db
+    @responses.activate
     def test_process_remote_stop_command_returns_success_acknowledgment_when_stop_session_accepted(
         self, remote_stop_command, mock_data
     ):
+        responses.add(
+            responses.POST,
+            "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.STOP_SESSION,
-            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/session_uid_789/",
+            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
         )
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
         assert result.result is True
         assert result.status_code.Code == "000"
         assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
-        assert result.cpo_partner_session_id == "session_uid_789"
+        assert result.cpo_partner_session_id == "OURSESSIONID"
         assert result.emp_partner_session_id == "emp_session_456"
