@@ -7,6 +7,7 @@ import pytz
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
@@ -41,6 +42,7 @@ from integrations.hubject.schemas import (
     ERoamingAcknowledgment,
     ERoamingAuthorizeRemoteStart,
     StatusCode,
+    ERoamingAuthorizeRemoteStop,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -721,3 +723,91 @@ class HubjectService:
             cpo_partner_session_id=session.uid if session else "",
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
         )
+
+    def process_remote_stop_command(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ):
+        from ocpi22.commands.serializers import StopSessionSerializer
+        from ocpi22.commands.services import StopCommandServices
+        from ocpi22.commands.repository import SessionRepository
+
+        logger.info(
+            "Remote stop command received from Hubject",
+            extra={"command": remote_stop_command},
+        )
+
+        evse = Evse.objects.filter(evse_id=remote_stop_command.evse_id.root).first()
+
+        if not evse:
+            logger.error(f"EVSE with ID {remote_stop_command.evse_id.root} not found")
+            return (
+                False,
+                ERoamingAcknowledgment(
+                    result=False,
+                    status_code=StatusCode(Code="603"),
+                    session_id=remote_stop_command.session_id,
+                    cpo_partner_session_id="",
+                    emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+                ),
+            )
+
+        try:
+            session = SessionRepository.find_session_by_auth_ref(
+                remote_stop_command.emp_partner_session_id
+            )
+            data = {
+                "session_id": session.uid,
+            }
+        except ObjectDoesNotExist as ve:
+            logger.error(f"No session found to stop, hubject remote stop failed: {ve}")
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )
+
+        serializer = StopSessionSerializer(data=data)
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+
+            service = StopCommandServices()
+            response = service.stop_session(
+                validated_data=validated_data,
+            )
+
+            if (
+                response.data.get("data", None) is None
+                or response.data.get("data").get("result") != "ACCEPTED"
+            ):
+                logger.error(
+                    f"Hubject remote stop command was rejected, {response.data.get('data')}"
+                )
+                return ERoamingAcknowledgment(
+                    result=False,
+                    status_code=StatusCode(Code="021"),
+                    session_id=remote_stop_command.session_id,
+                    cpo_partner_session_id="",
+                    emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+                )
+
+            return ERoamingAcknowledgment(
+                result=True,
+                status_code=StatusCode(Code="000"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id=session.uid if session else "",
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )
+        else:
+            logger.error(
+                "Invalid data for starting remote session for Hubject",
+                extra={"errors": serializer.errors, "data": data},
+            )
+            return ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id="",
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )

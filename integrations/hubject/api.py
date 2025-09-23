@@ -7,6 +7,7 @@ from integrations.hubject.schemas import (
     HubjectCDRError,
     ERoamingAuthorizeRemoteStart,
     ERoamingAcknowledgment,
+    ERoamingAuthorizeRemoteStop,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -115,4 +116,21 @@ def receive_remote_start_command(
     request, remote_start_command: ERoamingAuthorizeRemoteStart
 ):
     result = hubject_service.process_remote_start_command(remote_start_command)
+    return 200, result
+
+
+@api.post(
+    "/remote/stop/",
+    url_name="hubject-remote-stop",
+    auth=HubjectCertAuth(),
+    response={
+        200: ERoamingAcknowledgment,
+        400: HubjectCDRError,
+        503: HubjectCDRError,
+    },
+)
+def receive_remote_stop_command(
+    request, remote_stop_command: ERoamingAuthorizeRemoteStop
+):
+    result = hubject_service.process_remote_stop_command(remote_stop_command)
     return 200, result

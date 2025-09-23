@@ -43,6 +43,10 @@ class SessionRepository:
             authorization_reference=auth_reference, cdr_token__uid=token_uid
         ).first()
 
+    @staticmethod
+    def find_session_by_auth_ref(auth_reference: str) -> Optional[Session]:
+        return Session.objects.get(authorization_reference=auth_reference)
+
 
 class CommandRepository:
     def store_command_data(self, command_id: str, command_data: dict):
