@@ -118,7 +118,8 @@ class WebhookExecutionService:
             return response.json()
         except Exception:
             logger.exception(
-                f"Failed to parse webhook response for event {webhook_event_id} for status {response.status_code}"
+                f"Failed to parse webhook response for event {webhook_event_id} for status {response.status_code}",
+                extra={"response_content": response.content},
             )
             return {}
 
@@ -171,7 +172,7 @@ class WebhookExecutionService:
                 error_msg = (
                     f"Webhook event {event.id} failed with HTTP {response.status_code}"
                 )
-                logger.warning(error_msg)
+                logger.warning(error_msg, extra={"response_content": response.content})
                 WebhookEventService.mark_failed(
                     event, error_msg, status_code=response.status_code
                 )
@@ -183,7 +184,7 @@ class WebhookExecutionService:
                 WebhookEventService.mark_failed(
                     event, error_msg, status_code=response.status_code
                 )
-                logger.warning(error_msg)
+                logger.warning(error_msg, extra={"response_content": response.content})
                 return {}
         except requests.exceptions.Timeout:
             error_msg = f"Request timeout after {webhook.timeout_seconds} seconds"
@@ -192,8 +193,7 @@ class WebhookExecutionService:
             return {}
 
         except requests.exceptions.RequestException as e:
-            error_msg = f"Request error: {str(e)}"
-            WebhookEventService.mark_failed(event, error_msg)
+            WebhookEventService.mark_failed(event, f"Request error: {str(e)}")
             logger.error(f"Webhook event {event.id} request failed", exc_info=True)
             return {}
 

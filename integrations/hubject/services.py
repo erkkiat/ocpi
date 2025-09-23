@@ -41,6 +41,7 @@ from integrations.hubject.schemas import (
     ERoamingAcknowledgment,
     ERoamingAuthorizeRemoteStart,
     StatusCode,
+    STATUS_CODE_TEXT,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -80,7 +81,7 @@ class HubjectService:
         operator_name = None
 
         if len(locations) == 0:
-            return
+            return None
 
         locations = Location.objects.prefetch_related(
             Prefetch(
@@ -127,7 +128,7 @@ class HubjectService:
         operator_evse_data: OperatorEvseData = self.get_operator_evse_data(operator_id)
 
         if operator_evse_data is None:
-            return
+            return None
 
         return ERoamingPushEvseData(
             ActionType=ActionType.fullLoad,
@@ -229,6 +230,11 @@ class HubjectService:
                     map_successful_oicp_authorization_response_to_ocpi_221(
                         response_json, token_id
                     )
+                )
+            else:
+                logger.warning(
+                    f"Authorization failed with status code {response.status_code} "
+                    f"and Hubject error code {status_code} ({STATUS_CODE_TEXT.get(status_code, 'Unknown')})"
                 )
 
             return (
