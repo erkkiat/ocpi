@@ -689,18 +689,20 @@ class ERoamingAuthorizeRemoteReservationStop(BaseModel):
     EvseID: EvseID
 
 
-class ERoamingAuthorizeRemoteStop(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStop(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by the CPO to the related operation.",
+        alias="CPOPartnerSessionID",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by an EMP to the related operation.",
+        alias="EMPPartnerSessionID",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
 
 
 class EVSEPricingItem(BaseModel):
