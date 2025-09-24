@@ -1,0 +1,585 @@
+import json
+import uuid
+from unittest.mock import Mock, patch
+
+import pytest
+import requests
+import responses
+from requests.exceptions import Timeout, ConnectionError, RequestException
+
+from ocpi22.commands.services import CallBackService, CallbackResult
+from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
+from ocpi22.models.session import Session
+from ocpi22.tests.factories import (
+    CredentialsFactory,
+    CredentialsRoleFactory,
+    BusinessDetailsFactory,
+    OCPISessionFactory,
+    CdrTokenFactory,
+)
+from ocpiconnector.party import Party
+
+
+@pytest.fixture
+def callback_instance(db):
+    credentials = CredentialsFactory()
+    emsp_business_details = BusinessDetailsFactory(name="Test EMSP")
+    emsp_credentials_role = CredentialsRoleFactory(
+        role="EMSP",
+        country_code="NL",
+        party_id="TST",
+        business_details=emsp_business_details,
+        credentials=credentials,
+    )
+
+    cdr_token = CdrTokenFactory(
+        uid=str(uuid.uuid4()), ocpi_master=emsp_credentials_role
+    )
+    session = OCPISessionFactory(
+        cdr_token=cdr_token,
+        billed_to=emsp_credentials_role,
+        ocpi_master=emsp_credentials_role,
+        credentials=credentials,
+        authorization_reference=str(uuid.uuid4()),
+        status=Session.PENDING,
+    )
+
+    callback = CallBacks.objects.create(
+        session=session,
+        callback_url="https://example.com/callback",
+        authorization_reference=session.authorization_reference,
+        execution_status=CallBackExecutionStatus.PENDING,
+    )
+
+    return callback
+
+
+@pytest.fixture
+def callback_without_session(db):
+    callback = CallBacks.objects.create(
+        session=None,
+        callback_url="https://example.com/callback",
+        authorization_reference=str(uuid.uuid4()),
+        execution_status=CallBackExecutionStatus.PENDING,
+    )
+    return callback
+
+
+@pytest.fixture
+def callback_without_credentials(db):
+    session = OCPISessionFactory(
+        credentials=None,
+        status=Session.PENDING,
+    )
+
+    callback = CallBacks.objects.create(
+        session=session,
+        callback_url="https://example.com/callback",
+        authorization_reference=session.authorization_reference,
+        execution_status=CallBackExecutionStatus.PENDING,
+    )
+    return callback
+
+
+@pytest.fixture
+def mock_request_session():
+    mock_session = Mock(spec=requests.Session)
+    return mock_session
+
+
+@pytest.mark.django_db
+class TestCallbackService:
+    def test_mark_success_updates_callback_status_and_response_fields(
+        self, callback_instance
+    ):
+        response_status_code = 200
+        response_body = "Success response"
+
+        CallBackService.mark_success(
+            callback_instance, response_status_code, response_body
+        )
+
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.SUCCESS
+        assert callback_instance.response_status_code == response_status_code
+        assert callback_instance.response_body == response_body
+        assert callback_instance.executed_at is not None
+
+    def test_mark_success_without_optional_fields_updates_status_only(
+        self, callback_instance
+    ):
+        CallBackService.mark_success(callback_instance)
+
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.SUCCESS
+        assert callback_instance.response_status_code is None
+        assert callback_instance.response_body is None
+        assert callback_instance.executed_at is not None
+
+    def test_mark_failed_updates_callback_status_and_response_fields(
+        self, callback_instance
+    ):
+        response_status_code = 500
+        response_body = "Error response"
+
+        CallBackService.mark_failed(
+            callback_instance, response_status_code, response_body
+        )
+
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert callback_instance.response_status_code == response_status_code
+        assert callback_instance.response_body == response_body
+        assert callback_instance.executed_at is not None
+
+    def test_mark_failed_without_optional_fields_updates_status_only(
+        self, callback_instance
+    ):
+        CallBackService.mark_failed(callback_instance)
+
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert callback_instance.response_status_code is None
+        assert callback_instance.response_body is None
+        assert callback_instance.executed_at is not None
+
+    def test_create_callback_creates_new_callback_with_correct_fields(
+        self, callback_instance
+    ):
+        session = callback_instance.session
+        callback_url = "https://newcallback.com/test"
+        auth_reference = str(uuid.uuid4())
+
+        new_callback = CallBackService.create_callback(
+            session, callback_url, auth_reference
+        )
+
+        assert new_callback.session == session
+        assert new_callback.callback_url == callback_url
+        assert new_callback.authorization_reference == auth_reference
+        assert new_callback.execution_status == CallBackExecutionStatus.PENDING
+
+    @pytest.mark.parametrize(
+        "command_result,message,expected_result",
+        [
+            ("accepted", None, {"result": "ACCEPTED"}),
+            ("rejected", None, {"result": "REJECTED"}),
+            (
+                "accepted",
+                "Command executed successfully",
+                {
+                    "result": "ACCEPTED",
+                    "message": [
+                        {"language": "en", "text": "Command executed successfully"}
+                    ],
+                },
+            ),
+            (
+                "failed",
+                "System error occurred",
+                {
+                    "result": "FAILED",
+                    "message": [{"language": "en", "text": "System error occurred"}],
+                },
+            ),
+        ],
+    )
+    def test_create_command_result_payload_generates_correct_payload(
+        self, command_result, message, expected_result
+    ):
+        payload = CallBackService.create_command_result_payload(command_result, message)
+
+        assert payload == expected_result
+
+    def test_create_command_result_payload_with_invalid_data_returns_original_data(
+        self,
+    ):
+        with patch(
+            "ocpi22.commands.services.CommandResultSerializer"
+        ) as mock_serializer:
+            mock_instance = Mock()
+            mock_instance.is_valid.return_value = False
+            mock_instance.errors = {"result": ["Invalid choice"]}
+            mock_serializer.return_value = mock_instance
+
+            result = CallBackService.create_command_result_payload("invalid_result")
+
+            assert result == {"result": "INVALID_RESULT"}
+
+    def test_execute_callback_request_with_empty_callback_url_returns_failure(
+        self, mock_request_session
+    ):
+        result = CallBackService.execute_callback_request(
+            callback_url="",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert result.error_message == "Empty callback URL"
+
+    def test_execute_callback_request_with_empty_auth_token_returns_failure(
+        self, mock_request_session
+    ):
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert result.error_message == "Empty auth token"
+
+    @pytest.mark.parametrize("status_code", [200, 201, 202])
+    @responses.activate
+    def test_execute_callback_request_with_success_status_returns_success(
+        self, status_code
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            body="Success response",
+            status=status_code,
+        )
+
+        session = requests.Session()
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=session,
+        )
+
+        assert result.success is True
+        assert result.status_code == status_code
+        assert result.response_body == "Success response"
+
+    @pytest.mark.parametrize("status_code", [400, 404, 500])
+    @responses.activate
+    def test_execute_callback_request_with_error_status_returns_failure(
+        self, status_code
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            body="Error response",
+            status=status_code,
+        )
+
+        session = requests.Session()
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=session,
+        )
+
+        assert result.success is False
+        assert result.status_code == status_code
+        assert result.response_body == "Error response"
+        assert result.error_message == f"HTTP {status_code}"
+
+    def test_execute_callback_request_with_timeout_returns_failure(
+        self, mock_request_session
+    ):
+        mock_request_session.post.side_effect = Timeout()
+
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert (
+            result.error_message
+            == f"Request timeout after {CallBackService.REQUEST_TIMEOUT} seconds"
+        )
+
+    def test_execute_callback_request_with_connection_error_returns_failure(
+        self, mock_request_session
+    ):
+        mock_request_session.post.side_effect = ConnectionError()
+
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert result.error_message == "Connection error"
+
+    def test_execute_callback_request_with_request_exception_returns_failure(
+        self, mock_request_session
+    ):
+        mock_request_session.post.side_effect = RequestException()
+
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert result.error_message == "Request error"
+
+    def test_execute_callback_request_with_unexpected_exception_returns_failure(
+        self, mock_request_session
+    ):
+        mock_request_session.post.side_effect = ValueError("Unexpected error")
+
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=mock_request_session,
+        )
+
+        assert result.success is False
+        assert result.error_message == "Unexpected error"
+
+    @responses.activate
+    def test_execute_callback_request_uses_correct_headers_and_timeout(self):
+        responses.add(
+            responses.POST, "https://example.com/callback", body="Success", status=200
+        )
+
+        to_party = Party("NL", "TST")
+        sender_party = Party("NL", "CPO")
+
+        session = requests.Session()
+        result = CallBackService.execute_callback_request(
+            callback_url="https://example.com/callback",
+            payload={"result": "ACCEPTED"},
+            auth_token="test_token",
+            request=session,
+            to_party=to_party,
+            sender_party=sender_party,
+        )
+
+        assert len(responses.calls) == 1
+        request = responses.calls[0].request
+        assert request.url == "https://example.com/callback"
+        request_body = json.loads(request.body)
+        assert request_body == {"result": "ACCEPTED"}
+        assert "Authorization" in request.headers
+        assert result.success is True
+
+    def test_execute_callback_with_missing_session_marks_callback_failed(
+        self, callback_without_session
+    ):
+        result = CallBackService.execute_callback(callback_without_session, "ACCEPTED")
+
+        assert result is False
+        callback_without_session.refresh_from_db()
+        assert (
+            callback_without_session.execution_status == CallBackExecutionStatus.FAILED
+        )
+        assert callback_without_session.response_body == "Missing session"
+
+    def test_execute_callback_with_missing_credentials_marks_callback_failed(
+        self, callback_without_credentials
+    ):
+        result = CallBackService.execute_callback(
+            callback_without_credentials, "ACCEPTED"
+        )
+
+        assert result is False
+        callback_without_credentials.refresh_from_db()
+        assert (
+            callback_without_credentials.execution_status
+            == CallBackExecutionStatus.FAILED
+        )
+        assert callback_without_credentials.response_body == "Missing credentials"
+
+    def test_execute_callback_with_missing_theirs_token_marks_callback_failed(self):
+        credentials = CredentialsFactory(theirs="dummy_token")
+        emsp_business_details = BusinessDetailsFactory(name="Test EMSP")
+        emsp_credentials_role = CredentialsRoleFactory(
+            role="EMSP",
+            country_code="NL",
+            party_id="TST",
+            business_details=emsp_business_details,
+            credentials=credentials,
+        )
+
+        cdr_token = CdrTokenFactory(
+            uid=str(uuid.uuid4()), ocpi_master=emsp_credentials_role
+        )
+        session = OCPISessionFactory(
+            cdr_token=cdr_token,
+            billed_to=emsp_credentials_role,
+            ocpi_master=emsp_credentials_role,
+            credentials=credentials,
+            authorization_reference=str(uuid.uuid4()),
+            status=Session.PENDING,
+        )
+
+        callback = CallBacks.objects.create(
+            session=session,
+            callback_url="https://example.com/callback",
+            authorization_reference=session.authorization_reference,
+            execution_status=CallBackExecutionStatus.PENDING,
+        )
+
+        with patch.object(credentials, "theirs_base64", return_value=""):
+            result = CallBackService.execute_callback(callback, "ACCEPTED")
+
+        assert result is False
+        callback.refresh_from_db()
+        assert callback.execution_status == CallBackExecutionStatus.FAILED
+        assert callback.response_body == "Empty auth token"
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    @responses.activate
+    def test_execute_callback_with_successful_request_marks_callback_success(
+        self, mock_get_cert_request, callback_instance
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            json={"status": "success"},
+            status=200,
+        )
+
+        mock_session = requests.Session()
+        mock_get_cert_request.return_value = mock_session
+
+        result = CallBackService.execute_callback(
+            callback_instance, "ACCEPTED", "Test message"
+        )
+
+        assert result is True
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.SUCCESS
+        assert callback_instance.response_status_code == 200
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    @responses.activate
+    def test_execute_callback_with_failed_request_marks_callback_failed(
+        self, mock_get_cert_request, callback_instance
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            json={"error": "Server error"},
+            status=500,
+        )
+
+        mock_session = requests.Session()
+        mock_get_cert_request.return_value = mock_session
+
+        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+        assert result is False
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert callback_instance.response_status_code == 500
+        assert callback_instance.response_body == "HTTP 500"
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    def test_execute_callback_with_timeout_exception_marks_callback_failed(
+        self, mock_get_cert_request, callback_instance
+    ):
+        mock_session = Mock(spec=requests.Session)
+        mock_session.post.side_effect = Timeout()
+        mock_get_cert_request.return_value = mock_session
+
+        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+        assert result is False
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert (
+            f"Request timeout after {CallBackService.REQUEST_TIMEOUT} seconds"
+            in callback_instance.response_body
+        )
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    def test_execute_callback_with_unexpected_exception_marks_callback_failed(
+        self, mock_get_cert_request, callback_instance
+    ):
+        mock_get_cert_request.side_effect = ValueError("Unexpected error")
+
+        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+        assert result is False
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert "Unexpected error: Unexpected error" in callback_instance.response_body
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    @responses.activate
+    def test_execute_callback_calls_create_command_result_payload_with_correct_params(
+        self, mock_get_cert_request, callback_instance
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            json={"status": "success"},
+            status=200,
+        )
+
+        mock_session = requests.Session()
+        mock_get_cert_request.return_value = mock_session
+
+        result = CallBackService.execute_callback(
+            callback_instance, "ACCEPTED", "Test message"
+        )
+
+        assert result is True
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.SUCCESS
+
+        assert len(responses.calls) == 1
+        request_body = json.loads(responses.calls[0].request.body)
+        assert request_body["result"] == "ACCEPTED"
+        assert request_body["message"][0]["language"] == "en"
+        assert request_body["message"][0]["text"] == "Test message"
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    def test_execute_callback_uses_correct_auth_token(
+        self, mock_get_cert_request, callback_instance
+    ):
+        with responses.RequestsMock() as rsps:
+            rsps.add(
+                responses.POST,
+                "https://example.com/callback",
+                json={"status": "success"},
+                status=200,
+            )
+
+            mock_session = requests.Session()
+            mock_get_cert_request.return_value = mock_session
+
+            expected_auth_token = callback_instance.session.credentials.theirs_base64()
+
+            CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+            assert len(rsps.calls) == 1
+            auth_header = rsps.calls[0].request.headers.get("Authorization")
+            assert expected_auth_token in auth_header
+
+    def test_callback_result_named_tuple_creation(self):
+        result = CallbackResult(
+            success=True, status_code=200, response_body="Success", error_message=None
+        )
+
+        assert result.success is True
+        assert result.status_code == 200
+        assert result.response_body == "Success"
+        assert result.error_message is None
+
+    def test_callback_result_named_tuple_with_minimal_fields(self):
+        result = CallbackResult(success=False)
+
+        assert result.success is False
+        assert result.status_code is None
+        assert result.response_body is None
+        assert result.error_message is None
