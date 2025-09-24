@@ -10,8 +10,12 @@ from django.utils import timezone
 from rest_framework import status
 from starlette.status import HTTP_200_OK
 
-from ocpi22.commands.repository import SessionRepository
-from ocpi22.commands.serializers import CommandResponse, CommandResultSerializer
+from ocpi22.commands.repository import SessionRepository, CallBackRepository
+from ocpi22.commands.serializers import (
+    CommandResponse,
+    CommandResultSerializer,
+    CommandResultType,
+)
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.session import Session
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -32,7 +36,7 @@ from ocpi22.util import build_absolute_uri, generate_random_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.sessions.util import create_session
 from ocpi22.models import enum
-from ocpi22.cpo.api import close_active_sessions_for_evse
+from ocpi22.sessions.services import close_active_sessions_for_evse
 
 from ocpiconnector.party import Party
 from ocpiconnector.ocpi_identities import get_our_party
@@ -94,9 +98,11 @@ class CallBackService:
         )
 
     @classmethod
-    def create_command_result_payload(cls, command_result, message=None):
+    def create_command_result_payload(
+        cls, command_result: CommandResultType, message=None
+    ):
         data = {
-            "result": command_result.upper(),
+            "result": command_result.value.upper(),
         }
 
         if message:
@@ -142,7 +148,7 @@ class CallBackService:
 
             response_body = response.text if response.text else None
 
-            if response.status_code in [200, 201, 202]:
+            if response.status_code < 300:
                 logger.info(
                     f"Callback succeeded: {callback_url} - Status {response.status_code}"
                 )
@@ -186,7 +192,7 @@ class CallBackService:
 
     @classmethod
     def execute_callback(
-        cls, callback: CallBacks, command_result: str, message: str = None
+        cls, callback: CallBacks, command_result: CommandResultType, message: str = None
     ) -> bool:
         try:
             payload = cls.create_command_result_payload(command_result, message)
@@ -273,6 +279,22 @@ class CallBackService:
             )
             cls.mark_failed(callback, None, f"Unexpected error: {str(e)}")
             return False
+
+    def send_callback(
+        self,
+        session: Session,
+        callback_type: RemoteCommandType,
+        result: CommandResultType,
+        message: str = None,
+    ) -> None:
+        callback = CallBackRepository.find_by_session_uid(session.uid)
+        if not callback:
+            return
+        self.execute_callback(callback, result, message)
+        logger.info(
+            f"{callback_type.value} callback for session {session.id} executed successfully to {callback.callback_url}"
+        )
+        return
 
 
 class InvalidSenderPartyError(Exception):

@@ -9,7 +9,6 @@ from django.utils.datetime_safe import datetime
 
 import pytz
 from django.contrib.auth.decorators import login_required
-from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
@@ -28,6 +27,7 @@ from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
+from ocpi22.commands.services import CallBackService
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService, EvseServices
@@ -56,6 +56,7 @@ from ocpi22.choices import (
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
+    CommandResultType,
 )
 from ocpi22.cpo.serializers import (
     CpoSessionSerializer,
@@ -95,29 +96,12 @@ from pprint import PrettyPrinter
 from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str, Party
+from webhooks.choices import RemoteCommandType
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 logger = getLogger(__name__)
-
-
-def close_active_sessions_for_evse(evse_uid: str):
-    # evse = get_evse_object(evse)
-    active_sessions = Session.objects.filter(
-        evse__uid=evse_uid, status__in=(Session.ACTIVE, Session.PENDING)
-    )
-    active_sessions.update(
-        last_updated=datetime.now(pytz.utc),
-        status=Session.COMPLETED,
-        end_date_time=F("last_updated"),
-    )
-
-    for session in active_sessions:
-        session.send_updates()
-        logger.error(
-            f"Completed active Session {session.uid} which has been left hanging"
-        )
 
 
 def applying_tariff_element(
@@ -677,9 +661,12 @@ class ChargePointViewSet(FlowchartViewSet):
                             "stop_kwh",
                         ]
                     )
-
                     session.send_updates(update_type=ChargingNotificationType.Start)
-
+                    CallBackService().send_callback(
+                        session=session,
+                        callback_type=RemoteCommandType.STOP_SESSION,
+                        result=CommandResultSerializer.ACCEPTED,
+                    )
                     messages.info(
                         request,
                         {
@@ -842,6 +829,11 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
                     session.send_updates(update_type=ChargingNotificationType.End)
+                    CallBackService().send_callback(
+                        session=session,
+                        callback_type=RemoteCommandType.STOP_SESSION,
+                        result=CommandResultType.ACCEPTED,
+                    )
                     logger.info(
                         f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
                         f"cost {session.total_cost_incl_vat} {session.currency}"
