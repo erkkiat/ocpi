@@ -428,13 +428,47 @@ class TestCallbackService:
             execution_status=CallBackExecutionStatus.PENDING,
         )
 
-        with patch.object(credentials, "theirs_base64", return_value=""):
+        with patch.object(credentials, "theirs", None):
             result = CallBackService.execute_callback(callback, "ACCEPTED")
 
         assert result is False
         callback.refresh_from_db()
         assert callback.execution_status == CallBackExecutionStatus.FAILED
-        assert callback.response_body == "Empty auth token"
+        assert callback.response_body == "Missing credentials token"
+
+    @patch("ocpi22.commands.services.get_our_party")
+    def test_execute_callback_with_get_sender_party_exception_marks_callback_failed(
+        self, mock_get_our_party, callback_instance
+    ):
+        mock_get_our_party.side_effect = ValueError("Unable to determine sender party")
+
+        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+        assert result is False
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert (
+            callback_instance.response_body
+            == "Failed to get sender party: Unable to determine sender party"
+        )
+
+    def test_execute_callback_with_get_recipient_party_exception_marks_callback_failed(
+        self, callback_instance
+    ):
+        with patch.object(
+            callback_instance.session.ocpi_master,
+            "get_party",
+            side_effect=AttributeError("Missing party info"),
+        ):
+            result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+
+        assert result is False
+        callback_instance.refresh_from_db()
+        assert callback_instance.execution_status == CallBackExecutionStatus.FAILED
+        assert (
+            callback_instance.response_body
+            == "Failed to get recipient party: Missing party info"
+        )
 
     @patch("ocpi22.commands.services.get_certificate_loaded_request")
     @responses.activate
