@@ -1352,8 +1352,10 @@ class TestHubjectAuthorizeRemoteStop:
 
     @pytest.mark.django_db
     def test_process_remote_stop_command_returns_acknowledgment_false_when_session_not_found(
-        self, remote_stop_command, mock_data
+        self, remote_stop_command
     ):
+        EvseFactory(uid="12345")
+
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
         assert result.result is False
