@@ -333,7 +333,7 @@ class HubjectCertAuth(HttpAuthBase):
         return
 
     def authenticate(self, request: HttpRequest):
-        print(request.META)
+        logger.info(request.META)
         try:
             ip = self._get_ip_address(request)
         except HttpError as e:
