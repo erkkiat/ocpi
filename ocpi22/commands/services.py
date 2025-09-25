@@ -473,7 +473,7 @@ class StartCommandService(RemoteCommandServices):
             "token": validated_data["token"],
             "authorization_reference": validated_data["authorization_reference"],
             "evse_uid": validated_data.get("evse_uid"),
-            "connector_id": validated_data.get("connector_uid"),
+            "connector_id": validated_data.get("connector_id"),
         }
         payload["session_id"] = session.uid
 
@@ -515,10 +515,10 @@ class StopCommandServices(RemoteCommandServices):
         self,
         validated_data: Dict[str, Any],
     ) -> OCPIResponse:
-        session = self.session_repo.find_session_by_uid(validated_data["uid"])
+        session = self.session_repo.find_session_by_uid(validated_data["session_id"])
         if not session:
             logger.warning(
-                f"Could not find any session for provided uid: {validated_data['uid']}"
+                f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
             return OCPIResponse(
                 status_message="Session not found",
