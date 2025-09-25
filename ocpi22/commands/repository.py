@@ -56,4 +56,4 @@ class CommandRepository:
 class CallBackRepository:
     @staticmethod
     def find_by_session_uid(session_uid: str):
-        return CallBacks.objects.filter(session_uid=session_uid).first()
+        return CallBacks.objects.filter(session__uid=session_uid).first()
