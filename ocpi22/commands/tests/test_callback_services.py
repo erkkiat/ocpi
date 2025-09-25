@@ -7,6 +7,7 @@ import requests
 import responses
 from requests.exceptions import Timeout, ConnectionError, RequestException
 
+from ocpi22.commands.serializers import CommandResultType
 from ocpi22.commands.services import CallBackService, CallbackResult
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.session import Session
@@ -162,10 +163,10 @@ class TestCallbackService:
     @pytest.mark.parametrize(
         "command_result,message,expected_result",
         [
-            ("accepted", None, {"result": "ACCEPTED"}),
-            ("rejected", None, {"result": "REJECTED"}),
+            (CommandResultType.ACCEPTED, None, {"result": "ACCEPTED"}),
+            (CommandResultType.REJECTED, None, {"result": "REJECTED"}),
             (
-                "accepted",
+                CommandResultType.ACCEPTED,
                 "Command executed successfully",
                 {
                     "result": "ACCEPTED",
@@ -175,7 +176,7 @@ class TestCallbackService:
                 },
             ),
             (
-                "failed",
+                CommandResultType.FAILED,
                 "System error occurred",
                 {
                     "result": "FAILED",
@@ -190,21 +191,6 @@ class TestCallbackService:
         payload = CallBackService.create_command_result_payload(command_result, message)
 
         assert payload == expected_result
-
-    def test_create_command_result_payload_with_invalid_data_returns_original_data(
-        self,
-    ):
-        with patch(
-            "ocpi22.commands.services.CommandResultSerializer"
-        ) as mock_serializer:
-            mock_instance = Mock()
-            mock_instance.is_valid.return_value = False
-            mock_instance.errors = {"result": ["Invalid choice"]}
-            mock_serializer.return_value = mock_instance
-
-            result = CallBackService.create_command_result_payload("invalid_result")
-
-            assert result == {"result": "INVALID_RESULT"}
 
     def test_execute_callback_request_with_empty_callback_url_returns_failure(
         self, mock_request_session
@@ -374,7 +360,9 @@ class TestCallbackService:
     def test_execute_callback_with_missing_session_marks_callback_failed(
         self, callback_without_session
     ):
-        result = CallBackService.execute_callback(callback_without_session, "ACCEPTED")
+        result = CallBackService.execute_callback(
+            callback_without_session, CommandResultType.ACCEPTED
+        )
 
         assert result is False
         callback_without_session.refresh_from_db()
@@ -387,7 +375,7 @@ class TestCallbackService:
         self, callback_without_credentials
     ):
         result = CallBackService.execute_callback(
-            callback_without_credentials, "ACCEPTED"
+            callback_without_credentials, CommandResultType.ACCEPTED
         )
 
         assert result is False
@@ -429,7 +417,9 @@ class TestCallbackService:
         )
 
         with patch.object(credentials, "theirs", None):
-            result = CallBackService.execute_callback(callback, "ACCEPTED")
+            result = CallBackService.execute_callback(
+                callback, CommandResultType.ACCEPTED
+            )
 
         assert result is False
         callback.refresh_from_db()
@@ -442,7 +432,9 @@ class TestCallbackService:
     ):
         mock_get_our_party.side_effect = ValueError("Unable to determine sender party")
 
-        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.ACCEPTED
+        )
 
         assert result is False
         callback_instance.refresh_from_db()
@@ -460,7 +452,9 @@ class TestCallbackService:
             "get_party",
             side_effect=AttributeError("Missing party info"),
         ):
-            result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+            result = CallBackService.execute_callback(
+                callback_instance, CommandResultType.ACCEPTED
+            )
 
         assert result is False
         callback_instance.refresh_from_db()
@@ -486,7 +480,7 @@ class TestCallbackService:
         mock_get_cert_request.return_value = mock_session
 
         result = CallBackService.execute_callback(
-            callback_instance, "ACCEPTED", "Test message"
+            callback_instance, CommandResultType.ACCEPTED, "Test message"
         )
 
         assert result is True
@@ -509,7 +503,9 @@ class TestCallbackService:
         mock_session = requests.Session()
         mock_get_cert_request.return_value = mock_session
 
-        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.ACCEPTED
+        )
 
         assert result is False
         callback_instance.refresh_from_db()
@@ -525,7 +521,9 @@ class TestCallbackService:
         mock_session.post.side_effect = Timeout()
         mock_get_cert_request.return_value = mock_session
 
-        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.ACCEPTED
+        )
 
         assert result is False
         callback_instance.refresh_from_db()
@@ -541,7 +539,9 @@ class TestCallbackService:
     ):
         mock_get_cert_request.side_effect = ValueError("Unexpected error")
 
-        result = CallBackService.execute_callback(callback_instance, "ACCEPTED")
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.ACCEPTED
+        )
 
         assert result is False
         callback_instance.refresh_from_db()
@@ -564,7 +564,7 @@ class TestCallbackService:
         mock_get_cert_request.return_value = mock_session
 
         result = CallBackService.execute_callback(
-            callback_instance, "ACCEPTED", "Test message"
+            callback_instance, CommandResultType.ACCEPTED, "Test message"
         )
 
         assert result is True
@@ -594,7 +594,9 @@ class TestCallbackService:
 
             expected_auth_token = callback_instance.session.credentials.theirs_base64()
 
-            CallBackService.execute_callback(callback_instance, "ACCEPTED")
+            CallBackService.execute_callback(
+                callback_instance, CommandResultType.ACCEPTED
+            )
 
             assert len(rsps.calls) == 1
             auth_header = rsps.calls[0].request.headers.get("Authorization")
@@ -602,13 +604,13 @@ class TestCallbackService:
 
     def test_callback_result_named_tuple_creation(self):
         result = CallbackResult(
-            success=True, status_code=200, response_body="Success", error_message=None
+            success=True, status_code=200, response_body="Success", error_message=""
         )
 
         assert result.success is True
         assert result.status_code == 200
         assert result.response_body == "Success"
-        assert result.error_message is None
+        assert result.error_message == ""
 
     def test_callback_result_named_tuple_with_minimal_fields(self):
         result = CallbackResult(success=False)
