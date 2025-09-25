@@ -7,6 +7,8 @@ from integrations.hubject.schemas import (
     HubjectCDRError,
     ERoamingAuthorizeRemoteStart,
     ERoamingAcknowledgment,
+    Identification,
+    RemoteIdentification,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -111,8 +113,25 @@ def send_charge_detail_record(request, session_id: str):
         503: HubjectCDRError,
     },
 )
-def receive_remote_start_command(
-    request, remote_start_command: ERoamingAuthorizeRemoteStart
-):
-    result = hubject_service.process_remote_start_command(remote_start_command)
+def receive_remote_start_command(request, remote_start_command: dict):
+    command = ERoamingAuthorizeRemoteStart(
+        session_id=remote_start_command.get("sessionID"),
+        cpo_partner_session_id=remote_start_command.get("CPOPartnerSessionID"),
+        emp_partner_session_id=remote_start_command.get("EMPPartnerSessionID"),
+        provider_id=remote_start_command.get("ProviderID"),
+        evse_id=remote_start_command.get("EvseID"),
+        identification=Identification(
+            RFIDIdentification=None,
+            RFIDMifareFamilyIdentification=None,
+            RemoteIdentification=RemoteIdentification(
+                EvcoID=remote_start_command.get("Identification", {})
+                .get("RemoteIdentification", {})
+                .get("EvcoID"),
+            ),
+            QRCodeIdentification=None,
+            PLuginIdentification=None,
+        ),
+        partner_product_id=remote_start_command.get("PartnerProductID"),
+    )
+    result = hubject_service.process_remote_start_command(command)
     return 200, result
