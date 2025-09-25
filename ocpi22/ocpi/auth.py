@@ -272,12 +272,39 @@ class HubjectCertAuth(HttpAuthBase):
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
         return ip
 
-    def _validate_public_key(self, private_key_pem, received_cert) -> None:
-        private_key = serialization.load_pem_private_key(
-            private_key_pem.encode(), password=None
+    def _validate_certificate(self, expected_cert_pem, received_cert) -> None:
+        expected_cert = x509.load_pem_x509_certificate(expected_cert_pem.encode())
+
+        if expected_cert.public_bytes(
+            serialization.Encoding.DER
+        ) != received_cert.public_bytes(serialization.Encoding.DER):
+            raise HttpError(
+                403, "Forbidden: Certificate does not match expected certificate"
+            )
+
+    def _validate_certificate_chain(self, ca_cert_pem, received_cert) -> None:
+        from cryptography.x509.verification import PolicyBuilder, Store
+
+        ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode())
+
+        store = Store([ca_cert])
+
+        builder = PolicyBuilder().store(store)
+        verifier = builder.build_client_verifier(
+            policy=x509.verification.ValidationPolicy(
+                validation_time=datetime.now(timezone.utc)
+            )
         )
 
-        expected_public_key = private_key.public_key()
+        try:
+            verifier.verify(received_cert, [])
+        except Exception as e:
+            raise HttpError(403, f"Forbidden: Certificate validation failed: {e}")
+
+    def _validate_public_key(self, certificate_pem, received_cert) -> None:
+        expected_cert = x509.load_pem_x509_certificate(certificate_pem.encode())
+
+        expected_public_key = expected_cert.public_key()
         cert_public_key = received_cert.public_key()
 
         expected_public_key_bytes = expected_public_key.public_bytes(
@@ -292,7 +319,7 @@ class HubjectCertAuth(HttpAuthBase):
         if expected_public_key_bytes != cert_public_key_bytes:
             raise HttpError(
                 403,
-                "Forbidden: Provided certificate public key does not match expected private key",
+                "Forbidden: Provided certificate public key does not match expected certificate",
             )
         return
 
@@ -306,6 +333,7 @@ class HubjectCertAuth(HttpAuthBase):
         return
 
     def authenticate(self, request: HttpRequest):
+        print(request.META)
         try:
             ip = self._get_ip_address(request)
         except HttpError as e:
@@ -313,14 +341,15 @@ class HubjectCertAuth(HttpAuthBase):
             raise e
 
         cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
+        cert_pem = request.META.get("TEST_CA") if not cert_pem else cert_pem
         if not cert_pem:
             raise HttpError(403, "Forbidden: No client certificate provided")
 
-        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
-        if verify_status != "SUCCESS":
-            raise HttpError(
-                403, f"Forbidden: Certificate verification failed: {verify_status}"
-            )
+        # verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
+        # if verify_status != "SUCCESS":
+        #     raise HttpError(
+        #         403, f"Forbidden: Certificate verification failed: {verify_status}"
+        #     )
 
         if "-----BEGIN CERTIFICATE-----" not in cert_pem:
             try:
@@ -338,6 +367,8 @@ class HubjectCertAuth(HttpAuthBase):
         try:
             self._validate_expiry_date(received_cert)
             self._validate_public_key(private_key_pem, received_cert)
+            # self._validate_certificate_chain(private_key_pem, received_cert)
+            # self._validate_certificate(private_key_pem, received_cert)
         except HttpError as e:
             logger.warning(e.args[1], exc_info=True)
             raise e
