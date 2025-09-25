@@ -169,7 +169,7 @@ class SolidToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=False,
+            IsHubjectCompatible=True,
             DynamicInfoAvailable=DynamicInfoAvailable.false,
         )
 
