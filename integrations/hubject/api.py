@@ -1,4 +1,7 @@
+import json
 from typing import Dict
+
+from pydantic.v1 import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import (
@@ -9,6 +12,7 @@ from integrations.hubject.schemas import (
     ERoamingAcknowledgment,
     Identification,
     RemoteIdentification,
+    StatusCode,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -113,25 +117,45 @@ def send_charge_detail_record(request, session_id: str):
         503: HubjectCDRError,
     },
 )
-def receive_remote_start_command(request, remote_start_command: dict):
-    command = ERoamingAuthorizeRemoteStart(
-        session_id=remote_start_command.get("sessionID"),
-        cpo_partner_session_id=remote_start_command.get("CPOPartnerSessionID"),
-        emp_partner_session_id=remote_start_command.get("EMPPartnerSessionID"),
-        provider_id=remote_start_command.get("ProviderID"),
-        evse_id=remote_start_command.get("EvseID"),
-        identification=Identification(
-            RFIDIdentification=None,
-            RFIDMifareFamilyIdentification=None,
-            RemoteIdentification=RemoteIdentification(
-                EvcoID=remote_start_command.get("Identification", {})
-                .get("RemoteIdentification", {})
-                .get("EvcoID"),
+def receive_remote_start_command(request):
+    try:
+        remote_start_command = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return 400, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode("022"),
+            session_id="",
+            cpo_partner_session_id="",
+            emp_partner_session_id="",
+        )
+
+    try:
+        command = ERoamingAuthorizeRemoteStart(
+            session_id=remote_start_command.get("SessionID"),
+            cpo_partner_session_id=remote_start_command.get("CPOPartnerSessionID"),
+            emp_partner_session_id=remote_start_command.get("EMPPartnerSessionID"),
+            provider_id=remote_start_command.get("ProviderID"),
+            evse_id=remote_start_command.get("EvseID"),
+            identification=Identification(
+                RFIDIdentification=None,
+                RFIDMifareFamilyIdentification=None,
+                RemoteIdentification=RemoteIdentification(
+                    EvcoID=remote_start_command.get("Identification", {})
+                    .get("RemoteIdentification", {})
+                    .get("EvcoID"),
+                ),
+                QRCodeIdentification=None,
+                PlugAndChargeIdentification=None,
             ),
-            QRCodeIdentification=None,
-            PLuginIdentification=None,
-        ),
-        partner_product_id=remote_start_command.get("PartnerProductID"),
-    )
+            partner_product_id=remote_start_command.get("PartnerProductID"),
+        )
+    except ValidationError:
+        return 400, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode("022"),
+            session_id=remote_start_command.get("SessionID"),
+            cpo_partner_session_id=remote_start_command.get("CPOPartnerSessionID"),
+            emp_partner_session_id=remote_start_command.get("EMPPartnerSessionID"),
+        )
     result = hubject_service.process_remote_start_command(command)
     return 200, result
