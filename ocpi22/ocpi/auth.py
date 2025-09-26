@@ -12,6 +12,7 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from cryptography import x509
+from cryptography.hazmat._oid import NameOID
 from cryptography.hazmat.primitives import serialization
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -332,49 +333,49 @@ class HubjectCertAuth(HttpAuthBase):
         return
 
     def authenticate(self, request: HttpRequest):
-        logger.info(request.META)
-        # try:
-        #     ip = self._get_ip_address(request)
-        # except HttpError as e:
-        #     logger.warning(e.args[1], exc_info=True)
-        #     raise e
-        #
-        # cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
-        # cert_pem = request.META.get("TEST_CA") if not cert_pem else cert_pem
-        # if not cert_pem:
-        #     raise HttpError(403, "Forbidden: No client certificate provided")
+        logger.info(f"ReqMETADUMI : {request.META}")
+        try:
+            ip = self._get_ip_address(request)
+        except HttpError as e:
+            logger.warning(e.args[1], exc_info=True)
+            raise e
 
-        # verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
-        # if verify_status != "SUCCESS":
-        #     raise HttpError(
-        #         403, f"Forbidden: Certificate verification failed: {verify_status}"
-        #     )
+        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
+        cert_pem = request.META.get("TEST_CA") if not cert_pem else cert_pem
+        if not cert_pem:
+            raise HttpError(403, "Forbidden: No client certificate provided")
 
-        # if "-----BEGIN CERTIFICATE-----" not in cert_pem:
-        #     try:
-        #         received_cert = base64.b64decode(cert_pem).decode("utf-8")
-        #     except Exception:
-        #         raise HttpError(403, "Invalid client certificate format")
-        # else:
-        #     received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
-        #
-        # private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
-        # if not private_key_pem:
-        #     raise HttpError(
-        #         403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
-        #     )
-        # try:
-        #     self._validate_expiry_date(received_cert)
-        #     self._validate_public_key(private_key_pem, received_cert)
-        #     # self._validate_certificate_chain(private_key_pem, received_cert)
-        #     # self._validate_certificate(private_key_pem, received_cert)
-        # except HttpError as e:
-        #     logger.warning(e.args[1], exc_info=True)
-        #     raise e
-        #
-        # subject = received_cert.subject
-        # cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-        # cn_value = cn[0].value if cn else None
+        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
+        if verify_status != "SUCCESS":
+            raise HttpError(
+                403, f"Forbidden: Certificate verification failed: {verify_status}"
+            )
 
-        # return {"ip": ip, "cert": cert_pem, "cert_cn": cn_value}
-        return {"ip": "", "cert": "cert_pem", "cert_cn": "cn_value"}
+        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
+            try:
+                received_cert = base64.b64decode(cert_pem).decode("utf-8")
+            except Exception:
+                raise HttpError(403, "Invalid client certificate format")
+        else:
+            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+
+        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
+        if not private_key_pem:
+            raise HttpError(
+                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
+            )
+        try:
+            self._validate_expiry_date(received_cert)
+            self._validate_public_key(private_key_pem, received_cert)
+            # self._validate_certificate_chain(private_key_pem, received_cert)
+            # self._validate_certificate(private_key_pem, received_cert)
+        except HttpError as e:
+            logger.warning(e.args[1], exc_info=True)
+            raise e
+
+        subject = received_cert.subject
+        cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        cn_value = cn[0].value if cn else None
+
+        return {"ip": ip, "cert": cert_pem, "cert_cn": cn_value}
+        # return {"ip": "", "cert": "cert_pem", "cert_cn": "cn_value"}
