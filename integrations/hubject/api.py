@@ -108,7 +108,7 @@ def send_charge_detail_record(request, session_id: str):
 
 
 @api.post(
-    "/remote/start/api/oicp/charging/v21/providers/DE*ICE/authorize-remote/start/",
+    "/remote/start/api/oicp/charging/v21/providers/DE*ICE/authorize-remote/start",
     url_name="hubject-remote-start",
     auth=HubjectCertAuth(),
     response={
