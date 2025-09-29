@@ -345,19 +345,7 @@ class HubjectCertAuth(HttpAuthBase):
         if not cert_pem:
             raise HttpError(403, "Forbidden: No client certificate provided")
 
-        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
-        if verify_status != "SUCCESS":
-            raise HttpError(
-                403, f"Forbidden: Certificate verification failed: {verify_status}"
-            )
-
-        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
-            try:
-                received_cert = base64.b64decode(cert_pem).decode("utf-8")
-            except Exception:
-                raise HttpError(403, "Invalid client certificate format")
-        else:
-            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+        received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
 
         private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
         if not private_key_pem:
