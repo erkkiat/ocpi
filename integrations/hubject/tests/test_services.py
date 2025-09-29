@@ -567,7 +567,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
@@ -646,7 +646,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
