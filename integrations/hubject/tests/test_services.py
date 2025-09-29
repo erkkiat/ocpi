@@ -1365,3 +1365,18 @@ class TestHubjectAuthorizeRemoteStart:
 
         result = service._get_hubject_error_code(evse)
         assert result == expected_code
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_with_validation_error_return_acknowledgement_false(
+        self, mock_remote_start_command, evse
+    ):
+        mock_remote_start_command.identification.RemoteIdentification.EvcoID.root = None
+        with pytest.raises(
+            ValueError, match="EvcoID is required for remote start command"
+        ):
+            result = self.hubject_service.process_remote_start_command(
+                mock_remote_start_command
+            )
+
+            assert result.result is False
+            assert result.status_code == StatusCode(Code="022")

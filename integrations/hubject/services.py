@@ -535,7 +535,7 @@ class HubjectService:
             remote_start_command.identification.RemoteIdentification.EvcoID.root
         )
         if not contract_id:
-            raise ValidationError("EvcoID is required for remote start command")
+            raise ValueError("EvcoID is required for remote start command")
         return {
             "response_url": build_absolute_uri(
                 reverse("chargepoint-remote-command-result", args=(command_id,))
