@@ -1,4 +1,5 @@
 import base64
+import urllib.parse
 from datetime import datetime, timezone
 from logging import getLogger
 
@@ -340,8 +341,7 @@ class HubjectCertAuth(HttpAuthBase):
             logger.warning(e.args[1], exc_info=True)
             raise e
 
-        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
-        cert_pem = request.META.get("TEST_CA") if not cert_pem else cert_pem
+        cert_pem = urllib.parse.unquote(request.headers.get("X-Amzn-Mtls-Clientcert"))
         if not cert_pem:
             raise HttpError(403, "Forbidden: No client certificate provided")
 
