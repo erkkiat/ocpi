@@ -347,14 +347,10 @@ class HubjectCertAuth(HttpAuthBase):
 
         received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
 
-        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
-        if not private_key_pem:
-            raise HttpError(
-                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
-            )
         try:
             self._validate_expiry_date(received_cert)
-            self._validate_public_key(private_key_pem, received_cert)
+            self._validate_cert_chain(cert_pem, received_cert)
+            # self._validate_public_key(private_key_pem, received_cert)
             # self._validate_certificate_chain(private_key_pem, received_cert)
             # self._validate_certificate(private_key_pem, received_cert)
         except HttpError as e:
