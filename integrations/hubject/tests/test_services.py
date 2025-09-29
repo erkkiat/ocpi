@@ -8,6 +8,7 @@ import pytz
 import responses
 import time_machine
 from django.conf import settings
+from django.test import override_settings
 from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
@@ -1301,3 +1302,26 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result["connector_id"] == ""
+
+    @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
+    @pytest.mark.django_db
+    def test_start_session_returns_acknowledgement_false_when_response_result_is_not_accepted(
+        self, mock_remote_start_command
+    ):
+        CredentialsRoleFactory(country_code="DE", party_id="ICE")
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session"
+        ) as mock_start_session:
+            mock_start_session.return_value = OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+                data={"data": {"result": "REJECTED"}},
+            )
+            result = self.hubject_service._start_session(
+                sender_party=Party(country_code="DE", party_id="MSP"),
+                remote_start_command=mock_remote_start_command,
+                validated_data={},
+            )
+
+            assert result.result is False
+            assert result.status_code == StatusCode(Code="021")
