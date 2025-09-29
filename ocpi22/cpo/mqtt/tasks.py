@@ -69,7 +69,6 @@ app.config_from_object(CeleryConfig)
 app.conf.task_default_queue = "HIGH"
 app.autodiscover_tasks()
 
-from base_task_services import setup_worker_connection  # noqa
 from rest_framework.generics import get_object_or_404  # noqa
 
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
