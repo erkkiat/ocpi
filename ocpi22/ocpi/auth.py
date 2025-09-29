@@ -14,6 +14,7 @@ from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from cryptography import x509
 from cryptography.hazmat._oid import NameOID
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -273,6 +274,42 @@ class HubjectCertAuth(HttpAuthBase):
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
         return ip
 
+    def parse_pem_from_header(self, header_value: str):
+        decoded = urllib.parse.unquote(header_value)
+
+        certs = []
+        pem_blocks = decoded.split("-----END CERTIFICATE-----")
+        for block in pem_blocks:
+            if "-----BEGIN CERTIFICATE-----" in block:
+                pem = block + "-----END CERTIFICATE-----\n"
+                cert = x509.load_pem_x509_certificate(
+                    pem.encode("utf-8"), default_backend()
+                )
+                certs.append(cert)
+        return certs
+
+    def _validate_cert_chain(self, header_value, received_cert) -> None:
+        from certvalidator import CertificateValidator, ValidationContext
+
+        cert_list = self.parse_pem_from_header(header_value)
+
+        leaf_cert = cert_list[0]
+        intermediate_certs = cert_list[1:]
+
+        with open("integrations/hubject/certificates/ca_certificate.crt", "rb") as f:
+            root_cert = x509.load_pem_x509_certificate(f.read(), default_backend())
+
+        context = ValidationContext(
+            trust_roots=[root_cert.public_bytes(serialization.Encoding.DER)]
+        )
+
+        validator = CertificateValidator(
+            leaf_cert, intermediate_certs=intermediate_certs, validation_context=context
+        )
+        validated_cert = validator.validate_usage(set())  # no specific EKU required
+
+        print("✅ Client certificate is valid and trusted:", validated_cert.subject)
+
     def _validate_certificate(self, expected_cert_pem, received_cert) -> None:
         expected_cert = x509.load_pem_x509_certificate(expected_cert_pem.encode())
 
@@ -283,24 +320,20 @@ class HubjectCertAuth(HttpAuthBase):
                 403, "Forbidden: Certificate does not match expected certificate"
             )
 
-    def _validate_certificate_chain(self, ca_cert_pem, received_cert) -> None:
-        from cryptography.x509.verification import PolicyBuilder, Store
-
-        ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode())
-
-        store = Store([ca_cert])
-
-        builder = PolicyBuilder().store(store)
-        verifier = builder.build_client_verifier(
-            policy=x509.verification.ValidationPolicy(
-                validation_time=datetime.now(timezone.utc)
-            )
-        )
-
-        try:
-            verifier.verify(received_cert, [])
-        except Exception as e:
-            raise HttpError(403, f"Forbidden: Certificate validation failed: {e}")
+    # def _validate_certificate_chain(self, ca_cert_pem, received_cert) -> None:
+    #     from cryptography.x509.verification import PolicyBuilder, Store
+    #
+    #     ca_cert = x509.load_pem_x509_certificate(ca_cert_pem.encode())
+    #
+    #     store = Store([ca_cert])
+    #
+    #     builder = PolicyBuilder().store(store)
+    #     verifier = builder.build_client_verifier()
+    #
+    #     try:
+    #         verifier.verify(received_cert, [])
+    #     except Exception as e:
+    #         raise HttpError(403, f"Forbidden: Certificate validation failed: {e}")
 
     def _validate_public_key(self, certificate_pem, received_cert) -> None:
         expected_cert = x509.load_pem_x509_certificate(certificate_pem.encode())
