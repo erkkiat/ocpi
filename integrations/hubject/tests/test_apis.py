@@ -227,12 +227,26 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
         }
 
 
+@pytest.fixture
+def remote_command_payload():
+    evse = EvseFactory(status="AVAILABLE")
+
+    return {
+        "Identification": {"RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}},
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "PartnerProductID": "AC1",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
 @pytest.mark.django_db
 @responses.activate
 def test_receive_remote_start_command_with_valid_data_returns_200(
-    authenticated_user_client,
+    authenticated_user_client, remote_command_payload
 ):
-    evse = EvseFactory(status="AVAILABLE")
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
         command_type=RemoteCommandType.START_SESSION,
@@ -247,18 +261,9 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
     with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
         mock_auth.return_value = True
         url = reverse("hubject-api:hubject-remote-start")
-        payload = {
-            "Identification": {
-                "RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}
-            },
-            "CPOPartnerSessionID": "",
-            "EMPPartnerSessionID": "2345ABC",
-            "ProviderID": "DE-DCB",
-            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-            "PartnerProductID": "AC1",
-            "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
-        }
-        response = authenticated_user_client.post(url, data=payload, format="json")
+        response = authenticated_user_client.post(
+            url, data=remote_command_payload, format="json"
+        )
         assert response.status_code == 200
         assert response.json() == {
             "cpo_partner_session_id": response.json().get(
@@ -273,3 +278,54 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
             },
             "result": True,
         }
+
+
+def test_remote_start_returns_400_for_invalid_data(
+    authenticated_user_client, remote_command_payload
+):
+    with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
+        mock_auth.return_value = True
+        url = reverse("hubject-api:hubject-remote-start")
+        remote_command_payload["SessionID"] = "invalid"
+        response = authenticated_user_client.post(
+            url, data=remote_command_payload, format="json"
+        )
+        assert response.status_code == 400
+        assert response.json() == {
+            "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
+            "emp_partner_session_id": "2345ABC",
+            "session_id": None,
+            "status_code": {
+                "Code": "022",
+                "Description": None,
+                "AdditionalInfo": None,
+            },
+            "result": False,
+        }
+
+
+def test_remote_start_returns_503_for_failure_in_executing_command(
+    authenticated_user_client, remote_command_payload
+):
+    with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
+        with patch(
+            "integrations.hubject.services.HubjectService.process_remote_start_command"
+        ) as mock_service:
+            mock_auth.return_value = True
+            mock_service.side_effect = Exception("Service failure")
+            url = reverse("hubject-api:hubject-remote-start")
+            response = authenticated_user_client.post(
+                url, data=remote_command_payload, format="json"
+            )
+            assert response.status_code == 503
+            assert response.json() == {
+                "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
+                "emp_partner_session_id": "2345ABC",
+                "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "status_code": {
+                    "Code": "021",
+                    "Description": None,
+                    "AdditionalInfo": None,
+                },
+                "result": False,
+            }
