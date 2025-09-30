@@ -9,6 +9,8 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
 from ocpi22.tests.factories import LocationFactory, EvseFactory, ConnectorFactory
 from ocpiconnector.ocpi_identities import get_our_party
+from webhooks.choices import WebhookType, RemoteCommandType
+from webhooks.factories import WebhookFactory
 
 
 @pytest.fixture
@@ -226,18 +228,30 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
 
 
 @pytest.mark.django_db
+@responses.activate
 def test_receive_remote_start_command_with_valid_data_returns_200(
     authenticated_user_client,
 ):
     evse = EvseFactory(status="AVAILABLE")
-    with patch("integrations.hubject.api.HubjectCertAuth.authenticate") as mock_auth:
+    WebhookFactory(
+        type=WebhookType.REMOTE_COMMAND,
+        command_type=RemoteCommandType.START_SESSION,
+        url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+    )
+    responses.add(
+        responses.POST,
+        "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        json={"data": {"result": "ACCEPTED"}},
+        status=200,
+    )
+    with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
         mock_auth.return_value = True
         url = reverse("hubject-api:hubject-remote-start")
         payload = {
             "Identification": {
                 "RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}
             },
-            "CPOPartnerSessionID": "1234XYZ",
+            "CPOPartnerSessionID": "",
             "EMPPartnerSessionID": "2345ABC",
             "ProviderID": "DE-DCB",
             "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
@@ -246,3 +260,16 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
         }
         response = authenticated_user_client.post(url, data=payload, format="json")
         assert response.status_code == 200
+        assert response.json() == {
+            "cpo_partner_session_id": response.json().get(
+                "cpo_partner_session_id"
+            ),  # ignored in assert
+            "emp_partner_session_id": "2345ABC",
+            "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            "status_code": {
+                "Code": "000",
+                "Description": None,
+                "AdditionalInfo": None,
+            },
+            "result": True,
+        }
