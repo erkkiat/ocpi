@@ -223,3 +223,26 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
             "errorType": "Hubject server Error",
             "error": "Hubject server returned 500. Retrying...",
         }
+
+
+@pytest.mark.django_db
+def test_receive_remote_start_command_with_valid_data_returns_200(
+    authenticated_user_client,
+):
+    evse = EvseFactory(status="AVAILABLE")
+    with patch("integrations.hubject.api.HubjectCertAuth.authenticate") as mock_auth:
+        mock_auth.return_value = True
+        url = reverse("hubject-api:hubject-remote-start")
+        payload = {
+            "Identification": {
+                "RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}
+            },
+            "CPOPartnerSessionID": "1234XYZ",
+            "EMPPartnerSessionID": "2345ABC",
+            "ProviderID": "DE-DCB",
+            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            "PartnerProductID": "AC1",
+            "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+        }
+        response = authenticated_user_client.post(url, data=payload, format="json")
+        assert response.status_code == 200
