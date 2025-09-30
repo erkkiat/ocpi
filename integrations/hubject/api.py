@@ -2,7 +2,7 @@ import logging
 from typing import Dict
 
 from ninja import Router
-from pydantic.v1 import ValidationError
+from pydantic_core import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import (
@@ -145,9 +145,9 @@ def receive_remote_start_command(request, remote_start_command: RemoteCommandSta
         return 400, ERoamingAcknowledgment(
             result=False,
             status_code=StatusCode(Code="022"),
-            session_id=remote_start_command.session_id,
-            cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
-            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            session_id=None,
+            cpo_partner_session_id=remote_start_command.cpo_partner_session_id or "",
+            emp_partner_session_id=remote_start_command.emp_partner_session_id or "",
         )
     try:
         result = hubject_service.process_remote_start_command(command)
