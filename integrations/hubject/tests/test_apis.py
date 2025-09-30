@@ -260,7 +260,7 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
     )
     with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
         mock_auth.return_value = True
-        url = reverse("hubject-api:hubject-remote-start")
+        url = reverse("hubject-api:hubject-remote-start", args=["DE-DCB"])
         response = authenticated_user_client.post(
             url, data=remote_command_payload, format="json"
         )
@@ -285,7 +285,7 @@ def test_remote_start_returns_400_for_invalid_data(
 ):
     with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
         mock_auth.return_value = True
-        url = reverse("hubject-api:hubject-remote-start")
+        url = reverse("hubject-api:hubject-remote-start", args=["DE-DCB"])
         remote_command_payload["SessionID"] = "invalid"
         response = authenticated_user_client.post(
             url, data=remote_command_payload, format="json"
@@ -313,7 +313,7 @@ def test_remote_start_returns_503_for_failure_in_executing_command(
         ) as mock_service:
             mock_auth.return_value = True
             mock_service.side_effect = Exception("Service failure")
-            url = reverse("hubject-api:hubject-remote-start")
+            url = reverse("hubject-api:hubject-remote-start", args=["DE-DCB"])
             response = authenticated_user_client.post(
                 url, data=remote_command_payload, format="json"
             )
@@ -324,6 +324,33 @@ def test_remote_start_returns_503_for_failure_in_executing_command(
                 "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
                 "status_code": {
                     "Code": "021",
+                    "Description": None,
+                    "AdditionalInfo": None,
+                },
+                "result": False,
+            }
+
+
+def test_remote_start_returns_400_for_mismatching_provider_id(
+    authenticated_user_client, remote_command_payload
+):
+    with patch("ocpi22.ocpi.auth.HubjectCertAuth.authenticate") as mock_auth:
+        with patch(
+            "integrations.hubject.services.HubjectService.process_remote_start_command"
+        ) as mock_service:
+            mock_auth.return_value = True
+            mock_service.side_effect = Exception("Service failure")
+            url = reverse("hubject-api:hubject-remote-start", args=["DE-DDB"])
+            response = authenticated_user_client.post(
+                url, data=remote_command_payload, format="json"
+            )
+            assert response.status_code == 400
+            assert response.json() == {
+                "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
+                "emp_partner_session_id": "2345ABC",
+                "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "status_code": {
+                    "Code": "022",
                     "Description": None,
                     "AdditionalInfo": None,
                 },

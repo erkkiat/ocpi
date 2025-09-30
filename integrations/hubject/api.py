@@ -115,20 +115,32 @@ remote_command_router = Router()
 
 
 @remote_command_router.post(
-    "/start",
+    "providers/{provider_id}/authorize-remote/start",
     url_name="hubject-remote-start",
     auth=HubjectCertAuth(),
     response={
         (200, 400, 503): ERoamingAcknowledgment,
     },
 )
-def receive_remote_start_command(request, remote_start_command: RemoteCommandStart):
+def receive_remote_start_command(
+    request, provider_id: str, remote_start_command: RemoteCommandStart
+):
     try:
+        if provider_id != remote_start_command.provider_id:
+            return 400, ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id=remote_start_command.cpo_partner_session_id
+                or "",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id
+                or "",
+            )
         command = ERoamingAuthorizeRemoteStart(
             session_id=remote_start_command.session_id,
             cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
-            provider_id=remote_start_command.provider_id,
+            provider_id=remote_start_command.provider_id or provider_id,
             evse_id=remote_start_command.evse_id,
             identification=Identification(
                 RFIDIdentification=None,
@@ -164,7 +176,7 @@ def receive_remote_start_command(request, remote_start_command: RemoteCommandSta
 
 
 api.add_router(
-    "api/oicp/charging/v21/providers/DE*ICE/authorize-remote",
+    "api/oicp/charging/v21/",
     remote_command_router,
     tags=["Hubject Remote Commands"],
 )
