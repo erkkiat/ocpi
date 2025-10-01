@@ -622,36 +622,33 @@ class SolidToHubjectConverter:
                 operator_party_str,
                 msp_party_str,
             )
-        try:
-            eroaming_cdr = ERoamingChargeDetailRecord(
-                session_id=session.hub_session_id,
-                cpo_partner_session_id=session.uid,
-                emp_partner_session_id=session.reservation_id,
-                partner_product_id=(
-                    ProductID(root=partner_product_id) if partner_product_id else None
-                ),
-                evse_id=EvseID(root=cdr.evse_id),
-                identification=self.get_identification(session),
-                charging_start=cdr.start_date_time,
-                charging_end=cdr.end_date_time,
-                session_start=cdr.start_date_time,
-                session_end=cdr.end_date_time,
-                meter_value_start=session.start_kwh,
-                meter_value_end=session.stop_kwh,
-                meter_value_in_between=None,
-                consumed_energy=cdr.total_energy,
-                signed_metering_values=None,
-                calibration_law_verification_info=None,
-                hub_operator_id=OperatorID(root=operator_party_str),
-                hub_provider_id=ProviderID(root=msp_party_str),
-            )
 
-            evse_data_record = self._convert_to_evse_data_record(
-                session.evse, session.location
-            )
-        except ValidationError:
-            logger.exception(exc_info=True)
-            raise
+        eroaming_cdr = ERoamingChargeDetailRecord(
+            session_id=session.hub_session_id,
+            cpo_partner_session_id=session.uid,
+            emp_partner_session_id=session.reservation_id,
+            partner_product_id=(
+                ProductID(root=partner_product_id) if partner_product_id else None
+            ),
+            evse_id=EvseID(root=cdr.evse_id),
+            identification=self.get_identification(session),
+            charging_start=cdr.start_date_time,
+            charging_end=cdr.end_date_time,
+            session_start=cdr.start_date_time,
+            session_end=cdr.end_date_time,
+            meter_value_start=session.start_kwh,
+            meter_value_end=session.stop_kwh,
+            meter_value_in_between=None,
+            consumed_energy=cdr.total_energy,
+            signed_metering_values=None,
+            calibration_law_verification_info=None,
+            hub_operator_id=OperatorID(root=operator_party_str),
+            hub_provider_id=ProviderID(root=msp_party_str),
+        )
+
+        evse_data_record = self._convert_to_evse_data_record(
+            session.evse, session.location
+        )
 
         if (
             evse_data_record.CalibrationLawDataAvailability
