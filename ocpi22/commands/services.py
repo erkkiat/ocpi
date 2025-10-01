@@ -98,23 +98,31 @@ class CallBackService:
         )
 
     @classmethod
+    def _get_localized_messages(cls, command_result: CommandResultType, message=None):
+        if command_result == CommandResultType.ACCEPTED:
+            return []
+        elif command_result == CommandResultType.REJECTED:
+            if message:
+                return [{"language": "en", "text": message}]
+            else:
+                return MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", [])
+        else:
+            messages = MessageTexts.get(command_result.value.upper(), None)
+            if not messages:
+                return MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", [])
+            else:
+                return messages
+
+    @classmethod
     def create_command_result_payload(
         cls, command_result: CommandResultType, message=None
     ):
         data = {
             "result": command_result.value.upper(),
         }
-        if command_result != CommandResultType.ACCEPTED:
-            data["message"] = MessageTexts.get(
-                MessageTexts.get(command_result.value, "Command processed"),
-            )
-        elif command_result == CommandResultType.REJECTED:
-            if message:
-                data["message"] = [{"language": "en", "text": message}]
-            else:
-                data = MessageTexts.get(
-                    "DEFAULT_CHARGER_ERROR_TEXT", "Command processed"
-                )
+        messages = cls._get_localized_messages(command_result, message)
+        data["message"] = messages
+
         serializer = CommandResultSerializer(data=data)
         if serializer.is_valid():
             return serializer.validated_data

@@ -162,37 +162,65 @@ class TestCallbackService:
         assert new_callback.authorization_reference == auth_reference
         assert new_callback.execution_status == CallBackExecutionStatus.PENDING
 
+    def test_create_command_result_payload_with_accepted_result_returns_empty_message_list(
+        self,
+    ):
+        payload = CallBackService.create_command_result_payload(
+            CommandResultType.ACCEPTED, None
+        )
+
+        assert payload["result"] == "ACCEPTED"
+        assert payload["message"] == []
+
+    def test_create_command_result_payload_with_accepted_result_and_custom_message_returns_empty_message_list(
+        self,
+    ):
+        payload = CallBackService.create_command_result_payload(
+            CommandResultType.ACCEPTED, "Custom message"
+        )
+
+        assert payload["result"] == "ACCEPTED"
+        assert payload["message"] == []
+
+    def test_create_command_result_payload_with_rejected_result_and_no_message_returns_default_message(
+        self,
+    ):
+        payload = CallBackService.create_command_result_payload(
+            CommandResultType.REJECTED, None
+        )
+
+        assert payload["result"] == "REJECTED"
+        assert "message" in payload
+        assert isinstance(payload["message"], list)
+        assert len(payload["message"]) > 0
+
+    def test_create_command_result_payload_with_rejected_result_and_custom_message_returns_custom_message(
+        self,
+    ):
+        custom_message = "Custom rejection message"
+        payload = CallBackService.create_command_result_payload(
+            CommandResultType.REJECTED, custom_message
+        )
+
+        assert payload["result"] == "REJECTED"
+        assert payload["message"] == [{"language": "en", "text": custom_message}]
+
     @pytest.mark.parametrize(
-        "command_result,message,expected_result",
+        "command_result",
         [
-            (CommandResultType.ACCEPTED, None, {"result": "ACCEPTED"}),
-            (CommandResultType.REJECTED, None, {"result": "REJECTED"}),
-            (
-                CommandResultType.ACCEPTED,
-                "Command executed successfully",
-                {
-                    "result": "ACCEPTED",
-                    "message": [
-                        {"language": "en", "text": "Command executed successfully"}
-                    ],
-                },
-            ),
-            (
-                CommandResultType.FAILED,
-                "System error occurred",
-                {
-                    "result": "FAILED",
-                    "message": [{"language": "en", "text": "System error occurred"}],
-                },
-            ),
+            CommandResultType.FAILED,
+            CommandResultType.TIMEOUT,
+            CommandResultType.NOT_SUPPORTED,
         ],
     )
-    def test_create_command_result_payload_generates_correct_payload(
-        self, command_result, message, expected_result
+    def test_create_command_result_payload_with_other_results_returns_messagetext_or_default(
+        self, command_result
     ):
-        payload = CallBackService.create_command_result_payload(command_result, message)
+        payload = CallBackService.create_command_result_payload(command_result, None)
 
-        assert payload == expected_result
+        assert payload["result"] == command_result.value.upper()
+        assert "message" in payload
+        assert isinstance(payload["message"], list)
 
     def test_execute_callback_request_with_empty_callback_url_returns_failure(
         self, mock_request_session
@@ -552,7 +580,7 @@ class TestCallbackService:
 
     @patch("ocpi22.commands.services.get_certificate_loaded_request")
     @responses.activate
-    def test_execute_callback_calls_create_command_result_payload_with_correct_params(
+    def test_execute_callback_with_accepted_result_sends_empty_message_list(
         self, mock_get_cert_request, callback_instance
     ):
         responses.add(
@@ -576,8 +604,62 @@ class TestCallbackService:
         assert len(responses.calls) == 1
         request_body = json.loads(responses.calls[0].request.body)
         assert request_body["result"] == "ACCEPTED"
-        assert request_body["message"][0]["language"] == "en"
-        assert request_body["message"][0]["text"] == "Test message"
+        assert request_body["message"] == []
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    @responses.activate
+    def test_execute_callback_with_rejected_result_and_custom_message_sends_custom_message(
+        self, mock_get_cert_request, callback_instance
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            json={"status": "success"},
+            status=200,
+        )
+
+        mock_session = requests.Session()
+        mock_get_cert_request.return_value = mock_session
+
+        custom_message = "Custom rejection reason"
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.REJECTED, custom_message
+        )
+
+        assert result is True
+
+        assert len(responses.calls) == 1
+        request_body = json.loads(responses.calls[0].request.body)
+        assert request_body["result"] == "REJECTED"
+        assert request_body["message"] == [{"language": "en", "text": custom_message}]
+
+    @patch("ocpi22.commands.services.get_certificate_loaded_request")
+    @responses.activate
+    def test_execute_callback_with_rejected_result_and_no_message_sends_default_message(
+        self, mock_get_cert_request, callback_instance
+    ):
+        responses.add(
+            responses.POST,
+            "https://example.com/callback",
+            json={"status": "success"},
+            status=200,
+        )
+
+        mock_session = requests.Session()
+        mock_get_cert_request.return_value = mock_session
+
+        result = CallBackService.execute_callback(
+            callback_instance, CommandResultType.REJECTED, None
+        )
+
+        assert result is True
+
+        assert len(responses.calls) == 1
+        request_body = json.loads(responses.calls[0].request.body)
+        assert request_body["result"] == "REJECTED"
+        assert "message" in request_body
+        assert isinstance(request_body["message"], list)
+        assert len(request_body["message"]) > 0
 
     @patch("ocpi22.commands.services.get_certificate_loaded_request")
     def test_execute_callback_uses_correct_auth_token(
@@ -781,7 +863,9 @@ class TestCallBackServiceSendCallback:
 
     @patch("ocpi22.commands.services.get_certificate_loaded_request")
     @responses.activate
-    def test_send_callback_is_executed_successfully(self, mock_get_cert_request, db):
+    def test_send_callback_with_accepted_result_sends_empty_message_list(
+        self, mock_get_cert_request, db
+    ):
         credentials = CredentialsFactory()
         emsp_business_details = BusinessDetailsFactory(name="Test EMSP")
         emsp_credentials_role = CredentialsRoleFactory(
@@ -840,5 +924,4 @@ class TestCallBackServiceSendCallback:
         assert len(responses.calls) == 1
         request_body = json.loads(responses.calls[0].request.body)
         assert request_body["result"] == "ACCEPTED"
-        assert request_body["message"][0]["language"] == "en"
-        assert request_body["message"][0]["text"] == "Integration test message"
+        assert request_body["message"] == []
