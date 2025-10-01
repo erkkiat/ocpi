@@ -104,10 +104,17 @@ class CallBackService:
         data = {
             "result": command_result.value.upper(),
         }
-
-        if message:
-            data["message"] = [{"language": "en", "text": message}]
-
+        if command_result != CommandResultType.ACCEPTED:
+            data["message"] = MessageTexts.get(
+                MessageTexts.get(command_result.value, "Command processed"),
+            )
+        elif command_result == CommandResultType.REJECTED:
+            if message:
+                data["message"] = [{"language": "en", "text": message}]
+            else:
+                data = MessageTexts.get(
+                    "DEFAULT_CHARGER_ERROR_TEXT", "Command processed"
+                )
         serializer = CommandResultSerializer(data=data)
         if serializer.is_valid():
             return serializer.validated_data
