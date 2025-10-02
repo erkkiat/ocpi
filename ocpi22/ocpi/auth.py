@@ -1,4 +1,5 @@
 import base64
+import re
 import urllib.parse
 from logging import getLogger
 
@@ -12,7 +13,13 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from cryptography import x509
-from cryptography.hazmat._oid import NameOID
+from cryptography.hazmat._oid import NameOID, ExtendedKeyUsageOID
+from cryptography.x509.verification import (
+    PolicyBuilder,
+    Store,
+    ExtensionPolicy,
+    Criticality,
+)
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpRequest
@@ -271,6 +278,56 @@ class HubjectCertAuth(HttpAuthBase):
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
         return ip
 
+    def _load_all_certificates(self, cert_pem: str):
+        cert_pattern = r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----"
+        cert_matches = re.findall(cert_pattern, cert_pem, re.DOTALL)
+        return [x509.load_pem_x509_certificate(cert.encode()) for cert in cert_matches]
+
+    def _validate_certificate_chain(self, certificates: list[x509.Certificate]):
+        root_cert = x509.load_pem_x509_certificate(
+            settings.HUBJECT_CA_CERTIFICATE.encode("utf-8")
+        )
+        client_cert = certificates[0]
+        intermediate_certs = certificates[1:] if len(certificates) > 1 else []
+
+        try:
+            trust_store_certs = intermediate_certs + [root_cert]
+            store = Store(trust_store_certs)
+
+            ee_policy = ExtensionPolicy.webpki_defaults_ee()
+            allowed = {ExtendedKeyUsageOID.CLIENT_AUTH, ExtendedKeyUsageOID.SERVER_AUTH}
+
+            def eku_validator(
+                policy, cert: x509.Certificate, eku: x509.ExtendedKeyUsage | None
+            ):
+                if eku is None:
+                    raise ValueError("Client certificate missing EKU")
+                for oid in eku:
+                    if oid not in allowed:
+                        raise ValueError(f"Unsupported EKU OID {oid.dotted_string}")
+
+            ee_policy = ee_policy.require_present(
+                x509.ExtendedKeyUsage, Criticality.CRITICAL, eku_validator
+            )
+
+            builder = (
+                PolicyBuilder()
+                .store(store)
+                .extension_policies(
+                    ca_policy=ExtensionPolicy.webpki_defaults_ca(), ee_policy=ee_policy
+                )
+            )
+
+            verifier = builder.build_client_verifier()
+
+            chain = verifier.verify(client_cert, intermediate_certs)
+
+            return chain
+
+        except Exception as e:
+            logger.error(f"Certificate validation failed: {e}")
+            raise HttpError(403, f"Certificate validation failed: {str(e)}")
+
     def authenticate(self, request: HttpRequest):
         try:
             ip = self._get_ip_address(request)
@@ -281,6 +338,12 @@ class HubjectCertAuth(HttpAuthBase):
         cert_pem = urllib.parse.unquote(request.headers.get("X-Amzn-Mtls-Clientcert"))
         if not cert_pem:
             raise HttpError(403, "Forbidden: No client certificate provided")
+
+        certificates = self._load_all_certificates(cert_pem)
+        if not certificates:
+            raise HttpError(403, "Forbidden: Invalid client certificate format")
+
+        self._validate_certificate_chain(certificates)
 
         received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
 
