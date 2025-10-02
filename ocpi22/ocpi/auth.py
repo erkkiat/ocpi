@@ -374,20 +374,18 @@ class HubjectCertAuth(CertificateAuth):
     def _build_client_verifier(self, store: Store):
         ee_policy = ExtensionPolicy.webpki_defaults_ee()
 
-        if self.allowed_ekus:
+        def eku_validator(
+            policy, cert: x509.Certificate, eku: x509.ExtendedKeyUsage | None
+        ):
+            if eku is None:
+                raise ValueError("Client certificate missing EKU")
+            for oid in eku:
+                if oid not in self.allowed_ekus:
+                    raise ValueError(f"Unsupported EKU OID {oid.dotted_string}")
 
-            def eku_validator(
-                policy, cert: x509.Certificate, eku: x509.ExtendedKeyUsage | None
-            ):
-                if eku is None:
-                    raise ValueError("Client certificate missing EKU")
-                for oid in eku:
-                    if oid not in self.allowed_ekus:
-                        raise ValueError(f"Unsupported EKU OID {oid.dotted_string}")
-
-            ee_policy = ee_policy.require_present(
-                x509.ExtendedKeyUsage, Criticality.CRITICAL, eku_validator
-            )
+        ee_policy = ee_policy.require_present(
+            x509.ExtendedKeyUsage, Criticality.CRITICAL, eku_validator
+        )
 
         builder = (
             PolicyBuilder()
