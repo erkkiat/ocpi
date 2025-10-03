@@ -1,13 +1,49 @@
+import os
+import subprocess
+import tempfile
 import urllib.parse
 from unittest.mock import Mock
 
 import pytest
-from cryptography.hazmat._oid import ExtendedKeyUsageOID
+from cryptography.hazmat._oid import ExtendedKeyUsageOID, NameOID
 from django.http import HttpRequest
 from django.test import override_settings
 from ninja.errors import HttpError
 
 from ocpi22.ocpi.auth import CertificateAuth
+
+
+def generate_cert_and_key():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        key_path = os.path.join(tmpdir, "key.pem")
+        cert_path = os.path.join(tmpdir, "cert.pem")
+
+        subprocess.run(
+            [
+                "openssl",
+                "req",
+                "-x509",
+                "-nodes",
+                "-newkey",
+                "rsa:2048",
+                "-keyout",
+                key_path,
+                "-out",
+                cert_path,
+                "-days",
+                "3650",
+                "-subj",
+                "/CN=test-client/O=TestOrg/OU=TestUnit",
+            ],
+            check=True,
+        )
+
+        with open(cert_path, "r") as f:
+            cert = f.read()
+        with open(key_path, "r") as f:
+            key = f.read()
+
+        return cert, key
 
 
 @pytest.fixture
@@ -16,6 +52,11 @@ def mock_request():
     request.META = {"REMOTE_ADDR": "192.168.1.100"}
     request.headers = {}
     return request
+
+
+@pytest.fixture
+def test_certificates():
+    return generate_cert_and_key()
 
 
 class ConcreteCertificateAuth(CertificateAuth):
@@ -95,3 +136,26 @@ class TestCertificateAuth:
 
         assert exc_info.value.status_code == 403
         assert "not allowed" in str(exc_info.value)
+
+    def test_load_all_certificates_parses_single_certificate(self, test_certificates):
+        cert, _ = test_certificates
+        auth = ConcreteCertificateAuth(ca_certificate=cert)
+
+        result = auth._load_all_certificates(cert)
+
+        assert len(result) == 1
+        certificate = result[0]
+        assert (
+            certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+            == "test-client"
+        )
+        assert certificate.public_key() is not None
+
+    def test_load_all_certificates_parses_certificate_chain(self, test_certificates):
+        cert, _ = test_certificates
+        cert_chain = f"{cert}\n{cert}"
+        auth = ConcreteCertificateAuth(ca_certificate=cert)
+
+        result = auth._load_all_certificates(cert_chain)
+
+        assert len(result) == 2
