@@ -1,4 +1,5 @@
 import base64
+import ipaddress
 import re
 import urllib.parse
 from abc import abstractmethod, ABC
@@ -290,9 +291,15 @@ class CertificateAuth(HttpAuthBase, ABC):
         return self.authenticate(request)
 
     def _get_ip_address(self, request: HttpRequest) -> str:
-        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        ip = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        )  # left-most = client IP
         if not ip:
             ip = request.META.get("REMOTE_ADDR")
+        try:
+            ip = str(ipaddress.ip_address(ip))
+        except ValueError:
+            raise HttpError(400, f"Invalid IP address format: {ip}")
 
         if not ip or ip not in settings.HUBJECT_HOSTS:
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
