@@ -83,3 +83,15 @@ class TestCertificateAuth:
         result = auth._get_ip_address(mock_request)
 
         assert result == "192.168.1.100"
+
+    @override_settings(HUBJECT_HOSTS=["10.0.0.1", "192.168.1.100"])
+    def test_get_ip_address_raises_forbidden_when_ip_not_allowed(self, mock_request):
+        mock_request.META = {"REMOTE_ADDR": "192.168.1.110"}
+
+        auth = ConcreteCertificateAuth(ca_certificate="test-ca")
+
+        with pytest.raises(HttpError) as exc_info:
+            auth._get_ip_address(mock_request)
+
+        assert exc_info.value.status_code == 403
+        assert "not allowed" in str(exc_info.value)
