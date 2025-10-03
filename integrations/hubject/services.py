@@ -622,10 +622,14 @@ class HubjectService:
         )
 
         evse = Evse.objects.filter(evse_id=remote_start_command.evse_id.root).first()
-
-        is_valid, ack = _validate_evse()
-        if not is_valid:
-            return ack
+        if not evse:
+            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
+            return (self._create_error_acknowledgment(remote_start_command, "603"),)
+        if evse.status != Evse.AVAILABLE:
+            logger.error(f"EVSE {evse.evse_id} is not available")
+            return self._create_error_acknowledgment(
+                remote_start_command, self._get_hubject_error_code(evse)
+            )
 
         try:
             sender_country_code, sender_party_id = (
