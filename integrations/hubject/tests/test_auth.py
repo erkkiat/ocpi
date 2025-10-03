@@ -2,7 +2,7 @@ import os
 import subprocess
 import tempfile
 import urllib.parse
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from cryptography.hazmat._oid import ExtendedKeyUsageOID, NameOID
@@ -159,3 +159,28 @@ class TestCertificateAuth:
         result = auth._load_all_certificates(cert_chain)
 
         assert len(result) == 2
+
+    def test_authenticate_raises_forbidden_when_no_certificate_header(
+        self, mock_request
+    ):
+        auth = ConcreteCertificateAuth(ca_certificate="test-ca")
+
+        with patch.object(auth, "_get_ip_address", return_value="192.168.1.100"):
+            with pytest.raises(HttpError) as exc_info:
+                auth.authenticate(mock_request)
+
+        assert exc_info.value.status_code == 403
+        assert "No client certificate provided" in str(exc_info.value)
+
+    def test_authenticate_raises_forbidden_when_certificate_format_invalid(
+        self, mock_request
+    ):
+        mock_request.headers = {"X-Amzn-Mtls-Clientcert": "invalid-cert-data"}
+        auth = ConcreteCertificateAuth(ca_certificate="test-ca")
+
+        with patch.object(auth, "_get_ip_address", return_value="192.168.1.100"):
+            with pytest.raises(HttpError) as exc_info:
+                auth.authenticate(mock_request)
+
+        assert exc_info.value.status_code == 403
+        assert "Invalid client certificate format" in str(exc_info.value)
