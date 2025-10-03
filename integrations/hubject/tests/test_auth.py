@@ -1,4 +1,5 @@
 import urllib.parse
+from unittest.mock import Mock
 
 import pytest
 from cryptography.hazmat._oid import ExtendedKeyUsageOID
@@ -7,6 +8,14 @@ from django.test import override_settings
 from ninja.errors import HttpError
 
 from ocpi22.ocpi.auth import CertificateAuth
+
+
+@pytest.fixture
+def mock_request():
+    request = Mock(spec=HttpRequest)
+    request.META = {"REMOTE_ADDR": "192.168.1.100"}
+    request.headers = {}
+    return request
 
 
 class ConcreteCertificateAuth(CertificateAuth):
@@ -63,3 +72,14 @@ class TestCertificateAuth:
         with pytest.raises(HttpError):
             auth = ConcreteCertificateAuth(ca_certificate="test-ca")
             auth._get_ip_address(mock_request)
+
+    @override_settings(HUBJECT_HOSTS=["10.0.0.1", "192.168.1.100"])
+    def test_get_ip_address_returns_remote_addr_when_forwarded_for_is_empty(
+        self, mock_request
+    ):
+        mock_request.META = {"REMOTE_ADDR": "192.168.1.100"}
+
+        auth = ConcreteCertificateAuth(ca_certificate="test-ca")
+        result = auth._get_ip_address(mock_request)
+
+        assert result == "192.168.1.100"
