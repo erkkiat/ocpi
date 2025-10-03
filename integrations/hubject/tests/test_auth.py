@@ -10,7 +10,7 @@ from django.http import HttpRequest
 from django.test import override_settings
 from ninja.errors import HttpError
 
-from ocpi22.ocpi.auth import CertificateAuth
+from ocpi22.ocpi.auth import CertificateAuth, HubjectCertAuth
 
 
 def generate_cert_and_key():
@@ -184,3 +184,33 @@ class TestCertificateAuth:
 
         assert exc_info.value.status_code == 403
         assert "Invalid client certificate format" in str(exc_info.value)
+
+
+class TestHubjectCertAuth:
+    auth = HubjectCertAuth()
+
+    def test_get_certificate_header_decodes_mtls_header(self, mock_request):
+        quoted_cert = urllib.parse.quote("test cert data")
+        mock_request.headers = {"X-Amzn-Mtls-Clientcert": quoted_cert}
+
+        auth = HubjectCertAuth()
+        result = auth._get_certificate_header(mock_request)
+
+        assert result == "test cert data"
+
+    @override_settings(HUBJECT_HOSTS=["10.0.0.1", "192.168.1.100"])
+    @override_settings(HUBJECT_CA_CERTIFICATE="hubject-ca-cert")
+    def test_build_client_verifier_validates_eku_extensions(self):
+        from cryptography.x509.verification import Store
+        from cryptography import x509
+
+        cert, _ = generate_cert_and_key()
+        root_cert = x509.load_pem_x509_certificate(cert.encode())
+        store = Store([root_cert])
+
+        verifier = self.auth._build_client_verifier(store)
+
+        assert (
+            verifier.policy.extended_key_usage.dotted_string
+            == ExtendedKeyUsageOID.CLIENT_AUTH.dotted_string
+        )
