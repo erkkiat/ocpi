@@ -301,7 +301,7 @@ class CertificateAuth(HttpAuthBase, ABC):
         except ValueError:
             raise HttpError(400, f"Invalid IP address format: {ip}")
 
-        if not ip or ip not in settings.HUBJECT_HOSTS:
+        if not ip or ip not in self.allowed_hosts:
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
         return ip
 
