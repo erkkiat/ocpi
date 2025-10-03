@@ -298,17 +298,16 @@ class CallBackService:
     def send_callback(
         self,
         session: Session,
-        callback_type: RemoteCommandType,
         result: CommandResultType,
         message: str = None,
     ) -> None:
         callback = CallBackRepository.find_by_session_uid(session.uid)
         if not callback:
+            logger.warning(f"No callback found for COMMAND session {session.uid}")
             return
+
         self.execute_callback(callback, result, message)
-        logger.info(
-            f"{callback_type.value} callback for session {session.id} executed successfully to {callback.callback_url}"
-        )
+        logger.info(f"Callback executed for COMMAND session {session.uid}")
         return
 
 

@@ -27,8 +27,8 @@ from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
-from ocpi22.commands.services import CallBackService
 from ocpi22.cpo.schemas import LocationIn, Error
+from ocpi22.cpo.sesion_service import SessionService
 from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
@@ -56,7 +56,6 @@ from ocpi22.choices import (
 from ocpi22.commands.serializers import (
     CpoCommandResultSerializer,
     CommandResultSerializer,
-    CommandResultType,
 )
 from ocpi22.cpo.serializers import (
     CpoSessionSerializer,
@@ -96,7 +95,6 @@ from pprint import PrettyPrinter
 from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str, Party
-from webhooks.choices import RemoteCommandType
 
 pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
@@ -626,12 +624,30 @@ class ChargePointViewSet(FlowchartViewSet):
                     connector_id: str = serializer.validated_data["connector_id"]
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
+
+                    if session.auth_method == enum.AuthMethodChoices.COMMAND:
+                        success, error_message = SessionService.start_command_session(
+                            session
+                        )
+
+                        if not success:
+                            return Response(
+                                dict(
+                                    status_text=f"Failed to start session: {error_message}"
+                                ),
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+
+                        session_serializer = CpoSessionSerializer(
+                            instance=session,
+                            context={"version": request.version, "request": request},
+                        )
+                        return Response(session_serializer.data)
+
+                    # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
                     authorization: TokenAuthorization = authorize_token(
                         session.cdr_token.uid,
                         evse_id=session.evse.evse_id if session.evse else None,
-                    )
-                    logger.info(
-                        f"Debugging: start_transaction incoming data after serializer: {serializer.validated_data}"
                     )
 
                     if not authorization:
@@ -662,11 +678,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
                     session.send_updates(update_type=ChargingNotificationType.Start)
-                    CallBackService().send_callback(
-                        session=session,
-                        callback_type=RemoteCommandType.STOP_SESSION,
-                        result=CommandResultSerializer.ACCEPTED,
-                    )
+
                     messages.info(
                         request,
                         {
@@ -809,7 +821,6 @@ class ChargePointViewSet(FlowchartViewSet):
                         cached_session = get_cached_session(session.uid)
                         if cached_session and cached_session.kwh > session.kwh:
                             session.stop_kwh = cached_session.kwh
-                        # Todo: process also SoC, power, timestamp from cached_session
 
                     session.update_charging_periods(
                         kwh=session.kwh, timestamp=stop_timestamp
@@ -829,11 +840,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         ]
                     )
                     session.send_updates(update_type=ChargingNotificationType.End)
-                    CallBackService().send_callback(
-                        session=session,
-                        callback_type=RemoteCommandType.STOP_SESSION,
-                        result=CommandResultType.ACCEPTED,
-                    )
+
                     logger.info(
                         f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
                         f"cost {session.total_cost_incl_vat} {session.currency}"
