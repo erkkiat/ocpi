@@ -112,12 +112,13 @@ def send_charge_detail_record(request, session_id: str):
 
 
 remote_command_router = Router()
+hubject_auth = HubjectCertAuth()
 
 
 @remote_command_router.post(
     "providers/{provider_id}/authorize-remote/start",
     url_name="hubject-remote-start",
-    auth=HubjectCertAuth(),
+    auth=hubject_auth,
     response={
         (200, 400, 503): ERoamingAcknowledgment,
     },
