@@ -2,12 +2,11 @@ import copy
 from unittest.mock import patch
 
 import pytest
+import time_machine
 from django.core.exceptions import ValidationError
-from django.forms import model_to_dict
 
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Connector
 from ocpi22.tests.factories import ConnectorFactory, TariffFactory, SolidTariffFactory
 
@@ -39,11 +38,14 @@ def connector_with_tariff(
             {
                 "price_per_kwh": 0.5,
                 "price_per_min": 0.2,
+                "price_per_hr": 0.2,
                 "price_flat": 1.0,
                 "parking_price_per_min": 0.3,
+                "parking_price_per_hr": 0.3,
                 "vat_percentage": 20.0,
                 "parking_grace_period": 15,
                 "msp": "DE*ICE",
+                "last_updated": "2024-10-10T10:00:00Z",
             },
             [],
             id="All fields are present",
@@ -66,11 +68,14 @@ def connector_with_tariff(
             [
                 "price_per_kwh",
                 "price_per_min",
+                "price_per_hr",
                 "price_flat",
                 "parking_price_per_min",
+                "parking_price_per_hr",
                 "vat_percentage",
                 "parking_grace_period",
                 "msp",
+                "last_updated",
             ],
             id="All fields are missing",
         ),
@@ -111,6 +116,7 @@ def test_convert_to_hourly(
 
 
 @pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
 def test_create_returns_solid_tariff_with_valid_data(
     solid_tariff_service_instance, smp1_solid_tariff_validated_json
 ):
@@ -118,16 +124,34 @@ def test_create_returns_solid_tariff_with_valid_data(
         smp1_solid_tariff_validated_json
     )
 
-    st_dict = model_to_dict(solid_tariff)
-    st_dict.pop("id")
-    st_dict.pop("last_updated")
-    msp_id = st_dict.pop("msp")
-    st_dict.pop("ocpi_tariff")
-    operator_id = st_dict.pop("operator")
-    st_dict["operator"] = CredentialsRole.objects.get(pk=operator_id)
-    st_dict["msp"] = CredentialsRole.objects.get(pk=msp_id)
-
-    assert st_dict == smp1_solid_tariff_validated_json
+    assert (
+        solid_tariff.price_per_kwh == smp1_solid_tariff_validated_json["price_per_kwh"]
+    )
+    assert (
+        solid_tariff.price_per_min == smp1_solid_tariff_validated_json["price_per_min"]
+    )
+    assert solid_tariff.price_per_hr == smp1_solid_tariff_validated_json["price_per_hr"]
+    assert solid_tariff.price_flat == smp1_solid_tariff_validated_json["price_flat"]
+    assert (
+        solid_tariff.parking_price_per_min
+        == smp1_solid_tariff_validated_json["parking_price_per_min"]
+    )
+    assert (
+        solid_tariff.parking_price_per_hr
+        == smp1_solid_tariff_validated_json["parking_price_per_hr"]
+    )
+    assert (
+        solid_tariff.vat_percentage
+        == smp1_solid_tariff_validated_json["vat_percentage"]
+    )
+    assert (
+        solid_tariff.parking_grace_period
+        == smp1_solid_tariff_validated_json["parking_grace_period"]
+    )
+    assert solid_tariff.msp == smp1_solid_tariff_validated_json["msp"]
+    assert solid_tariff.operator == smp1_solid_tariff_validated_json["operator"]
+    assert solid_tariff.last_updated == "2024-10-10T12:00:00Z"
+    assert solid_tariff.ocpi_tariff is not None
 
 
 @pytest.mark.django_db
