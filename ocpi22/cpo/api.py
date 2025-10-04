@@ -28,8 +28,8 @@ from rest_framework.exceptions import ValidationError
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
-from ocpi22.cpo.sesion_service import SessionService
-from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
+from ocpi22.cpo.session_service import SessionService
+from ocpi22.cpo.session_cache import save_to_session_cache
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
@@ -74,7 +74,7 @@ from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
 from ocpi22.util import command_store, clear_empty
-from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
@@ -624,20 +624,13 @@ class ChargePointViewSet(FlowchartViewSet):
                     connector_id: str = serializer.validated_data["connector_id"]
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
-
+                    session_service = SessionService()
                     if session.auth_method == enum.AuthMethodChoices.COMMAND:
-                        success, error_message = SessionService.start_command_session(
-                            session
+                        session_service.start_command_session(
+                            session=session,
+                            start_kwh=session.start_kwh,
                         )
-
-                        if not success:
-                            return Response(
-                                dict(
-                                    status_text=f"Failed to start session: {error_message}"
-                                ),
-                                status=status.HTTP_400_BAD_REQUEST,
-                            )
-
+                        session.send_updates()
                         session_serializer = CpoSessionSerializer(
                             instance=session,
                             context={"version": request.version, "request": request},
@@ -658,24 +651,8 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )
-                    session.connector = Connector.objects.prefetch_related(
-                        "tariff_ids"
-                    ).get_if_exists(
-                        uid=connector_id, evse=session.evse, raise_exception=True
-                    )
-                    session.status = Session.ACTIVE
-                    if session.connector.tariff_ids:
-                        first_tariff = session.connector.tariff_ids.first()
-                        if first_tariff:
-                            session.currency = first_tariff.currency
-                    session.save(
-                        update_fields=[
-                            "connector",
-                            "status",
-                            "currency",
-                            "start_kwh",
-                            "stop_kwh",
-                        ]
+                    session_service.set_currency_and_start(
+                        session=session, connector_id=connector_id
                     )
                     session.send_updates(update_type=ChargingNotificationType.Start)
 
@@ -802,11 +779,6 @@ class ChargePointViewSet(FlowchartViewSet):
                 )
                 if serializer.is_valid():
                     session = serializer.validated_data["session"]
-                    stop_kwh = serializer.validated_data.get("stop_kwh")
-                    stop_timestamp = serializer.validated_data.get(
-                        "timestamp", datetime.now(pytz.utc)
-                    )
-
                     if session.is_final():
                         return Response(
                             dict(
@@ -814,37 +786,22 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
-
-                    if stop_kwh:
-                        session.stop_kwh = stop_kwh
-                    else:
-                        cached_session = get_cached_session(session.uid)
-                        if cached_session and cached_session.kwh > session.kwh:
-                            session.stop_kwh = cached_session.kwh
-
-                    session.update_charging_periods(
-                        kwh=session.kwh, timestamp=stop_timestamp
-                    )
-                    session.status = Session.COMPLETED
-                    session.end_date_time = stop_timestamp.replace(tzinfo=pytz.utc)
-                    session.last_updated = datetime.now(pytz.utc)
-                    session.calculate_price()
-                    session.save(
-                        update_fields=[
-                            "stop_kwh",
-                            "status",
-                            "last_updated",
-                            "end_date_time",
-                            "total_cost_incl_vat",
-                            "total_cost_excl_vat",
-                        ]
-                    )
-                    session.send_updates(update_type=ChargingNotificationType.End)
-
-                    logger.info(
-                        f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
-                        f"cost {session.total_cost_incl_vat} {session.currency}"
-                    )
+                    if session.auth_method == enum.AuthMethodChoices.COMMAND:
+                        stopped = SessionService().stop_command_session(
+                            session=session,
+                            stop_kwh=serializer.validated_data.get("stop_kwh"),
+                            stop_timestamp=serializer.validated_data.get(
+                                "stop_date_time"
+                            ),
+                        )
+                        if not stopped:
+                            return Response(
+                                dict(
+                                    status_text="Unable to stop the session, please try again"
+                                ),
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                        session.send_updates(update_type=ChargingNotificationType.End)
 
                     extra_information = {
                         enum.AuthMethodChoices.COMMAND: "<div>This session was started by using the MSP mobile application, "
@@ -862,12 +819,6 @@ class ChargePointViewSet(FlowchartViewSet):
                         f"invoicing webhook, the CDR is sent to the webhook. "
                         f"{extra_information}",
                     )
-                    # Create the corresponding CDR (it will also be sent to other party)
-                    from ocpi22.cpo.services import CdrService
-
-                    CdrService.get_or_create_cdr(
-                        session
-                    )  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,
