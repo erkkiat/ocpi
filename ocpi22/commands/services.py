@@ -2,6 +2,7 @@ from copy import deepcopy
 from logging import getLogger
 from typing import Dict, Any, NamedTuple
 import requests
+from celery import shared_task
 from requests.exceptions import RequestException, Timeout, ConnectionError
 
 from django.core.exceptions import ValidationError
@@ -295,19 +296,22 @@ class CallBackService:
             cls.mark_failed(callback, None, f"Unexpected error: {str(e)}")
             return False
 
+    @shared_task
     def send_callback(
         self,
-        session: Session,
-        result: CommandResultType,
+        session_uid: str,
+        result: str,
         message: str = None,
     ) -> None:
-        callback = CallBackRepository.find_by_session_uid(session.uid)
+        callback = CallBackRepository.find_by_session_uid(session_uid=session_uid)
         if not callback:
-            logger.warning(f"No callback found for COMMAND session {session.uid}")
+            logger.warning(f"No callback found for COMMAND session {session_uid}")
             return
-
+        result = CommandResultType(result)
         self.execute_callback(callback, result, message)
-        logger.info(f"Callback executed for COMMAND session {session.uid}")
+        logger.info(
+            f"Callback executed for COMMAND session {session_uid} to {callback.callback_url}"
+        )
         return
 
 
