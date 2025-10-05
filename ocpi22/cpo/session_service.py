@@ -27,6 +27,7 @@ class SessionService:
     def start_command_session(self, session: Session, start_kwh: FloatField) -> None:
         session.status = Session.ACTIVE
         session.start_kwh = start_kwh
+        session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh"])
         CallBackService().send_callback.delay(
             session_uid=session.uid,
