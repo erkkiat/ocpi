@@ -1536,3 +1536,13 @@ class TestHubjectAuthorizeRemoteStop:
         assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
         assert result.cpo_partner_session_id == "OURSESSIONID"
         assert result.emp_partner_session_id == "emp_session_456"
+
+    def test_validate_command_response_raises_hubject_error_when_session_not_found(
+        self,
+    ):
+        response_data = {"status_message": "Session not found", "data": ""}
+        with pytest.raises(HubjectRemoteCommandError) as exc_info:
+            self.hubject_service._validate_command_response(response_data)
+
+        assert exc_info.value.args[0] == "Session not found"
+        assert exc_info.value.error_code == "400"
