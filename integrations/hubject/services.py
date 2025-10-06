@@ -45,6 +45,7 @@ from integrations.hubject.schemas import (
     StatusCode,
     ERoamingAuthorizeRemoteStop,
     STATUS_CODE_TEXT,
+    SessionID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
@@ -587,20 +588,32 @@ class HubjectService:
                 return "000"
 
     def _create_error_acknowledgment(
-        self, remote_start_command: ERoamingAuthorizeRemoteStart, error_code: str
+        self, command: dict, error_code: str
     ) -> ERoamingAcknowledgment:
         return ERoamingAcknowledgment(
             result=False,
             status_code=StatusCode(Code=error_code),
-            session_id=remote_start_command.session_id,
+            session_id=SessionID(root=command.get("session_id", "")),
             cpo_partner_session_id="",
-            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            emp_partner_session_id=command.get("emp_partner_session_id", ""),
         )
 
     def _get_and_validate_evse_availability(
         self, remote_start_command: ERoamingAuthorizeRemoteStart
     ) -> Evse:
         evse_id = remote_start_command.evse_id.root
+        evse = self._get_evse(evse_id)
+
+        if evse.status != Evse.AVAILABLE:
+            logger.error(f"EVSE {evse.evse_id} is not available")
+            raise HubjectRemoteCommandError(
+                self._get_hubject_error_code(evse),
+                f"EVSE {evse.evse_id} is not available",
+            )
+
+        return evse
+
+    def _get_evse(self, evse_id: str) -> Evse:
         evse = (
             Evse.objects.filter(evse_id=evse_id)
             .select_related("location")
@@ -612,15 +625,8 @@ class HubjectService:
         )
 
         if not evse:
-            logger.error(f"EVSE with ID {remote_start_command.evse_id.root} not found")
+            logger.error(f"EVSE with ID {evse_id} not found")
             raise HubjectRemoteCommandError("603", "EVSE not found")
-
-        if evse.status != Evse.AVAILABLE:
-            logger.error(f"EVSE {evse.evse_id} is not available")
-            raise HubjectRemoteCommandError(
-                self._get_hubject_error_code(evse),
-                f"EVSE {evse.evse_id} is not available",
-            )
 
         return evse
 
@@ -666,10 +672,12 @@ class HubjectService:
                     "Invalid data for starting remote session for Hubject",
                     extra={"errors": serializer.errors, "data": data},
                 )
-                return self._create_error_acknowledgment(remote_start_command, "022")
+                return self._create_error_acknowledgment(
+                    remote_start_command.model_dump(), "022"
+                )
         except HubjectRemoteCommandError as hubject_error:
             return self._create_error_acknowledgment(
-                remote_start_command, hubject_error.error_code
+                remote_start_command.model_dump(), hubject_error.error_code
             )
 
     def _start_session(
@@ -693,15 +701,7 @@ class HubjectService:
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
-
-        if (
-            response.data.get("data", None) is None
-            or response.data.get("data").get("result") != "ACCEPTED"
-        ):
-            logger.error(
-                f"Hubject remote start command was rejected, {response.data.get('data')}"
-            )
-            return self._create_error_acknowledgment(remote_start_command, "021")
+        self._validate_command_response(response.data)
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
             validated_data.get("authorization_reference"),
@@ -715,38 +715,76 @@ class HubjectService:
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
         )
 
+    def _get_remote_stop_command_data(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ) -> dict:
+        command_id = remote_stop_command.emp_partner_session_id or None
+        data = {
+            "response_url": build_absolute_uri(
+                reverse("chargepoint-remote-command-result", args=(command_id,))
+            ),
+            "session_id": remote_stop_command.session_id.root,
+        }
+        return data
+
+    def _validate_command_response(self, response_data: dict) -> None:
+        if (
+            response_data.get("data", None) is None
+            or response_data.get("data").get("result") != "ACCEPTED"
+        ):
+            logger.error(
+                "Hubject remote command was rejected", extra={"response": response_data}
+            )
+            raise HubjectRemoteCommandError("021", "Remote command was rejected")
+        return
+
     def process_remote_stop_command(
         self, remote_stop_command: ERoamingAuthorizeRemoteStop
     ):
         from ocpi22.commands.repository import SessionRepository
-
-        logger.info(
-            "Remote stop command received from Hubject",
-            extra={"command": remote_stop_command},
-        )
-
-        evse = Evse.objects.filter(evse_id=remote_stop_command.evse_id.root).first()
-
-        if not evse:
-            logger.error(f"EVSE with ID {remote_stop_command.evse_id.root} not found")
-            return ERoamingAcknowledgment(
-                result=False,
-                status_code=StatusCode(Code="603"),
-                session_id=remote_stop_command.session_id,
-                cpo_partner_session_id="",
-                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
-            )
+        from ocpi22.commands.serializers import StopSessionSerializer
+        from ocpi22.commands.services import StopCommandServices
 
         try:
-            SessionRepository.find_session_by_auth_ref(
-                remote_stop_command.emp_partner_session_id
+            evse = self._get_evse(remote_stop_command.evse_id.root)
+            logger.info(
+                "Remote stop command received from Hubject",
+                extra={"command": remote_stop_command, "evse": evse},
             )
-        except ObjectDoesNotExist as ve:
-            logger.error(f"No session found to stop, hubject remote stop failed: {ve}")
-            return ERoamingAcknowledgment(
-                result=False,
-                status_code=StatusCode(Code="022"),
-                session_id=remote_stop_command.session_id,
-                cpo_partner_session_id="",
-                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+
+            data = self._get_remote_stop_command_data(remote_stop_command)
+
+            serializer = StopSessionSerializer(data=data)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+            else:
+                logger.error(
+                    "Invalid data for starting remote session for Hubject",
+                    extra={"errors": serializer.errors, "data": data},
+                )
+                return self._create_error_acknowledgment(
+                    remote_stop_command.model_dump(), "021"
+                )
+
+            service = StopCommandServices()
+            response = service.stop_session(
+                validated_data=validated_data,
+            )
+
+            self._validate_command_response(response.data)
+
+            try:
+                SessionRepository.find_session_by_auth_ref(
+                    remote_stop_command.emp_partner_session_id
+                )
+            except ObjectDoesNotExist as ve:
+                logger.error(
+                    f"No session found to stop, hubject remote stop failed: {ve}"
+                )
+                return self._create_error_acknowledgment(
+                    remote_stop_command.model_dump(), "022"
+                )
+        except HubjectRemoteCommandError as hubject_error:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(), hubject_error.error_code
             )
