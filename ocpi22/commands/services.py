@@ -242,7 +242,7 @@ class StopCommandServices(RemoteCommandServices):
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
             return OCPIResponse(
-                status_message="Session not found",
+                status_message=MessageTexts.get("SESSION_NOT_FOUND"),
                 status_code=2001,
                 http_status=HTTP_200_OK,
             )

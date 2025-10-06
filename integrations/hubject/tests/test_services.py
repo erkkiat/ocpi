@@ -15,6 +15,7 @@ from requests import HTTPError
 from responses import matchers
 from rest_framework import status
 
+from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -1322,7 +1323,7 @@ class TestHubjectAuthorizeRemoteStart:
 
     @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
     @pytest.mark.django_db
-    def test_start_session_returns_acknowledgement_false_when_response_result_is_not_accepted(
+    def test_start_session_raises_hubject_command_error_when_response_result_is_not_accepted(
         self, mock_remote_start_command
     ):
         CredentialsRoleFactory(country_code="DE", party_id="ICE")
@@ -1334,14 +1335,12 @@ class TestHubjectAuthorizeRemoteStart:
                 http_status=status.HTTP_200_OK,
                 data={"data": {"result": "REJECTED"}},
             )
-            result = self.hubject_service._start_session(
-                sender_party=Party(country_code="DE", party_id="MSP"),
-                remote_start_command=mock_remote_start_command,
-                validated_data={},
-            )
-
-            assert result.result is False
-            assert result.status_code == StatusCode(Code="021")
+            with pytest.raises(HubjectRemoteCommandError):
+                self.hubject_service._start_session(
+                    sender_party=Party(country_code="DE", party_id="MSP"),
+                    remote_start_command=mock_remote_start_command,
+                    validated_data={},
+                )
 
     @pytest.mark.parametrize(
         "evse_status, expected_code",
@@ -1400,8 +1399,9 @@ class TestHubjectAuthorizeRemoteStop:
         return ERoamingAuthorizeRemoteStop(
             evse_id=EvseID(root="FI*CPO*E12345"),
             session_id=SessionID(root="f98efbae-a2d8-rfa0-b810-9a9d50d2c527"),
+            cpo_partner_session_id="OURSESSIONID",
             emp_partner_session_id="emp_session_456",
-            provider_id=ProviderID(root="DE*ABC"),
+            provider_id=ProviderID(root="DEABC"),
         )
 
     @pytest.fixture
@@ -1414,28 +1414,36 @@ class TestHubjectAuthorizeRemoteStop:
     def test_process_remote_stop_command_returns_acknowledgment_false_when_evse_not_found(
         self, remote_stop_command
     ):
-        with patch("integrations.hubject.services.Evse.objects.filter") as mock_filter:
-            mock_filter.return_value.first.return_value = None
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
-            result = self.hubject_service.process_remote_stop_command(
-                remote_stop_command
-            )
-
-            assert result.result is False
-            assert result.status_code.Code == "603"
-            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
-            assert result.emp_partner_session_id == "emp_session_456"
+        assert result.result is False
+        assert result.status_code.Code == "603"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.emp_partner_session_id == "emp_session_456"
 
     @pytest.mark.django_db
+    @responses.activate
     def test_process_remote_stop_command_returns_acknowledgment_false_when_session_not_found(
         self, remote_stop_command
     ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.STOP_SESSION,
+            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        responses.add(
+            responses.POST,
+            "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
         EvseFactory(uid="12345")
 
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
         assert result.result is False
-        assert result.status_code.Code == "022"
+        assert result.status_code.Code == "400"
         assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
         assert result.emp_partner_session_id == "emp_session_456"
 

@@ -49,7 +49,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum, TokenType
+from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
@@ -718,20 +718,32 @@ class HubjectService:
     def _get_remote_stop_command_data(
         self, remote_stop_command: ERoamingAuthorizeRemoteStop
     ) -> dict:
+        from ocpi22.commands.repository import SessionRepository
+
         command_id = remote_stop_command.emp_partner_session_id or None
+        try:
+            session = SessionRepository.find_session_by_auth_ref(
+                remote_stop_command.emp_partner_session_id
+            )
+        except ObjectDoesNotExist as ve:
+            logger.error(f"No session found to stop, hubject remote stop failed: {ve}")
+            raise HubjectRemoteCommandError("400", "Session not found")
+
         data = {
             "response_url": build_absolute_uri(
                 reverse("chargepoint-remote-command-result", args=(command_id,))
             ),
-            "session_id": remote_stop_command.session_id.root,
+            "session_id": session.uid,
         }
         return data
 
     def _validate_command_response(self, response_data: dict) -> None:
-        if (
-            response_data.get("data", None) is None
-            or response_data.get("data").get("result") != "ACCEPTED"
-        ):
+        status_message = response_data.get("status_message", "")
+        data = response_data.get("data", None)
+        if data == "":
+            if status_message == MessageTexts.get("SESSION_NOT_FOUND"):
+                raise HubjectRemoteCommandError("400", "Session not found")
+        if not data or data.get("result") != "ACCEPTED":
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
@@ -741,7 +753,6 @@ class HubjectService:
     def process_remote_stop_command(
         self, remote_stop_command: ERoamingAuthorizeRemoteStop
     ):
-        from ocpi22.commands.repository import SessionRepository
         from ocpi22.commands.serializers import StopSessionSerializer
         from ocpi22.commands.services import StopCommandServices
 
@@ -763,7 +774,7 @@ class HubjectService:
                     extra={"errors": serializer.errors, "data": data},
                 )
                 return self._create_error_acknowledgment(
-                    remote_stop_command.model_dump(), "021"
+                    remote_stop_command.model_dump(), "022"
                 )
 
             service = StopCommandServices()
@@ -773,17 +784,14 @@ class HubjectService:
 
             self._validate_command_response(response.data)
 
-            try:
-                SessionRepository.find_session_by_auth_ref(
-                    remote_stop_command.emp_partner_session_id
-                )
-            except ObjectDoesNotExist as ve:
-                logger.error(
-                    f"No session found to stop, hubject remote stop failed: {ve}"
-                )
-                return self._create_error_acknowledgment(
-                    remote_stop_command.model_dump(), "022"
-                )
+            return ERoamingAcknowledgment(
+                result=True,
+                status_code=StatusCode(Code="000"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id=data.get("session_id", None),
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )
+
         except HubjectRemoteCommandError as hubject_error:
             return self._create_error_acknowledgment(
                 remote_stop_command.model_dump(), hubject_error.error_code
