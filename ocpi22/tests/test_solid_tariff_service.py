@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.location import Connector
+from ocpi22.models.tariff import SolidTariff
 from ocpi22.tests.factories import ConnectorFactory, TariffFactory, SolidTariffFactory
 
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -231,3 +232,56 @@ def test_find_by_ocpi_tariff_id_found():
 def test_find_by_ocpi_tariff_id_not_found():
     result = SolidTariffRepository.find_by_ocpi_tariff_id("nonexistent_uid")
     assert result is None
+
+
+@pytest.mark.django_db
+def test_set_missing_fields_handles_all_nullable_model_fields(
+    solid_tariff_service_instance,
+):
+    nullable_fields = []
+    for field in SolidTariff._meta.get_fields():
+        if (
+            hasattr(field, "null")
+            and field.null
+            and field.name not in ["external_id", "ocpi_tariff"]
+        ):
+            nullable_fields.append(field.name)
+
+    validated_data = {
+        "external_id": "test_tariff_001",
+        "currency": "EUR",
+    }
+
+    for field_name in nullable_fields:
+        validated_data[field_name] = None
+
+    validated_data["price_per_kwh"] = 0.25
+
+    solid_tariff_service_instance._set_missing_fields(validated_data)
+
+    for field_name in nullable_fields:
+        if field_name == "price_per_kwh":
+            assert f"{field_name}__isnull" not in validated_data
+            assert validated_data[field_name] == 0.25
+        else:
+            assert validated_data.get(field_name) is None
+            assert validated_data.get(f"{field_name}__isnull") is True
+
+    expected_nullable_fields = {
+        "price_per_kwh",
+        "price_per_min",
+        "price_per_hr",
+        "price_flat",
+        "parking_price_per_min",
+        "parking_price_per_hr",
+        "parking_grace_period",
+        "vat_percentage",
+        "msp",
+        "last_updated",
+    }
+
+    actual_nullable_fields = set(nullable_fields)
+    assert actual_nullable_fields == expected_nullable_fields, (
+        f"Nullable fields changed! Expected: {expected_nullable_fields}, "
+        f"Got: {actual_nullable_fields}. Update the _set_missing_fields method and this test."
+    )
