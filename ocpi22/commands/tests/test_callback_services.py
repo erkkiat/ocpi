@@ -1,5 +1,4 @@
 import json
-import uuid
 from unittest.mock import Mock, patch
 
 import pytest
@@ -12,74 +11,28 @@ from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.commands.repository import CallBackRepository
 from ocpi22.models.session import Session
 from ocpi22.tests.factories import (
-    CredentialsFactory,
-    CredentialsRoleFactory,
-    BusinessDetailsFactory,
     OCPISessionFactory,
-    CdrTokenFactory,
+    CallBackFactory,
 )
 from webhooks.choices import RemoteCommandType
 
 
 @pytest.fixture
 def callback_instance(db):
-    credentials = CredentialsFactory()
-    emsp_business_details = BusinessDetailsFactory(name="Test EMSP")
-    emsp_credentials_role = CredentialsRoleFactory(
-        role="EMSP",
-        country_code="NL",
-        party_id="TST",
-        business_details=emsp_business_details,
-        credentials=credentials,
-    )
-
-    cdr_token = CdrTokenFactory(
-        uid=str(uuid.uuid4()), ocpi_master=emsp_credentials_role
-    )
-    session = OCPISessionFactory(
-        cdr_token=cdr_token,
-        billed_to=emsp_credentials_role,
-        ocpi_master=emsp_credentials_role,
-        credentials=credentials,
-        authorization_reference=str(uuid.uuid4()),
-        status=Session.PENDING,
-    )
-
-    callback = CallBacks.objects.create(
-        session=session,
-        callback_url="https://example.com/callback",
-        authorization_reference=session.authorization_reference,
-        execution_status=CallBackExecutionStatus.PENDING,
-    )
-
-    return callback
+    return CallBackFactory()
 
 
 @pytest.fixture
 def callback_without_session(db):
-    callback = CallBacks.objects.create(
-        session=None,
-        callback_url="https://example.com/callback",
-        authorization_reference=str(uuid.uuid4()),
-        execution_status=CallBackExecutionStatus.PENDING,
-    )
-    return callback
+    return CallBackFactory(session=None)
 
 
 @pytest.fixture
 def callback_without_credentials(db):
-    session = OCPISessionFactory(
-        credentials=None,
-        status=Session.PENDING,
+    session = OCPISessionFactory(credentials=None, status=Session.PENDING)
+    return CallBackFactory(
+        session=session, authorization_reference=session.authorization_reference
     )
-
-    callback = CallBacks.objects.create(
-        session=session,
-        callback_url="https://example.com/callback",
-        authorization_reference=session.authorization_reference,
-        execution_status=CallBackExecutionStatus.PENDING,
-    )
-    return callback
 
 
 @pytest.fixture
@@ -121,6 +74,34 @@ class TestCallBackServiceSendCallback:
 
         mock_find_by_session_uid.assert_called_once_with(session_uid=mock_session.uid)
         mock_execute_callback.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "execution_status",
+        [
+            CallBackExecutionStatus.SUCCESS,
+            CallBackExecutionStatus.FAILED,
+        ],
+    )
+    @patch.object(CallBackService, "execute_callback")
+    @patch("ocpi22.commands.services.logger")
+    def test_send_callback_returns_early_when_callback_already_executed(
+        self,
+        mock_logger,
+        mock_execute_callback,
+        execution_status,
+        db,
+    ):
+        callback = CallBackFactory(execution_status=execution_status)
+
+        send_callback(
+            session_uid=callback.session.uid,
+            result="ACCEPTED",
+        )
+
+        mock_execute_callback.assert_not_called()
+        mock_logger.info.assert_called_once_with(
+            f"Callback for COMMAND session {callback.session.uid} already executed with status {execution_status}, cannot retry"
+        )
 
     @patch.object(CallBackRepository, "find_by_session_uid")
     @patch.object(CallBackService, "execute_callback")
@@ -238,38 +219,11 @@ class TestCallBackServiceSendCallback:
     def test_send_callback_with_accepted_result_sends_empty_message_list(
         self, mock_get_cert_request, db
     ):
-        credentials = CredentialsFactory()
-        emsp_business_details = BusinessDetailsFactory(name="Test EMSP")
-        emsp_credentials_role = CredentialsRoleFactory(
-            role="EMSP",
-            country_code="NL",
-            party_id="TST",
-            business_details=emsp_business_details,
-            credentials=credentials,
-        )
-
-        cdr_token = CdrTokenFactory(
-            uid=str(uuid.uuid4()), ocpi_master=emsp_credentials_role
-        )
-        session = OCPISessionFactory(
-            cdr_token=cdr_token,
-            billed_to=emsp_credentials_role,
-            ocpi_master=emsp_credentials_role,
-            credentials=credentials,
-            authorization_reference=str(uuid.uuid4()),
-            status=Session.PENDING,
-        )
-
-        callback = CallBacks.objects.create(
-            session=session,
-            callback_url="https://example.com/callback",
-            authorization_reference=session.authorization_reference,
-            execution_status=CallBackExecutionStatus.PENDING,
-        )
+        callback = CallBackFactory()
 
         responses.add(
             responses.POST,
-            "https://example.com/callback",
+            callback.callback_url,
             json={"status": "success"},
             status=200,
         )
@@ -278,7 +232,7 @@ class TestCallBackServiceSendCallback:
         mock_get_cert_request.return_value = mock_requests_session
 
         send_callback(
-            session_uid=session.uid,
+            session_uid=callback.session.uid,
             result="ACCEPTED",
             message="Integration test message",
         )
