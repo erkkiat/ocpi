@@ -8,6 +8,7 @@ import pytz
 import responses
 import time_machine
 from django.conf import settings
+from django.test import override_settings
 from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
@@ -65,7 +66,7 @@ from integrations.hubject.services import (
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.repository import SessionRepository
-from ocpi22.models.location import Location
+from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
@@ -571,7 +572,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
@@ -650,7 +651,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
@@ -1268,6 +1269,19 @@ class TestHubjectAuthorizeRemoteStart:
         assert result == expected_acknowledgment
 
     @pytest.mark.django_db
+    def test_process_remote_start_command_when_evse_is_not_available(
+        self, mock_remote_start_command, evse
+    ):
+        evse.status = "OUTOFORDER"
+        evse.save()
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="700")
+
+    @pytest.mark.django_db
     def test_prepare_start_session_data_builds_correct_structure(
         self, mock_remote_start_command, evse
     ):
@@ -1305,6 +1319,68 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result["connector_id"] == ""
+
+    @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
+    @pytest.mark.django_db
+    def test_start_session_returns_acknowledgement_false_when_response_result_is_not_accepted(
+        self, mock_remote_start_command
+    ):
+        CredentialsRoleFactory(country_code="DE", party_id="ICE")
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session"
+        ) as mock_start_session:
+            mock_start_session.return_value = OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+                data={"data": {"result": "REJECTED"}},
+            )
+            result = self.hubject_service._start_session(
+                sender_party=Party(country_code="DE", party_id="MSP"),
+                remote_start_command=mock_remote_start_command,
+                validated_data={},
+            )
+
+            assert result.result is False
+            assert result.status_code == StatusCode(Code="021")
+
+    @pytest.mark.parametrize(
+        "evse_status, expected_code",
+        [
+            (Evse.AVAILABLE, "000"),
+            (Evse.BLOCKED, "501"),
+            (Evse.CHARGING, "602"),
+            (Evse.INOPERATIVE, "700"),
+            (Evse.OUTOFORDER, "700"),
+            (Evse.PLANNED, "501"),
+            (Evse.REMOVED, "700"),
+            (Evse.RESERVED, "601"),
+            (Evse.UNKNOWN, "501"),
+            ("INVALID_STATUS", "000"),
+            (None, "603"),
+        ],
+    )
+    def test_get_hubject_error_code(self, evse_status, expected_code):
+        service = HubjectService()
+
+        if evse_status is None:
+            evse = None
+        else:
+            evse = Evse(status=evse_status)
+
+        result = service._get_hubject_error_code(evse)
+        assert result == expected_code
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_with_validation_error_return_acknowledgement_false(
+        self, mock_remote_start_command, evse
+    ):
+        mock_remote_start_command.identification.RemoteIdentification.EvcoID.root = None
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="022")
 
 
 class TestHubjectAuthorizeRemoteStop:

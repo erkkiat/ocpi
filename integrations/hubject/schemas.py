@@ -1242,3 +1242,39 @@ class HubjectCDRError(Schema):
     success: bool
     errorType: str
     error: str
+
+
+class RemoteCommandStart(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: str = Field(None, alias="SessionID")
+    evse_id: str = Field(None, alias="EvseID")
+    provider_id: str = Field(None, alias="ProviderID")
+    cpo_partner_session_id: str = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: str = Field(None, alias="EMPPartnerSessionID")
+    identification: IdentificationIn = Field(None, alias="Identification")
+    partner_product_id: str = Field(None, alias="PartnerProductID")
+
+
+class IdentificationIn(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    rfid_mifare_family_identification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(None, alias="RFIDMifareFamilyIdentification")
+    )
+    rfid_identification: Optional[RFIDIdentification] = Field(
+        None, alias="RFIDIdentification"
+    )
+    qr_code_identification: Optional[QRCodeIdentification] = Field(
+        None, alias="QRCodeIdentification"
+    )
+    plug_and_charge_identification: Optional[PlugAndChargeIdentification] = Field(
+        None, alias="PlugAndChargeIdentification"
+    )
+    remote_identification: Optional[RemoteIdentification] = Field(
+        None, alias="RemoteIdentification"
+    )

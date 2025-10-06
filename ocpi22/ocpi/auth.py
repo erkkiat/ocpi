@@ -1,5 +1,8 @@
 import base64
-from datetime import datetime, timezone
+import ipaddress
+import re
+import urllib.parse
+from abc import abstractmethod, ABC
 from logging import getLogger
 
 import binascii
@@ -12,8 +15,13 @@ from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
 from cryptography import x509
-from cryptography.hazmat._oid import NameOID
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat._oid import NameOID, ExtendedKeyUsageOID
+from cryptography.x509.verification import (
+    PolicyBuilder,
+    Store,
+    ExtensionPolicy,
+    Criticality,
+)
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.http import HttpRequest
@@ -259,91 +267,139 @@ class NinjaBasicAuth(HttpBasicAuth):
             return None
 
 
-class HubjectCertAuth(HttpAuthBase):
+class CertificateAuth(HttpAuthBase, ABC):
+    def __init__(
+        self,
+        ca_certificate: str,
+        allowed_hosts: list[str] = None,
+        require_client_auth: bool = True,
+        require_server_auth: bool = False,
+        header_name: str = "X-Amzn-Mtls-Clientcert",
+    ):
+        super().__init__()
+        self.ca_certificate = ca_certificate
+        self.header_name = header_name
+        self.allowed_hosts = allowed_hosts or []
+        self.allowed_ekus = set()
+
+        if require_client_auth:
+            self.allowed_ekus.add(ExtendedKeyUsageOID.CLIENT_AUTH)
+        if require_server_auth:
+            self.allowed_ekus.add(ExtendedKeyUsageOID.SERVER_AUTH)
+
     def __call__(self, request: HttpRequest):
         return self.authenticate(request)
 
     def _get_ip_address(self, request: HttpRequest) -> str:
-        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        ip = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        )  # left-most = client IP
         if not ip:
             ip = request.META.get("REMOTE_ADDR")
+        try:
+            ip = str(ipaddress.ip_address(ip))
+        except ValueError:
+            raise HttpError(400, f"Invalid IP address format: {ip}")
 
-        if not ip or ip not in settings.HUBJECT_HOSTS:
+        if not ip or ip not in self.allowed_hosts:
             raise HttpError(403, f"Forbidden: IP {ip} not allowed")
         return ip
 
-    def _validate_public_key(self, private_key_pem, received_cert) -> None:
-        private_key = serialization.load_pem_private_key(
-            private_key_pem.encode(), password=None
-        )
+    @abstractmethod
+    def _get_certificate_header(self, request: HttpRequest) -> str:
+        return urllib.parse.unquote(request.headers.get(self.header_name, ""))
 
-        expected_public_key = private_key.public_key()
-        cert_public_key = received_cert.public_key()
+    def _load_all_certificates(self, cert_pem: str):
+        cert_pattern = r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----"
+        cert_matches = re.findall(cert_pattern, cert_pem, re.DOTALL)
+        return [x509.load_pem_x509_certificate(cert.encode()) for cert in cert_matches]
 
-        expected_public_key_bytes = expected_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
-        cert_public_key_bytes = cert_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        )
+    @abstractmethod
+    def _build_client_verifier(self, store: Store):
+        builder = PolicyBuilder().store(store)
+        return builder.build_client_verifier()
 
-        if expected_public_key_bytes != cert_public_key_bytes:
-            raise HttpError(
-                403,
-                "Forbidden: Provided certificate public key does not match expected private key",
-            )
-        return
+    def _validate_certificate_chain(self, certificates: list[x509.Certificate]):
+        root_cert = x509.load_pem_x509_certificate(self.ca_certificate.encode("utf-8"))
+        client_cert = certificates[0]
+        intermediate_certs = certificates[1:] if len(certificates) > 1 else []
+        trust_store_certs = intermediate_certs + [root_cert]
+        store = Store(trust_store_certs)
 
-    def _validate_expiry_date(self, received_cert) -> None:
-        now = datetime.now(timezone.utc)
-        if (
-            now < received_cert.not_valid_before_utc
-            or now > received_cert.not_valid_after_utc
-        ):
-            raise HttpError(403, "Forbidden: Certificate expired or not yet valid")
-        return
+        try:
+            verifier = self._build_client_verifier(store)
+            chain = verifier.verify(client_cert, intermediate_certs)
+            return chain
 
-    def authenticate(self, request: HttpRequest):
+        except Exception as e:
+            logger.error(f"Certificate validation failed: {e}", exc_info=True)
+            raise HttpError(403, f"Certificate validation failed: {str(e)}")
+
+    def _extract_certificate_info(self, cert_pem: str) -> dict:
+        received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+        subject = received_cert.subject
+        cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        cn_value = cn[0].value if cn else None
+
+        return {"cert_cn": cn_value, "subject": str(subject)}
+
+    def authenticate(self, request: HttpRequest) -> dict:
         try:
             ip = self._get_ip_address(request)
         except HttpError as e:
             logger.warning(e.args[1], exc_info=True)
             raise e
 
-        cert_pem = request.META.get("HTTP_X_SSL_CLIENT_CERT")
+        cert_pem = self._get_certificate_header(request)
         if not cert_pem:
             raise HttpError(403, "Forbidden: No client certificate provided")
 
-        verify_status = request.META.get("HTTP_X_SSL_CLIENT_VERIFY")
-        if verify_status != "SUCCESS":
-            raise HttpError(
-                403, f"Forbidden: Certificate verification failed: {verify_status}"
+        certificates = self._load_all_certificates(cert_pem)
+        if not certificates:
+            raise HttpError(403, "Forbidden: Invalid client certificate format")
+
+        self._validate_certificate_chain(certificates)
+
+        cert_info = self._extract_certificate_info(cert_pem)
+        cert_info["ip"] = ip
+
+        return cert_info
+
+
+class HubjectCertAuth(CertificateAuth):
+    def __init__(self):
+        super().__init__(
+            ca_certificate=settings.HUBJECT_CA_CERTIFICATE,
+            allowed_hosts=settings.HUBJECT_HOSTS,
+            require_client_auth=True,
+            require_server_auth=True,
+        )
+
+    def _get_certificate_header(self, request: HttpRequest) -> str:
+        return urllib.parse.unquote(request.headers.get("X-Amzn-Mtls-Clientcert", ""))
+
+    def _build_client_verifier(self, store: Store):
+        ee_policy = ExtensionPolicy.webpki_defaults_ee()
+
+        def eku_validator(
+            policy, cert: x509.Certificate, eku: x509.ExtendedKeyUsage | None
+        ):
+            if eku is None:
+                raise ValueError("Client certificate missing EKU")
+            for oid in eku:
+                if oid not in self.allowed_ekus:
+                    raise ValueError(f"Unsupported EKU OID {oid.dotted_string}")
+
+        ee_policy = ee_policy.require_present(
+            x509.ExtendedKeyUsage, Criticality.CRITICAL, eku_validator
+        )
+
+        builder = (
+            PolicyBuilder()
+            .store(store)
+            .extension_policies(
+                ca_policy=ExtensionPolicy.webpki_defaults_ca(), ee_policy=ee_policy
             )
+        )
 
-        if "-----BEGIN CERTIFICATE-----" not in cert_pem:
-            try:
-                received_cert = base64.b64decode(cert_pem).decode("utf-8")
-            except Exception:
-                raise HttpError(403, "Invalid client certificate format")
-        else:
-            received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
-
-        private_key_pem = settings.HUBJECT_INCOMING_PRIVATE_KEY
-        if not private_key_pem:
-            raise HttpError(
-                403, "Forbidden: HUBJECT_INCOMING_PRIVATE_KEY not configured"
-            )
-        try:
-            self._validate_expiry_date(received_cert)
-            self._validate_public_key(private_key_pem, received_cert)
-        except HttpError as e:
-            logger.warning(e.args[1], exc_info=True)
-            raise e
-
-        subject = received_cert.subject
-        cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
-        cn_value = cn[0].value if cn else None
-
-        return {"ip": ip, "cert": cert_pem, "cert_cn": cn_value}
+        return builder.build_client_verifier()

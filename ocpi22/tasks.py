@@ -52,10 +52,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 pull_hour = random.randint(0, 3)
 pull_minute = random.randint(0, 59)
 
-# Register celery signals
-# DO NOT REMOVE IT!!
-from base_task_services import setup_worker_connection  # noqa
-
 app.conf.beat_schedule = {
     "run-me-every-minute": {
         "task": "ocpi22.tasks.celery_heartbeat",
