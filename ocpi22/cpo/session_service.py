@@ -25,10 +25,13 @@ class SessionService:
         session.save(update_fields=["status", "start_kwh"])
 
     def start_command_session(self, session: Session, start_kwh: FloatField) -> None:
+        original_status = session.status
         session.status = Session.ACTIVE
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh", "stop_kwh"])
+        if original_status != Session.PENDING:
+            logger.info("Cannot send ACCEPTED callback for non-pending session")
         send_callback.delay(
             session_uid=session.uid,
             result=CommandResultType.ACCEPTED.value,
