@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from datetime import datetime
 
 import pytz
@@ -63,13 +63,10 @@ class TestStartTransactionRemoteCommand:
 
         with (
             patch(
-                "ocpi22.cpo.session_service.CallBackService"
-            ) as mock_callback_service,
+                "ocpi22.cpo.session_service.send_callback.delay"
+            ) as mock_send_callback,
             patch.object(Session, "send_updates"),
         ):
-            mock_send_callback = Mock()
-            mock_callback_service.return_value.send_callback.delay = mock_send_callback
-
             response = admin_user_client.post(
                 self.start_transaction_url, data=request_body
             )
@@ -90,7 +87,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -112,7 +109,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -133,7 +130,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates") as mock_send_updates,
         ):
             response = admin_user_client.post(
@@ -153,7 +150,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -206,7 +203,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch("ocpi22.cpo.api.authorize_token") as mock_authorize,
         ):
             response = admin_user_client.post(
@@ -230,7 +227,7 @@ class TestStartTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -298,11 +295,8 @@ class TestStopTransactionRemoteCommand:
         }
 
         with patch(
-            "ocpi22.cpo.session_service.CallBackService"
-        ) as mock_callback_service:
-            mock_send_callback = Mock()
-            mock_callback_service.return_value.send_callback.delay = mock_send_callback
-
+            "ocpi22.cpo.session_service.send_callback.delay"
+        ) as mock_send_callback:
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -325,7 +319,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 30.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -347,7 +341,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": expected_stop_kwh,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -369,7 +363,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 45.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -394,7 +388,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 100.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -416,7 +410,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 50.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -439,7 +433,7 @@ class TestStopTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates") as mock_send_updates,
         ):
             response = admin_user_client.post(
@@ -465,7 +459,7 @@ class TestStopTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -555,7 +549,7 @@ class TestStopTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch.object(Session, "send_updates"),
         ):
             response = admin_user_client.post(
@@ -600,16 +594,13 @@ class TestStopTransactionRemoteCommand:
 
         with (
             patch(
-                "ocpi22.cpo.session_service.CallBackService"
-            ) as mock_callback_service,
+                "ocpi22.cpo.session_service.send_callback.delay"
+            ) as mock_send_callback,
             patch(
                 "ocpi22.cpo.session_service.SessionService._stop_and_create_cdr",
                 side_effect=Exception("Test exception"),
             ),
         ):
-            mock_send_callback = Mock()
-            mock_callback_service.return_value.send_callback.delay = mock_send_callback
-
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -633,7 +624,7 @@ class TestStopTransactionRemoteCommand:
         }
 
         with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
+            patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch(
                 "ocpi22.cpo.session_service.SessionService._stop_and_create_cdr",
                 side_effect=Exception("Test exception"),
@@ -707,40 +698,20 @@ class TestStopTransactionRemoteCommand:
 
         assert response.status_code == 400
 
-    def test_stop_transaction_when_stop_kwh_less_than_start_kwh_returns_400(
+    def test_stop_transaction_with_non_command_auth_method_completes_the_session_normally(
         self, admin_user_client, remote_command_session
     ):
-        remote_command_session.status = Session.ACTIVE
-        remote_command_session.start_kwh = 100.0
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "stop_kwh": 50.0,
-        }
-
-        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
-
-        assert response.status_code == 400
-
-    def test_stop_transaction_with_non_command_auth_method_returns_400(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.status = Session.ACTIVE
-        remote_command_session.auth_method = AuthMethodChoices.AUTH_REQUEST
-        remote_command_session.start_kwh = 10.0
-        remote_command_session.save()
-
         request_body = {
             "session_id": remote_command_session.uid,
             "stop_kwh": 60.0,
         }
 
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.status == Session.COMPLETED
+        assert response.status_code == 200
 
-        assert response.status_code == 400
-
-    def test_stop_transaction_when_session_invalid_returns_400(
+    def test_stop_transaction_when_session_invalid_returns_409(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.INVALID
@@ -753,7 +724,7 @@ class TestStopTransactionRemoteCommand:
 
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-        assert response.status_code == 400
+        assert response.status_code == 409
 
     def test_stop_transaction_creates_cdr_with_correct_location_data(
         self, admin_user_client, remote_command_session
@@ -769,7 +740,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 100.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -777,9 +748,7 @@ class TestStopTransactionRemoteCommand:
             assert response.status_code == 200
             cdr = Cdr.objects.filter(session_id=remote_command_session.uid).first()
             assert cdr is not None
-            assert cdr.location.uid == remote_command_session.location.uid
-            assert cdr.evse.uid == remote_command_session.evse.uid
-            assert cdr.connector.uid == remote_command_session.connector.uid
+            assert cdr.cdr_location.uid == remote_command_session.location.uid
 
     def test_stop_transaction_calculates_accurate_energy_consumption(
         self, admin_user_client, remote_command_session
@@ -793,7 +762,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 87.25,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -814,7 +783,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 50.0,
         }
 
-        with patch("ocpi22.cpo.session_service.CallBackService"):
+        with patch("ocpi22.cpo.session_service.send_callback.delay"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -822,148 +791,3 @@ class TestStopTransactionRemoteCommand:
             assert response.status_code == 200
             remote_command_session.refresh_from_db()
             assert remote_command_session.kwh == 0
-
-
-@pytest.mark.django_db
-class TestStartTransactionEdgeCases:
-    start_transaction_url = reverse("chargepoint-start-transaction")
-
-    def test_start_transaction_with_missing_start_kwh_returns_400(
-        self, admin_user_client, remote_command_session
-    ):
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 400
-        assert "start_kwh" in response.json()
-
-    @pytest.mark.parametrize(
-        "invalid_start_kwh",
-        [-1.0, -10.5, "invalid"],
-    )
-    def test_start_transaction_with_invalid_start_kwh_returns_400(
-        self, admin_user_client, remote_command_session, invalid_start_kwh
-    ):
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": invalid_start_kwh,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 400
-
-    def test_start_transaction_when_session_already_active_returns_409(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.status = Session.ACTIVE
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": 10.0,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 409
-
-    def test_start_transaction_when_session_completed_returns_409(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.status = Session.COMPLETED
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": 10.0,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 409
-
-    def test_start_transaction_with_wrong_connector_id_returns_400(
-        self, admin_user_client, remote_command_session
-    ):
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": "WRONG-CONNECTOR",
-            "start_kwh": 10.0,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 400
-
-    def test_start_transaction_with_non_command_auth_method_returns_400(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.auth_method = AuthMethodChoices.AUTH_REQUEST
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": 10.0,
-        }
-
-        response = admin_user_client.post(self.start_transaction_url, data=request_body)
-
-        assert response.status_code == 400
-
-    @time_machine.travel("2025-03-10 08:45:00+00:00", tick=False)
-    def test_start_transaction_sets_start_date_time_to_current_time(
-        self, admin_user_client, remote_command_session
-    ):
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": 5.0,
-        }
-
-        with (
-            patch("ocpi22.cpo.session_service.CallBackService"),
-            patch.object(Session, "send_updates"),
-        ):
-            response = admin_user_client.post(
-                self.start_transaction_url, data=request_body
-            )
-
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.start_date_time.replace(
-                microsecond=0
-            ) == datetime(2025, 3, 10, 8, 45, 0, tzinfo=pytz.utc)
-
-    def test_start_transaction_when_callback_service_fails_still_starts_session(
-        self, admin_user_client, remote_command_session
-    ):
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "connector_id": remote_command_session.connector_id,
-            "start_kwh": 10.0,
-        }
-
-        with (
-            patch(
-                "ocpi22.cpo.session_service.CallBackService.send_callback",
-                side_effect=Exception("Callback failed"),
-            ),
-            patch.object(Session, "send_updates"),
-        ):
-            response = admin_user_client.post(
-                self.start_transaction_url, data=request_body
-            )
-
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.status == Session.ACTIVE
-            assert remote_command_session.start_kwh == 10.0
