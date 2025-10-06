@@ -307,6 +307,11 @@ def send_callback(
     if not callback:
         logger.warning(f"No callback found for COMMAND session {session_uid}")
         return
+    if callback.execution_status != CallBackExecutionStatus.PENDING:
+        logger.info(
+            f"Callback for COMMAND session {session_uid} already executed with status {callback.execution_status}, cannot retry"
+        )
+        return
     result = CommandResultType(result)
     CallBackService.execute_callback(callback, result, message)
     logger.info(
