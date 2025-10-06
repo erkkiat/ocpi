@@ -379,7 +379,7 @@ class CommandsViewSetLegacy(GenericViewSet):
         authorization = Authorization.objects.filter(authorization_reference=command_id)
         if not session.exists() and not authorization:
             return OCPIResponse(
-                "Session not found",
+                MessageTexts.get("SESSION_NOT_FOUND"),
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             )

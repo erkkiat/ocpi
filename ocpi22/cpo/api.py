@@ -930,7 +930,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     if not session:
                         return Response(
                             dict(
-                                status_text="Session not found",
+                                status_text=MessageTexts.get("SESSION_NOT_FOUND"),
                                 token_id=token_id,
                                 authorization_reference=command[
                                     "authorization_reference"
