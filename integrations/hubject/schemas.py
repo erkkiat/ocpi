@@ -639,19 +639,22 @@ class OpeningTimes(BaseModel):
     )
 
 
-class ERoamingAcknowledgment(BaseModel):
-    Result: bool = Field(
+class ERoamingAcknowledgment(HubjectBaseModel):
+    result: bool = Field(
         ...,
+        alias="Result",
         description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
-    StatusCode: StatusCode
-    SessionID: Optional[SessionID] = None
-    CPOPartnerSessionID: Optional[str] = Field(
+    status_code: StatusCode = Field(..., alias="StatusCode")
+    session_id: Optional[SessionID] = Field(None, alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
 
@@ -770,13 +773,11 @@ class RFIDIdentification(BaseModel):
 
 
 class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass] = (
-        Field(default=None)
-    )
-    # RFIDIdentification: Optional[RFIDIdentification] = Field(default=None)
-    # QRCodeIdentification: Optional[QRCodeIdentification] = Field(default=None)
-    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = Field(default=None)
-    # RemoteIdentification: Optional[RemoteIdentification] = Field(default=None)
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass]
+    RFIDIdentification: Optional[RFIDIdentification]
+    QRCodeIdentification: Optional[QRCodeIdentification]
+    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
+    RemoteIdentification: Optional[RemoteIdentification]
 
 
 class EvseDataRecord(BaseModel):
@@ -923,20 +924,22 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     )
 
 
-class ERoamingAuthorizeRemoteStart(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStart(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
-    Identification: Identification
-    PartnerProductID: Optional[ProductID] = None
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
+    identification: Identification = Field(..., alias="Identification")
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
 class ERoamingAuthorizeStart(HubjectBaseModel):
@@ -1237,3 +1240,39 @@ class HubjectCDRError(Schema):
     success: bool
     errorType: str
     error: str
+
+
+class RemoteCommandStart(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: str = Field(None, alias="SessionID")
+    evse_id: str = Field(None, alias="EvseID")
+    provider_id: str = Field(None, alias="ProviderID")
+    cpo_partner_session_id: str = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: str = Field(None, alias="EMPPartnerSessionID")
+    identification: IdentificationIn = Field(None, alias="Identification")
+    partner_product_id: str = Field(None, alias="PartnerProductID")
+
+
+class IdentificationIn(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    rfid_mifare_family_identification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(None, alias="RFIDMifareFamilyIdentification")
+    )
+    rfid_identification: Optional[RFIDIdentification] = Field(
+        None, alias="RFIDIdentification"
+    )
+    qr_code_identification: Optional[QRCodeIdentification] = Field(
+        None, alias="QRCodeIdentification"
+    )
+    plug_and_charge_identification: Optional[PlugAndChargeIdentification] = Field(
+        None, alias="PlugAndChargeIdentification"
+    )
+    remote_identification: Optional[RemoteIdentification] = Field(
+        None, alias="RemoteIdentification"
+    )

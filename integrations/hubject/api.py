@@ -1,13 +1,29 @@
+import logging
 from typing import Dict
 
+from ninja import Router
+from pydantic_core import ValidationError
+
 from custom_ninja_api import CustomNinjaAPI
-from integrations.hubject.schemas import PricingProductData, ActionType, HubjectCDRError
+from integrations.hubject.schemas import (
+    PricingProductData,
+    ActionType,
+    HubjectCDRError,
+    ERoamingAuthorizeRemoteStart,
+    ERoamingAcknowledgment,
+    Identification,
+    RemoteIdentification,
+    StatusCode,
+    RemoteCommandStart,
+)
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.tariff import SolidTariff
-from ocpi22.ocpi.auth import NinjaBasicAuth
+from ocpi22.ocpi.auth import NinjaBasicAuth, HubjectCertAuth
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
+
+logger = logging.getLogger(__name__)
 
 api = CustomNinjaAPI(
     auth=NinjaBasicAuth(),
@@ -93,3 +109,75 @@ def send_charge_detail_record(request, session_id: str):
         return 503, HubjectCDRError(**result)
     else:
         return 200, result
+
+
+remote_command_router = Router()
+hubject_auth = HubjectCertAuth()
+
+
+@remote_command_router.post(
+    "providers/{provider_id}/authorize-remote/start",
+    url_name="hubject-remote-start",
+    auth=hubject_auth,
+    response={
+        (200, 400, 503): ERoamingAcknowledgment,
+    },
+)
+def receive_remote_start_command(
+    request, provider_id: str, remote_start_command: RemoteCommandStart
+):
+    try:
+        if provider_id != remote_start_command.provider_id:
+            return 400, ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_start_command.session_id,
+                cpo_partner_session_id=remote_start_command.cpo_partner_session_id
+                or "",
+                emp_partner_session_id=remote_start_command.emp_partner_session_id
+                or "",
+            )
+        command = ERoamingAuthorizeRemoteStart(
+            session_id=remote_start_command.session_id,
+            cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
+            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+            provider_id=remote_start_command.provider_id or provider_id,
+            evse_id=remote_start_command.evse_id,
+            identification=Identification(
+                RFIDIdentification=None,
+                RFIDMifareFamilyIdentification=None,
+                RemoteIdentification=RemoteIdentification(
+                    EvcoID=remote_start_command.identification.remote_identification.EvcoID
+                ),
+                QRCodeIdentification=None,
+                PlugAndChargeIdentification=None,
+            ),
+            partner_product_id=remote_start_command.partner_product_id,
+        )
+    except ValidationError:
+        return 400, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="022"),
+            session_id=None,
+            cpo_partner_session_id=remote_start_command.cpo_partner_session_id or "",
+            emp_partner_session_id=remote_start_command.emp_partner_session_id or "",
+        )
+    try:
+        result = hubject_service.process_remote_start_command(command)
+        return 200, result
+    except Exception:
+        logger.exception(msg="Send hubject remote start failed", exc_info=True)
+        return 503, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="021"),
+            session_id=remote_start_command.session_id,
+            cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
+            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+        )
+
+
+api.add_router(
+    "api/oicp/charging/v21/",
+    remote_command_router,
+    tags=["Hubject Remote Commands"],
+)
