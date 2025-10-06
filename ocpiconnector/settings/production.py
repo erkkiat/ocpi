@@ -56,6 +56,7 @@ CACHES = {
     },
 }
 
+
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
     "default": {
@@ -65,7 +66,7 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
-        "CONN_MAX_AGE": 780,
+        "CONN_MAX_AGE": 300,
         "OPTIONS": {"ssl_mode": "REQUIRED"},
         "CONN_HEALTH_CHECKS": True,
     }
