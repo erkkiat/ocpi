@@ -97,10 +97,11 @@ class TestCallBackServiceSendCallback:
         return session
 
     @pytest.fixture
-    def mock_callback(self):
+    def pending_callback(self):
         callback = Mock(spec=CallBacks)
         callback.id = 456
         callback.callback_url = "https://example.com/callback"
+        callback.execution_status = CallBackExecutionStatus.PENDING
         return callback
 
     @patch.object(CallBackRepository, "find_by_session_uid")
@@ -130,9 +131,9 @@ class TestCallBackServiceSendCallback:
         mock_execute_callback,
         mock_find_by_session_uid,
         mock_session,
-        mock_callback,
+        pending_callback,
     ):
-        mock_find_by_session_uid.return_value = mock_callback
+        mock_find_by_session_uid.return_value = pending_callback
         mock_execute_callback.return_value = True
 
         send_callback(
@@ -142,7 +143,7 @@ class TestCallBackServiceSendCallback:
 
         expected_log_message = (
             f"Callback executed for COMMAND session {mock_session.uid} "
-            f"to {mock_callback.callback_url}"
+            f"to {pending_callback.callback_url}"
         )
         mock_logger.info.assert_called_once_with(expected_log_message)
 
@@ -153,9 +154,9 @@ class TestCallBackServiceSendCallback:
         mock_execute_callback,
         mock_find_by_session_uid,
         mock_session,
-        mock_callback,
+        pending_callback,
     ):
-        mock_find_by_session_uid.return_value = mock_callback
+        mock_find_by_session_uid.return_value = pending_callback
         mock_execute_callback.return_value = True
 
         send_callback(
@@ -165,7 +166,7 @@ class TestCallBackServiceSendCallback:
         )
 
         mock_execute_callback.assert_called_once_with(
-            mock_callback, CommandResultType.ACCEPTED, "Stop session message"
+            pending_callback, CommandResultType.ACCEPTED, "Stop session message"
         )
 
     @pytest.mark.parametrize(
@@ -185,10 +186,10 @@ class TestCallBackServiceSendCallback:
         mock_execute_callback,
         mock_find_by_session_uid,
         mock_session,
-        mock_callback,
+        pending_callback,
         command_result,
     ):
-        mock_find_by_session_uid.return_value = mock_callback
+        mock_find_by_session_uid.return_value = pending_callback
         mock_execute_callback.return_value = True
 
         send_callback(
@@ -197,7 +198,7 @@ class TestCallBackServiceSendCallback:
         )
 
         mock_execute_callback.assert_called_once_with(
-            mock_callback, CommandResultType(command_result), None
+            pending_callback, CommandResultType(command_result), None
         )
 
     @pytest.mark.parametrize(
@@ -217,10 +218,10 @@ class TestCallBackServiceSendCallback:
         mock_execute_callback,
         mock_find_by_session_uid,
         mock_session,
-        mock_callback,
+        pending_callback,
         callback_type,
     ):
-        mock_find_by_session_uid.return_value = mock_callback
+        mock_find_by_session_uid.return_value = pending_callback
         mock_execute_callback.return_value = True
 
         send_callback(
@@ -229,7 +230,7 @@ class TestCallBackServiceSendCallback:
         )
 
         mock_execute_callback.assert_called_once_with(
-            mock_callback, CommandResultType.ACCEPTED, None
+            pending_callback, CommandResultType.ACCEPTED, None
         )
 
     @patch("ocpi22.commands.services.get_certificate_loaded_request")
