@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import FloatField
 
 from ocpi22.commands.serializers import CommandResultType
-from ocpi22.commands.services import CallBackService
+from ocpi22.commands.services import send_callback
 from ocpi22.cpo.services import logger, CdrService
 from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.models.enum import AuthMethodChoices
@@ -29,7 +29,7 @@ class SessionService:
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh", "stop_kwh"])
-        CallBackService().send_callback.delay(
+        send_callback.delay(
             session_uid=session.uid,
             result=CommandResultType.ACCEPTED.value,
         )
@@ -48,13 +48,13 @@ class SessionService:
         except Exception:
             message = f"Error stopping remote command session {session.uid}, sending REJECTED callback"
             logger.exception(message)
-            CallBackService().send_callback.delay(
+            send_callback.delay(
                 session_uid=session.uid,
                 result=CommandResultType.REJECTED.value,
                 message=f"Error stopping session {session.uid}",
             )
             return False
-        CallBackService().send_callback.delay(
+        send_callback.delay(
             session_uid=session.uid,
             result=CommandResultType.ACCEPTED.value,
         )

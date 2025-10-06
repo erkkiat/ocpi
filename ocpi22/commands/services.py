@@ -296,23 +296,23 @@ class CallBackService:
             cls.mark_failed(callback, None, f"Unexpected error: {str(e)}")
             return False
 
-    @shared_task
-    def send_callback(
-        self,
-        session_uid: str,
-        result: str,
-        message: str = None,
-    ) -> None:
-        callback = CallBackRepository.find_by_session_uid(session_uid=session_uid)
-        if not callback:
-            logger.warning(f"No callback found for COMMAND session {session_uid}")
-            return
-        result = CommandResultType(result)
-        self.execute_callback(callback, result, message)
-        logger.info(
-            f"Callback executed for COMMAND session {session_uid} to {callback.callback_url}"
-        )
+
+@shared_task(name="ocpi22.commands.send_callback")
+def send_callback(
+    session_uid: str,
+    result: str,
+    message: str = None,
+) -> None:
+    callback = CallBackRepository.find_by_session_uid(session_uid=session_uid)
+    if not callback:
+        logger.warning(f"No callback found for COMMAND session {session_uid}")
         return
+    result = CommandResultType(result)
+    CallBackService.execute_callback(callback, result, message)
+    logger.info(
+        f"Callback executed for COMMAND session {session_uid} to {callback.callback_url}"
+    )
+    return
 
 
 class InvalidSenderPartyError(Exception):
