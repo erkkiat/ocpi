@@ -134,7 +134,8 @@ class StartCommandService(RemoteCommandServices):
         credentials: Credentials,
         validated_data: Dict[str, Any],
     ) -> OCPIResponse:
-        billed_to = get_credentialsrole(party=sender_party)
+        # Someone we are not connected to can send a remote start request via Hubs. So create=True
+        billed_to = get_credentialsrole(party=sender_party, create=True)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],

@@ -174,6 +174,8 @@ def hostname_variants(hostname):
     ]
 
 
+HUBJECT_HOSTS = []
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",

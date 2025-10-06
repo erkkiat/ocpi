@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 ENV = os.getenv("ENV", "development").lower()
 
+HUBJECT_HOSTS = ["18.195.149.69", "18.195.61.108"]
 DEBUG = strtobool(os.getenv("DEBUG", "True"))
 ALLOWED_HOSTS.extend(["*"])  # noqa
 MQTT_BROKER = os.getenv("MQTT_BROKER", "emqx")
