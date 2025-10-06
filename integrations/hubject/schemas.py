@@ -1258,6 +1258,18 @@ class RemoteCommandStart(Schema):
     partner_product_id: str = Field(None, alias="PartnerProductID")
 
 
+class RemoteCommandStop(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: str = Field(None, alias="SessionID")
+    evse_id: str = Field(None, alias="EvseID")
+    provider_id: str = Field(None, alias="ProviderID")
+    cpo_partner_session_id: str = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: str = Field(None, alias="EMPPartnerSessionID")
+
+
 class IdentificationIn(Schema):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, alias_generator=to_pascal
