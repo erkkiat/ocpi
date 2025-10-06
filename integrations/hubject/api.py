@@ -182,11 +182,7 @@ def receive_remote_start_command(
     "providers/{provider_id}/authorize-remote/stop/",
     url_name="hubject-remote-stop",
     auth=hubject_auth,
-    response={
-        200: ERoamingAcknowledgment,
-        400: HubjectCDRError,
-        503: HubjectCDRError,
-    },
+    response={(200, 400, 503): ERoamingAcknowledgment},
 )
 def receive_remote_stop_command(
     request, provider_id: str, remote_stop_command: RemoteCommandStop
