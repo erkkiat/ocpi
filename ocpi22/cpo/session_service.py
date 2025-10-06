@@ -28,7 +28,7 @@ class SessionService:
         session.status = Session.ACTIVE
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
-        session.save(update_fields=["status", "start_kwh"])
+        session.save(update_fields=["status", "start_kwh", "stop_kwh"])
         CallBackService().send_callback.delay(
             session_uid=session.uid,
             result=CommandResultType.ACCEPTED.value,
