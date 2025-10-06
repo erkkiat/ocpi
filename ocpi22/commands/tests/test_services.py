@@ -275,6 +275,7 @@ class TestCommandServices:
             "evse_uid": evse.uid,
             "connector_id": connector.uid,
             "location_id": evse.location.uid,
+            "response_url": "http://localhost/commands/results/AUTH123/",
         }
         credentials = CredentialsFactory()
 
