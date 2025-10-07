@@ -470,6 +470,38 @@ CELERY_TASK_ALWAYS_EAGER = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "Fals
 CELERY_TASK_IGNORE_RESULTS = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
+# Redis connection resilience settings - Fix for timeout errors
+CELERY_BROKER_CONNECTION_RETRY = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 10
+
+BROKER_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "socket_keepalive_options": {
+        1: 10,
+        2: 10,
+        3: 3,
+    },
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+}
+
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+}
+
+CELERY_BROKER_POOL_LIMIT = 20
+CELERY_REDIS_MAX_CONNECTIONS = 50
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
+
 # JWT authentication
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=48)
