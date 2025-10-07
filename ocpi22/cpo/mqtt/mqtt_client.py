@@ -11,8 +11,7 @@ from typing import Optional, Callable
 from paho.mqtt import client as mqtt
 from django.db import close_old_connections
 
-# Import ensure_db_connection (your existing decorator)
-from ocpi22.cpo.mqtt.db_utils import ensure_db_connection
+from ocpiconnector.db_services import ensure_db_connection
 from ocpi22.cpo.mqtt import mqtt_handler
 
 logger = getLogger(__name__)
@@ -54,7 +53,6 @@ class MQTTClientSingleton:
         self.client: Optional[mqtt.Client] = None
         self._initialized = True
 
-        # ✅ Generate client_id once, reuse forever
         if not MQTTClientSingleton._client_id:
             MQTTClientSingleton._client_id = f"ROAMING_{uuid.uuid4()}"
 
