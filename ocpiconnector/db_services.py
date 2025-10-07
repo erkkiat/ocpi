@@ -40,6 +40,7 @@ def ensure_db_connection(func):
                 logger.warning(
                     f"{func.__name__}: DB issue detected; repairing and retrying once: {e}"
                 )
+                close_old_connections()
                 repair_connection("default")
                 time.sleep(0.1)
                 return func(*args, **kwargs)
