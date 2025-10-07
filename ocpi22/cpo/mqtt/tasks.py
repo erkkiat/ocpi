@@ -57,6 +57,39 @@ class CeleryConfig:
     task_soft_time_limit = 240
     task_always_eager = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 
+    broker_connection_retry = True
+    broker_connection_retry_on_startup = True
+    broker_connection_max_retries = 10
+
+    broker_transport_options = {
+        "socket_timeout": 30,
+        "socket_connect_timeout": 30,
+        "socket_keepalive": True,
+        "socket_keepalive_options": {
+            1: 10,
+            2: 10,
+            3: 3,
+        },
+        "retry_on_timeout": True,
+        "health_check_interval": 30,
+    }
+
+    result_backend_transport_options = {
+        "socket_timeout": 30,
+        "socket_connect_timeout": 30,
+        "socket_keepalive": True,
+        "retry_on_timeout": True,
+        "health_check_interval": 30,
+    }
+
+    broker_pool_limit = 20
+    redis_max_connections = 50  # Increased for more headroom
+    task_acks_late = True
+    task_reject_on_worker_lost = True
+    worker_prefetch_multiplier = 1
+    worker_cancel_long_running_tasks_on_connection_loss = True
+    worker_max_tasks_per_child = 1000
+
 
 # Todo: The tasks should be independent of Django, so we can run them in a separate process
 app = Celery("mqtt_tasks", task_cls=RefreshTokenBaseTask)
