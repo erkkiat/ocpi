@@ -1,7 +1,7 @@
+from charset_normalizer.md import getLogger
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
-import logging
 
 from django.db.utils import OperationalError as DjangoOperationalError
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -26,10 +26,9 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
-from ocpiconnector.db_services import logger, ensure_db_connection
 from ocpiconnector.party import Party
 
-logging.basicConfig(level=logging.DEBUG)
+logger = getLogger(__name__)
 
 
 def _decode_message(message):
@@ -40,7 +39,6 @@ def _decode_message(message):
         return None
 
 
-@ensure_db_connection
 def process_meter_values_data(message) -> None:
     decoded_meter_message = _decode_message(message)
     if not decoded_meter_message:
@@ -63,7 +61,6 @@ def process_meter_values_data(message) -> None:
     return
 
 
-@ensure_db_connection
 def process_status_update_data(message) -> None:
     decoded_message = _decode_message(message)
     if not decoded_message:
@@ -96,7 +93,6 @@ def _find_token_by_uid(token_id):
     return Token.objects.filter(uid__iexact=token_id).first()
 
 
-@ensure_db_connection
 def process_authorize_data(message):
     decoded_message = _decode_message(message)
     if not decoded_message:
