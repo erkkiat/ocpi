@@ -2,6 +2,8 @@ import logging
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 import util
 
@@ -297,3 +299,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
         raise TypeError(
             f"Session must be a Session object or a string, not '{type(value)}'"
         )
+
+
+@receiver(post_save, sender=Session)
+def session_post_save(sender, instance: Session, raw=None, *_args, **_kwargs):
+    if not raw:  # Skip when installing test fixtures
+        Cdr.session_changed(instance)
