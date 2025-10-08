@@ -84,10 +84,7 @@ class MQTTClientSingleton:
         @ensure_db_connection
         @wraps(callback)
         def safe_callback(client, userdata, *args, **kwargs):
-            close_old_connections()
-
             try:
-                # Execute the actual callback
                 return callback(client, userdata, *args, **kwargs)
             except Exception as e:
                 logger.error(
