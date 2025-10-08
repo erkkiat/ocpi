@@ -394,7 +394,23 @@ class TestChargePointAPI:
         }
 
     @time_machine.travel("2025-03-31 06:26:58")
-    def test_stop_transaction_post_return_401(
+    def test_stop_transaction_post_with_unauthenticated_client_return_401(self, client):
+        request_body = {"session_id": "Session123", "stop_kwh": 10}
+        response = client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 401
+
+    @time_machine.travel("2025-03-31 06:26:58")
+    def test_stop_transaction_post_with_not_an_admin_client_return_403(
+        self, authenticated_user_client
+    ):
+        request_body = {"session_id": "Session123", "stop_kwh": 10}
+        response = authenticated_user_client.post(
+            self.stop_transaction_url, data=request_body
+        )
+        assert response.status_code == 403
+
+    @time_machine.travel("2025-03-31 06:26:58")
+    def test_stop_transaction_post_return_200(
         self, admin_user_client, session, authorize_token_response
     ):
         with patch(
