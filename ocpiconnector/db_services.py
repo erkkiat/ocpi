@@ -43,7 +43,14 @@ def ensure_db_connection(func):
                 close_old_connections()
                 repair_connection("default")
                 time.sleep(0.1)
-                return func(*args, **kwargs)
+
+                try:
+                    return func(*args, **kwargs)
+                except (OperationalError, InterfaceError):
+                    logger.error(
+                        f"{func.__name__}: DB retry failed after repair", exc_info=True
+                    )
+                    raise
             raise
 
     return wrapper
