@@ -102,7 +102,7 @@ class MQTTClientSingleton:
         return self.client
 
     def _create_and_connect_client(self):
-        client = self._configure_client(MQTTClientSingleton._client_id)
+        client = self._configure_client(self._client_id)
         self._connect_client(client)
         return client
 
