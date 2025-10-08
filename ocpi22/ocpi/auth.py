@@ -1,4 +1,8 @@
 import base64
+import ipaddress
+import re
+import urllib.parse
+from abc import abstractmethod, ABC
 from logging import getLogger
 
 import binascii
@@ -10,9 +14,20 @@ from typing import Optional
 from cachetools import cached, TTLCache
 from cachetools.func import ttl_cache
 from cachetools.keys import hashkey
+from cryptography import x509
+from cryptography.hazmat._oid import NameOID, ExtendedKeyUsageOID
+from cryptography.x509.verification import (
+    PolicyBuilder,
+    Store,
+    ExtensionPolicy,
+    Criticality,
+)
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.http import HttpRequest
+from ninja.errors import HttpError
 from ninja.security import HttpBasicAuth
+from ninja.security.http import HttpAuthBase
 from rest_framework import exceptions
 from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
@@ -250,3 +265,141 @@ class NinjaBasicAuth(HttpBasicAuth):
             return None
         except exceptions.AuthenticationFailed:
             return None
+
+
+class CertificateAuth(HttpAuthBase, ABC):
+    def __init__(
+        self,
+        ca_certificate: str,
+        allowed_hosts: list[str] = None,
+        require_client_auth: bool = True,
+        require_server_auth: bool = False,
+        header_name: str = "X-Amzn-Mtls-Clientcert",
+    ):
+        super().__init__()
+        self.ca_certificate = ca_certificate
+        self.header_name = header_name
+        self.allowed_hosts = allowed_hosts or []
+        self.allowed_ekus = set()
+
+        if require_client_auth:
+            self.allowed_ekus.add(ExtendedKeyUsageOID.CLIENT_AUTH)
+        if require_server_auth:
+            self.allowed_ekus.add(ExtendedKeyUsageOID.SERVER_AUTH)
+
+    def __call__(self, request: HttpRequest):
+        return self.authenticate(request)
+
+    def _get_ip_address(self, request: HttpRequest) -> str:
+        ip = (
+            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
+        )  # left-most = client IP
+        if not ip:
+            ip = request.META.get("REMOTE_ADDR")
+        try:
+            ip = str(ipaddress.ip_address(ip))
+        except ValueError:
+            raise HttpError(400, f"Invalid IP address format: {ip}")
+
+        if not ip or ip not in self.allowed_hosts:
+            raise HttpError(403, f"Forbidden: IP {ip} not allowed")
+        return ip
+
+    @abstractmethod
+    def _get_certificate_header(self, request: HttpRequest) -> str:
+        return urllib.parse.unquote(request.headers.get(self.header_name, ""))
+
+    def _load_all_certificates(self, cert_pem: str):
+        cert_pattern = r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----"
+        cert_matches = re.findall(cert_pattern, cert_pem, re.DOTALL)
+        return [x509.load_pem_x509_certificate(cert.encode()) for cert in cert_matches]
+
+    @abstractmethod
+    def _build_client_verifier(self, store: Store):
+        builder = PolicyBuilder().store(store)
+        return builder.build_client_verifier()
+
+    def _validate_certificate_chain(self, certificates: list[x509.Certificate]):
+        root_cert = x509.load_pem_x509_certificate(self.ca_certificate.encode("utf-8"))
+        client_cert = certificates[0]
+        intermediate_certs = certificates[1:] if len(certificates) > 1 else []
+        trust_store_certs = intermediate_certs + [root_cert]
+        store = Store(trust_store_certs)
+
+        try:
+            verifier = self._build_client_verifier(store)
+            chain = verifier.verify(client_cert, intermediate_certs)
+            return chain
+
+        except Exception as e:
+            logger.error(f"Certificate validation failed: {e}", exc_info=True)
+            raise HttpError(403, f"Certificate validation failed: {str(e)}")
+
+    def _extract_certificate_info(self, cert_pem: str) -> dict:
+        received_cert = x509.load_pem_x509_certificate(cert_pem.encode())
+        subject = received_cert.subject
+        cn = subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+        cn_value = cn[0].value if cn else None
+
+        return {"cert_cn": cn_value, "subject": str(subject)}
+
+    def authenticate(self, request: HttpRequest) -> dict:
+        try:
+            ip = self._get_ip_address(request)
+        except HttpError as e:
+            logger.warning(e.args[1], exc_info=True)
+            raise e
+
+        cert_pem = self._get_certificate_header(request)
+        if not cert_pem:
+            raise HttpError(403, "Forbidden: No client certificate provided")
+
+        certificates = self._load_all_certificates(cert_pem)
+        if not certificates:
+            raise HttpError(403, "Forbidden: Invalid client certificate format")
+
+        self._validate_certificate_chain(certificates)
+
+        cert_info = self._extract_certificate_info(cert_pem)
+        cert_info["ip"] = ip
+
+        return cert_info
+
+
+class HubjectCertAuth(CertificateAuth):
+    def __init__(self):
+        super().__init__(
+            ca_certificate=settings.HUBJECT_CA_CERTIFICATE,
+            allowed_hosts=settings.HUBJECT_HOSTS,
+            require_client_auth=True,
+            require_server_auth=True,
+        )
+
+    def _get_certificate_header(self, request: HttpRequest) -> str:
+        return urllib.parse.unquote(request.headers.get("X-Amzn-Mtls-Clientcert", ""))
+
+    def _build_client_verifier(self, store: Store):
+        ee_policy = ExtensionPolicy.webpki_defaults_ee()
+
+        def eku_validator(
+            policy, cert: x509.Certificate, eku: x509.ExtendedKeyUsage | None
+        ):
+            if eku is None:
+                raise ValueError("Client certificate missing EKU")
+            for oid in eku:
+                if oid not in self.allowed_ekus:
+                    raise ValueError(f"Unsupported EKU OID {oid.dotted_string}")
+
+        ee_policy = ee_policy.require_present(
+            x509.ExtendedKeyUsage, Criticality.CRITICAL, eku_validator
+        )
+
+        builder = (
+            PolicyBuilder()
+            .store(store)
+            .extension_policies(
+                ca_policy=ExtensionPolicy.webpki_defaults_ca(), ee_policy=ee_policy
+            )
+        )
+
+        return builder.build_client_verifier()

@@ -12,6 +12,7 @@ from ocpiconnector.settings.infra_services import (
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
+HUBJECT_HOSTS = ["18.195.149.69", "18.195.61.108"]
 ALLOWED_HOSTS = get_allowed_hosts()
 USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True

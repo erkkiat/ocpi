@@ -14,6 +14,7 @@ ENV = os.getenv("ENV", "production").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
 HUBJECT_URL = "Add the hubject production base url"
+HUBJECT_HOSTS = ["18.194.114.107", "35.157.60.250"]
 
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.smappee.net"]
 ALLOWED_HOSTS = get_allowed_hosts()
@@ -55,6 +56,7 @@ CACHES = {
     },
 }
 
+
 db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
 DATABASES = {
     "default": {
@@ -64,7 +66,7 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
-        "CONN_MAX_AGE": 780,
+        "CONN_MAX_AGE": 300,
         "OPTIONS": {"ssl_mode": "REQUIRED"},
         "CONN_HEALTH_CHECKS": True,
     }
