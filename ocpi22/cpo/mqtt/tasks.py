@@ -41,37 +41,40 @@ register(
 
 class CeleryConfig:
     broker_url = os.environ["REDIS_URL"]
-    # a bit hack but will refactor after it is working
-
-    if os.environ["ENV"] in ["production", "staging"]:
-        _ssl_configuration = {
-            "ssl_cert_reqs": ssl.CERT_NONE,
-        }
-        redis_backend_use_ssl = _ssl_configuration
     result_backend = broker_url
+
+    if os.environ.get("ENV") in {"production", "staging"}:
+        _ssl_configuration = {"ssl_cert_reqs": ssl.CERT_NONE}
+        broker_use_ssl = _ssl_configuration
+        redis_backend_use_ssl = _ssl_configuration
+
     task_serializer = "orjson"
-    accept_content = ["json"]
+    accept_content = ["json", "orjson"]
     result_expires = 1
     worker_concurrency = 4
     task_time_limit = 300
     task_soft_time_limit = 240
     task_always_eager = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
+    task_ignore_result = True
+    task_publish_retry = True
+    task_publish_retry_policy = {
+        "max_retries": 5,
+        "interval_start": 0,
+        "interval_step": 1,
+        "interval_max": 5,
+    }
 
     broker_connection_retry = True
     broker_connection_retry_on_startup = True
-    broker_connection_max_retries = 10
+    broker_connection_max_retries = None
 
     broker_transport_options = {
         "socket_timeout": 30,
         "socket_connect_timeout": 30,
         "socket_keepalive": True,
-        "socket_keepalive_options": {
-            1: 10,
-            2: 10,
-            3: 3,
-        },
         "retry_on_timeout": True,
         "health_check_interval": 30,
+        "max_connections": 50,
     }
 
     result_backend_transport_options = {
@@ -80,10 +83,10 @@ class CeleryConfig:
         "socket_keepalive": True,
         "retry_on_timeout": True,
         "health_check_interval": 30,
+        "max_connections": 20,
     }
 
     broker_pool_limit = 20
-    redis_max_connections = 50  # Increased for more headroom
     task_acks_late = True
     task_reject_on_worker_lost = True
     worker_prefetch_multiplier = 1
