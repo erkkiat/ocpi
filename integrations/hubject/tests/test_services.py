@@ -1168,7 +1168,7 @@ class TestHubjectAuthorizeRemoteStart:
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.START_SESSION,
-            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
         )
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
@@ -1179,7 +1179,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
                 json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
@@ -1283,6 +1283,7 @@ class TestHubjectAuthorizeRemoteStart:
         assert result.status_code == StatusCode(Code="700")
 
     @pytest.mark.django_db
+    @override_settings(HOSTNAME="localhost")
     def test_prepare_start_session_data_builds_correct_structure(
         self, mock_remote_start_command, evse
     ):
@@ -1293,7 +1294,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         expected_data = {
-            "response_url": "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "response_url": "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
             "token": {
                 "uid": "AB-VDC-C1234ABCDA",
                 "contract_id": "AB-VDC-C1234ABCDA",
@@ -1429,11 +1430,11 @@ class TestHubjectAuthorizeRemoteStop:
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.STOP_SESSION,
-            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
         )
         responses.add(
             responses.POST,
-            "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
@@ -1519,7 +1520,7 @@ class TestHubjectAuthorizeRemoteStop:
     ):
         responses.add(
             responses.POST,
-            "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
+            "http://localhost/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
@@ -1527,7 +1528,7 @@ class TestHubjectAuthorizeRemoteStop:
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.STOP_SESSION,
-            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
         )
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 

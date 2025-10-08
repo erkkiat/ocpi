@@ -235,11 +235,11 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
         command_type=RemoteCommandType.START_SESSION,
-        url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
     )
     responses.add(
         responses.POST,
-        "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
         json={"data": {"result": "ACCEPTED"}},
         status=200,
     )
@@ -351,11 +351,11 @@ class TestHubjectRemoteStopAPI:
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.STOP_SESSION,
-            url="http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
         )
         responses.add(
             responses.POST,
-            "http://testserver.test/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
             json={"data": {"result": "ACCEPTED"}},
             status=200,
         )
