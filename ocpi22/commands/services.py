@@ -383,6 +383,14 @@ class RemoteCommandServices:
         response_json = WebhookExecutionService().execute_webhook_event(event)
         return response_json
 
+    def get_valid_webhook(self, command_type: RemoteCommandType):
+        webhook = WebhookRepository().get_remote_command_webhook(command_type)
+        if not webhook:
+            raise ValidationError(f"No webhook configured for {command_type}")
+        elif not webhook.active:
+            raise ValidationError(f"Inactive webhook found for {command_type}")
+        return webhook
+
 
 class StartCommandService(RemoteCommandServices):
     def __init__(self):
@@ -510,15 +518,11 @@ class StartCommandService(RemoteCommandServices):
         command_type: RemoteCommandType,
         session: Session,
     ) -> Dict[str, Any]:
-        webhook = self.webhook_repo.get_remote_command_webhook(command_type)
-        if not webhook or not webhook.active:
-            raise ValidationError(f"No webhook configured for {command_type}")
-
+        webhook = self.get_valid_webhook(command_type=command_type)
         payload = self._prepare_start_session_payload(
             session=session,
             validated_data=validated_data,
         )
-
         response = self.send_webhook_and_save_event(webhook, payload, command_type)
         return response
 
@@ -530,9 +534,7 @@ class StopCommandServices(RemoteCommandServices):
         self.webhook_repo = WebhookRepository()
 
     def send_stop_command_webhook(self, payload: dict, command_type: RemoteCommandType):
-        webhook = self.webhook_repo.get_remote_command_webhook(command_type)
-        if not webhook or not webhook.active:
-            raise ValidationError(f"No webhook configured for {command_type}")
+        webhook = self.get_valid_webhook(command_type=command_type)
         response = self.send_webhook_and_save_event(webhook, payload, command_type)
         return response
 
