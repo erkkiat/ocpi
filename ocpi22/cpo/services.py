@@ -135,11 +135,14 @@ class SolidTariffService:
         expected_keys = [
             "price_per_kwh",
             "price_per_min",
+            "price_per_hr",
             "price_flat",
             "parking_price_per_min",
+            "parking_price_per_hr",
             "vat_percentage",
             "parking_grace_period",
             "msp",
+            "last_updated",
         ]
         for key in expected_keys:
             if validated_data.get(key) is None:
