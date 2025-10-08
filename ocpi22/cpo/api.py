@@ -779,6 +779,8 @@ class ChargePointViewSet(FlowchartViewSet):
                 )
                 if serializer.is_valid():
                     session = serializer.validated_data["session"]
+                    stop_kwh = serializer.validated_data.get("stop_kwh")
+                    stop_timestamp = serializer.validated_data.get("stop_date_time")
                     if session.is_final():
                         return Response(
                             dict(
@@ -789,10 +791,8 @@ class ChargePointViewSet(FlowchartViewSet):
                     if session.auth_method == enum.AuthMethodChoices.COMMAND:
                         stopped = SessionService().stop_command_session(
                             session=session,
-                            stop_kwh=serializer.validated_data.get("stop_kwh"),
-                            stop_timestamp=serializer.validated_data.get(
-                                "stop_date_time"
-                            ),
+                            stop_kwh=stop_kwh,
+                            stop_timestamp=stop_timestamp,
                         )
                         if not stopped:
                             return Response(
@@ -801,7 +801,12 @@ class ChargePointViewSet(FlowchartViewSet):
                                 ),
                                 status=status.HTTP_400_BAD_REQUEST,
                             )
-                        session.send_updates(update_type=ChargingNotificationType.End)
+                    else:
+                        SessionService().stop_and_create_cdr(
+                            session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
+                        )
+
+                    session.send_updates(update_type=ChargingNotificationType.End)
 
                     extra_information = {
                         enum.AuthMethodChoices.COMMAND: "<div>This session was started by using the MSP mobile application, "

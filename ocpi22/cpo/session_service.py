@@ -47,7 +47,7 @@ class SessionService:
         if not stop_timestamp:
             stop_timestamp = datetime.now(pytz.utc)
         try:
-            self._stop_and_create_cdr(session, stop_kwh, stop_timestamp)
+            self.stop_and_create_cdr(session, stop_kwh, stop_timestamp)
         except Exception:
             message = f"Error stopping remote command session {session.uid}, sending REJECTED callback"
             logger.exception(message)
@@ -63,7 +63,7 @@ class SessionService:
         )
         return True
 
-    def _stop_and_create_cdr(
+    def stop_and_create_cdr(
         self,
         session: Session,
         stop_kwh: float | None = None,
@@ -71,8 +71,8 @@ class SessionService:
     ) -> None:
         if not timestamp:
             timestamp = datetime.now(pytz.utc)
-        self.set_stop_kwh(session, stop_kwh)
         with transaction.atomic():
+            self.set_stop_kwh(session, stop_kwh)
             session.update_charging_periods(kwh=session.kwh, timestamp=timestamp)
             session.status = Session.COMPLETED
             session.end_date_time = timestamp.replace(tzinfo=pytz.utc)
