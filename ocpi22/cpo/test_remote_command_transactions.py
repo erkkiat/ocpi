@@ -597,7 +597,7 @@ class TestStopTransactionRemoteCommand:
                 "ocpi22.cpo.session_service.send_callback.delay"
             ) as mock_send_callback,
             patch(
-                "ocpi22.cpo.session_service.SessionService._stop_and_create_cdr",
+                "ocpi22.cpo.session_service.SessionService.stop_and_create_cdr",
                 side_effect=Exception("Test exception"),
             ),
         ):
@@ -626,7 +626,7 @@ class TestStopTransactionRemoteCommand:
         with (
             patch("ocpi22.cpo.session_service.send_callback.delay"),
             patch(
-                "ocpi22.cpo.session_service.SessionService._stop_and_create_cdr",
+                "ocpi22.cpo.session_service.SessionService.stop_and_create_cdr",
                 side_effect=Exception("Test exception"),
             ),
         ):
