@@ -1,4 +1,5 @@
-from charset_normalizer.md import getLogger
+from logging import getLogger
+
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
