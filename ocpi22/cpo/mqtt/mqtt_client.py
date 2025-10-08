@@ -36,7 +36,7 @@ class MQTTClientSingleton:
 
     _instance: Optional["MQTTClientSingleton"] = None
     _lock = threading.Lock()
-    _client_id: Optional[str] = None  # ✅ Class variable - shared across reconnections
+    _client_id: Optional[str] = None
 
     def __new__(cls) -> "MQTTClientSingleton":
         if cls._instance is None:
