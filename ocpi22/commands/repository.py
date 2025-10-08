@@ -45,7 +45,7 @@ class SessionRepository:
 
     @staticmethod
     def find_session_by_auth_ref(auth_reference: str) -> Optional[Session]:
-        return Session.objects.get(authorization_reference=auth_reference)
+        return Session.objects.filter(authorization_reference=auth_reference).first()
 
 
 class CommandRepository:
