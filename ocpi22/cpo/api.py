@@ -780,7 +780,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
-                    stop_timestamp = serializer.validated_data.get("stop_date_time")
+                    stop_timestamp = serializer.validated_data.get("timestamp")
                     if session.is_final():
                         return Response(
                             dict(
