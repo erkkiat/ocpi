@@ -7,7 +7,6 @@ import pytz
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Prefetch
 from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
@@ -721,12 +720,11 @@ class HubjectService:
         from ocpi22.commands.repository import SessionRepository
 
         command_id = remote_stop_command.emp_partner_session_id or None
-        try:
-            session = SessionRepository.find_session_by_auth_ref(
-                remote_stop_command.emp_partner_session_id
-            )
-        except ObjectDoesNotExist as ve:
-            logger.error(f"No session found to stop, hubject remote stop failed: {ve}")
+        session = SessionRepository.find_session_by_auth_ref(
+            remote_stop_command.emp_partner_session_id
+        )
+        if not session:
+            logger.error("No session found to stop, hubject remote stop failed")
             raise HubjectRemoteCommandError("400", "Session not found")
 
         data = {
@@ -770,7 +768,7 @@ class HubjectService:
                 validated_data = serializer.validated_data
             else:
                 logger.error(
-                    "Invalid data for starting remote session for Hubject",
+                    "Invalid data for stopping remote session for Hubject",
                     extra={"errors": serializer.errors, "data": data},
                 )
                 return self._create_error_acknowledgment(
