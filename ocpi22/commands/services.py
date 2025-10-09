@@ -245,7 +245,7 @@ class CallBackService:
                 return False
 
             try:
-                to_party = callback.session.ocpi_master.get_party()
+                to_party = callback.session.credentials.get_party()
             except Exception as e:
                 logger.error(
                     f"Failed to get eMSP party info for callback {callback.id} session {callback.session.uid}",
