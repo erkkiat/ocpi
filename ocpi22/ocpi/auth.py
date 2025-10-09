@@ -369,9 +369,7 @@ class CertificateAuth(HttpAuthBase, ABC):
 class HubjectCertAuth(CertificateAuth):
     def __init__(self):
         hubject_ca_cert = settings.HUBJECT_CA_CERTIFICATE
-        if not hubject_ca_cert or not hubject_ca_cert.startswith(
-            "-----BEGIN CERTIFICATE-----"
-        ):
+        if not hubject_ca_cert or hubject_ca_cert == "":
             raise ValueError(
                 "HUBJECT_CA_CERTIFICATE is not in the environment variables"
             )
