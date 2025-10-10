@@ -201,8 +201,18 @@ class TestCertificateAuth:
 
 
 class TestHubjectCertAuth:
-    auth = HubjectCertAuth()
+    def test_hubject_ca_certificate_setting_is_not_set_raises_value_error(self):
+        with pytest.raises(ValueError) as exc_info:
+            with patch("ocpi22.ocpi.auth.get_cert_from_env") as get_cert_mock:
+                get_cert_mock.return_value = None
+                HubjectCertAuth()
+        assert "HUBJECT_CA_CERTIFICATE is not in the environment variables" in str(
+            exc_info.value
+        )
 
+    @override_settings(
+        HUBJECT_CA_CERTIFICATE="-----BEGIN CERTIFICATE-----hubject-ca-cert-----END CERTIFICATE-----"
+    )
     def test_get_certificate_header_decodes_mtls_header(self, mock_request):
         quoted_cert = urllib.parse.quote("test cert data")
         mock_request.headers = {"X-Amzn-Mtls-Clientcert": quoted_cert}
@@ -212,7 +222,9 @@ class TestHubjectCertAuth:
 
         assert result == "test cert data"
 
-    @override_settings(HUBJECT_CA_CERTIFICATE="hubject-ca-cert")
+    @override_settings(
+        HUBJECT_CA_CERTIFICATE="-----BEGIN CERTIFICATE-----hubject-ca-cert-----END CERTIFICATE-----"
+    )
     def test_build_client_verifier_validates_eku_extensions(self):
         from cryptography.x509.verification import Store
         from cryptography import x509
@@ -221,7 +233,7 @@ class TestHubjectCertAuth:
         root_cert = x509.load_pem_x509_certificate(cert.encode())
         store = Store([root_cert])
 
-        verifier = self.auth._build_client_verifier(store)
+        verifier = HubjectCertAuth()._build_client_verifier(store)
 
         assert (
             verifier.policy.extended_key_usage.dotted_string
@@ -364,6 +376,9 @@ class TestHubjectCertificateAuthIntegration:
 
     @pytest.mark.django_db
     @responses.activate
+    @override_settings(
+        HUBJECT_CA_CERTIFICATE="-----BEGIN CERTIFICATE-----hubject-ca-cert-----END CERTIFICATE-----"
+    )
     def test_hubject_auth_processes_real_https_request_return_200(
         self, remote_command_payload
     ):
