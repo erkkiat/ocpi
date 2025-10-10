@@ -529,9 +529,13 @@ class HubjectService:
             raise ValueError(f"Invalid ProviderID format: {provider_id}")
 
     def _prepare_start_session_data(
-        self, remote_start_command, evse: Evse, sender_party: Party
+        self,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        evse: Evse,
+        sender_party: Party,
     ) -> dict:
         command_id = remote_start_command.emp_partner_session_id or None
+        authorization_reference = command_id or remote_start_command.session_id.root
         contract_id = (
             remote_start_command.identification.RemoteIdentification.EvcoID.root
         )
@@ -555,7 +559,7 @@ class HubjectService:
             "connector_id": evse.connectors.first().uid
             if evse.connectors.exists()
             else "",
-            "authorization_reference": remote_start_command.emp_partner_session_id,
+            "authorization_reference": authorization_reference,
         }
 
     def _get_hubject_error_code(self, evse: Evse) -> str:
