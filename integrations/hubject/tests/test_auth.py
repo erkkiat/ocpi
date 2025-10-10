@@ -201,10 +201,11 @@ class TestCertificateAuth:
 
 
 class TestHubjectCertAuth:
-    @override_settings(HUBJECT_CA_CERTIFICATE=None)
     def test_hubject_ca_certificate_setting_is_not_set_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
-            HubjectCertAuth()
+            with patch("ocpi22.ocpi.auth.get_cert_from_env") as get_cert_mock:
+                get_cert_mock.return_value = None
+                HubjectCertAuth()
         assert "HUBJECT_CA_CERTIFICATE is not in the environment variables" in str(
             exc_info.value
         )
