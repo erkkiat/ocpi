@@ -555,7 +555,7 @@ class StopCommandServices(RemoteCommandServices):
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
-        return self.create_ocpi_response(response, RemoteCommandType.STOP_SESSION.value)
+        return self.create_ocpi_response(response, RemoteCommandType.STOP_SESSION)
 
 
 def process_remote_command(
