@@ -5,7 +5,6 @@ import pytz
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
 from django.utils.datetime_safe import datetime
-from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.ocpi_logging as logging
@@ -434,7 +433,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return True
 
     def __str__(self):
-        return f"{round(self.kwh, 1)} kWh, updated {naturaltime(self.updated)}"
+        return f"{round(self.kwh, 1)} kWh, updated {self.updated}"
 
     def get_absolute_url(self, version=None):
         return util.reverse(
