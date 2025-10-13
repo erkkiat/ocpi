@@ -705,6 +705,7 @@ class HubjectService:
             sender_party=sender_party,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
+            hub_session_id=remote_start_command.session_id.root,
         )
         self._validate_command_response(response.data)
 
