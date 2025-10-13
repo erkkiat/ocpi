@@ -70,6 +70,7 @@ from ocpi22.commands.repository import SessionRepository
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
@@ -1395,6 +1396,47 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result["authorization_reference"] == "hubject-session-id-123"
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "evse_status",
+        [
+            "BLOCKED",
+            "INOPERATIVE",
+            "OUTOFORDER",
+            "PLANNED",
+            "RESERVED",
+            "UNKNOWN",
+            "REMOVED",
+        ],
+    )
+    def test_process_remote_start_command_with_evse_status_raises_hubject_remote_command_error(
+        self, mock_remote_start_command, evse, evse_status
+    ):
+        evse.status = evse_status
+        evse.save()
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(
+            Code=self.hubject_service._get_hubject_error_code(evse)
+        )
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("evse_status", ["CHARGING", "AVAILABLE"])
+    def test_get_and_validate_evse_availability_does_not_raise_exception(
+        self, mock_remote_start_command, evse, evse_status
+    ):
+        get_credentialsrole.cache_clear()
+        evse.status = evse_status
+        evse.save()
+        result = self.hubject_service._get_and_validate_evse_availability(
+            mock_remote_start_command
+        )
+
+        assert result == evse
 
 
 class TestHubjectAuthorizeRemoteStop:
