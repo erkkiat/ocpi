@@ -48,7 +48,7 @@ admin.site.index_title = "Dashboard"
 
 class AdminUtilityMixin:
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
