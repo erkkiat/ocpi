@@ -607,11 +607,13 @@ class HubjectService:
         evse_id = remote_start_command.evse_id.root
         evse = self._get_evse(evse_id)
 
-        if evse.status != Evse.AVAILABLE:
-            logger.error(f"EVSE {evse.evse_id} is not available")
+        if evse.status not in [Evse.AVAILABLE, Evse.CHARGING]:
+            logger.error(
+                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}"
+            )
             raise HubjectRemoteCommandError(
                 self._get_hubject_error_code(evse),
-                f"EVSE {evse.evse_id} is not available",
+                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}",
             )
 
         return evse
