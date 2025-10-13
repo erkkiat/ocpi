@@ -688,18 +688,20 @@ class ERoamingAuthorizeRemoteReservationStop(BaseModel):
     EvseID: EvseID
 
 
-class ERoamingAuthorizeRemoteStop(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStop(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by the CPO to the related operation.",
+        alias="CPOPartnerSessionID",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by an EMP to the related operation.",
+        alias="EMPPartnerSessionID",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
 
 
 class EVSEPricingItem(BaseModel):
@@ -1254,6 +1256,18 @@ class RemoteCommandStart(Schema):
     emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
     identification: Optional[IdentificationIn] = Field(None, alias="Identification")
     partner_product_id: Optional[str] = Field(None, alias="PartnerProductID")
+
+
+class RemoteCommandStop(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
 
 
 class IdentificationIn(Schema):
