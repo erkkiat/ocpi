@@ -198,11 +198,12 @@
     ]
   },
   "admin_interface": {
-    "description": "Django admin configuration",
+    "description": "Django admin configuration and views",
     "files": [
       "ocpi22/admin.py",
       "ocpi22/generic_views.py",
       "ocpi22/viewsets.py",
+      "ocpi22/views.py",
       "widgets.py"
     ]
   },
@@ -317,6 +318,20 @@
       "test_redis.py",
       "test_middleware.py",
       "test_util.py"
+    ]
+  },
+  "payment_system": {
+    "description": "Payment processing with Stripe integration",
+    "files": [
+      "payment/views.py",
+      "payment/models.py"
+    ]
+  },
+  "settlement_reporting": {
+    "description": "CDR reporting and billing settlement",
+    "files": [
+      "settlement/views.py",
+      "settlement/serializers.py"
     ]
   }
 }

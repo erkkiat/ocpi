@@ -91,23 +91,61 @@ make test-cov          # With coverage report
     └── read_flow.sh                # Flow reader
 ```
 
-## Available Flows
+## Available Flows (32 Total)
 
-The following logical flows are defined in `docs/file_groups.json`:
+The following logical flows are defined in `.claude/file_groups.json`:
 
+### Business Logic Flows (4)
 1. **authorization_flow** - Token authorization from MQTT to OCPI
 2. **session_management_flow** - Session lifecycle and CDR generation
 3. **meter_values_flow** - Energy metering and cost calculation
 4. **remote_commands_flow** - Commands from OCPI to charge points
+
+### Infrastructure Flows (4)
 5. **mqtt_infrastructure** - MQTT client and messaging layer
 6. **ocpi_protocol** - Core OCPI protocol implementation
-7. **cpo_api** - Charge Point Operator API endpoints
-8. **location_management** - Location and EVSE management
-9. **tariff_system** - Pricing and tariff system
-10. **credentials_management** - Partner credentials
-11. **hubject_integration** - Hubject/OICP integration
-12. **celery_tasks** - All async task definitions
-13. **test_infrastructure** - Test configs and fixtures
+7. **celery_tasks** - All async task definitions
+8. **webhooks_system** - Webhook handling for OCPI events
+
+### API Flows (2)
+9. **cpo_api** - Charge Point Operator API endpoints
+10. **msp_functionality** - Mobility Service Provider functionality
+
+### Data Management Flows (5)
+11. **location_management** - Location and EVSE management
+12. **tariff_system** - Pricing and tariff system
+13. **credentials_management** - Partner credentials
+14. **sessions_module** - Session utilities and services
+15. **data_models** - Supporting data models (business details, hours, images)
+
+### Integration Flows (2)
+16. **hubject_integration** - Hubject/OICP integration
+17. **pull_sync_operations** - Pulling data from OCPI partners
+
+### Cross-Cutting Flows (4)
+18. **serialization_layer** - Django REST serializers and data validation
+19. **middleware_layer** - Request/response middleware
+20. **admin_interface** - Django admin configuration and views
+21. **test_infrastructure** - Test configs and fixtures
+
+### Deployment & DevOps Flows (7)
+22. **docker_infrastructure** - Docker and containerization
+23. **cicd_pipelines** - GitHub Actions CI/CD workflows
+24. **deployment_scripts** - Deployment and initialization scripts
+25. **service_startup** - Service entrypoints (entrypoint.sh, manage.py)
+26. **project_configuration** - Requirements and config files
+27. **django_settings** - Django settings for different environments
+28. **performance_testing** - Locust performance testing setup
+
+### Supporting Modules (2)
+29. **utility_modules** - Root-level utility modules and helpers
+30. **development_tools** - Development and debugging tools
+
+### Financial Operations (2)
+31. **payment_system** - Payment processing with Stripe integration
+32. **settlement_reporting** - CDR reporting and billing settlement
+
+Use `make list-flows` to see detailed descriptions of each flow.
 
 ## Usage Patterns
 

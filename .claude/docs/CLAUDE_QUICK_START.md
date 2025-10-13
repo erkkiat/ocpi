@@ -84,9 +84,9 @@ Or:
 - Models summary
 - API endpoints
 
-### `docs/file_groups.json` (Flow definitions)
+### `.claude/file_groups.json` (Flow definitions)
 - Logical groupings of files
-- Example: authorization_flow, session_management_flow
+- 32 predefined flows covering your entire codebase
 
 ---
 
@@ -125,23 +125,59 @@ make claude-context  # Refresh for next session
 
 ---
 
-## 🎯 Available Flows
+## 🎯 Available Flows (32 Total)
 
-Quick reference (use `make list-flows` for descriptions):
+### Business Logic Flows (4)
+- **authorization_flow** - Token auth from MQTT to OCPI
+- **session_management_flow** - Session lifecycle
+- **meter_values_flow** - Energy metering
+- **remote_commands_flow** - Commands to charge points
 
-1. **authorization_flow** - Token auth from MQTT to OCPI
-2. **session_management_flow** - Session lifecycle
-3. **meter_values_flow** - Energy metering
-4. **remote_commands_flow** - Commands to charge points
-5. **mqtt_infrastructure** - MQTT messaging layer
-6. **ocpi_protocol** - Core OCPI implementation
-7. **cpo_api** - CPO API endpoints
-8. **location_management** - Locations and EVSEs
-9. **tariff_system** - Pricing system
-10. **credentials_management** - Partner credentials
-11. **hubject_integration** - Hubject/OICP
-12. **celery_tasks** - Async tasks
-13. **test_infrastructure** - Test setup
+### Infrastructure Flows (4)
+- **mqtt_infrastructure** - MQTT messaging layer
+- **ocpi_protocol** - Core OCPI implementation
+- **celery_tasks** - Async tasks
+- **webhooks_system** - Webhook handling
+
+### API Flows (2)
+- **cpo_api** - CPO API endpoints
+- **msp_functionality** - MSP functionality
+
+### Data Management Flows (5)
+- **location_management** - Locations and EVSEs
+- **tariff_system** - Pricing system
+- **credentials_management** - Partner credentials
+- **sessions_module** - Session utilities
+- **data_models** - Supporting data models
+
+### Integration Flows (2)
+- **hubject_integration** - Hubject/OICP
+- **pull_sync_operations** - Pulling data from partners
+
+### Cross-Cutting Flows (4)
+- **serialization_layer** - DRF serializers
+- **middleware_layer** - Request/response middleware
+- **admin_interface** - Django admin
+- **test_infrastructure** - Test setup
+
+### Deployment & DevOps Flows (7)
+- **docker_infrastructure** - Docker & containerization
+- **cicd_pipelines** - GitHub Actions workflows
+- **deployment_scripts** - Deployment & DB init scripts
+- **service_startup** - Service entrypoints
+- **project_configuration** - Requirements & config files
+- **django_settings** - Settings for all environments
+- **performance_testing** - Locust performance tests
+
+### Supporting Modules (2)
+- **utility_modules** - Root-level utilities
+- **development_tools** - Development tools
+
+### Financial Operations (2)
+- **payment_system** - Payment processing with Stripe
+- **settlement_reporting** - CDR reporting and billing
+
+Use `make list-flows` to see detailed descriptions of each flow.
 
 ---
 
@@ -187,7 +223,7 @@ git pull && make claude-context
 
 | Problem | Solution |
 |---------|----------|
-| Script not found | `chmod +x scripts/*.sh` |
+| Script not found | `chmod +x .claude/scripts/*.sh` |
 | Flow not found | `make list-flows` to see available |
 | Context too old | `make claude-context` to regenerate |
 | Tree command missing | `brew install tree` (macOS) or `apt install tree` (Linux) |
@@ -196,7 +232,7 @@ git pull && make claude-context
 
 ## 📚 Full Documentation
 
-See [docs/CLAUDE_CONTEXT_README.md](./CLAUDE_CONTEXT_README.md) for complete documentation.
+See [.claude/docs/CLAUDE_CONTEXT_README.md](.claude/docs/CLAUDE_CONTEXT_README.md) for complete documentation.
 
 ---
 
