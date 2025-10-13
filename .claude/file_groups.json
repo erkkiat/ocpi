@@ -1,0 +1,322 @@
+{
+  "authorization_flow": {
+    "description": "Complete authorization flow from MQTT to OCPI API",
+    "files": [
+      "ocpi22/cpo/mqtt/mqtt_subscriber.py",
+      "ocpi22/cpo/mqtt/mqtt_handler.py",
+      "ocpi22/cpo/mqtt/schemas.py",
+      "ocpi22/cpo/mqtt/tasks.py",
+      "ocpi22/tokens/auth.py",
+      "ocpi22/tokens/token_async.py",
+      "ocpi22/tasks.py",
+      "ocpi22/models/token.py",
+      "ocpi22/models/models.py"
+    ]
+  },
+  "session_management_flow": {
+    "description": "Session lifecycle from creation to CDR generation",
+    "files": [
+      "ocpi22/cpo/mqtt/mqtt_handler.py",
+      "ocpi22/cpo/mqtt/schemas.py",
+      "ocpi22/cpo/mqtt/tasks.py",
+      "ocpi22/cpo/session_service.py",
+      "ocpi22/cpo/session_cache.py",
+      "ocpi22/models/session.py",
+      "ocpi22/models/cdr.py",
+      "ocpi22/models/cdrlocation.py",
+      "ocpi22/models/cdrtoken.py",
+      "ocpi22/cpo/services.py"
+    ]
+  },
+  "meter_values_flow": {
+    "description": "Meter values processing and cost calculation",
+    "files": [
+      "ocpi22/cpo/mqtt/mqtt_handler.py",
+      "ocpi22/cpo/mqtt/schemas.py",
+      "ocpi22/cpo/mqtt/tasks.py",
+      "ocpi22/cpo/services.py",
+      "ocpi22/cpo/session_service.py",
+      "ocpi22/models/session.py",
+      "ocpi22/models/tariff.py",
+      "ocpi22/cpo/tariff.py"
+    ]
+  },
+  "remote_commands_flow": {
+    "description": "Remote commands from OCPI to charge points",
+    "files": [
+      "ocpi22/commands/api.py",
+      "ocpi22/commands/services.py",
+      "ocpi22/commands/commands.py",
+      "ocpi22/commands/repository.py",
+      "ocpi22/cpo/mqtt/mqtt_publisher.py",
+      "ocpi22/cpo/mqtt/tasks.py"
+    ]
+  },
+  "mqtt_infrastructure": {
+    "description": "MQTT client, subscriber, and publisher infrastructure",
+    "files": [
+      "ocpi22/cpo/mqtt/mqtt_client.py",
+      "ocpi22/cpo/mqtt/mqtt_subscriber.py",
+      "ocpi22/cpo/mqtt/mqtt_publisher.py",
+      "ocpi22/cpo/mqtt/mqtt_handler.py",
+      "ocpi22/cpo/mqtt/services.py",
+      "ocpi22/cpo/mqtt/schemas.py",
+      "ocpi22/cpo/mqtt/custom_orjson_serializer.py"
+    ]
+  },
+  "ocpi_protocol": {
+    "description": "Core OCPI protocol implementation",
+    "files": [
+      "ocpi22/ocpi/api.py",
+      "ocpi22/ocpi/auth.py",
+      "ocpi22/ocpi/dataclasses.py",
+      "ocpi22/ocpi/headers.py",
+      "ocpi22/ocpi/parse.py",
+      "ocpi22/ocpi/modules.py",
+      "ocpi22/ocpi/util.py",
+      "ocpi22/ocpi/util_party.py",
+      "ocpi22/ocpi/serializers.py"
+    ]
+  },
+  "cpo_api": {
+    "description": "Charge Point Operator API endpoints",
+    "files": [
+      "ocpi22/cpo/api.py",
+      "ocpi22/cpo/services.py",
+      "ocpi22/cpo/serializers.py",
+      "ocpi22/cpo/schemas.py",
+      "ocpi22/cpo/repositories.py",
+      "ocpi22/cpo/util.py"
+    ]
+  },
+  "location_management": {
+    "description": "Location and EVSE management",
+    "files": [
+      "ocpi22/locations/location.py",
+      "ocpi22/locations/services.py",
+      "ocpi22/locations/serializers.py",
+      "ocpi22/locations/util.py",
+      "ocpi22/models/location.py",
+      "ocpi22/models/enum.py"
+    ]
+  },
+  "tariff_system": {
+    "description": "Tariff and pricing system",
+    "files": [
+      "ocpi22/models/tariff.py",
+      "ocpi22/cpo/tariff.py",
+      "ocpi22/tests/test_solid_tariffs.py",
+      "ocpi22/tests/test_solid_tariff_service.py"
+    ]
+  },
+  "credentials_management": {
+    "description": "OCPI credentials and partner management",
+    "files": [
+      "ocpi22/models/credentials.py",
+      "ocpi22/ocpi/partners.py",
+      "ocpi22/credentials/util.py",
+      "ocpi22/credentials/versions.py",
+      "ocpi22/ssl_services.py"
+    ]
+  },
+  "hubject_integration": {
+    "description": "Hubject/OICP integration",
+    "files": [
+      "integrations/hubject/client.py",
+      "integrations/hubject/services.py",
+      "integrations/hubject/ocpi_to_oicp_converter.py",
+      "integrations/hubject/oicp_to_ocpi_converter.py",
+      "integrations/hubject/schemas.py",
+      "integrations/hubject/api.py",
+      "integrations/hubject/exceptions.py",
+      "integrations/solid_to_hubject_converter.py",
+      "integrations/mixins.py"
+    ]
+  },
+  "celery_tasks": {
+    "description": "All Celery task definitions",
+    "files": [
+      "ocpi22/tasks.py",
+      "ocpi22/cpo/mqtt/tasks.py",
+      "ocpi22/commands/services.py",
+      "ocpiconnector/celery.py",
+      "base_task_services.py"
+    ]
+  },
+  "test_infrastructure": {
+    "description": "Test configuration and fixtures",
+    "files": [
+      "conftest.py",
+      "ocpi22/conftest.py",
+      "ocpi22/tests/conftest.py",
+      "ocpi22/tests/factories.py",
+      "ocpi22/cpo/mqtt/tests/conftest.py",
+      "ocpi22/models/conftest.py",
+      "ocpiconnector/settings/tests.py",
+      "ocpiconnector/testutil.py"
+    ]
+  },
+  "msp_functionality": {
+    "description": "Mobility Service Provider functionality",
+    "files": [
+      "ocpi22/msp/api.py",
+      "ocpi22/msp/account.py",
+      "ocpi22/msp/map.py",
+      "ocpi22/msp/models.py",
+      "ocpi22/msp/serializers.py",
+      "ocpi22/msp/util.py"
+    ]
+  },
+  "webhooks_system": {
+    "description": "Webhook handling for OCPI events",
+    "files": [
+      "ocpi22/webhooks.py",
+      "ocpi22/legacy_webhooks.py",
+      "ocpi22/routing.py"
+    ]
+  },
+  "serialization_layer": {
+    "description": "Django REST serializers and data validation",
+    "files": [
+      "ocpi22/serializers/hours.py",
+      "ocpi22/serializers/util.py",
+      "ocpi22/cpo/serializers.py",
+      "ocpi22/locations/serializers.py",
+      "ocpi22/ocpi/serializers.py",
+      "ocpi22/msp/serializers.py",
+      "ocpi22/commands/serializers.py"
+    ]
+  },
+  "sessions_module": {
+    "description": "Session utilities and services",
+    "files": [
+      "ocpi22/sessions/services.py",
+      "ocpi22/sessions/util.py",
+      "ocpi22/cpo/session_service.py",
+      "ocpi22/cpo/session_cache.py",
+      "ocpi22/models/session.py"
+    ]
+  },
+  "admin_interface": {
+    "description": "Django admin configuration",
+    "files": [
+      "ocpi22/admin.py",
+      "ocpi22/generic_views.py",
+      "ocpi22/viewsets.py",
+      "widgets.py"
+    ]
+  },
+  "middleware_layer": {
+    "description": "Request/response middleware",
+    "files": [
+      "ocpi22/middleware.py",
+      "ocpiconnector/logging_middleware.py",
+      "middlewares.py",
+      "ocpi22/decorators.py"
+    ]
+  },
+  "pull_sync_operations": {
+    "description": "Pulling data from OCPI partners",
+    "files": [
+      "ocpi22/pull.py",
+      "ocpi22/tasks.py"
+    ]
+  },
+  "docker_infrastructure": {
+    "description": "Docker configuration and containerization",
+    "files": [
+      "Dockerfile",
+      "docker-composes/docker-compose.dev.yml",
+      "docker-composes/docker-compose-staging-prod.yml",
+      "ocpi22/cpo/mqtt/Dockerfile",
+      ".dockerignore",
+      "entrypoint.sh"
+    ]
+  },
+  "cicd_pipelines": {
+    "description": "GitHub Actions CI/CD workflows",
+    "files": [
+      ".github/workflows/deploy-production.yml",
+      ".github/workflows/deploy-staging.yml",
+      ".github/release-drafter.yml"
+    ]
+  },
+  "deployment_scripts": {
+    "description": "Deployment and initialization scripts",
+    "files": [
+      "initialize_new_local_database.sh",
+      "new_production_instance.sh",
+      "fetch_secrets.sh",
+      "shell.sh"
+    ]
+  },
+  "service_startup": {
+    "description": "Service startup and runtime entrypoints",
+    "files": [
+      "entrypoint.sh",
+      "Procfile",
+      "manage.py"
+    ]
+  },
+  "project_configuration": {
+    "description": "Project-level configuration files",
+    "files": [
+      "requirements.txt",
+      "runtime.txt",
+      "pytest.ini",
+      ".coveragerc",
+      "ruff.toml",
+      ".pre-commit-config.yaml",
+      "newrelic.ini"
+    ]
+  },
+  "django_settings": {
+    "description": "Django settings for different environments",
+    "files": [
+      "ocpiconnector/settings/base.py",
+      "ocpiconnector/settings/dev.py",
+      "ocpiconnector/settings/production.py",
+      "ocpiconnector/settings/staging.py",
+      "ocpiconnector/settings/tests.py",
+      "ocpiconnector/urls.py",
+      "ocpiconnector/wsgi.py",
+      "ocpiconnector/asgi.py"
+    ]
+  },
+  "performance_testing": {
+    "description": "Locust performance testing setup",
+    "files": [
+      "performancetest/locustfile.py",
+      "performancetest/locustfile-msp.py",
+      "performancetest/locust-run.sh",
+      "performancetest/locust-run-msp.sh",
+      "performancetest/gunicorn-run.sh",
+      "performancetest/Procfile"
+    ]
+  },
+  "utility_modules": {
+    "description": "Root-level utility modules and helpers",
+    "files": [
+      "util.py",
+      "serializers.py",
+      "custom_ninja_api.py"
+    ]
+  },
+  "data_models": {
+    "description": "Supporting data models (business details, hours, images)",
+    "files": [
+      "ocpi22/models/business_details.py",
+      "ocpi22/models/displaytext.py",
+      "ocpi22/models/hours.py",
+      "ocpi22/models/image.py"
+    ]
+  },
+  "development_tools": {
+    "description": "Development and debugging tools",
+    "files": [
+      "test_redis.py",
+      "test_middleware.py",
+      "test_util.py"
+    ]
+  }
+}
