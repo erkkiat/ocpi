@@ -1,6 +1,7 @@
 from typing import Optional
 from django.db.models import Q
 
+from ocpi22.commands.models import CallBacks
 from ocpi22.models.session import Session
 from ocpi22.util import command_store
 
@@ -50,3 +51,9 @@ class CommandRepository:
 
     def get_command_data(self, command_id: str) -> Optional[dict]:
         return command_store.get(command_id)
+
+
+class CallBackRepository:
+    @staticmethod
+    def find_by_session_uid(session_uid: str):
+        return CallBacks.objects.filter(session__uid=session_uid).first()

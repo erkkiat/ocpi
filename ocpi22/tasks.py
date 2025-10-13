@@ -145,7 +145,7 @@ def get_cert_from_env(var_name: str) -> str | None:
     return val.replace("\\n", "\n").strip()
 
 
-def get_request_session(credential_id):
+def get_certificate_loaded_request(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
@@ -208,7 +208,7 @@ def send_ocpi_request(
         kwargs.update(dict(url=url, data=data, headers=headers))
 
     try:
-        request_session = get_request_session(credentials_id)
+        request_session = get_certificate_loaded_request(credentials_id)
     except ssl.SSLError:
         logger.exception(f"SSL error while connecting to {url}.")
         # Don't retry on SSL errors as they're likely configuration issues
