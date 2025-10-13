@@ -1382,6 +1382,20 @@ class TestHubjectAuthorizeRemoteStart:
         assert result.result is False
         assert result.status_code == StatusCode(Code="022")
 
+    @pytest.mark.django_db
+    def test_prepare_start_session_data_assign_hubject_session_id_for_auth_ref_when_emp_session_none(
+        self, mock_remote_start_command, evse
+    ):
+        sender_party = Party(country_code="DE", party_id="MSP")
+        mock_remote_start_command.emp_partner_session_id = None
+        mock_remote_start_command.session_id.root = "hubject-session-id-123"
+
+        result = self.hubject_service._prepare_start_session_data(
+            mock_remote_start_command, evse, sender_party
+        )
+
+        assert result["authorization_reference"] == "hubject-session-id-123"
+
 
 class TestHubjectAuthorizeRemoteStop:
     hubject_service = HubjectService()

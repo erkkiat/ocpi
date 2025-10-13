@@ -25,7 +25,7 @@ from rest_framework.response import Response
 
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.routing import find_route
-from ocpi22.tasks import get_request_session
+from ocpi22.tasks import get_certificate_loaded_request
 from ocpiconnector.exceptions import OCPIProtocolError
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
@@ -658,7 +658,7 @@ def generate_cdr_uid():
 def ocpi_credentials_request(
     url, token_base64, method, *args, timeout=20, credentials_id=None, **kwargs
 ):
-    request_session = get_request_session(credentials_id)
+    request_session = get_certificate_loaded_request(credentials_id)
     function = getattr(request_session, method)
     if not function:
         raise NotImplementedError(

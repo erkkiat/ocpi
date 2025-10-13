@@ -1249,13 +1249,13 @@ class RemoteCommandStart(Schema):
         extra="forbid", populate_by_name=True, alias_generator=to_pascal
     )
 
-    session_id: str = Field(None, alias="SessionID")
-    evse_id: str = Field(None, alias="EvseID")
-    provider_id: str = Field(None, alias="ProviderID")
-    cpo_partner_session_id: str = Field(None, alias="CPOPartnerSessionID")
-    emp_partner_session_id: str = Field(None, alias="EMPPartnerSessionID")
-    identification: IdentificationIn = Field(None, alias="Identification")
-    partner_product_id: str = Field(None, alias="PartnerProductID")
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
+    identification: Optional[IdentificationIn] = Field(None, alias="Identification")
+    partner_product_id: Optional[str] = Field(None, alias="PartnerProductID")
 
 
 class RemoteCommandStop(Schema):
