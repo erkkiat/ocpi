@@ -403,6 +403,7 @@ class StartCommandService(RemoteCommandServices):
         credentials: Credentials,
         validated_data: Dict[str, Any],
         billed_to: CredentialsRole,
+        hub_session_id: str = None,
     ) -> Session:
         evse_uid = validated_data.get("evse_uid")
         close_active_sessions_for_evse(evse_uid)
@@ -418,6 +419,7 @@ class StartCommandService(RemoteCommandServices):
             authorization_reference=validated_data.get("authorization_reference"),
             authorization_method=enum.AuthMethodChoices.COMMAND,
             ad_hoc_token=AdhocToken.from_dict(adhoc_token_dict),
+            hub_session_id=hub_session_id,
         )
         logger.info(
             f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['authorization_reference']}"
@@ -435,6 +437,7 @@ class StartCommandService(RemoteCommandServices):
         sender_party: Party,
         credentials: Credentials,
         validated_data: Dict[str, Any],
+        hub_session_id: str = None,
     ) -> OCPIResponse:
         validated_data = self._update_auth_reference(validated_data)
 
@@ -448,7 +451,7 @@ class StartCommandService(RemoteCommandServices):
         if not session:
             with transaction.atomic():
                 session = self._create_new_session(
-                    credentials, validated_data, billed_to
+                    credentials, validated_data, billed_to, hub_session_id
                 )
                 CallBackService.create_callback(
                     session=session,
