@@ -9,7 +9,6 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
-from starlette.status import HTTP_200_OK
 
 from ocpi22.commands.repository import SessionRepository, CallBackRepository
 from ocpi22.commands.serializers import (
@@ -550,14 +549,23 @@ class StopCommandServices(RemoteCommandServices):
             logger.warning(
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
-            return OCPIResponse(
-                status_message=MessageTexts.get("SESSION_NOT_FOUND"),
-                status_code=2001,
-                http_status=HTTP_200_OK,
-            )
+            return self.create_ocpi_response({}, RemoteCommandType.STOP_SESSION)
+        CallBackService.create_callback(
+            session=session,
+            callback_url=validated_data["response_url"],
+            authorization_reference=session.authorization_reference,
+        )
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
+        result = response.get("data", {}).get("result", "REJECTED").upper()
+        result = CommandResultType(result)
+        if result == CommandResultType.ACCEPTED:
+            send_callback.delay(
+                session_uid=session.uid,
+                result=result,
+                message=None,
+            )
         return self.create_ocpi_response(response, RemoteCommandType.STOP_SESSION)
 
 
