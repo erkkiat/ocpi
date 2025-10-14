@@ -16,6 +16,14 @@ from ocpiconnector.party import Party
 
 
 class TestCommandServices:
+    @pytest.fixture
+    def hubject_credentialsrole(self):
+        return CredentialsRoleFactory(
+            country_code="DE",
+            party_id="ICE",
+            role="HUB",
+        )
+
     @patch("ocpi22.commands.services.build_absolute_uri")
     def test_prepare_start_session_payload_includes_all_required_fields(
         self, mock_build_uri
@@ -265,7 +273,7 @@ class TestCommandServices:
     @patch("ocpi22.commands.services.build_absolute_uri")
     @pytest.mark.django_db
     def test_start_session_creates_non_existing_msp_credentials_role(
-        self, mock_build_uri
+        self, mock_build_uri, hubject_credentialsrole
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
@@ -280,6 +288,9 @@ class TestCommandServices:
             "response_url": "http://localhost/commands/results/AUTH123/",
         }
         credentials = CredentialsFactory()
+        CredentialsRoleFactory(
+            country_code="NP", party_id="ABC", credentials=credentials
+        )
 
         nl_cpo_cred_role = CredentialsRole.objects.filter(
             country_code="NL", party_id="CPO"

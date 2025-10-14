@@ -9,6 +9,7 @@ from django.urls import reverse
 from ocpi22.commands.serializers import CommandResultType
 from ocpi22.models.enum import AuthMethodChoices
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     OCPISessionFactory,
     ConnectorFactory,
@@ -48,13 +49,23 @@ def remote_command_session():
     )
 
 
+@pytest.fixture
+def hubject_credentialsrole():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role="HUB",
+    )
+
+
 @pytest.mark.django_db
 class TestStartTransactionRemoteCommand:
     start_transaction_url = reverse("chargepoint-start-transaction")
 
     def test_start_transaction_with_command_auth_method_sends_callback_and_returns_200(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
+        get_credentialsrole.cache_clear()
         request_body = {
             "session_id": remote_command_session.uid,
             "connector_id": remote_command_session.connector_id,
