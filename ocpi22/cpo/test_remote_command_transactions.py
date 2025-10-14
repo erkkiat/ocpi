@@ -348,7 +348,7 @@ class TestStopTransactionRemoteCommand:
 
     @time_machine.travel("2025-04-15 14:30:00")
     def test_stop_transaction_sets_end_date_time(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         remote_command_session.status = Session.ACTIVE
         remote_command_session.start_kwh = 5.0
@@ -368,7 +368,7 @@ class TestStopTransactionRemoteCommand:
         )
 
     def test_stop_transaction_creates_cdr(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         from ocpi22.models.cdr import Cdr
 
@@ -389,7 +389,7 @@ class TestStopTransactionRemoteCommand:
         assert cdr.session_id == remote_command_session.uid
 
     def test_stop_transaction_calculates_price(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         remote_command_session.status = Session.ACTIVE
         remote_command_session.start_kwh = 10.0
@@ -618,7 +618,7 @@ class TestStopTransactionRemoteCommand:
         assert response.status_code == 400
 
     def test_stop_transaction_with_non_command_auth_method_completes_session_normally(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         remote_command_session.auth_method = AuthMethodChoices.AUTH_REQUEST
         remote_command_session.status = Session.ACTIVE
@@ -651,7 +651,7 @@ class TestStopTransactionRemoteCommand:
         assert response.status_code == 409
 
     def test_stop_transaction_creates_cdr_with_correct_location_data(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         from ocpi22.models.cdr import Cdr
 
@@ -672,7 +672,7 @@ class TestStopTransactionRemoteCommand:
         assert cdr.cdr_location.uid == remote_command_session.location.uid
 
     def test_stop_transaction_calculates_accurate_energy_consumption(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         remote_command_session.status = Session.ACTIVE
         remote_command_session.start_kwh = 23.5
@@ -690,7 +690,7 @@ class TestStopTransactionRemoteCommand:
         assert remote_command_session.kwh == 63.75
 
     def test_stop_transaction_with_zero_energy_consumption_succeeds(
-        self, admin_user_client, remote_command_session
+        self, admin_user_client, remote_command_session, hubject_credentialsrole
     ):
         remote_command_session.status = Session.ACTIVE
         remote_command_session.start_kwh = 50.0
