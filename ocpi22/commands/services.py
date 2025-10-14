@@ -453,11 +453,12 @@ class StartCommandService(RemoteCommandServices):
                 session = self._create_new_session(
                     credentials, validated_data, billed_to, hub_session_id
                 )
-                CallBackService.create_callback(
-                    session=session,
-                    authorization_reference=session.authorization_reference,
-                    callback_url=validated_data["response_url"],
-                )
+                if not session.route_through_oicp:
+                    CallBackService.create_callback(
+                        session=session,
+                        authorization_reference=session.authorization_reference,
+                        callback_url=validated_data["response_url"],
+                    )
             webhook_response = self.send_start_command_webhook(
                 validated_data=validated_data,
                 command_type=RemoteCommandType.START_SESSION,

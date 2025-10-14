@@ -1,6 +1,7 @@
 from unittest.mock import patch, MagicMock
 
 import pytest
+from django.test import override_settings
 
 from ocpi22.commands.services import StartCommandService
 from ocpi22.models.credentials import CredentialsRole
@@ -9,6 +10,7 @@ from ocpi22.tests.factories import (
     ConnectorFactory,
     CredentialsFactory,
     LocationFactory,
+    CredentialsRoleFactory,
 )
 from ocpiconnector.party import Party
 
@@ -301,3 +303,47 @@ class TestCommandServices:
             country_code="NL", party_id="CPO"
         ).first()
         assert nl_cpo_cred_role is not None
+
+    @patch("ocpi22.commands.services.build_absolute_uri")
+    @pytest.mark.django_db
+    @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
+    def test_start_session_does_not_create_a_callback_for_hubject_sessions(
+        self, mock_build_uri
+    ):
+        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
+
+        evse = EvseFactory(uid="EVSE001", location=LocationFactory())
+        connector = ConnectorFactory(uid="CONN001", evse=evse)
+        validated_data = {
+            "token": {"uid": "TOKEN123", "type": "RFID"},
+            "authorization_reference": "AUTH123",
+            "evse_uid": evse.uid,
+            "connector_id": connector.uid,
+            "location_id": evse.location.uid,
+            "response_url": "http://localhost/commands/results/AUTH123/",
+        }
+        credentials = CredentialsFactory()
+
+        CredentialsRoleFactory(
+            country_code="DE", party_id="ICE", credentials=credentials
+        )
+
+        CredentialsRoleFactory(country_code="NL", party_id="MSP")
+
+        with patch(
+            "ocpi22.commands.services.StartCommandService.send_start_command_webhook"
+        ) as mock_send_webhook:
+            with patch(
+                "ocpi22.commands.services.CallBackService.create_callback"
+            ) as mock_create_callback:
+                mock_send_webhook.return_value = {
+                    "status_code": 1000,
+                    "status_message": "Success",
+                }
+                StartCommandService().start_session(
+                    sender_party=Party(country_code="NL", party_id="MSP"),
+                    credentials=credentials,
+                    validated_data=validated_data,
+                )
+
+        mock_create_callback.assert_not_called()
