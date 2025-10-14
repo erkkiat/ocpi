@@ -293,7 +293,7 @@ class TestStartTransactionRemoteCommand:
 class TestStopTransactionRemoteCommand:
     stop_transaction_url = reverse("chargepoint-stop-transaction")
 
-    def test_stop_transaction_with_command_auth_method_sends_accepted_callback_and_returns_200(
+    def test_stop_transaction_completes_session_and_returns_200(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -305,20 +305,11 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 50.0,
         }
 
-        with patch(
-            "ocpi22.cpo.session_service.send_callback.delay"
-        ) as mock_send_callback:
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            mock_send_callback.assert_called_once_with(
-                session_uid=remote_command_session.uid,
-                result=CommandResultType.ACCEPTED.value,
-            )
+        assert response.status_code == 200
 
-    def test_stop_transaction_with_command_auth_method_sets_session_to_completed(
+    def test_stop_transaction_sets_session_to_completed(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -330,16 +321,13 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 30.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.status == Session.COMPLETED
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.status == Session.COMPLETED
 
-    def test_stop_transaction_with_command_auth_method_sets_stop_kwh(
+    def test_stop_transaction_sets_stop_kwh(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -352,17 +340,14 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": expected_stop_kwh,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.stop_kwh == expected_stop_kwh
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.stop_kwh == expected_stop_kwh
 
     @time_machine.travel("2025-04-15 14:30:00")
-    def test_stop_transaction_with_command_auth_method_sets_end_date_time(
+    def test_stop_transaction_sets_end_date_time(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -374,18 +359,15 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 45.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.end_date_time.replace(
-                microsecond=0
-            ) == datetime(2025, 4, 15, 14, 30, 0, tzinfo=pytz.utc)
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.end_date_time.replace(microsecond=0) == datetime(
+            2025, 4, 15, 14, 30, 0, tzinfo=pytz.utc
+        )
 
-    def test_stop_transaction_with_command_auth_method_creates_cdr(
+    def test_stop_transaction_creates_cdr(
         self, admin_user_client, remote_command_session
     ):
         from ocpi22.models.cdr import Cdr
@@ -399,17 +381,14 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 100.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            cdr = Cdr.objects.filter(session_id=remote_command_session.uid).first()
-            assert cdr is not None
-            assert cdr.session_id == remote_command_session.uid
+        assert response.status_code == 200
+        cdr = Cdr.objects.filter(session_id=remote_command_session.uid).first()
+        assert cdr is not None
+        assert cdr.session_id == remote_command_session.uid
 
-    def test_stop_transaction_with_command_auth_method_calculates_price(
+    def test_stop_transaction_calculates_price(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -421,17 +400,14 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 50.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.total_cost_incl_vat is not None
-            assert remote_command_session.total_cost_excl_vat is not None
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.total_cost_incl_vat is not None
+        assert remote_command_session.total_cost_excl_vat is not None
 
-    def test_stop_transaction_with_command_auth_method_sends_updates(
+    def test_stop_transaction_sends_updates(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.ACTIVE
@@ -443,10 +419,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 80.0,
         }
 
-        with (
-            patch("ocpi22.cpo.session_service.send_callback.delay"),
-            patch.object(Session, "send_updates") as mock_send_updates,
-        ):
+        with patch.object(Session, "send_updates") as mock_send_updates:
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -455,7 +428,7 @@ class TestStopTransactionRemoteCommand:
             mock_send_updates.assert_called_once()
 
     @time_machine.travel("2025-06-20 10:15:30+00:00", tick=False)
-    def test_stop_transaction_with_command_auth_method_returns_session_data(
+    def test_stop_transaction_returns_session_data(
         self, admin_user_client, remote_command_session
     ):
         from ocpi22.models.cdr import Cdr
@@ -469,10 +442,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 70.0,
         }
 
-        with (
-            patch("ocpi22.cpo.session_service.send_callback.delay"),
-            patch.object(Session, "send_updates"),
-        ):
+        with patch.object(Session, "send_updates"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -542,7 +512,7 @@ class TestStopTransactionRemoteCommand:
             (100.0, 250.0, 150.0),
         ],
     )
-    def test_stop_transaction_with_command_auth_method_calculates_correct_total_kwh(
+    def test_stop_transaction_calculates_correct_total_kwh(
         self,
         admin_user_client,
         remote_command_session,
@@ -559,10 +529,7 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": stop_kwh,
         }
 
-        with (
-            patch("ocpi22.cpo.session_service.send_callback.delay"),
-            patch.object(Session, "send_updates"),
-        ):
+        with patch.object(Session, "send_updates"):
             response = admin_user_client.post(
                 self.stop_transaction_url, data=request_body
             )
@@ -571,7 +538,7 @@ class TestStopTransactionRemoteCommand:
             response_data = response.json()
             assert response_data["total_kwh"] == expected_total_kwh
 
-    def test_stop_transaction_with_command_auth_method_when_already_completed_returns_409(
+    def test_stop_transaction_when_already_completed_returns_409(
         self, admin_user_client, remote_command_session
     ):
         remote_command_session.status = Session.COMPLETED
@@ -590,65 +557,6 @@ class TestStopTransactionRemoteCommand:
         assert response.json() == {
             "status_text": "Session was completed earlier, cannot stop it twice"
         }
-
-    def test_stop_transaction_with_command_auth_method_when_service_fails_sends_rejected_callback(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.status = Session.ACTIVE
-        remote_command_session.start_kwh = 10.0
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "stop_kwh": 60.0,
-        }
-
-        with (
-            patch(
-                "ocpi22.cpo.session_service.send_callback.delay"
-            ) as mock_send_callback,
-            patch(
-                "ocpi22.cpo.session_service.SessionService.stop_and_create_cdr",
-                side_effect=Exception("Test exception"),
-            ),
-        ):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
-
-            assert response.status_code == 400
-            mock_send_callback.assert_called_once()
-            call_args = mock_send_callback.call_args
-            assert call_args.kwargs["session_uid"] == remote_command_session.uid
-            assert call_args.kwargs["result"] == CommandResultType.REJECTED.value
-
-    def test_stop_transaction_with_command_auth_method_when_service_fails_returns_400(
-        self, admin_user_client, remote_command_session
-    ):
-        remote_command_session.status = Session.ACTIVE
-        remote_command_session.start_kwh = 10.0
-        remote_command_session.save()
-
-        request_body = {
-            "session_id": remote_command_session.uid,
-            "stop_kwh": 60.0,
-        }
-
-        with (
-            patch("ocpi22.cpo.session_service.send_callback.delay"),
-            patch(
-                "ocpi22.cpo.session_service.SessionService.stop_and_create_cdr",
-                side_effect=Exception("Test exception"),
-            ),
-        ):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
-
-            assert response.status_code == 400
-            assert response.json() == {
-                "status_text": "Unable to stop the session, please try again"
-            }
 
     def test_stop_transaction_with_missing_session_id_returns_400(
         self, admin_user_client
@@ -709,18 +617,23 @@ class TestStopTransactionRemoteCommand:
 
         assert response.status_code == 400
 
-    def test_stop_transaction_with_non_command_auth_method_completes_the_session_normally(
+    def test_stop_transaction_with_non_command_auth_method_completes_session_normally(
         self, admin_user_client, remote_command_session
     ):
+        remote_command_session.auth_method = AuthMethodChoices.AUTH_REQUEST
+        remote_command_session.status = Session.ACTIVE
+        remote_command_session.save()
+
         request_body = {
             "session_id": remote_command_session.uid,
             "stop_kwh": 60.0,
         }
 
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+
+        assert response.status_code == 200
         remote_command_session.refresh_from_db()
         assert remote_command_session.status == Session.COMPLETED
-        assert response.status_code == 200
 
     def test_stop_transaction_when_session_invalid_returns_409(
         self, admin_user_client, remote_command_session
@@ -751,15 +664,12 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 100.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            cdr = Cdr.objects.filter(session_id=remote_command_session.uid).first()
-            assert cdr is not None
-            assert cdr.cdr_location.uid == remote_command_session.location.uid
+        assert response.status_code == 200
+        cdr = Cdr.objects.filter(session_id=remote_command_session.uid).first()
+        assert cdr is not None
+        assert cdr.cdr_location.uid == remote_command_session.location.uid
 
     def test_stop_transaction_calculates_accurate_energy_consumption(
         self, admin_user_client, remote_command_session
@@ -773,14 +683,11 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 87.25,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.kwh == 63.75
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.kwh == 63.75
 
     def test_stop_transaction_with_zero_energy_consumption_succeeds(
         self, admin_user_client, remote_command_session
@@ -794,11 +701,8 @@ class TestStopTransactionRemoteCommand:
             "stop_kwh": 50.0,
         }
 
-        with patch("ocpi22.cpo.session_service.send_callback.delay"):
-            response = admin_user_client.post(
-                self.stop_transaction_url, data=request_body
-            )
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
 
-            assert response.status_code == 200
-            remote_command_session.refresh_from_db()
-            assert remote_command_session.kwh == 0
+        assert response.status_code == 200
+        remote_command_session.refresh_from_db()
+        assert remote_command_session.kwh == 0

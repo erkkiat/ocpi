@@ -722,3 +722,177 @@ class TestStartSessionAPI:
         assert payload["evse_uid"] == "EVSE001"
         assert payload["connector_id"] == "CONN001"
         assert payload["session_id"] == session.uid
+
+
+class TestStopSessionAPI:
+    @pytest.mark.django_db
+    def test_stop_session_with_no_data_returns_bad_request(
+        self, client, nl_tst_credentials_role, ocpi_headers
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION", data={}, format="json", **ocpi_headers
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @pytest.mark.django_db
+    def test_stop_session_without_auth_headers_returns_unauthorized(
+        self, client, valid_stop_session_data
+    ):
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=valid_stop_session_data,
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.django_db
+    def test_stop_session_with_wrong_role_returns_unauthorized(
+        self, client, cpo_credentials, ocpi_headers, valid_stop_session_data
+    ):
+        client.credentials = cpo_credentials
+        headers = ocpi_headers.copy()
+        headers["HTTP_OCPI_FROM_PARTY_ID"] = "CPO"
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=valid_stop_session_data,
+            format="json",
+            **headers,
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @pytest.mark.django_db
+    def test_stop_session_with_nonexistent_session_returns_rejected(
+        self, client, nl_tst_credentials_role, ocpi_headers, active_stop_webhook
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+        data = {
+            "response_url": "https://example.com/callback",
+            "session_id": "NONEXISTENT_SESSION",
+        }
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=data,
+            format="json",
+            **ocpi_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 2000
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_stop_session_with_active_session_webhook_accepted_returns_accepted(
+        self,
+        client,
+        nl_tst_credentials_role,
+        ocpi_headers,
+        valid_stop_session_data,
+        active_stop_webhook,
+        session_factory,
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+        location = LocationFactory(uid=valid_stop_session_data["session_id"])
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+
+        active_session = session_factory(
+            token_uid="TOKEN123",
+            authorization_reference="AUTH_REF_123",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            ocpi_master=nl_tst_credentials_role,
+            credentials=nl_tst_credentials_role.credentials,
+        )
+
+        data = {
+            "response_url": "https://example.com/callback",
+            "session_id": active_session.uid,
+        }
+
+        responses.add(
+            responses.POST,
+            active_stop_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=data,
+            format="json",
+            **ocpi_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 1000
+        assert response_data["data"]["result"] == "ACCEPTED"
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_stop_session_creates_callback_record(
+        self,
+        client,
+        nl_tst_credentials_role,
+        ocpi_headers,
+        active_stop_webhook,
+        session_factory,
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+
+        active_session = session_factory(
+            token_uid="TOKEN456",
+            authorization_reference="AUTH_REF_456",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            ocpi_master=nl_tst_credentials_role,
+            credentials=nl_tst_credentials_role.credentials,
+        )
+
+        data = {
+            "response_url": "https://example.com/callback",
+            "session_id": active_session.uid,
+        }
+
+        responses.add(
+            responses.POST,
+            active_stop_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=data,
+            format="json",
+            **ocpi_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        from ocpi22.commands.models import CallBacks
+
+        callback = CallBacks.objects.filter(session=active_session).first()
+        assert callback is not None
+        assert callback.callback_url == data["response_url"]
+
+    @pytest.mark.django_db
+    def test_stop_session_without_webhook_returns_rejected(
+        self, client, nl_tst_credentials_role, ocpi_headers, valid_stop_session_data
+    ):
+        client.credentials = nl_tst_credentials_role.credentials
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=valid_stop_session_data,
+            format="json",
+            **ocpi_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 2000

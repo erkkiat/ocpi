@@ -84,16 +84,14 @@ class CommandsViewSet(GenericViewSet):
             data=request.data, context={"request": request}
         )
         if not serializer.is_valid():
-            return OCPIResponse(
-                serializer.errors,
-                status_message="Please check your request parameters",
-                http_status=status.HTTP_400_BAD_REQUEST,
+            return RemoteCommandServices().create_ocpi_response(
+                {}, RemoteCommandType.STOP_SESSION
             )
+
         try:
             stop_command_service = StopCommandServices()
             response = stop_command_service.stop_session(validated_data=serializer.data)
             return response
-
         except Exception:
             logger.error("Could not process remote stop command", exc_info=True)
             return RemoteCommandServices().create_ocpi_response({}, "STOP")

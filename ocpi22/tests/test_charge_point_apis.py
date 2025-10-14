@@ -552,3 +552,88 @@ class TestChargePointAPI:
         }
         response = admin_user_client.post(self.stop_transaction_url, data=request_body)
         assert response.status_code == 200
+
+    def test_stop_transaction_post_with_nonexistent_session_returns_404(
+        self, admin_user_client
+    ):
+        request_body = {"session_id": "NONEXISTENT_SESSION", "stop_kwh": 10}
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 404
+
+    def test_stop_transaction_post_with_completed_session_returns_409(
+        self, admin_user_client, session
+    ):
+        session.status = "COMPLETED"
+        session.save()
+        request_body = {"session_id": session.uid, "stop_kwh": 100}
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 409
+        assert response.json() == {
+            "status_text": "Session was completed earlier, cannot stop it twice"
+        }
+
+    @patch("ocpi22.cpo.session_service.SessionService.stop_and_create_cdr")
+    def test_stop_transaction_post_calls_stop_and_create_cdr(
+        self, mock_stop_and_create_cdr, admin_user_client, session
+    ):
+        request_body = {
+            "session_id": session.uid,
+            "stop_kwh": 50,
+        }
+        admin_user_client.post(self.stop_transaction_url, data=request_body)
+        mock_stop_and_create_cdr.assert_called_once()
+        call_kwargs = mock_stop_and_create_cdr.call_args[1]
+        assert call_kwargs["session"] == session
+        assert call_kwargs["stop_kwh"] == 50
+
+    @patch("ocpi22.models.session.Session.send_updates")
+    def test_stop_transaction_post_sends_updates_with_end_notification(
+        self, mock_send_updates, admin_user_client, session
+    ):
+        tariff = TariffFactory(uid="TARIFF_001")
+        session.connector.tariff_ids.add(tariff)
+        request_body = {"session_id": session.uid, "stop_kwh": 50}
+        admin_user_client.post(self.stop_transaction_url, data=request_body)
+        mock_send_updates.assert_called_once()
+
+    def test_stop_transaction_post_creates_cdr(self, admin_user_client, session):
+        from ocpi22.models.cdr import Cdr
+
+        tariff = TariffFactory(uid="TARIFF_001")
+        session.connector.tariff_ids.add(tariff)
+        request_body = {"session_id": session.uid, "stop_kwh": 100}
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        cdr = Cdr.objects.filter(session_id=session.uid).first()
+        assert cdr is not None
+
+    def test_stop_transaction_post_calculates_total_kwh_correctly(
+        self, admin_user_client, session
+    ):
+        tariff = TariffFactory(uid="TARIFF_001")
+        session.connector.tariff_ids.add(tariff)
+        session.start_kwh = 10
+        session.save()
+        request_body = {"session_id": session.uid, "stop_kwh": 110}
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        assert response.json()["total_kwh"] == 100.0
+
+    @time_machine.travel("2025-03-31 06:26:58")
+    def test_stop_transaction_post_updates_session_status_to_completed(
+        self, admin_user_client, session
+    ):
+        tariff = TariffFactory(uid="TARIFF_001")
+        session.connector.tariff_ids.add(tariff)
+        request_body = {"session_id": session.uid, "stop_kwh": 50}
+        response = admin_user_client.post(self.stop_transaction_url, data=request_body)
+        assert response.status_code == 200
+        session.refresh_from_db()
+        assert session.status == "COMPLETED"
+
+    def test_stop_transaction_get_returns_400(self, admin_user_client):
+        response = admin_user_client.get(self.stop_transaction_url)
+        assert response.status_code == 400
+        assert response.json() == {
+            "status_message": "Please see OPTIONS to learn what you can POST at this endpoint",
+        }

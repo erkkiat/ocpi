@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 import pytz
 from django.db import transaction
@@ -39,37 +38,6 @@ class SessionService:
             result=CommandResultType.ACCEPTED.value,
         )
         return
-
-    def stop_command_session(
-        self,
-        session: Session,
-        stop_kwh: Optional[float],
-        stop_timestamp: datetime | None = None,
-    ) -> bool:
-        if not stop_timestamp:
-            stop_timestamp = datetime.now(pytz.utc)
-        try:
-            self.stop_and_create_cdr(session, stop_kwh, stop_timestamp)
-        except Exception:
-            message = f"Error stopping remote command session {session.uid}"
-            if session.route_through_oicp:
-                logger.exception(message)
-                return False
-
-            logger.exception(f"{message}, sending REJECTED callback")
-            send_callback.delay(
-                session_uid=session.uid,
-                result=CommandResultType.REJECTED.value,
-                message=f"Error stopping session {session.uid}",
-            )
-            return False
-        if session.route_through_oicp:
-            return True
-        send_callback.delay(
-            session_uid=session.uid,
-            result=CommandResultType.ACCEPTED.value,
-        )
-        return True
 
     def stop_and_create_cdr(
         self,
