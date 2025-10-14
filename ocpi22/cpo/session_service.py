@@ -30,10 +30,10 @@ class SessionService:
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh", "stop_kwh"])
-        if original_status != Session.PENDING:
-            logger.info("Cannot send ACCEPTED callback for non-pending session")
         if session.route_through_oicp:
             return
+        if original_status != Session.PENDING:
+            logger.info("Cannot send ACCEPTED callback for non-pending session")
         send_callback.delay(
             session_uid=session.uid,
             result=CommandResultType.ACCEPTED.value,
@@ -51,10 +51,12 @@ class SessionService:
         try:
             self.stop_and_create_cdr(session, stop_kwh, stop_timestamp)
         except Exception:
-            message = f"Error stopping remote command session {session.uid}, sending REJECTED callback"
-            logger.exception(message)
+            message = f"Error stopping remote command session {session.uid}"
             if session.route_through_oicp:
+                logger.exception(message)
                 return False
+
+            logger.exception(f"{message}, sending REJECTED callback")
             send_callback.delay(
                 session_uid=session.uid,
                 result=CommandResultType.REJECTED.value,
