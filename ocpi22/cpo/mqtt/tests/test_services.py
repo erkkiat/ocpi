@@ -206,7 +206,10 @@ class TestMqttServices:
 
     @pytest.mark.django_db
     def test_meter_values_update_data_calls_send_ocpi_message_with_put_only(
-        self, smappee_meter_message, msp_credentials_with_endpoints
+        self,
+        smappee_meter_message,
+        msp_credentials_with_endpoints,
+        hubject_credentialsrole,
     ):
         meter_values = MagicMock(spec=MeterValues)
         decoded_message = _decode_message(smappee_meter_message)
