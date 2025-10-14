@@ -4,7 +4,7 @@ import orjson
 import pytest
 from paho.mqtt.client import MQTTMessage
 
-from ocpi22.tests.factories import LocationFactory, EvseFactory
+from ocpi22.tests.factories import LocationFactory, EvseFactory, CredentialsRoleFactory
 
 
 @pytest.fixture
@@ -125,3 +125,12 @@ def mqtt_message():
         return message
 
     return _create_message
+
+
+@pytest.fixture
+def hubject_credentialsrole():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role="HUB",
+    )

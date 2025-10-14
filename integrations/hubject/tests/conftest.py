@@ -694,6 +694,15 @@ def remote_command_payload():
 
 
 @pytest.fixture
+def hubject_credentialsrole():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role="HUB",
+    )
+
+
+@pytest.fixture
 def remote_stop_command_payload():
     evse = EvseFactory(status="CHARGING")
 

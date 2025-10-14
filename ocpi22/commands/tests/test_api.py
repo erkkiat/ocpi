@@ -80,6 +80,15 @@ def nl_tst_credentials_role(emsp_credentials):
 
 
 @pytest.fixture
+def hubject_credentialsrole():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role="HUB",
+    )
+
+
+@pytest.fixture
 def emsp_credentials():
     credentials = CredentialsFactory()
     return credentials
@@ -255,6 +264,7 @@ class TestStartSessionAPI:
         ocpi_headers,
         valid_start_session_data,
         active_start_webhook,
+        hubject_credentialsrole,
     ):
         client.credentials = nl_tst_credentials_role.credentials
 
