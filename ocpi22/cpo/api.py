@@ -788,24 +788,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
-                    if session.auth_method == enum.AuthMethodChoices.COMMAND:
-                        stopped = SessionService().stop_command_session(
-                            session=session,
-                            stop_kwh=stop_kwh,
-                            stop_timestamp=stop_timestamp,
-                        )
-                        if not stopped:
-                            return Response(
-                                dict(
-                                    status_text="Unable to stop the session, please try again"
-                                ),
-                                status=status.HTTP_400_BAD_REQUEST,
-                            )
-                    else:
-                        SessionService().stop_and_create_cdr(
-                            session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
-                        )
-
+                    SessionService().stop_and_create_cdr(
+                        session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
+                    )
                     session.send_updates(update_type=ChargingNotificationType.End)
 
                     extra_information = {
