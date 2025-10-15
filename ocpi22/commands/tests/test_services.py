@@ -1,19 +1,33 @@
 from unittest.mock import patch, MagicMock
 
 import pytest
+from django.core.exceptions import ValidationError
+from django.test import override_settings
 
-from ocpi22.commands.services import StartCommandService
+from ocpi22.commands.services import StartCommandService, StopCommandServices
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.session import Session
 from ocpi22.tests.factories import (
     EvseFactory,
     ConnectorFactory,
     CredentialsFactory,
     LocationFactory,
+    CredentialsRoleFactory,
+    OCPISessionFactory,
 )
 from ocpiconnector.party import Party
+from webhooks.choices import RemoteCommandType
 
 
 class TestCommandServices:
+    @pytest.fixture
+    def hubject_credentialsrole(self):
+        return CredentialsRoleFactory(
+            country_code="DE",
+            party_id="ICE",
+            role="HUB",
+        )
+
     @patch("ocpi22.commands.services.build_absolute_uri")
     def test_prepare_start_session_payload_includes_all_required_fields(
         self, mock_build_uri
@@ -263,7 +277,7 @@ class TestCommandServices:
     @patch("ocpi22.commands.services.build_absolute_uri")
     @pytest.mark.django_db
     def test_start_session_creates_non_existing_msp_credentials_role(
-        self, mock_build_uri
+        self, mock_build_uri, hubject_credentialsrole
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
@@ -275,8 +289,12 @@ class TestCommandServices:
             "evse_uid": evse.uid,
             "connector_id": connector.uid,
             "location_id": evse.location.uid,
+            "response_url": "http://localhost/commands/results/AUTH123/",
         }
         credentials = CredentialsFactory()
+        CredentialsRoleFactory(
+            country_code="NP", party_id="ABC", credentials=credentials
+        )
 
         nl_cpo_cred_role = CredentialsRole.objects.filter(
             country_code="NL", party_id="CPO"
@@ -300,3 +318,185 @@ class TestCommandServices:
             country_code="NL", party_id="CPO"
         ).first()
         assert nl_cpo_cred_role is not None
+
+    @patch("ocpi22.commands.services.build_absolute_uri")
+    @pytest.mark.django_db
+    @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
+    def test_start_session_does_not_create_a_callback_for_hubject_sessions(
+        self, mock_build_uri
+    ):
+        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
+
+        evse = EvseFactory(uid="EVSE001", location=LocationFactory())
+        connector = ConnectorFactory(uid="CONN001", evse=evse)
+        validated_data = {
+            "token": {"uid": "TOKEN123", "type": "RFID"},
+            "authorization_reference": "AUTH123",
+            "evse_uid": evse.uid,
+            "connector_id": connector.uid,
+            "location_id": evse.location.uid,
+            "response_url": "http://localhost/commands/results/AUTH123/",
+        }
+        credentials = CredentialsFactory()
+
+        CredentialsRoleFactory(
+            country_code="DE", party_id="ICE", credentials=credentials
+        )
+
+        CredentialsRoleFactory(country_code="NL", party_id="MSP")
+
+        with patch(
+            "ocpi22.commands.services.StartCommandService.send_start_command_webhook"
+        ) as mock_send_webhook:
+            with patch(
+                "ocpi22.commands.services.CallBackService.create_callback"
+            ) as mock_create_callback:
+                mock_send_webhook.return_value = {
+                    "status_code": 1000,
+                    "status_message": "Success",
+                }
+                StartCommandService().start_session(
+                    sender_party=Party(country_code="NL", party_id="MSP"),
+                    credentials=credentials,
+                    validated_data=validated_data,
+                )
+
+        mock_create_callback.assert_not_called()
+
+
+class TestStopCommandServices:
+    @patch("ocpi22.commands.services.WebhookRepository.get_remote_command_webhook")
+    def test_get_valid_webhook_with_active_webhook_returns_webhook(
+        self, mock_get_webhook
+    ):
+        mock_webhook = MagicMock()
+        mock_webhook.active = True
+        mock_get_webhook.return_value = mock_webhook
+
+        service = MagicMock()
+        service.webhook_repo = MagicMock()
+        service.webhook_repo.get_remote_command_webhook = mock_get_webhook
+
+        from ocpi22.commands.services import StopCommandServices
+
+        result = StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
+        assert result == mock_webhook
+
+    @patch("ocpi22.commands.services.WebhookRepository.get_remote_command_webhook")
+    def test_get_valid_webhook_with_no_webhook_raises_validation_error(
+        self, mock_get_webhook
+    ):
+        mock_get_webhook.return_value = None
+
+        from ocpi22.commands.services import StopCommandServices
+        from django.core.exceptions import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
+        assert "No webhook configured" in str(exc_info.value)
+
+    @patch("ocpi22.commands.services.WebhookRepository.get_remote_command_webhook")
+    def test_get_valid_webhook_with_inactive_webhook_raises_validation_error(
+        self, mock_get_webhook
+    ):
+        mock_webhook = MagicMock()
+        mock_webhook.active = False
+        mock_get_webhook.return_value = mock_webhook
+
+        with pytest.raises(ValidationError) as exc_info:
+            StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
+        assert "Inactive webhook found" in str(exc_info.value)
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.send_callback.delay")
+    @patch("ocpi22.commands.services.StopCommandServices.send_stop_command_webhook")
+    def test_stop_session_with_accepted_result_schedules_callback_task(
+        self, mock_send_webhook, mock_send_callback
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+        credentials_role = CredentialsRoleFactory()
+        session = OCPISessionFactory(
+            uid="SESSION_123",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+        )
+
+        validated_data = {
+            "session_id": session.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        StopCommandServices().stop_session(validated_data=validated_data)
+
+        mock_send_callback.assert_called_once()
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.send_callback.delay")
+    @patch("ocpi22.commands.services.StopCommandServices.send_stop_command_webhook")
+    def test_stop_session_with_rejected_result_does_not_schedule_callback(
+        self, mock_send_webhook, mock_send_callback
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "REJECTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+        credentials_role = CredentialsRoleFactory()
+        session = OCPISessionFactory(
+            uid="SESSION_456",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+        )
+
+        validated_data = {
+            "session_id": session.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        from ocpi22.commands.services import StopCommandServices
+
+        StopCommandServices().stop_session(validated_data=validated_data)
+
+        mock_send_callback.assert_not_called()
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StopCommandServices.send_stop_command_webhook")
+    def test_stop_session_creates_callback_record(self, mock_send_webhook):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+        credentials_role = CredentialsRoleFactory()
+        session = OCPISessionFactory(
+            uid="SESSION_789",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+        )
+
+        validated_data = {
+            "session_id": session.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        from ocpi22.commands.services import StopCommandServices
+        from ocpi22.commands.models import CallBacks
+
+        StopCommandServices().stop_session(validated_data=validated_data)
+
+        callback = CallBacks.objects.filter(session=session).first()
+        assert callback is not None
+        assert callback.callback_url == validated_data["response_url"]

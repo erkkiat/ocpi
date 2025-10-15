@@ -1,3 +1,6 @@
+import datetime
+import zoneinfo
+
 import pytest
 
 from ocpi22.tests.factories import CredentialsRoleFactory, SolidTariffFactory
@@ -67,6 +70,7 @@ def smp1_solid_tariff_validated_json(operator_fi_cpo, msp_de_ice):
         "vat_percentage": 0.2,
         "ocpi_master": operator_fi_cpo,
         "msp": msp_de_ice,
+        "last_updated": "2024-10-10T12:00:00Z",
     }
 
 
@@ -84,6 +88,9 @@ def smp1_msp1_solid_tariff_with_all_records(msp_de_ice, operator_fi_cpo):
         parking_grace_period=100,
         msp=msp_de_ice,
         operator=operator_fi_cpo,
+        last_updated=datetime.datetime(
+            2024, 10, 10, 12, 0, tzinfo=zoneinfo.ZoneInfo(key="UTC")
+        ),
     )
 
 

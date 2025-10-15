@@ -691,3 +691,34 @@ def remote_command_payload():
         "PartnerProductID": "AC1",
         "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
     }
+
+
+@pytest.fixture
+def hubject_credentialsrole():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role="HUB",
+    )
+
+
+@pytest.fixture
+def remote_stop_command_payload():
+    evse = EvseFactory(status="CHARGING")
+
+    return {
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_session():
+    evse = EvseFactory(status="CHARGING")
+
+    return OCPISessionFactory(
+        uid="OURSESSIONID", evse=evse, authorization_reference="2345ABC"
+    )

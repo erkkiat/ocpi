@@ -35,6 +35,7 @@ from integrations.hubject.schemas import (
     PricingProductDataRecord,
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
+from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -697,3 +698,16 @@ class DefaultTariffsFactory(factory.django.DjangoModelFactory):
         else:
             tariff1 = TariffFactory()
             self.tariffs.add(tariff1)
+
+
+class CallBackFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CallBacks
+
+    session = factory.SubFactory(OCPISessionFactory)
+    callback_url = "https://example.com/callback"
+    authorization_reference = factory.Faker("uuid4")
+    execution_status = CallBackExecutionStatus.PENDING
+    response_status_code = None
+    response_body = None
+    executed_at = None

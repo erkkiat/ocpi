@@ -33,6 +33,7 @@ from rest_framework.exceptions import NotAuthenticated
 from rest_framework.permissions import DjangoModelPermissions
 
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.tasks import get_cert_from_env
 from ocpiconnector.db_services import ensure_db_connection
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpiconnector.ocpi_identities import create_credentialsrole, ocpi_identities
@@ -320,13 +321,15 @@ class CertificateAuth(HttpAuthBase, ABC):
         return builder.build_client_verifier()
 
     def _validate_certificate_chain(self, certificates: list[x509.Certificate]):
-        root_cert = x509.load_pem_x509_certificate(self.ca_certificate.encode("utf-8"))
-        client_cert = certificates[0]
-        intermediate_certs = certificates[1:] if len(certificates) > 1 else []
-        trust_store_certs = intermediate_certs + [root_cert]
-        store = Store(trust_store_certs)
-
         try:
+            root_cert = x509.load_pem_x509_certificate(
+                self.ca_certificate.encode("utf-8")
+            )
+            client_cert = certificates[0]
+            intermediate_certs = certificates[1:] if len(certificates) > 1 else []
+            trust_store_certs = intermediate_certs + [root_cert]
+            store = Store(trust_store_certs)
+
             verifier = self._build_client_verifier(store)
             chain = verifier.verify(client_cert, intermediate_certs)
             return chain
@@ -368,8 +371,13 @@ class CertificateAuth(HttpAuthBase, ABC):
 
 class HubjectCertAuth(CertificateAuth):
     def __init__(self):
+        hubject_ca_cert = get_cert_from_env("HUBJECT_CA_CERTIFICATE")
+        if not hubject_ca_cert or hubject_ca_cert == "":
+            raise ValueError(
+                "HUBJECT_CA_CERTIFICATE is not in the environment variables"
+            )
         super().__init__(
-            ca_certificate=settings.HUBJECT_CA_CERTIFICATE,
+            ca_certificate=hubject_ca_cert,
             allowed_hosts=settings.HUBJECT_HOSTS,
             require_client_auth=True,
             require_server_auth=True,

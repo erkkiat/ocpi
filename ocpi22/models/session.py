@@ -5,7 +5,6 @@ import pytz
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
 from django.utils.datetime_safe import datetime
-from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.ocpi_logging as logging
@@ -47,6 +46,7 @@ from ocpi22.util import (
 from ocpi22.serializers.util import SerializerCleanedUp, UTCDateTimeField
 from ocpi22.ocpi.util import OcpiModule
 from ocpiconnector.manager import PartnerManager
+from ocpiconnector.party import Party
 
 
 class Session(models.Model, ModelUtilMixin, OcpiModule):
@@ -281,10 +281,25 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def route_through_oicp(self):
-        return (
-            str(self.credentials.roles.first().get_party())
-            == settings.HUBJECT_OPERATOR_ID
+        from ocpi22.ocpi.auth import get_credentialsrole
+
+        if settings.HUBJECT_OPERATOR_ID and settings.HUBJECT_OPERATOR_ID == "":
+            raise ValueError("HUBJECT_OPERATOR_ID is set in environment variables")
+        hubject_role = get_credentialsrole(
+            party=Party.from_str(settings.HUBJECT_OPERATOR_ID)
         )
+        if not hubject_role or not hubject_role.credentials:
+            raise ValidationError(
+                f"Credentials/CredentialsRole for Hubject {settings.HUBJECT_OPERATOR_ID} not found"
+            )
+        credentials_role = self.credentials.roles.first() if self.credentials else None
+        if not credentials_role:
+            raise ValidationError(
+                f"Credentials id {self.credentials.id} - url {self.credentials.url} has no roles"
+                if self.credentials
+                else f"Credentials not set for Session {self.uid}"
+            )
+        return str(credentials_role.get_party()) == settings.HUBJECT_OPERATOR_ID
 
     # This is the eMSP that will be billed for this Session
     billed_to = models.ForeignKey(
@@ -434,7 +449,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         return True
 
     def __str__(self):
-        return f"{round(self.kwh, 1)} kWh, updated {naturaltime(self.updated)}"
+        return f"{round(self.kwh, 1)} kWh, updated {self.updated}"
 
     def get_absolute_url(self, version=None):
         return util.reverse(

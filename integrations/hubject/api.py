@@ -11,10 +11,12 @@ from integrations.hubject.schemas import (
     HubjectCDRError,
     ERoamingAuthorizeRemoteStart,
     ERoamingAcknowledgment,
+    ERoamingAuthorizeRemoteStop,
     Identification,
     RemoteIdentification,
     StatusCode,
     RemoteCommandStart,
+    RemoteCommandStop,
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
@@ -173,6 +175,53 @@ def receive_remote_start_command(
             session_id=remote_start_command.session_id,
             cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
+        )
+
+
+@remote_command_router.post(
+    "providers/{provider_id}/authorize-remote/stop/",
+    url_name="hubject-remote-stop",
+    auth=hubject_auth,
+    response={(200, 400, 503): ERoamingAcknowledgment},
+)
+def receive_remote_stop_command(
+    request, provider_id: str, remote_stop_command: RemoteCommandStop
+):
+    try:
+        if provider_id != remote_stop_command.provider_id:
+            return 400, ERoamingAcknowledgment(
+                result=False,
+                status_code=StatusCode(Code="022"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id=remote_stop_command.cpo_partner_session_id or "",
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id or "",
+            )
+        command = ERoamingAuthorizeRemoteStop(
+            session_id=remote_stop_command.session_id,
+            cpo_partner_session_id=remote_stop_command.cpo_partner_session_id,
+            emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            provider_id=remote_stop_command.provider_id or provider_id,
+            evse_id=remote_stop_command.evse_id,
+        )
+    except ValidationError:
+        return 400, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="022"),
+            session_id=None,
+            cpo_partner_session_id=remote_stop_command.cpo_partner_session_id or "",
+            emp_partner_session_id=remote_stop_command.emp_partner_session_id or "",
+        )
+    try:
+        result = hubject_service.process_remote_stop_command(command)
+        return 200, result
+    except Exception:
+        logger.exception(msg="Send hubject remote stop failed", exc_info=True)
+        return 503, ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="021"),
+            session_id=remote_stop_command.session_id,
+            cpo_partner_session_id=remote_stop_command.cpo_partner_session_id,
+            emp_partner_session_id=remote_stop_command.emp_partner_session_id,
         )
 
 

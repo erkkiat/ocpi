@@ -1,6 +1,7 @@
 import pprint
 
 from django.conf import settings
+from django.db.models import TextChoices
 from rest_framework import serializers
 
 from ocpi22 import choices
@@ -187,53 +188,30 @@ class CommandResponse(serializers.Serializer):
     message = MessageSerializer(many=True, required=False)
 
 
-class CommandResultBaseSerializer(serializers.Serializer):
-    ACCEPTED = "ACCEPTED"
-    CANCELED_RESERVATION = "CANCELED_RESERVATION"
-    EVSE_OCCUPIED = "EVSE_OCCUPIED"
-    EVSE_INOPERATIVE = "EVSE_INOPERATIVE"
-    FAILED = "FAILED"
-    NOT_SUPPORTED = "NOT_SUPPORTED"
-    REJECTED = "REJECTED"
-    TIMEOUT = "TIMEOUT"
-    UNKNOWN_RESERVATION = "UNKNOWN_RESERVATION"
+class CommandResultType(TextChoices):
+    ACCEPTED = "ACCEPTED", "Accepted"
+    CANCELED_RESERVATION = "CANCELED_RESERVATION", "CPO cancelled reservation"
+    EVSE_OCCUPIED = "EVSE_OCCUPIED", "EVSE is currently in use"
+    EVSE_INOPERATIVE = "EVSE_INOPERATIVE", "EVSE is inoperative"
+    FAILED = "FAILED", "Command failed"
+    NOT_SUPPORTED = "NOT_SUPPORTED", "Command is not supported"
+    REJECTED = "REJECTED", "Command rejected"
+    TIMEOUT = "TIMEOUT", "Command timeout"
+    UNKNOWN_RESERVATION = "UNKNOWN_RESERVATION", "No matching reservation"
 
-    RESULT_OPTIONS = (
-        ("ACCEPTED", "Accepted"),  # Command request accepted by the Charge Point.
-        (
-            "CANCELED_RESERVATION",
-            "CPO cancelled reservation",
-        ),  # The Reservation has been canceled by the CPO.
-        (
-            "EVSE_OCCUPIED",
-            "EVSE is currently in use",
-        ),  # EVSE is currently occupied, another session is ongoing
-        # Cannot start a new session
-        (
-            "EVSE_INOPERATIVE",
-            "EVSE is inoperative",
-        ),  # EVSE is currently inoperative or faulted.
-        (
-            "FAILED",
-            "Command failed",
-        ),  # Execution of the command failed at the Charge Point.
-        (
-            "NOT_SUPPORTED",
-            "Command is not supported",
-        ),  # The requested command is not supported
-        # by this Charge Point, EVSE etc.
-        (
-            "REJECTED",
-            "Command rejected",
-        ),  # Command request rejected by the Charge Point.
-        ("TIMEOUT", "Command timeout"),  # Command request timeout, no response received
-        # from the Charge Point in a reasonable time.
-        (
-            "UNKNOWN_RESERVATION",
-            "No matching reservation",
-        ),  # The Reservation in the requested command
-        # is not known by this Charge Point.
-    )
+
+class CommandResultBaseSerializer(serializers.Serializer):
+    ACCEPTED = CommandResultType.ACCEPTED.value
+    CANCELED_RESERVATION = CommandResultType.CANCELED_RESERVATION.value
+    EVSE_OCCUPIED = CommandResultType.EVSE_OCCUPIED.value
+    EVSE_INOPERATIVE = CommandResultType.EVSE_INOPERATIVE.value
+    FAILED = CommandResultType.FAILED.value
+    NOT_SUPPORTED = CommandResultType.NOT_SUPPORTED.value
+    REJECTED = CommandResultType.REJECTED.value
+    TIMEOUT = CommandResultType.TIMEOUT.value
+    UNKNOWN_RESERVATION = CommandResultType.UNKNOWN_RESERVATION.value
+
+    RESULT_OPTIONS = CommandResultType.choices
 
     # Result of the command request as sent by the Charge Point to the CPO.
     result = serializers.ChoiceField(choices=RESULT_OPTIONS)
@@ -244,5 +222,4 @@ class CpoCommandResultSerializer(CommandResultBaseSerializer):
 
 
 class CommandResultSerializer(CommandResultBaseSerializer):
-    # Human-readable description of the reason (if one can be provided), multiple languages can be provided.
     message = MessageSerializer(many=True, required=False)
