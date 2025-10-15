@@ -122,7 +122,7 @@ class LoggingMiddleware(MiddlewareMixin):
     ) -> Dict[str, Any]:
         status = response.status_code
         if 200 <= status < 300:
-            self.logger.info(f"HUBJECT Response data: {self.get_raw_response(response)}")
+            print(f"HUBJECT Response data: {self.get_raw_response(response)}")
             data = "Omitted"
         elif 300 <= status < 500:
             data = self.get_raw_response(response)
