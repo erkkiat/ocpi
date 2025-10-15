@@ -254,17 +254,17 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
         )
         assert response.status_code == 200
         assert response.json() == {
-            "cpo_partner_session_id": response.json().get(
-                "cpo_partner_session_id"
+            "CPOPartnerSessionID": response.json().get(
+                "CPOPartnerSessionID"
             ),  # ignored in assert
-            "emp_partner_session_id": "2345ABC",
-            "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-            "status_code": {
+            "EMPPartnerSessionID": "2345ABC",
+            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            "StatusCode": {
                 "Code": "000",
                 "Description": None,
                 "AdditionalInfo": None,
             },
-            "result": True,
+            "Result": True,
         }
 
 
@@ -296,17 +296,17 @@ def test_remote_start_returns_200_for_minimal_data(
         )
         assert response.status_code == 200
         assert response.json() == {
-            "cpo_partner_session_id": response.json().get(
-                "cpo_partner_session_id"
+            "CPOPartnerSessionID": response.json().get(
+                "CPOPartnerSessionID"
             ),  # ignored in assert
-            "emp_partner_session_id": None,
-            "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-            "status_code": {
+            "EMPPartnerSessionID": None,
+            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            "StatusCode": {
                 "Code": "000",
                 "Description": None,
                 "AdditionalInfo": None,
             },
-            "result": True,
+            "Result": True,
         }
 
 
@@ -322,15 +322,15 @@ def test_remote_start_returns_400_for_invalid_data(
         )
         assert response.status_code == 400
         assert response.json() == {
-            "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
-            "emp_partner_session_id": "2345ABC",
-            "session_id": None,
-            "status_code": {
+            "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+            "EMPPartnerSessionID": "2345ABC",
+            "SessionID": None,
+            "StatusCode": {
                 "Code": "022",
                 "Description": None,
                 "AdditionalInfo": None,
             },
-            "result": False,
+            "Result": False,
         }
 
 
@@ -349,15 +349,15 @@ def test_remote_start_returns_503_for_failure_in_executing_command(
             )
             assert response.status_code == 503
             assert response.json() == {
-                "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
-                "emp_partner_session_id": "2345ABC",
-                "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-                "status_code": {
+                "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+                "EMPPartnerSessionID": "2345ABC",
+                "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "StatusCode": {
                     "Code": "021",
                     "Description": None,
                     "AdditionalInfo": None,
                 },
-                "result": False,
+                "Result": False,
             }
 
 
@@ -372,15 +372,15 @@ def test_remote_start_returns_400_for_mismatching_provider_id(
         )
         assert response.status_code == 400
         assert response.json() == {
-            "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
-            "emp_partner_session_id": "2345ABC",
-            "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-            "status_code": {
+            "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+            "EMPPartnerSessionID": "2345ABC",
+            "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            "StatusCode": {
                 "Code": "022",
                 "Description": None,
                 "AdditionalInfo": None,
             },
-            "result": False,
+            "Result": False,
         }
 
 
@@ -412,17 +412,17 @@ class TestHubjectRemoteStopAPI:
             )
             assert response.status_code == 200
             assert response.json() == {
-                "cpo_partner_session_id": response.json().get(
-                    "cpo_partner_session_id"
+                "CPOPartnerSessionID": response.json().get(
+                    "CPOPartnerSessionID"
                 ),  # ignored in assert
-                "emp_partner_session_id": "2345ABC",
-                "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-                "status_code": {
+                "EMPPartnerSessionID": "2345ABC",
+                "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "StatusCode": {
                     "Code": "000",
                     "Description": None,
                     "AdditionalInfo": None,
                 },
-                "result": True,
+                "Result": True,
             }
 
     def test_remote_stop_returns_400_for_invalid_data(
@@ -437,15 +437,15 @@ class TestHubjectRemoteStopAPI:
             )
             assert response.status_code == 400
             assert response.json() == {
-                "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
-                "emp_partner_session_id": "2345ABC",
-                "session_id": None,
-                "status_code": {
+                "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+                "EMPPartnerSessionID": "2345ABC",
+                "SessionID": None,
+                "StatusCode": {
                     "Code": "022",
                     "Description": None,
                     "AdditionalInfo": None,
                 },
-                "result": False,
+                "Result": False,
             }
 
     def test_remote_stop_returns_503_for_failure_in_executing_command(
@@ -463,17 +463,15 @@ class TestHubjectRemoteStopAPI:
                 )
                 assert response.status_code == 503
                 assert response.json() == {
-                    "cpo_partner_session_id": response.json().get(
-                        "cpo_partner_session_id"
-                    ),
-                    "emp_partner_session_id": "2345ABC",
-                    "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-                    "status_code": {
+                    "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+                    "EMPPartnerSessionID": "2345ABC",
+                    "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                    "StatusCode": {
                         "Code": "021",
                         "Description": None,
                         "AdditionalInfo": None,
                     },
-                    "result": False,
+                    "Result": False,
                 }
 
     def test_remote_stop_returns_400_for_mismatching_provider_id(
@@ -487,13 +485,13 @@ class TestHubjectRemoteStopAPI:
             )
             assert response.status_code == 400
             assert response.json() == {
-                "cpo_partner_session_id": response.json().get("cpo_partner_session_id"),
-                "emp_partner_session_id": "2345ABC",
-                "session_id": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
-                "status_code": {
+                "CPOPartnerSessionID": response.json().get("CPOPartnerSessionID"),
+                "EMPPartnerSessionID": "2345ABC",
+                "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "StatusCode": {
                     "Code": "022",
                     "Description": None,
                     "AdditionalInfo": None,
                 },
-                "result": False,
+                "Result": False,
             }
