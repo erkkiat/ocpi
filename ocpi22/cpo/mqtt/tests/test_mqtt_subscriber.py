@@ -221,8 +221,9 @@ class TestMQTTClientSingleton:
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         instance.client = client
 
-        instance.reset_client()
-        assert instance.client is None
+        with patch("ocpi22.cpo.mqtt.mqtt_client.close_old_connections"):
+            instance.reset_client()
+            assert instance.client is None
 
     def test_is_connected_returns_true_with_connected_client(self):
         instance = MQTTClientSingleton()
@@ -253,20 +254,25 @@ class TestMQTTClientSingleton:
 
 class TestOnConnect:
     def test_on_connect_success(self, monkeypatch, caplog):
-        monkeypatch.setenv("SMAPPEE_METER_VALUES_TOPIC", "meter/topic")
-        monkeypatch.setenv("SMAPPEE_STATUS_UPDATE_TOPIC", "status/topic")
-        monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "auth/topic")
+        meter_topic = "meter/topic"
+        status_topic = "status/topic"
+        auth_topic = "auth/topic"
 
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        with patch("ocpi22.cpo.mqtt.mqtt_handler._subscribe") as mock_subscribe:
+        with (
+            patch("ocpi22.cpo.mqtt.mqtt_handler.METER_TOPIC", meter_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler.STATUS_TOPIC", status_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", auth_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler._subscribe") as mock_subscribe,
+        ):
             on_connect(client, None, None, 0)
 
             assert "Connected successfully to the broker" in caplog.text
             assert mock_subscribe.call_count == 3
-            mock_subscribe.assert_any_call(client, "meter/topic")
-            mock_subscribe.assert_any_call(client, "status/topic")
-            mock_subscribe.assert_any_call(client, "auth/topic")
+            mock_subscribe.assert_any_call(client, meter_topic)
+            mock_subscribe.assert_any_call(client, status_topic)
+            mock_subscribe.assert_any_call(client, auth_topic)
 
     def test_on_connect_failure(self, caplog):
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)

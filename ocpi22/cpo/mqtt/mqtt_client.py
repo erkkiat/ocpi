@@ -22,16 +22,10 @@ class MQTTClientSingleton:
     Thread-safe singleton MQTT client with automatic DB connection management.
 
     Features:
-    1. Reuses client_id across reconnections (memory optimization)
-    2. Automatically wraps ALL callbacks with:
+    1. Automatically wraps ALL callbacks with:
        - DB connection lifecycle management (close before/after)
        - DB error recovery with retry (via ensure_db_connection)
        - Exception resilience (don't crash subscriber)
-    3. Proper cleanup on reset
-
-    Usage:
-        mqtt_singleton = MQTTClientSingleton()
-        mqtt_singleton.start_client(loop_forever=True)
     """
 
     _instance: Optional["MQTTClientSingleton"] = None
@@ -84,6 +78,7 @@ class MQTTClientSingleton:
         @ensure_db_connection
         @wraps(callback)
         def safe_callback(client, userdata, *args, **kwargs):
+            close_old_connections()
             try:
                 return callback(client, userdata, *args, **kwargs)
             except Exception as e:
@@ -109,7 +104,9 @@ class MQTTClientSingleton:
     def _configure_client(self, client_id):
         username, password = get_broker_username_password()
         client = mqtt.Client(
-            client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+            client_id=client_id,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            clean_session=False,  # Reuse session to save memory
         )
         client.username_pw_set(username, password)
         if strtobool(os.getenv("MQTT_USE_SSL", "False")):
@@ -170,14 +167,18 @@ class MQTTClientSingleton:
             if self.client:
                 try:
                     self.client.loop_stop()
+
                     self.client.disconnect()
 
                     self.client.on_connect = None
                     self.client.on_message = None
                     self.client.on_disconnect = None
 
+                    close_old_connections()
+
                     self.client = None
-                    logger.info("MQTT client stopped and disconnected")
+
+                    logger.info("MQTT client stopped, disconnected, and cleaned up")
                 except Exception as e:
                     logger.exception(f"Error during client reset: {e}")
 
