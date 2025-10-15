@@ -101,8 +101,6 @@ class LoggingMiddleware(MiddlewareMixin):
         return response
 
     def get_request_data(self, request: HttpRequest) -> Dict[str, Any]:
-        print(f"HubjectHeaders: {request.headers}")
-        print(f"HubjectRequestMeta: {request.META}")
         return {
             "request_id": request.request_id,
             "view": request.view_name,
@@ -124,6 +122,7 @@ class LoggingMiddleware(MiddlewareMixin):
     ) -> Dict[str, Any]:
         status = response.status_code
         if 200 <= status < 300:
+            print(f"HUBJECT Response data: {self.get_raw_response(response)}")
             data = "Omitted"
         elif 300 <= status < 500:
             data = self.get_raw_response(response)
