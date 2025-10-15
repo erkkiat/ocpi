@@ -167,17 +167,12 @@ class MQTTClientSingleton:
             if self.client:
                 try:
                     self.client.loop_stop()
-
                     self.client.disconnect()
-
                     self.client.on_connect = None
                     self.client.on_message = None
                     self.client.on_disconnect = None
-
                     close_old_connections()
-
                     self.client = None
-
                     logger.info("MQTT client stopped, disconnected, and cleaned up")
                 except Exception as e:
                     logger.exception(f"Error during client reset: {e}")
