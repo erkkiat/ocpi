@@ -715,11 +715,15 @@ class HubjectService:
             validated_data.get("authorization_reference"),
             validated_data["token"]["uid"],
         )
+        session_uid = session.uid if session else ""
+        logger.info(
+            f"Hubject remote start command processed successfully, session : {session_uid}"
+        )
         return ERoamingAcknowledgment(
             result=True,
             status_code=StatusCode(Code="000"),
             session_id=remote_start_command.session_id,
-            cpo_partner_session_id=session.uid if session else "",
+            cpo_partner_session_id=session_uid,
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
         )
 
@@ -749,12 +753,17 @@ class HubjectService:
         data = response_data.get("data", None)
         if data == "":
             if status_message == MessageTexts.get("SESSION_NOT_FOUND"):
+                logger.error(
+                    "Hubject remote command failed: Session not found",
+                    extra={"response": response_data},
+                )
                 raise HubjectRemoteCommandError("400", "Session not found")
         if not data or data.get("result") != "ACCEPTED":
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
             raise HubjectRemoteCommandError("021", "Remote command was rejected")
+        logger.info(f"Hubject remote command was accepted. {data}")
         return
 
     def process_remote_stop_command(
