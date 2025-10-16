@@ -284,7 +284,9 @@ class TestCommandServices:
             "response_url": "http://localhost/commands/results/AUTH123/",
         }
         credentials = CredentialsFactory()
-
+        CredentialsRoleFactory(
+            country_code="NL", party_id="HUB", credentials=credentials
+        )
         nl_cpo_cred_role = CredentialsRole.objects.filter(
             country_code="NL", party_id="CPO"
         ).first()

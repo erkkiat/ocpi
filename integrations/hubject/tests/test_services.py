@@ -1164,7 +1164,7 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @responses.activate
     def test_process_remote_start_command_returns_result_true(
-        self, evse, mock_remote_start_command
+        self, evse, mock_remote_start_command, hubject_credentials
     ):
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
