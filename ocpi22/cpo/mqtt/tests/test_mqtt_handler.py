@@ -27,19 +27,24 @@ class TestOnMessageAuthRequest:
             assert "Received authorize message" in caplog.text
 
     def test_on_message_handles_auth_topic_with_partial_match(
-        self, enable_mqtt_authorize, smappee_auth_request_topic, caplog
+        self, smappee_auth_request_topic, caplog, monkeypatch
     ):
+        monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", "True")
+
         message = MQTTMessage()
         message.topic = "smappee/site/123/auth/request/456".encode("utf-8")
         message.payload = b'{"token_id": "test_token"}'
 
         with patch(
-            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
-        ) as mock_process_authorize:
-            on_message(None, None, message)
+            "ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", "smappee/auth/request"
+        ):
+            with patch(
+                "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+            ) as mock_process_authorize:
+                on_message(None, None, message)
 
-            mock_process_authorize.assert_called_once_with(message)
-            assert "Received authorize message" in caplog.text
+                mock_process_authorize.assert_called_once_with(message)
+                assert "Received authorize message" in caplog.text
 
     def test_on_message_does_not_call_authorize_when_auth_topic_not_matched(
         self, mqtt_topics_setup
@@ -67,10 +72,8 @@ class TestOnMessageAuthRequest:
             mock_process_authorize.assert_called_once_with(auth_request_message)
 
             assert "Received authorize message" in caplog.text
-            assert (
-                "MQTT message processing failed - subscriber continues running"
-                in caplog.text
-            )
+            assert "MQTT message processing failed on topic" in caplog.text
+            assert "subscriber continues running" in caplog.text
             assert "Processing failed" in caplog.text
 
             assert result is None
@@ -221,8 +224,10 @@ class TestOnMessageUnknownTopicEdgeCases:
 
 class TestOnMessageTopicMatching:
     def test_on_message_topic_matching_uses_split_correctly(
-        self, smappee_auth_request_topic
+        self, smappee_auth_request_topic, monkeypatch
     ):
+        monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", "True")
+
         message_topic = "smappee/devices/site/123/auth/request/session/456"
 
         message = MQTTMessage()
@@ -230,10 +235,13 @@ class TestOnMessageTopicMatching:
         message.payload = b'{"token_id": "test"}'
 
         with patch(
-            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
-        ) as mock_process_authorize:
-            on_message(None, None, message)
-            mock_process_authorize.assert_called_once_with(message)
+            "ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", "smappee/auth/request"
+        ):
+            with patch(
+                "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+            ) as mock_process_authorize:
+                on_message(None, None, message)
+                mock_process_authorize.assert_called_once_with(message)
 
     def test_on_message_topic_matching_case_sensitive(self, mqtt_topics_setup, caplog):
         message = MQTTMessage()
@@ -247,18 +255,20 @@ class TestOnMessageTopicMatching:
 
     def test_on_message_handles_topic_with_single_segment(self, monkeypatch, caplog):
         monkeypatch.setenv("SMAPPEE_AUTH_REQUEST_TOPIC", "request")
+        monkeypatch.setenv("ENABLE_MQTT_AUTHORIZE", "True")
 
         message = MQTTMessage()
         message.topic = "request".encode("utf-8")
         message.payload = b'{"token_id": "test"}'
 
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
-        ) as mock_process_authorize:
-            on_message(None, None, message)
+        with patch("ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", "request"):
+            with patch(
+                "ocpi22.cpo.mqtt.mqtt_handler.process_authorize_data"
+            ) as mock_process_authorize:
+                on_message(None, None, message)
 
-            mock_process_authorize.assert_called_once_with(message)
-            assert "Received authorize message" in caplog.text
+                mock_process_authorize.assert_called_once_with(message)
+                assert "Received authorize message" in caplog.text
 
 
 class TestOnMessage:

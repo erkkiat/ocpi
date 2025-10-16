@@ -3,10 +3,14 @@ import time
 from functools import wraps
 
 from django.db import (
-    OperationalError as DjangoOperationalError,
     InterfaceError,
+    OperationalError,
+    connections,
     close_old_connections,
 )
+
+from ocpiconnector.settings import env_bool
+from ocpiconnector.settings.infra_services import RDSTokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +20,61 @@ def ensure_db_connection(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except (DjangoOperationalError, InterfaceError) as e:
-            error_msg = str(e).lower()
-
+        except (OperationalError, InterfaceError) as e:
+            msg = str(e).lower()
             if any(
-                err in error_msg for err in ["server has gone away", "2006", "2013"]
+                s in msg
+                for s in (
+                    "server has gone away",
+                    "2006",
+                    "2013",
+                    "connection",
+                    "lost",
+                    "closed",
+                    "reset by peer",
+                    "broken pipe",
+                    "terminating connection",
+                    "ssl syscall",
+                )
             ):
                 logger.warning(
-                    f"Database connection lost in {func.__name__}, retrying once: {e}"
+                    f"{func.__name__}: DB issue detected; repairing and retrying once: {e}"
                 )
-
                 close_old_connections()
+                repair_connection("default")
                 time.sleep(0.1)
 
                 try:
                     return func(*args, **kwargs)
-                except Exception as retry_error:
+                except (OperationalError, InterfaceError):
                     logger.error(
-                        f"Database retry failed in {func.__name__}: {retry_error}"
+                        f"{func.__name__}: DB retry failed after repair", exc_info=True
                     )
                     raise
-            else:
-                raise
+            raise
 
     return wrapper
+
+
+def repair_connection(alias: str = "default"):
+    conn = connections[alias]
+    try:
+        conn.ensure_connection()
+        return
+    except (OperationalError, InterfaceError):
+        pass
+
+    if env_bool("REFRESH_RDS_TOKEN_FOR_TASKS", True):
+        try:
+            _, _, token = RDSTokenManager.get_db_url_user_and_token()
+            conn.settings_dict["PASSWORD"] = token
+        except Exception as e:
+            logger.warning(f"RDS token refresh failed (continuing reopen): {e}")
+
+    try:
+        conn.close()
+    except Exception:
+        pass
+
+    close_old_connections()
+    conn.ensure_connection()
