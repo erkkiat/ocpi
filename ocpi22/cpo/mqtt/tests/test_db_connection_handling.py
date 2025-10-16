@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from django.db.utils import OperationalError, InterfaceError
+from django.db import OperationalError, InterfaceError
 
 from ocpi22.cpo.mqtt.services import (
     process_meter_values_data,
@@ -10,6 +10,7 @@ from ocpi22.cpo.mqtt.services import (
 from ocpiconnector.db_services import ensure_db_connection
 
 
+@pytest.mark.django_db
 class TestDatabaseConnectionHandling:
     def test_decorator_retries_on_mysql_server_gone_away_error(self):
         call_count = 0

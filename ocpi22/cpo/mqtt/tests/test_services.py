@@ -55,7 +55,7 @@ class TestMqttServices:
         smappee_status_update_message.payload = b"\x80"
         assert _decode_message(smappee_status_update_message) is None
         assert any(
-            f"Failed to decode {smappee_status_update_message.topic} message"
+            f"Failed to decode message from topic {smappee_status_update_message.topic}"
             in record.message
             for record in caplog.records
         )
@@ -81,7 +81,7 @@ class TestMqttServices:
         smappee_meter_message.payload = b'{"invalid_data": "94f5993d-232a-4916-a801-4e408c24c9cc", "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
         assert process_meter_values_data(smappee_meter_message) is None
         assert any(
-            f"Failed to validate {smappee_meter_message.topic} message"
+            f"Failed to parse message from topic { smappee_meter_message.topic}"
             in record.message
             for record in caplog.records
         )
@@ -264,11 +264,10 @@ class TestMqttServices:
         self, smappee_status_update_message, caplog
     ):
         smappee_status_update_message.payload = b'{"invalid_data": "94f5993d-232a"}'
-        assert process_meter_values_data(smappee_status_update_message) is None
-        # caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.services")
+        assert process_status_update_data(smappee_status_update_message) is None
 
         assert any(
-            f"Failed to validate {smappee_status_update_message.topic} message"
+            f"Failed to parse message from topic {smappee_status_update_message.topic}"
             in record.message
             for record in caplog.records
         )
@@ -398,7 +397,8 @@ class TestProcessAuthorizeData:
 
         assert result is None
         assert any(
-            f"Failed to parse {auth_request_message.topic} message" in record.message
+            f"Failed to parse message from topic {auth_request_message.topic}"
+            in record.message
             for record in caplog.records
         )
 
@@ -420,7 +420,7 @@ class TestProcessAuthorizeData:
             assert call_args[0].token_id == expected_token_auth.token_id
             assert call_args[0].evse_id == expected_token_auth.evse_id
             assert call_args[0].correlation_id == expected_token_auth.correlation_id
-            assert call_args[1] == auth_request_message
+            assert call_args[1] == auth_request_message.topic
             assert result is None
 
 
@@ -439,13 +439,13 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
             ) as mock_publish_not_allowed,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
             )
             assert any(
-                f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found"
+                f"Unable to authorize token from MQTT on topic {auth_request_message.topic}: EVSE with ID '{token_auth_message.evse_id}' not found"
                 in record.message
                 for record in caplog.records
             )
@@ -478,7 +478,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.create_and_save_session"
             ) as mock_create_session,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
@@ -507,7 +507,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.create_and_save_session"
             ) as mock_create_session,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
@@ -543,7 +543,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.publish_auth_response"
             ) as mock_publish_auth_response,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_create_session.assert_called_once_with(mock_authorization, evse)
             mock_publish_auth_response.assert_called_once()
@@ -579,7 +579,7 @@ class TestAuthorizeAndPublish:
             ),
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_authorize_token.assert_called_once_with(
                 token_auth_message.token_id, evse.location, evse_id=evse.evse_id
@@ -606,13 +606,14 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
             ) as mock_publish_not_allowed,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
             )
             assert any(
-                "MQTT authorization failed miserably for auth message" in record.message
+                f"MQTT authorization failed on topic {auth_request_message.topic}"
+                in record.message
                 for record in caplog.records
             )
 
@@ -979,7 +980,7 @@ class TestCreateAndSaveSession:
             ) as mock_authorize_token,
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
             mock_authorize_token.assert_called_once_with(
                 token, evse.location, evse_id=evse.evse_id
             )
