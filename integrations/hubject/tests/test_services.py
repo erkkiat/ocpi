@@ -1164,7 +1164,7 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @responses.activate
     def test_process_remote_start_command_returns_result_true(
-        self, evse, mock_remote_start_command
+        self, evse, mock_remote_start_command, hubject_credentials
     ):
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
@@ -1396,6 +1396,36 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result["authorization_reference"] == "hubject-session-id-123"
+
+    @pytest.mark.django_db
+    @override_settings(HUBJECT_OPERATOR_ID="SL*MNP")
+    def test_process_remote_start_command_with_no_hubject_credentials_return_result_false(
+        self, mock_remote_start_command, evse
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session",
+            return_value=OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+            ),
+        ):
+            responses.add(
+                responses.POST,
+                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                json={"data": {"result": "ACCEPTED"}},
+                status=200,
+            )
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="021")
 
     @pytest.mark.django_db
     @pytest.mark.parametrize(
