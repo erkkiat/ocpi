@@ -356,6 +356,25 @@ class TestMqttServices:
             energy_dimension = charging_period.dimensions.filter(type="ENERGY").first()
             assert energy_dimension.volume == Decimal("5.25")
 
+    @pytest.mark.django_db
+    def test_process_meter_values_saves_first_kwh_if_session_start_is_zero(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            connector=connector, status=Session.ACTIVE, start_kwh=0.0
+        )
+        mock_request = MagicMock()
+
+        with patch.object(session, "send_updates"):
+            _ = process_meter_values(request=mock_request, kwh=15.75, session=session)
+
+            session.refresh_from_db()
+            assert session.start_kwh == 15.75
+
 
 class TestAuthorizeDataOverMqtt:
     @pytest.mark.django_db
