@@ -733,11 +733,13 @@ class HubjectService:
         from ocpi22.commands.repository import SessionRepository
 
         command_id = remote_stop_command.emp_partner_session_id or None
-        session = SessionRepository.find_session_by_auth_ref(
-            remote_stop_command.emp_partner_session_id
+        session = SessionRepository.find_session_by_hub_session_id(
+            remote_stop_command.session_id.root
         )
         if not session:
-            logger.error("No session found to stop, hubject remote stop failed")
+            logger.error(
+                f"No session found to stop with hub session id {remote_stop_command.session_id.root}, hubject remote stop failed"
+            )
             raise HubjectRemoteCommandError("400", "Session not found")
 
         data = {

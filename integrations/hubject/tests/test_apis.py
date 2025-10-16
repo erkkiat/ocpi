@@ -13,6 +13,7 @@ from ocpi22.tests.factories import (
     EvseFactory,
     ConnectorFactory,
     CredentialsRoleFactory,
+    OCPISessionFactory,
 )
 from ocpiconnector.ocpi_identities import get_our_party
 from webhooks.choices import WebhookType, RemoteCommandType
@@ -405,6 +406,10 @@ class TestHubjectRemoteStopAPI:
         remote_stop_command_payload,
         remote_stop_session,
     ):
+        OCPISessionFactory(
+            hub_session_id="f98efba4-02d8-4fa0-b810-9a9d50d25527",
+            status="ACTIVE",
+        )
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.STOP_SESSION,
