@@ -29,6 +29,8 @@ class SessionService:
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh", "stop_kwh"])
+        if session.route_through_oicp:
+            return
         if original_status != Session.PENDING:
             logger.info("Cannot send ACCEPTED callback for non-pending session")
         send_callback.delay(
