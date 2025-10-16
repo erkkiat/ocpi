@@ -180,7 +180,7 @@ def receive_remote_start_command(
 
 
 @remote_command_router.post(
-    "providers/{provider_id}/authorize-remote/stop/",
+    "providers/{provider_id}/authorize-remote/stop",
     url_name="hubject-remote-stop",
     auth=hubject_auth,
     response={(200, 400, 503): dict},
