@@ -101,8 +101,6 @@ class LoggingMiddleware(MiddlewareMixin):
         return response
 
     def get_request_data(self, request: HttpRequest) -> Dict[str, Any]:
-        print(f"HubjectHeaders: {request.headers}")
-        print(f"HubjectRequestMeta: {request.META}")
         return {
             "request_id": request.request_id,
             "view": request.view_name,

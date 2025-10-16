@@ -122,7 +122,7 @@ hubject_auth = HubjectCertAuth()
     url_name="hubject-remote-start",
     auth=hubject_auth,
     response={
-        (200, 400, 503): ERoamingAcknowledgment,
+        (200, 400, 503): dict,
     },
 )
 def receive_remote_start_command(
@@ -138,7 +138,7 @@ def receive_remote_start_command(
                 or "",
                 emp_partner_session_id=remote_start_command.emp_partner_session_id
                 or "",
-            )
+            ).model_dump(mode="json", by_alias=True)
         command = ERoamingAuthorizeRemoteStart(
             session_id=remote_start_command.session_id,
             cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
@@ -163,10 +163,11 @@ def receive_remote_start_command(
             session_id=None,
             cpo_partner_session_id=remote_start_command.cpo_partner_session_id or "",
             emp_partner_session_id=remote_start_command.emp_partner_session_id or "",
-        )
+        ).model_dump(mode="json", by_alias=True)
     try:
         result = hubject_service.process_remote_start_command(command)
-        return 200, result
+        result_json = result.model_dump(mode="json", by_alias=True)
+        return 200, result_json
     except Exception:
         logger.exception(msg="Send hubject remote start failed", exc_info=True)
         return 503, ERoamingAcknowledgment(
@@ -175,14 +176,14 @@ def receive_remote_start_command(
             session_id=remote_start_command.session_id,
             cpo_partner_session_id=remote_start_command.cpo_partner_session_id,
             emp_partner_session_id=remote_start_command.emp_partner_session_id,
-        )
+        ).model_dump(mode="json", by_alias=True)
 
 
 @remote_command_router.post(
-    "providers/{provider_id}/authorize-remote/stop/",
+    "providers/{provider_id}/authorize-remote/stop",
     url_name="hubject-remote-stop",
     auth=hubject_auth,
-    response={(200, 400, 503): ERoamingAcknowledgment},
+    response={(200, 400, 503): dict},
 )
 def receive_remote_stop_command(
     request, provider_id: str, remote_stop_command: RemoteCommandStop
@@ -195,7 +196,7 @@ def receive_remote_stop_command(
                 session_id=remote_stop_command.session_id,
                 cpo_partner_session_id=remote_stop_command.cpo_partner_session_id or "",
                 emp_partner_session_id=remote_stop_command.emp_partner_session_id or "",
-            )
+            ).model_dump(mode="json", by_alias=True)
         command = ERoamingAuthorizeRemoteStop(
             session_id=remote_stop_command.session_id,
             cpo_partner_session_id=remote_stop_command.cpo_partner_session_id,
@@ -210,10 +211,11 @@ def receive_remote_stop_command(
             session_id=None,
             cpo_partner_session_id=remote_stop_command.cpo_partner_session_id or "",
             emp_partner_session_id=remote_stop_command.emp_partner_session_id or "",
-        )
+        ).model_dump(mode="json", by_alias=True)
     try:
         result = hubject_service.process_remote_stop_command(command)
-        return 200, result
+        result_json = result.model_dump(mode="json", by_alias=True)
+        return 200, result_json
     except Exception:
         logger.exception(msg="Send hubject remote stop failed", exc_info=True)
         return 503, ERoamingAcknowledgment(
@@ -222,7 +224,7 @@ def receive_remote_stop_command(
             session_id=remote_stop_command.session_id,
             cpo_partner_session_id=remote_stop_command.cpo_partner_session_id,
             emp_partner_session_id=remote_stop_command.emp_partner_session_id,
-        )
+        ).model_dump(mode="json", by_alias=True)
 
 
 api.add_router(
