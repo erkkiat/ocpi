@@ -3,7 +3,6 @@ from unittest.mock import patch
 import pytest
 from django.conf import settings
 import responses
-from django.test import override_settings
 from django.urls import reverse
 
 from ocpi22.choices import OcpiRolesEnum
@@ -231,9 +230,8 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
 
 @pytest.mark.django_db
 @responses.activate
-@override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
 def test_receive_remote_start_command_with_valid_data_returns_200(
-    authenticated_user_client, remote_command_payload, hubject_credentialsrole
+    authenticated_user_client, remote_command_payload
 ):
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
@@ -271,7 +269,7 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
 @pytest.mark.django_db
 @responses.activate
 def test_remote_start_returns_200_for_minimal_data(
-    authenticated_user_client, remote_command_payload, hubject_credentialsrole
+    authenticated_user_client, remote_command_payload
 ):
     get_credentialsrole.cache_clear()
     WebhookFactory(
