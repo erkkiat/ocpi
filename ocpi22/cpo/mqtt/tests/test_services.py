@@ -131,10 +131,7 @@ class TestMqttServices:
     @time_machine.travel("2025-02-11 09:00:00", tick=False)
     @pytest.mark.django_db
     def test_mqtt_meter_values_calls_send_background_update_successfully(
-        self,
-        smappee_meter_message,
-        msp_credentials_with_endpoints,
-        hubject_credentialsrole,
+        self, smappee_meter_message, msp_credentials_with_endpoints
     ):
         meter_values = MagicMock(spec=MeterValues)
         decoded_message = _decode_message(smappee_meter_message)
@@ -206,10 +203,7 @@ class TestMqttServices:
 
     @pytest.mark.django_db
     def test_meter_values_update_data_calls_send_ocpi_message_with_put_only(
-        self,
-        smappee_meter_message,
-        msp_credentials_with_endpoints,
-        hubject_credentialsrole,
+        self, smappee_meter_message, msp_credentials_with_endpoints
     ):
         meter_values = MagicMock(spec=MeterValues)
         decoded_message = _decode_message(smappee_meter_message)

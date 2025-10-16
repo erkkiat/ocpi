@@ -94,15 +94,6 @@ def allowed_offline_token(msp_de_icd, admin_user):
 
 
 @pytest.fixture
-def hubject_credentialsrole():
-    return CredentialsRoleFactory(
-        country_code="DE",
-        party_id="ICE",
-        role="HUB",
-    )
-
-
-@pytest.fixture
 def authorize_token_response(allowed_token, session):
     return TokenAuthorization(
         allowed="ALLOWED",
@@ -354,7 +345,7 @@ class TestChargePointAPI:
             )
 
     def test_start_transaction_post_successful_return_200(
-        self, admin_user_client, session, hubject_credentialsrole
+        self, admin_user_client, session
     ):
         request_body = {
             "session_id": session.uid,

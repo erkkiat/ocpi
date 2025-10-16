@@ -1163,15 +1163,9 @@ class TestHubjectAuthorizeRemoteStart:
 
     @pytest.mark.django_db
     @responses.activate
-    @override_settings(HUBJECT_OPERATOR_ID="DE*HUB")
     def test_process_remote_start_command_returns_result_true(
-        self, evse, mock_remote_start_command
+        self, evse, mock_remote_start_command, hubject_credentials
     ):
-        CredentialsRoleFactory(
-            country_code="DE",
-            party_id="HUB",
-            role=OcpiRolesEnum.CPO,
-        )
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.START_SESSION,
@@ -1390,6 +1384,20 @@ class TestHubjectAuthorizeRemoteStart:
         assert result.status_code == StatusCode(Code="022")
 
     @pytest.mark.django_db
+    def test_prepare_start_session_data_assign_hubject_session_id_for_auth_ref_when_emp_session_none(
+        self, mock_remote_start_command, evse
+    ):
+        sender_party = Party(country_code="DE", party_id="MSP")
+        mock_remote_start_command.emp_partner_session_id = None
+        mock_remote_start_command.session_id.root = "hubject-session-id-123"
+
+        result = self.hubject_service._prepare_start_session_data(
+            mock_remote_start_command, evse, sender_party
+        )
+
+        assert result["authorization_reference"] == "hubject-session-id-123"
+
+    @pytest.mark.django_db
     @override_settings(HUBJECT_OPERATOR_ID="SL*MNP")
     def test_process_remote_start_command_with_no_hubject_credentials_return_result_false(
         self, mock_remote_start_command, evse
@@ -1418,20 +1426,6 @@ class TestHubjectAuthorizeRemoteStart:
 
         assert result.result is False
         assert result.status_code == StatusCode(Code="021")
-
-    @pytest.mark.django_db
-    def test_prepare_start_session_data_assign_hubject_session_id_for_auth_ref_when_emp_session_none(
-        self, mock_remote_start_command, evse
-    ):
-        sender_party = Party(country_code="DE", party_id="MSP")
-        mock_remote_start_command.emp_partner_session_id = None
-        mock_remote_start_command.session_id.root = "hubject-session-id-123"
-
-        result = self.hubject_service._prepare_start_session_data(
-            mock_remote_start_command, evse, sender_party
-        )
-
-        assert result["authorization_reference"] == "hubject-session-id-123"
 
     @pytest.mark.django_db
     @pytest.mark.parametrize(

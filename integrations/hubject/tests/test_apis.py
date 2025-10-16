@@ -3,13 +3,17 @@ from unittest.mock import patch
 import pytest
 from django.conf import settings
 import responses
-from django.test import override_settings
 from django.urls import reverse
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.tests.factories import LocationFactory, EvseFactory, ConnectorFactory
+from ocpi22.tests.factories import (
+    LocationFactory,
+    EvseFactory,
+    ConnectorFactory,
+    CredentialsRoleFactory,
+)
 from ocpiconnector.ocpi_identities import get_our_party
 from webhooks.choices import WebhookType, RemoteCommandType
 from webhooks.factories import WebhookFactory
@@ -28,6 +32,15 @@ def connector_without_tariff():
     Connector.objects.filter(uid="connector_without_tariff").first().tariff_ids.set([])
 
     return connector
+
+
+@pytest.fixture
+def hubject_credentials():
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role=OcpiRolesEnum.HUB,
+    )
 
 
 class TestHubjectApi:
@@ -231,9 +244,8 @@ def test_send_charge_detail_record_hubject_error(authenticated_user_client, ocpi
 
 @pytest.mark.django_db
 @responses.activate
-@override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
 def test_receive_remote_start_command_with_valid_data_returns_200(
-    authenticated_user_client, remote_command_payload, hubject_credentialsrole
+    authenticated_user_client, remote_command_payload, hubject_credentials
 ):
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
@@ -271,7 +283,7 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
 @pytest.mark.django_db
 @responses.activate
 def test_remote_start_returns_200_for_minimal_data(
-    authenticated_user_client, remote_command_payload, hubject_credentialsrole
+    authenticated_user_client, remote_command_payload, hubject_credentials
 ):
     get_credentialsrole.cache_clear()
     WebhookFactory(
