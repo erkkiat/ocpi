@@ -9,6 +9,7 @@ services:
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
       ENV: development
+      GUNICORN_CMD_ARGS: "--reload"
     env_file:
       - ../.env-local/django-app.env
     volumes:
