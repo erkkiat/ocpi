@@ -1478,6 +1478,7 @@ class TestHubjectAuthorizeRemoteStop:
         OCPISessionFactory(
             uid="OURSESSIONID",
             route_through=CredentialsRoleFactory(country_code="DE", party_id="ICE"),
+            hub_session_id="f98efbae-a2d8-rfa0-b810-9a9d50d2c527",
             authorization_reference="emp_session_456",
         )
 

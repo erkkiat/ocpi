@@ -45,6 +45,10 @@ class SessionRepository:
         ).first()
 
     @staticmethod
+    def find_session_by_hub_session_id(hub_session_id: str) -> Optional[Session]:
+        return Session.objects.filter(hub_session_id=hub_session_id).first()
+
+    @staticmethod
     def find_session_by_auth_ref(auth_reference: str) -> Optional[Session]:
         return Session.objects.filter(authorization_reference=auth_reference).first()
 
