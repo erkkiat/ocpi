@@ -187,6 +187,8 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
+        if session.start_kwh == 0.0:
+            session.start_kwh = kwh
         session.stop_kwh = kwh
         session.update_last_updated()
         kwh_delta = session.stop_kwh - session.start_kwh
