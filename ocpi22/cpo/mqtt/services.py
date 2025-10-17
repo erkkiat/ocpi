@@ -60,17 +60,22 @@ def process_meter_values_data(message) -> None:
             f"Meter values received for non-active session: {session.uid} skpping"
         )
         return
-
-    SessionService().update_meter_values(
-        session=session,
-        timestamp=meter_values.timestamp,
-        kwh=meter_values.kwh,
-        soc=meter_values.soc,
-        power=meter_values.power,
-    )
-    session.send_updates(
-        method="put", notification_type=ChargingNotificationType.Progress
-    )
+    try:
+        SessionService().update_meter_values(
+            session=session,
+            timestamp=meter_values.timestamp,
+            kwh=meter_values.kwh,
+            soc=meter_values.soc,
+            power=meter_values.power,
+        )
+        session.send_updates(
+            method="put", notification_type=ChargingNotificationType.Progress
+        )
+    except Exception:
+        logger.exception(
+            f"Failed to process meter values for session {session.uid}",
+        )
+    return
 
 
 def process_status_update_data(message) -> None:
