@@ -3,11 +3,10 @@ from logging import getLogger
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
-from django.db.utils import OperationalError as DjangoOperationalError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
-from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -17,6 +16,7 @@ from ocpi22.cpo.mqtt.schemas import (
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.session_service import SessionService
 from ocpi22.cpo.util import find_our_evse
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -43,24 +43,34 @@ def process_meter_values_data(message) -> None:
     decoded_meter_message = _decode_message(message)
     if not decoded_meter_message:
         return
-
     try:
         meter_values = MeterValues.model_validate_json(decoded_meter_message)
     except ValidationError:
-        logger.exception(f"Failed to parse message from topic { message.topic}")
+        logger.exception(f"Failed to parse message from topic {message.topic}")
         return
 
-    try:
-        kwargs = meter_values.model_dump()
-        session = Session.objects.get(uid=kwargs.pop("session_id"))
-        process_meter_values(request=None, session=session, **kwargs)
-    except OperationalError:
-        logger.exception("Celery operational error")
-    except DjangoOperationalError:
-        raise
-    except Exception:
-        logger.exception("An unexpected error occurred")
-    return
+    session = Session.objects.filter(session_id=meter_values.session_id).first()
+    if not session:
+        logger.warning(
+            f"No session found for provided session_id : {meter_values.session_id} "
+        )
+        return
+    if not session.status == Session.ACTIVE:
+        logger.warning(
+            f"Meter values received for non-active session: {session.uid} skpping"
+        )
+        return
+
+    SessionService().update_meter_values(
+        session=session,
+        timestamp=meter_values.timestamp,
+        kwh=meter_values.kwh,
+        soc=meter_values.soc,
+        power=meter_values.power,
+    )
+    session.send_updates(
+        method="put", notification_type=ChargingNotificationType.Progress
+    )
 
 
 def process_status_update_data(message) -> None:
@@ -71,7 +81,7 @@ def process_status_update_data(message) -> None:
         evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
     except ValidationError as e:
         logger.exception(
-            f"Failed to parse message from topic { message.topic}",
+            f"Failed to parse message from topic {message.topic}",
             exc_info=e,
         )
         return
@@ -99,7 +109,7 @@ def process_authorize_data(message):
             decoded_message
         )
     except ValidationError:
-        logger.exception(f"Failed to parse message from topic { message.topic}")
+        logger.exception(f"Failed to parse message from topic {message.topic}")
         return
 
     _authorize_and_publish(token_auth_message, message.topic)

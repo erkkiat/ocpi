@@ -187,27 +187,12 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
-        if session.start_kwh == 0.0:
-            session.start_kwh = kwh
-        session.stop_kwh = kwh
-        session.update_last_updated()
-        kwh_delta = session.stop_kwh - session.start_kwh
-        session.update_charging_periods(kwh_delta, soc, power, timestamp)
-
-        session.calculate_price()
-        session.save(
-            update_fields=[
-                "stop_kwh",
-                "total_cost_incl_vat",
-                "total_cost_excl_vat",
-                "last_updated",
-            ]
+        SessionService().update_meter_values(
+            session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
-
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
-        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
-
+        )
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
