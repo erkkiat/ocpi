@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
+from ocpi22.commands.repository import SessionRepository
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -49,7 +50,7 @@ def process_meter_values_data(message) -> None:
         logger.exception(f"Failed to parse message from topic {message.topic}")
         return
 
-    session = Session.objects.filter(session_id=meter_values.session_id).first()
+    session = SessionRepository().find_session_by_uid(meter_values.session_id)
     if not session:
         logger.warning(
             f"No session found for provided session_id : {meter_values.session_id} "
@@ -69,7 +70,7 @@ def process_meter_values_data(message) -> None:
             power=meter_values.power,
         )
         session.send_updates(
-            method="put", notification_type=ChargingNotificationType.Progress
+            method="put", update_type=ChargingNotificationType.Progress
         )
     except Exception:
         logger.exception(
