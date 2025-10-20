@@ -8,6 +8,7 @@ import pytest
 import time_machine
 from kombu.exceptions import OperationalError
 
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.schemas import (
@@ -159,12 +160,12 @@ class TestMqttServices:
 
         with (
             patch.object(SessionService, "update_meter_values"),
-            patch.object(session, "send_updates") as mock_send_updates,
+            patch.object(Session, "send_updates") as mock_send_updates,
         ):
             process_meter_values_data(smappee_meter_message)
 
             mock_send_updates.assert_called_once_with(
-                method="put", notification_type="Progress"
+                method="put", update_type=ChargingNotificationType.Progress
             )
 
     @pytest.mark.django_db
@@ -250,18 +251,26 @@ class TestMqttServices:
         decoded_message = _decode_message(smappee_meter_message_from_wouter)
         message_dict = orjson.loads(decoded_message)
         session_id = message_dict.get("session_id")
-        OCPISessionFactory(
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
             uid=session_id,
             start_date_time=datetime.fromisoformat(message_dict.get("timestamp"))
             - timedelta(hours=0.76),
+            status=Session.ACTIVE,
+            connector=connector,
         )
         process_meter_values_data(smappee_meter_message_from_wouter)
-        session = Session.objects.get(uid=session_id)
-        assert session.kwh == 125
+        session.refresh_from_db()
+        assert session.start_kwh == 125
+        assert session.stop_kwh == 125
+        assert session.kwh == 0
+        
         assert list(
             session.chargingperiods.all()[0].dimensions.values_list("type", "volume")
         ) == [
-            ("ENERGY", Decimal("125.0000")),
             ("POWER", Decimal("22.0000")),
             ("TIME", Decimal("0.7600")),
         ]

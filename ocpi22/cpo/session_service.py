@@ -52,7 +52,7 @@ class SessionService:
         session.stop_kwh = kwh
         session.calculate_price()
         session.update_last_updated()
-        kwh_delta = session.stop_kwh - session.start_kwh
+        kwh_delta = float(session.stop_kwh) - float(session.start_kwh)
         session.update_charging_periods(kwh_delta, soc, power, timestamp)
         session.save(
             update_fields=[
