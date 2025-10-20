@@ -1,5 +1,4 @@
 import logging
-from collections import OrderedDict
 from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
@@ -9,10 +8,10 @@ import pytest
 import time_machine
 from kombu.exceptions import OperationalError
 
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.cpo.api import process_meter_values
 from ocpi22.cpo.mqtt.schemas import (
-    MeterValues,
     EvseStatusUpdate,
     TokenAuthorizationMessageIn,
     TokenAuthorizationResponse,
@@ -27,6 +26,7 @@ from ocpi22.cpo.mqtt.services import (
     create_and_save_session,
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
+from ocpi22.cpo.session_service import SessionService
 from ocpi22.models.session import Session
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
@@ -40,7 +40,6 @@ from ocpi22.tests.factories import (
     CredentialsFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
-from ocpiconnector.party import Party
 
 
 class TestMqttServices:
@@ -68,13 +67,13 @@ class TestMqttServices:
             patch(
                 "ocpi22.cpo.mqtt.services._decode_message", return_value=None
             ) as mock_decode_message,
-            patch("ocpi22.tasks.send_ocpi_request") as mock_process_meter_values_task,
+            patch("ocpi22.cpo.mqtt.services.SessionService") as mock_session_service,
         ):
             assert process_meter_values_data(smappee_meter_message) is None
         mock_decode_message.assert_called_once_with(smappee_meter_message)
-        mock_process_meter_values_task.assert_not_called()
+        mock_session_service.assert_not_called()
 
-    def test_process_meter_values_update_returns_none_when_data_validation_fails(
+    def test_process_meter_values_data_returns_none_when_data_validation_fails(
         self, smappee_meter_message, caplog
     ):
         caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
@@ -86,140 +85,164 @@ class TestMqttServices:
             for record in caplog.records
         )
 
-    @pytest.mark.skip
-    def test_process_meter_values_update_fails_when_celery_kwargs_not_satisfied(
+    @pytest.mark.django_db
+    def test_process_meter_values_data_returns_none_when_session_not_found(
         self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        meter_values.model_dump.return_value = (
-            '{"kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+        caplog.set_level(logging.WARNING, logger="ocpi22.cpo.mqtt.services")
+        assert process_meter_values_data(smappee_meter_message) is None
+        assert any(
+            "No session found for provided session_id : 94f5993d-232a-4916-a801-4e408c24c9cc"
+            in record.message
+            for record in caplog.records
         )
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch.object(
-                process_meter_values,
-                "apply_async",
-                side_effect=OperationalError("Some error from celery"),
-            ):
-                assert process_meter_values_data(smappee_meter_message) is None
-                assert any(
-                    "Celery operational error" in record.message
-                    for record in caplog.records
-                )
 
-    @pytest.mark.skip
-    def test_process_meter_values_update_fails_when_unexpected_error_occurs(
+    @pytest.mark.django_db
+    def test_process_meter_values_data_returns_none_when_session_is_not_active(
         self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        meter_values.model_dump.return_value = '{"a": "b"}'
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
+        caplog.set_level(logging.WARNING, logger="ocpi22.cpo.mqtt.services")
+        OCPISessionFactory(
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc", status=Session.PENDING
+        )
+        assert process_meter_values_data(smappee_meter_message) is None
+        assert any(
+            "Meter values received for non-active session: 94f5993d-232a-4916-a801-4e408c24c9cc skpping"
+            in record.message
+            for record in caplog.records
+        )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_data_calls_update_meter_values_with_correct_parameters(
+        self, smappee_meter_message
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc",
+            status=Session.ACTIVE,
+            connector=connector,
+        )
+
+        with (
+            patch.object(
+                SessionService, "update_meter_values"
+            ) as mock_update_meter_values,
+            patch.object(session, "send_updates"),
         ):
-            with patch.object(
-                process_meter_values,
-                "apply_async",
-                side_effect=Exception("Some unexpected error"),
-            ):
-                assert process_meter_values_data(smappee_meter_message) is None
-                assert any(
-                    "An unexpected error occurred" in record.message
-                    for record in caplog.records
-                )
+            process_meter_values_data(smappee_meter_message)
+
+            mock_update_meter_values.assert_called_once()
+            call_kwargs = mock_update_meter_values.call_args.kwargs
+            assert call_kwargs["session"] == session
+            assert call_kwargs["kwh"] == 1.1
+            assert call_kwargs["soc"] == 1.1
+            assert call_kwargs["power"] == 2.2
+            assert call_kwargs["timestamp"] == datetime.fromisoformat(
+                "2022-02-22T22:22:22+00:00"
+            )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_data_calls_send_updates_after_update_meter_values(
+        self, smappee_meter_message
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        _ = OCPISessionFactory(
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc",
+            status=Session.ACTIVE,
+            connector=connector,
+        )
+
+        with (
+            patch.object(SessionService, "update_meter_values"),
+            patch.object(Session, "send_updates") as mock_send_updates,
+        ):
+            process_meter_values_data(smappee_meter_message)
+
+            mock_send_updates.assert_called_once_with(
+                method="put", update_type=ChargingNotificationType.Progress
+            )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_data_returns_none_when_update_meter_values_raises_exception(
+        self, smappee_meter_message, caplog
+    ):
+        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        _ = OCPISessionFactory(
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc",
+            status=Session.ACTIVE,
+            connector=connector,
+        )
+
+        with patch.object(
+            SessionService,
+            "update_meter_values",
+            side_effect=Exception("Database error"),
+        ):
+            assert process_meter_values_data(smappee_meter_message) is None
+
+        assert any(
+            "Failed to process meter values for session 94f5993d-232a-4916-a801-4e408c24c9cc"
+            in record.message
+            for record in caplog.records
+        )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_data_does_not_call_send_updates_when_update_meter_values_fails(
+        self, smappee_meter_message
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc",
+            status=Session.ACTIVE,
+            connector=connector,
+        )
+
+        with (
+            patch.object(
+                SessionService,
+                "update_meter_values",
+                side_effect=Exception("Database error"),
+            ),
+            patch.object(session, "send_updates") as mock_send_updates,
+        ):
+            process_meter_values_data(smappee_meter_message)
+
+            mock_send_updates.assert_not_called()
 
     @time_machine.travel("2025-02-11 09:00:00", tick=False)
     @pytest.mark.django_db
-    def test_mqtt_meter_values_calls_send_background_update_successfully(
+    def test_process_meter_values_data_successfully_processes_complete_flow(
         self, smappee_meter_message, msp_credentials_with_endpoints
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        decoded_message = _decode_message(smappee_meter_message)
-        message_dict = orjson.loads(decoded_message)
-        message_dict["timestamp"] = datetime.fromisoformat(message_dict["timestamp"])
-        meter_values.model_dump.return_value = message_dict
         location = LocationFactory(uid="LOCATION1")
         evse = EvseFactory(location=location, uid="EVSE1")
         tariff = TariffFactory(uid="TARIFF1")
         connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
         session = OCPISessionFactory(
-            uid="94f5993d-232a-4916-a801-4e408c24c9cc", start_kwh=0, connector=connector
+            uid="94f5993d-232a-4916-a801-4e408c24c9cc",
+            status=Session.ACTIVE,
+            start_kwh=0,
+            connector=connector,
         )
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch(
-                "ocpi22.ocpi.util.OcpiModule.send_background_update"
-            ) as mock_send_background_update:
-                process_meter_values_data(smappee_meter_message)
-                mock_send_background_update.assert_called_once_with(
-                    {
-                        "country_code": "FI",
-                        "party_id": "CPO",
-                        "id": "94f5993d-232a-4916-a801-4e408c24c9cc",
-                        "start_date_time": "2021-01-01T10:00:00Z",
-                        "end_date_time": "2021-01-01T12:00:00Z",
-                        "kwh": 1.1,
-                        "charging_periods": [
-                            {
-                                "start_date_time": "2021-01-01T10:00:00Z",
-                                "tariff_id": "TARIFF1",
-                                "dimensions": [
-                                    {"type": "ENERGY", "volume": "1.1000"},
-                                    {"type": "STATE_OF_CHARGE", "volume": "1.1000"},
-                                    {"type": "POWER", "volume": "2.2000"},
-                                    {"type": "TIME", "volume": "10020.3728"},
-                                ],
-                            }
-                        ],
-                        "cdr_token": OrderedDict(
-                            [
-                                ("country_code", "FI"),
-                                ("party_id", "MSP"),
-                                ("uid", "DEADC0DE"),
-                                ("type", "RFID"),
-                                ("contract_id", "CONTRACT-12345"),
-                            ]
-                        ),
-                        "auth_method": "AUTH_REQUEST",
-                        "authorization_reference": "AUTHORIZATION-12345",
-                        "location_id": "LOCATION1",
-                        "evse_uid": "EVSE1",
-                        "connector_id": "1",
-                        "currency": "EUR",
-                        "total_cost": OrderedDict(
-                            [("excl_vat", 0.8), ("incl_vat", 0.9)]
-                        ),
-                        "status": "ACTIVE",
-                        "last_updated": "2025-02-11T09:00:00Z",
-                    },
-                    "https://localhost/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc",
-                    "QUJD",
-                    to=Party(country_code="FI", party_id="MSP"),
-                    sender=Party(country_code="FI", party_id="CPO"),
-                    method="put",
-                    credentials=session.credentials,
-                )
 
-    @pytest.mark.django_db
-    def test_meter_values_update_data_calls_send_ocpi_message_with_put_only(
-        self, smappee_meter_message, msp_credentials_with_endpoints
-    ):
-        meter_values = MagicMock(spec=MeterValues)
-        decoded_message = _decode_message(smappee_meter_message)
-        message_dict = orjson.loads(decoded_message)
-        message_dict["timestamp"] = datetime.fromisoformat(message_dict["timestamp"])
-        meter_values.model_dump.return_value = message_dict
-        OCPISessionFactory(uid="94f5993d-232a-4916-a801-4e408c24c9cc")
+        process_meter_values_data(smappee_meter_message)
 
-        with (
-            patch(
-                "ocpi22.ocpi.util.OcpiModule.send_background_update"
-            ) as mock_send_background_update,
-        ):
-            process_meter_values_data(smappee_meter_message)
-            mock_send_background_update.assert_called_once()
-            assert mock_send_background_update.call_args.kwargs["method"] == "put"
+        session.refresh_from_db()
+        assert session.start_kwh == 1.1
+        assert session.stop_kwh == 1.1
 
     @pytest.mark.django_db
     def test_meter_values_from_wouter_successfully(
@@ -228,18 +251,26 @@ class TestMqttServices:
         decoded_message = _decode_message(smappee_meter_message_from_wouter)
         message_dict = orjson.loads(decoded_message)
         session_id = message_dict.get("session_id")
-        OCPISessionFactory(
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
             uid=session_id,
             start_date_time=datetime.fromisoformat(message_dict.get("timestamp"))
             - timedelta(hours=0.76),
+            status=Session.ACTIVE,
+            connector=connector,
         )
         process_meter_values_data(smappee_meter_message_from_wouter)
-        session = Session.objects.get(uid=session_id)
-        assert session.kwh == 125
+        session.refresh_from_db()
+        assert session.start_kwh == 125
+        assert session.stop_kwh == 125
+        assert session.kwh == 0
+
         assert list(
             session.chargingperiods.all()[0].dimensions.values_list("type", "volume")
         ) == [
-            ("ENERGY", Decimal("125.0000")),
             ("POWER", Decimal("22.0000")),
             ("TIME", Decimal("0.7600")),
         ]
@@ -355,6 +386,25 @@ class TestMqttServices:
             charging_period = session.chargingperiods.first()
             energy_dimension = charging_period.dimensions.filter(type="ENERGY").first()
             assert energy_dimension.volume == Decimal("5.25")
+
+    @pytest.mark.django_db
+    def test_process_meter_values_saves_first_kwh_if_session_start_is_zero(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        session = OCPISessionFactory(
+            connector=connector, status=Session.ACTIVE, start_kwh=0.0
+        )
+        mock_request = MagicMock()
+
+        with patch.object(session, "send_updates"):
+            _ = process_meter_values(request=mock_request, kwh=15.75, session=session)
+
+            session.refresh_from_db()
+            assert session.start_kwh == 15.75
 
 
 class TestAuthorizeDataOverMqtt:
