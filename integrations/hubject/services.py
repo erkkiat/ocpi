@@ -601,6 +601,25 @@ class HubjectService:
             emp_partner_session_id=command.get("emp_partner_session_id", ""),
         )
 
+    def _reject_multiple_start_commands(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart, status: str
+    ) -> None:
+        from ocpi22.commands.repository import SessionRepository
+        from ocpi22.models.session import Session
+
+        if status == Evse.CHARGING:
+            active_session = SessionRepository.find_session_by_evse_id_and_status(
+                evse_id=remote_start_command.evse_id.root, statuses=[Session.ACTIVE]
+            )
+            if active_session:
+                logger.error(
+                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}"
+                )
+                raise HubjectRemoteCommandError(
+                    "602",
+                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}",
+                )
+
     def _get_and_validate_evse_availability(
         self, remote_start_command: ERoamingAuthorizeRemoteStart
     ) -> Evse:
@@ -659,8 +678,11 @@ class HubjectService:
             "Remote start command received from Hubject",
             extra={"command": remote_start_command},
         )
+        evse_status = None
         try:
             evse = self._get_and_validate_evse_availability(remote_start_command)
+            evse_status = evse.status
+            self._reject_multiple_start_commands(remote_start_command, evse.status)
             sender_party = self._get_sender_party(remote_start_command)
             data = self._prepare_start_session_data(
                 remote_start_command, evse, sender_party
@@ -681,6 +703,20 @@ class HubjectService:
                     remote_start_command.model_dump(), "022"
                 )
         except HubjectRemoteCommandError as hubject_error:
+            if hubject_error.error_code == "021":
+                request_accepted = (
+                    hubject_error.data.get("accepted_status", None)
+                    if hubject_error.data
+                    else None
+                )
+                if (
+                    evse_status
+                    and evse_status == Evse.AVAILABLE
+                    and request_accepted is False
+                ):
+                    return self._create_error_acknowledgment(
+                        remote_start_command.model_dump(), "510"
+                    )
             return self._create_error_acknowledgment(
                 remote_start_command.model_dump(), hubject_error.error_code
             )
@@ -764,7 +800,9 @@ class HubjectService:
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
-            raise HubjectRemoteCommandError("021", "Remote command was rejected")
+            raise HubjectRemoteCommandError(
+                "021", "Remote command was rejected", data={"accepted_status": False}
+            )
         logger.info(f"Hubject remote command was accepted. {data}")
         return
 

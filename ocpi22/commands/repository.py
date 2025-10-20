@@ -52,6 +52,16 @@ class SessionRepository:
     def find_session_by_auth_ref(auth_reference: str) -> Optional[Session]:
         return Session.objects.filter(authorization_reference=auth_reference).first()
 
+    @staticmethod
+    def find_session_by_evse_id_and_status(
+        evse_id: str, statuses=(Session.ACTIVE, Session.PENDING)
+    ) -> Optional[Session]:
+        return (
+            Session.objects.select_related("evse")
+            .filter(evse__evse_id=evse_id, status__in=statuses)
+            .first()
+        )
+
 
 class CommandRepository:
     def store_command_data(self, command_id: str, command_data: dict):
