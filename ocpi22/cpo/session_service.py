@@ -39,6 +39,31 @@ class SessionService:
         )
         return
 
+    def update_meter_values(
+        self,
+        session: Session,
+        timestamp: datetime,
+        kwh: float,
+        soc: float | None = None,
+        power: float | None = None,
+    ) -> None:
+        if session.start_kwh == 0:
+            session.start_kwh = kwh
+        session.stop_kwh = kwh
+        session.calculate_price()
+        session.update_last_updated()
+        kwh_delta = float(session.stop_kwh) - float(session.start_kwh)
+        session.update_charging_periods(kwh_delta, soc, power, timestamp)
+        session.save(
+            update_fields=[
+                "start_kwh",
+                "stop_kwh",
+                "total_cost_incl_vat",
+                "total_cost_excl_vat",
+                "last_updated",
+            ]
+        )
+
     def stop_and_create_cdr(
         self,
         session: Session,
