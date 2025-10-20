@@ -152,7 +152,7 @@ class TestMqttServices:
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
-        session = OCPISessionFactory(
+        _ = OCPISessionFactory(
             uid="94f5993d-232a-4916-a801-4e408c24c9cc",
             status=Session.ACTIVE,
             connector=connector,
@@ -267,7 +267,7 @@ class TestMqttServices:
         assert session.start_kwh == 125
         assert session.stop_kwh == 125
         assert session.kwh == 0
-        
+
         assert list(
             session.chargingperiods.all()[0].dimensions.values_list("type", "volume")
         ) == [
