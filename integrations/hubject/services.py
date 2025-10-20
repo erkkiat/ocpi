@@ -704,8 +704,16 @@ class HubjectService:
                 )
         except HubjectRemoteCommandError as hubject_error:
             if hubject_error.error_code == "021":
-                if evse_status and evse_status == Evse.AVAILABLE:
-                    # EV is not connected to this EVSE, Evse is available and command was rejected
+                request_accepted = (
+                    hubject_error.data.get("accepted_status", None)
+                    if hubject_error.data
+                    else None
+                )
+                if (
+                    evse_status
+                    and evse_status == Evse.AVAILABLE
+                    and request_accepted is False
+                ):
                     return self._create_error_acknowledgment(
                         remote_start_command.model_dump(), "510"
                     )

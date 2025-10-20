@@ -1485,7 +1485,7 @@ class TestHubjectAuthorizeRemoteStart:
 
     @pytest.mark.django_db
     def test_process_remote_start_returns_acknowledgment_false_when_ev_not_connected(
-        self, mock_remote_start_command, evse
+        self, mock_remote_start_command, evse, hubject_credentials
     ):
         WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
