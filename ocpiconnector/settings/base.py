@@ -174,6 +174,8 @@ def hostname_variants(hostname):
     ]
 
 
+HUBJECT_HOSTS = []
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
@@ -466,7 +468,41 @@ CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = os.environ.get("CELERY_QUEUE_NAME", "celery-django-mid")
 CELERY_TASK_ALWAYS_EAGER = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 CELERY_TASK_IGNORE_RESULTS = True
+CELERY_TASK_PUBLISH_RETRY = True
+CELERY_TASK_PUBLISH_RETRY_POLICY = {
+    "max_retries": 5,
+    "interval_start": 0,
+    "interval_step": 1,
+    "interval_max": 5,
+}
+
+CELERY_BROKER_CONNECTION_RETRY = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = None
+
+BROKER_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+    "max_connections": 50,
+}
+
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+    "max_connections": 20,
+}
+
+CELERY_BROKER_POOL_LIMIT = 20
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
 
 # JWT authentication
 SIMPLE_JWT = {
@@ -552,3 +588,6 @@ LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
     "/api-auth/login/",
     "/portal/admin/",
 ]
+
+
+MAX_ACTIVE_WEBHOOKS_PER_TYPE = os.getenv("MAX_ACTIVE_WEBHOOKS_PER_TYPE", 5)

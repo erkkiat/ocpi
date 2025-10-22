@@ -1,5 +1,6 @@
 import functools
 import regex
+import logging
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -43,14 +44,19 @@ from integrations.hubject.schemas import (
     ProductID,
     RFIDMifareFamilyIdentificationClass,
     EvseStatus as OICPEvseStatus,
+    RemoteIdentification,
+    EvcoID,
 )
-from ocpi22.choices import OCPICapability
+from ocpi22.choices import OCPICapability, TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
+    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -163,7 +169,7 @@ class SolidToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=False,
+            IsHubjectCompatible=True,
             DynamicInfoAvailable=DynamicInfoAvailable.false,
         )
 
@@ -564,6 +570,33 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
+    @staticmethod
+    def get_identification(session: "Session") -> Identification:
+        token_type = session.cdr_token.token_type
+        identification = Identification(
+            RFIDMifareFamilyIdentification=None,
+            RFIDIdentification=None,
+            QRCodeIdentification=None,
+            PlugAndChargeIdentification=None,
+            RemoteIdentification=None,
+        )
+
+        match token_type:
+            case TokenType.RFID | TokenType.AD_HOC_USER | TokenType.OTHER:
+                identification.RFIDMifareFamilyIdentification = (
+                    RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=session.cdr_token.uid)
+                    )
+                )
+            case TokenType.APP_USER:
+                identification.RemoteIdentification = RemoteIdentification(
+                    EvcoID=EvcoID(root=session.cdr_token.contract_id)
+                )
+            case _:
+                raise ValidationError(f"Unsupported token type: {token_type}")
+
+        return identification
+
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
@@ -598,11 +631,7 @@ class SolidToHubjectConverter:
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=session.token_id)
-                ),
-            ),
+            identification=self.get_identification(session),
             charging_start=cdr.start_date_time,
             charging_end=cdr.end_date_time,
             session_start=cdr.start_date_time,
@@ -626,6 +655,9 @@ class SolidToHubjectConverter:
             == CalibrationLawDataAvailability.External
         ):
             if eroaming_cdr.signed_metering_values is None:
+                logger.error(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External in ERoamingChargeDetailRecord."
+                )
                 raise ValidationError(
                     "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
                 )
@@ -636,21 +668,21 @@ class SolidToHubjectConverter:
         match status.upper():
             case "AVAILABLE":
                 return OICPEvseStatus.Available
-            case "PREPARING":
+            case "BLOCKED":
                 return OICPEvseStatus.Occupied
             case "CHARGING":
                 return OICPEvseStatus.Occupied
-            case "SUSPENDEDEV":
+            case "INOPERATIVE":
+                return OICPEvseStatus.OutOfService
+            case "OUTOFORDER":
+                return OICPEvseStatus.OutOfService
+            case "PLANNED":
                 return OICPEvseStatus.Occupied
-            case "SUSPENDEDEVSE":
-                return OICPEvseStatus.Occupied
-            case "FINISHING":
-                return OICPEvseStatus.Occupied
+            case "REMOVED":
+                return OICPEvseStatus.OutOfService
             case "RESERVED":
                 return OICPEvseStatus.Reserved
-            case "UNAVAILABLE":
-                return OICPEvseStatus.Occupied
-            case "FAULTED":
-                return OICPEvseStatus.OutOfService
+            case "UNKNOWN":
+                return OICPEvseStatus.Unknown
             case _:
                 raise ValueError(f"Invalid OCPI status [{status}] found")

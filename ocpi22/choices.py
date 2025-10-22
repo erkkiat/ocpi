@@ -82,10 +82,10 @@ class TokenType(str, Enum):
 
 
 TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
+    (TokenType.AD_HOC_USER.value, "Ad-hoc user"),
+    (TokenType.RFID.value, "RFID"),
+    (TokenType.APP_USER.value, "Application user"),
+    (TokenType.OTHER.value, "Other"),
 ]
 
 
@@ -249,6 +249,7 @@ class MessageTexts:
                 "There is a communication error with one of the service provider internal systems"
             )
         )
+        SESSION_NOT_FOUND = "Session not found"
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,
@@ -274,6 +275,7 @@ class MessageTexts:
             UNKNOWN_RESERVATION=_make_texts(
                 _("There has been a problem with the reservation")
             ),
+            SESSION_NOT_FOUND=SESSION_NOT_FOUND,
         )
         return _texts.get(s, default)
 

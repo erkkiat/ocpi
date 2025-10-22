@@ -10,6 +10,7 @@ from enum import Enum
 from typing import List, Optional
 
 from django.conf import settings
+from ninja import Schema
 from pydantic import (
     BaseModel,
     Field,
@@ -77,6 +78,41 @@ class MeteringStatus(Enum):
     Start = "Start"
     Progress = "Progress"
     End = "End"
+
+
+STATUS_CODE_TEXT: dict[str, str] = {
+    "000": "Success",
+    "001": "Hubject system error",
+    "002": "Hubject database error",
+    "009": "Data transaction error",
+    "017": "Unauthorized Access",
+    "018": "Inconsistent EvseID",
+    "019": "Inconsistent EvcoID",
+    "021": "System error",
+    "022": "Data error",
+    "101": "QR Code Authentication failed – Invalid Credentials",
+    "102": "RFID Authentication failed – invalid UID",
+    "103": "RFID Authentication failed – card not readable",
+    "105": "PLC Authentication failed - invalid EvcoID",
+    "106": "No positive authentication response",
+    "110": "QR Code App Authentication failed – time out error",
+    "120": "PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID",
+    "121": "PLC (ISO/ IEC 15118) Authentication failed – invalid certificate",
+    "122": "PLC (ISO/ IEC 15118) Authentication failed – time out error",
+    "200": "EvcoID locked",
+    "210": "No valid contract",
+    "300": "Partner not found",
+    "310": "Partner did not respond",
+    "320": "Service not available",
+    "400": "Session is invalid",
+    "501": "Communication to EVSE failed",
+    "510": "No EV connected to EVSE",
+    "601": "EVSE already reserved",
+    "602": "EVSE already in use/ wrong token",
+    "603": "Unknown EVSE ID",
+    "604": "EVSE ID is not Hubject compatible",
+    "700": "EVSE out of service",
+}
 
 
 class SignedMeteringValue(BaseModel):
@@ -249,43 +285,7 @@ class RFID(Enum):
 
 
 class StatusCode(BaseModel):
-    Code: str = Field(
-        # I wonder why this is not an enum
-        ...,
-        description="| Option | Description | Area of Usage |"
-        "| -------|-------------|---------------|"
-        "| 000 | Success. | General codes |"
-        "| 001 | Hubject system error. | Internal system codes |"
-        "| 002 | Hubject database error. |Internal system codes|"
-        "| 009 |Data transaction error. | Internal system codes|"
-        "|017 |Unauthorized Access. |Internal system codes |"
-        "|018 |Inconsistent EvseID. |Internal system codes |"
-        "|019 |Inconsistent EvcoID. |Internal system codes |"
-        "|021 |System error. |General codes |"
-        "|022 |Data error. |General codes |"
-        "|101 |QR Code Authentication failed – Invalid Credentials. |Authentication codes |"
-        "|102 |RFID Authentication failed – invalid UID. |Authentication codes |"
-        "|103 |RFID Authentication failed – card not readable. |Authentication codes |"
-        "|105 |PLC Authentication failed - invalid EvcoID. |Authentication codes |"
-        "|106 |No positive authentication response. |Authentication codes / Internal system codes |"
-        "|110 |QR Code App Authentication failed – time out error. |Authentication codes |"
-        "|120 |PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID. |Authentication codes |"
-        "|121 |PLC (ISO/ IEC 15118) Authentication failed – invalid certificate. |Authentication codes |"
-        "|122 |PLC (ISO/ IEC 15118) Authentication failed – time out error. |Authentication codes |"
-        "|200 |EvcoID locked. |Authentication codes |"
-        "|210 |No valid contract. |Session codes |"
-        "|300 |Partner not found. |Session codes |"
-        "|310 |Partner did not respond. |Session codes |"
-        "|320 |Service not available. |Session codes |"
-        "|400 |Session is invalid. |Session codes |"
-        "|501 |Communication to EVSE failed. |EVSE codes |"
-        "|510 |No EV connected to EVSE. |EVSE codes |"
-        "|601 |EVSE already reserved. |EVSE codes |"
-        "|602 |EVSE already in use/ wrong token. |EVSE codes |"
-        "|603 |Unknown EVSE ID. |EVSE codes |"
-        "|604 |EVSE ID is not Hubject compatible. |EVSE codes |"
-        "|700 |EVSE out of service. |EVSE codes |",
-    )
+    Code: str = Field(...)
     Description: Optional[str] = Field(None, description="description")
     AdditionalInfo: Optional[str] = Field(
         None, description="More information can be provided here"
@@ -639,19 +639,22 @@ class OpeningTimes(BaseModel):
     )
 
 
-class ERoamingAcknowledgment(BaseModel):
-    Result: bool = Field(
+class ERoamingAcknowledgment(HubjectBaseModel):
+    result: bool = Field(
         ...,
+        alias="Result",
         description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
-    StatusCode: StatusCode
-    SessionID: Optional[SessionID] = None
-    CPOPartnerSessionID: Optional[str] = Field(
+    status_code: StatusCode = Field(..., alias="StatusCode")
+    session_id: Optional[SessionID] = Field(None, alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
 
@@ -685,18 +688,20 @@ class ERoamingAuthorizeRemoteReservationStop(BaseModel):
     EvseID: EvseID
 
 
-class ERoamingAuthorizeRemoteStop(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStop(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by the CPO to the related operation.",
+        alias="CPOPartnerSessionID",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by an EMP to the related operation.",
+        alias="EMPPartnerSessionID",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
 
 
 class EVSEPricingItem(BaseModel):
@@ -770,13 +775,11 @@ class RFIDIdentification(BaseModel):
 
 
 class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass] = (
-        Field(default=None)
-    )
-    # RFIDIdentification: Optional[RFIDIdentification] = Field(default=None)
-    # QRCodeIdentification: Optional[QRCodeIdentification] = Field(default=None)
-    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = Field(default=None)
-    # RemoteIdentification: Optional[RemoteIdentification] = Field(default=None)
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass]
+    RFIDIdentification: Optional[RFIDIdentification]
+    QRCodeIdentification: Optional[QRCodeIdentification]
+    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
+    RemoteIdentification: Optional[RemoteIdentification]
 
 
 class EvseDataRecord(BaseModel):
@@ -923,20 +926,22 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     )
 
 
-class ERoamingAuthorizeRemoteStart(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStart(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
-    Identification: Identification
-    PartnerProductID: Optional[ProductID] = None
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
+    identification: Identification = Field(..., alias="Identification")
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
 class ERoamingAuthorizeStart(HubjectBaseModel):
@@ -1231,3 +1236,57 @@ class HubjectDefaultTariff(BaseModel):
                 return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")
+
+
+class HubjectCDRError(Schema):
+    success: bool
+    errorType: str
+    error: str
+
+
+class RemoteCommandStart(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
+    identification: Optional[IdentificationIn] = Field(None, alias="Identification")
+    partner_product_id: Optional[str] = Field(None, alias="PartnerProductID")
+
+
+class RemoteCommandStop(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
+
+
+class IdentificationIn(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    rfid_mifare_family_identification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(None, alias="RFIDMifareFamilyIdentification")
+    )
+    rfid_identification: Optional[RFIDIdentification] = Field(
+        None, alias="RFIDIdentification"
+    )
+    qr_code_identification: Optional[QRCodeIdentification] = Field(
+        None, alias="QRCodeIdentification"
+    )
+    plug_and_charge_identification: Optional[PlugAndChargeIdentification] = Field(
+        None, alias="PlugAndChargeIdentification"
+    )
+    remote_identification: Optional[RemoteIdentification] = Field(
+        None, alias="RemoteIdentification"
+    )

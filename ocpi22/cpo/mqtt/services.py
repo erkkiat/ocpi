@@ -1,15 +1,13 @@
+from logging import getLogger
+
 from kombu.exceptions import OperationalError
 from pydantic import ValidationError
 
-import logging
-from functools import wraps
-
-from django.db import close_old_connections
-from django.db.utils import OperationalError as DjangoOperationalError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
+from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
-from ocpi22.cpo.api import process_meter_values
+from ocpi22.commands.repository import SessionRepository
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -19,6 +17,7 @@ from ocpi22.cpo.mqtt.schemas import (
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.session_service import SessionService
 from ocpi22.cpo.util import find_our_evse
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -30,60 +29,56 @@ from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
 from ocpiconnector.party import Party
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-def ensure_db_connection(func):
-    """Decorator to handle database connection errors in MQTT message processing"""
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except DjangoOperationalError as e:
-            if "server has gone away" in str(e).lower() or "2006" in str(e):
-                logger.warning("Database connection lost, reconnecting...")
-                close_old_connections()
-                return func(*args, **kwargs)
-            else:
-                raise
-
-    return wrapper
+logger = getLogger(__name__)
 
 
 def _decode_message(message):
     try:
         return message.payload.decode("utf-8")
     except UnicodeDecodeError:
-        logger.exception(f"Failed to decode {message.topic} message")
+        logger.exception(f"Failed to decode message from topic {message.topic}")
         return None
 
 
-@ensure_db_connection
 def process_meter_values_data(message) -> None:
     decoded_meter_message = _decode_message(message)
     if not decoded_meter_message:
         return
     try:
         meter_values = MeterValues.model_validate_json(decoded_meter_message)
-    except ValidationError as e:
-        logger.exception(f"Failed to validate {message.topic} message: {e}")
+    except ValidationError:
+        logger.exception(f"Failed to parse message from topic {message.topic}")
+        return
+
+    session = SessionRepository().find_session_by_uid(meter_values.session_id)
+    if not session:
+        logger.warning(
+            f"No session found for provided session_id : {meter_values.session_id} "
+        )
+        return
+    if not session.status == Session.ACTIVE:
+        logger.warning(
+            f"Meter values received for non-active session: {session.uid} skpping"
+        )
         return
     try:
-        kwargs = meter_values.model_dump()
-        session = Session.objects.get(uid=kwargs.pop("session_id"))
-        process_meter_values(request=None, session=session, **kwargs)
-    except OperationalError:
-        logger.exception("Celery operational error")
-    except DjangoOperationalError:
-        raise
+        SessionService().update_meter_values(
+            session=session,
+            timestamp=meter_values.timestamp,
+            kwh=meter_values.kwh,
+            soc=meter_values.soc,
+            power=meter_values.power,
+        )
+        session.send_updates(
+            method="put", update_type=ChargingNotificationType.Progress
+        )
     except Exception:
-        logger.exception("An unexpected error occurred")
+        logger.exception(
+            f"Failed to process meter values for session {session.uid}",
+        )
     return
 
 
-@ensure_db_connection
 def process_status_update_data(message) -> None:
     decoded_message = _decode_message(message)
     if not decoded_message:
@@ -91,16 +86,11 @@ def process_status_update_data(message) -> None:
     try:
         evse_schema = EvseStatusUpdate.model_validate_json(decoded_message)
     except ValidationError as e:
-        logger.warning(
-            f"Failed to parse {message.topic} message",
-            extra={"payload": decoded_message},
+        logger.exception(
+            f"Failed to parse message from topic {message.topic}",
             exc_info=e,
         )
         return
-
-    # Todo: Find the Session which may be active on the EVSE
-    #       Store the status update in the database, optimise for querying per Session
-    #       Convert the stored status updates to ChargingPeriods in OCPI Session and CDR
 
     evse_data = evse_schema.model_dump(mode="json")
     try:
@@ -116,19 +106,19 @@ def _find_token_by_uid(token_id):
     return Token.objects.filter(uid__iexact=token_id).first()
 
 
-@ensure_db_connection
 def process_authorize_data(message):
     decoded_message = _decode_message(message)
     if not decoded_message:
         return
     try:
-        token_auth_message = TokenAuthorizationMessageIn.model_validate_json(  # noqa
+        token_auth_message = TokenAuthorizationMessageIn.model_validate_json(
             decoded_message
         )
     except ValidationError:
-        logger.exception(f"Failed to parse {message.topic} message")
+        logger.exception(f"Failed to parse message from topic {message.topic}")
         return
-    _authorize_and_publish(token_auth_message, message)
+
+    _authorize_and_publish(token_auth_message, message.topic)
     return
 
 
@@ -142,9 +132,11 @@ def _publish_not_allowed_auth_response(correlation_id: str):
     return
 
 
-def _authorize_and_publish(
-    token_auth_message: TokenAuthorizationMessageIn, message: str
-):
+def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topic: str):
+    """
+    MEMORY OPTIMIZATION:
+    - Accept topic string instead of full message object
+    """
     try:
         evse = find_our_evse(token_auth_message.evse_id)
     except DjangoValidationError as e:
@@ -155,8 +147,8 @@ def _authorize_and_publish(
         return
     if not evse:
         logger.error(
-            f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found",
-            extra={"mqtt_message": message},
+            f"Unable to authorize token from MQTT on topic {topic}: "
+            f"EVSE with ID '{token_auth_message.evse_id}' not found"
         )
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
@@ -165,7 +157,9 @@ def _authorize_and_publish(
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )
     try:
-        authorization: TokenAuthorization = authorize_token(token, evse.location)
+        authorization: TokenAuthorization = authorize_token(
+            token, evse.location, evse_id=evse.evse_id
+        )
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"
@@ -181,8 +175,7 @@ def _authorize_and_publish(
         publish_auth_response(allowed_message)
     except Exception:
         logger.exception(
-            "MQTT authorization failed miserably for auth message",
-            extra={"mqtt_message": message},
+            f"MQTT authorization failed on topic {topic}",
         )
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
@@ -210,6 +203,7 @@ def create_and_save_session(authorization: TokenAuthorization, evse: Evse) -> Se
         evse_uid=evse.uid,
         connector_id=None,
         location_id=evse.location.uid,
+        hub_session_id=authorization.hub_session_id,
     )
     save_to_session_cache(
         route=find_route_from_credentials(

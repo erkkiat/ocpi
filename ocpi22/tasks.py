@@ -52,10 +52,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 pull_hour = random.randint(0, 3)
 pull_minute = random.randint(0, 59)
 
-# Register celery signals
-# DO NOT REMOVE IT!!
-from base_task_services import setup_worker_connection  # noqa
-
 app.conf.beat_schedule = {
     "run-me-every-minute": {
         "task": "ocpi22.tasks.celery_heartbeat",
@@ -100,6 +96,42 @@ if "rediss" in REDIS_URL and "ssl_cert_reqs" not in REDIS_URL:
 if REDIS_URL:
     app.conf.update(broker_url=REDIS_URL, result_backend=REDIS_URL)
 
+    app.conf.update(
+        broker_connection_retry=True,
+        broker_connection_retry_on_startup=True,
+        broker_connection_max_retries=None,
+        task_publish_retry=True,
+        task_publish_retry_policy={
+            "max_retries": 5,
+            "interval_start": 0,
+            "interval_step": 1,
+            "interval_max": 5,
+        },
+        broker_transport_options={
+            "socket_timeout": 30,
+            "socket_connect_timeout": 30,
+            "socket_keepalive": True,
+            "retry_on_timeout": True,
+            "health_check_interval": 30,
+            "max_connections": 50,
+        },
+        result_backend_transport_options={
+            "socket_timeout": 30,
+            "socket_connect_timeout": 30,
+            "socket_keepalive": True,
+            "retry_on_timeout": True,
+            "health_check_interval": 30,
+            "max_connections": 20,
+        },
+        broker_pool_limit=20,
+        task_acks_late=True,
+        task_reject_on_worker_lost=True,
+        worker_prefetch_multiplier=1,
+        worker_cancel_long_running_tasks_on_connection_loss=True,
+        worker_max_tasks_per_child=1000,
+        task_ignore_result=True,
+    )
+
     # Load task modules from all registered Django apps.
     app.autodiscover_tasks()
 else:
@@ -113,7 +145,7 @@ def get_cert_from_env(var_name: str) -> str | None:
     return val.replace("\\n", "\n").strip()
 
 
-def get_request_session(credential_id):
+def get_certificate_loaded_request(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
@@ -176,7 +208,7 @@ def send_ocpi_request(
         kwargs.update(dict(url=url, data=data, headers=headers))
 
     try:
-        request_session = get_request_session(credentials_id)
+        request_session = get_certificate_loaded_request(credentials_id)
     except ssl.SSLError:
         logger.exception(f"SSL error while connecting to {url}.")
         # Don't retry on SSL errors as they're likely configuration issues

@@ -660,7 +660,13 @@ def expected_eroaming_cdr():
         "EvseID": "FI*CPO*EEVSECONVERT",
         "HubOperatorID": "FI*CPO",
         "HubProviderID": "FI*MSP",
-        "Identification": {"RFIDMifareFamilyIdentification": {"UID": "BAADF00D"}},
+        "Identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "BAADF00D"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
         "MeterValueEnd": 120.0,
         "MeterValueInBetween": None,
         "MeterValueStart": 0.0,
@@ -670,3 +676,40 @@ def expected_eroaming_cdr():
         "SessionStart": "2022-02-22T22:22:22Z",
         "SignedMeteringValues": None,
     }
+
+
+@pytest.fixture
+def remote_command_payload():
+    evse = EvseFactory(status="AVAILABLE")
+
+    return {
+        "Identification": {"RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}},
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "PartnerProductID": "AC1",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_command_payload():
+    evse = EvseFactory(status="CHARGING")
+
+    return {
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_session():
+    evse = EvseFactory(status="CHARGING")
+
+    return OCPISessionFactory(
+        uid="OURSESSIONID", evse=evse, authorization_reference="2345ABC"
+    )

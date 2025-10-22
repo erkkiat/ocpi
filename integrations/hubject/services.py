@@ -8,17 +8,19 @@ import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db.models import Prefetch
+from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.ocpi_to_oicp_converter import (
     convert_to_charging_notification_progress,
     convert_to_charging_notification_start,
     convert_to_charging_notification_end,
 )
 from integrations.hubject.oicp_to_ocpi_converter import (
-    map_oicp_authorization_response_to_ocpi_221,
+    map_successful_oicp_authorization_response_to_ocpi_221,
 )
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
@@ -37,24 +39,33 @@ from integrations.hubject.schemas import (
     OperatorEvseStatus,
     EvseStatusRecordItem,
     EvseID,
+    ERoamingAcknowledgment,
+    ERoamingAuthorizeRemoteStart,
+    StatusCode,
+    ERoamingAuthorizeRemoteStop,
+    STATUS_CODE_TEXT,
+    SessionID,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
+from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
 from util import with_trailing_slash
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Optional
 from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
+    from ocpi22.models.cdr import Cdr
+
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +84,7 @@ class HubjectService:
         operator_name = None
 
         if len(locations) == 0:
-            return
+            return None
 
         locations = Location.objects.prefetch_related(
             Prefetch(
@@ -120,7 +131,7 @@ class HubjectService:
         operator_evse_data: OperatorEvseData = self.get_operator_evse_data(operator_id)
 
         if operator_evse_data is None:
-            return
+            return None
 
         return ERoamingPushEvseData(
             ActionType=ActionType.fullLoad,
@@ -173,7 +184,11 @@ class HubjectService:
                 identification=Identification(
                     RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                         UID=UID(root=token_id)
-                    )
+                    ),
+                    RemoteIdentification=None,
+                    QRCodeIdentification=None,
+                    RFIDIdentification=None,
+                    PlugAndChargeIdentification=None,
                 ),
             )
             payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
@@ -205,7 +220,7 @@ class HubjectService:
                 f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
             )
             status_code = response_json.get("StatusCode", {}).get("Code")
-
+            mapped_response = None
             ocpi_master = None
             if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
@@ -214,10 +229,17 @@ class HubjectService:
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
+                mapped_response = (
+                    map_successful_oicp_authorization_response_to_ocpi_221(
+                        response_json, token_id
+                    )
+                )
+            else:
+                logger.warning(
+                    f"Authorization failed with status code {response.status_code} "
+                    f"and Hubject error code {status_code} ({STATUS_CODE_TEXT.get(status_code, 'Unknown')})"
+                )
 
-            mapped_response = map_oicp_authorization_response_to_ocpi_221(
-                response_json, token_id
-            )
             return (
                 response.status_code,
                 mapped_response,
@@ -350,7 +372,11 @@ class HubjectService:
             cls.post_charging_notification(payload)
             logger.info("Notification sent successfully")
         except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error: {e.response.status_code}")
+            logger.error(
+                f"HTTP error: {e.response.status_code}",
+                exc_info=True,
+                extra={"hubject_response": e.response.text},
+            )
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e}")
         except Exception as e:
@@ -399,9 +425,12 @@ class HubjectService:
             payload = cls._get_evse_status_update_payload(
                 evse, operator_id, operator_name
             )
-        except ValidationError as e:
-            logger.warning(f"Failed to create payload for EVSE status update: {e}")
+        except (ValidationError, ValueError):
+            logger.error(
+                "Failed to create payload for EVSE status update", exc_info=True
+            )
             return
+
         payload_json = payload.model_dump(mode="json", by_alias=True)
 
         url = (
@@ -409,3 +438,417 @@ class HubjectService:
         )
 
         send_hubject_request.delay(payload_json, url, "post")
+
+    @staticmethod
+    def post_eroaming_charge_detail_record(
+        operator_id: str, cdr: Optional["Cdr"], session_id=None, retries=3
+    ) -> dict:
+        from ocpi22.models.cdr import Cdr
+
+        if cdr is None:
+            if session_id is None:
+                logger.warning(
+                    "Neither CDR nor session_id provided for CDR post for Hubject"
+                )
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": "Either CDR or session_id must be provided.",
+                }
+
+            cdr = Cdr.objects.filter(session_id=session_id).first()
+            if not cdr:
+                logger.warning(f"No CDR found for session_id {session_id}")
+                return {
+                    "success": False,
+                    "errorType": "Invalid Input",
+                    "error": f"No CDR found for session_id {session_id}.",
+                }
+            if not cdr.route_through_oicp:
+                logger.warning(
+                    f"CDR for session_id {session_id} has not routed through OICP"
+                )
+                return {
+                    "success": False,
+                    "errorType": "Incompatible CDR",
+                    "error": f"CDR with session id {session_id} has not routed through OICP",
+                }
+
+        url = f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record"
+
+        try:
+            payload = (
+                HubjectService.converter.convert_cdr_to_eroaming_charging_detail_record(
+                    cdr
+                )
+            )
+            payload_json = payload.model_dump(
+                mode="json", exclude_none=True, by_alias=True
+            )
+        except ValidationError as ve:
+            logger.error("Failed to create payload for Hubject CDR", exc_info=True)
+            return {
+                "success": False,
+                "errorType": "Validation Error",
+                "error": str(ve),
+            }
+
+        retry_policy = dict(max_retries=retries, interval_start=5)
+        send_hubject_request.apply_async(
+            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
+        )
+        logger.info("Hubject CDR post task queued")
+        return {
+            "success": True,
+            "message": "Sent CDR to hubject",
+        }
+
+    @staticmethod
+    def decode_country_code_and_party_id(
+        provider_id: str | None,
+    ) -> tuple[str | None, str | None]:
+        if provider_id is None:
+            return None, None
+
+        asterisk_count = provider_id.count("*")
+        dash_count = provider_id.count("-")
+
+        if (
+            asterisk_count > 1
+            or dash_count > 1
+            or (asterisk_count > 0 and dash_count > 0)
+        ):
+            raise ValueError(f"Invalid ProviderID format: {provider_id}")
+
+        if "*" in provider_id:
+            return tuple(provider_id.split("*", 1))
+        elif "-" in provider_id:
+            return tuple(provider_id.split("-", 1))
+        elif len(provider_id) == 5 and provider_id.isalnum():
+            # Assuming the format is 'CCPPP' where CC is country code and PPP is party ID
+            return provider_id[:2], provider_id[2:]
+        else:
+            raise ValueError(f"Invalid ProviderID format: {provider_id}")
+
+    def _prepare_start_session_data(
+        self,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        evse: Evse,
+        sender_party: Party,
+    ) -> dict:
+        command_id = remote_start_command.emp_partner_session_id or None
+        authorization_reference = command_id or remote_start_command.session_id.root
+        contract_id = (
+            remote_start_command.identification.RemoteIdentification.EvcoID.root
+        )
+        if not contract_id:
+            raise HubjectRemoteCommandError(
+                "022", "EvcoID is required for remote start command"
+            )
+        return {
+            "response_url": build_absolute_uri(
+                reverse("chargepoint-remote-command-result", args=(command_id,))
+            ),
+            "token": {
+                "uid": contract_id,  # Hubject does not send a token UID for remote start
+                "country_code": sender_party.country_code,
+                "party_id": sender_party.party_id,
+                "type": TokenType.APP_USER.value,
+                "contract_id": contract_id,
+            },
+            "location_id": evse.location.uid,
+            "evse_uid": evse.uid,
+            "connector_id": evse.connectors.first().uid
+            if evse.connectors.exists()
+            else "",
+            "authorization_reference": authorization_reference,
+        }
+
+    def _get_hubject_error_code(self, evse: Evse) -> str:
+        if not evse:
+            return "603"
+
+        match evse.status:
+            case Evse.AVAILABLE:
+                return "000"  # Success
+            case Evse.BLOCKED:
+                return "501"
+            case Evse.CHARGING:
+                return "602"
+            case Evse.INOPERATIVE:
+                return "700"
+            case Evse.OUTOFORDER:
+                return "700"
+            case Evse.PLANNED:
+                return "501"
+            case Evse.REMOVED:
+                return "700"
+            case Evse.RESERVED:
+                return "601"
+            case Evse.UNKNOWN:
+                return "501"
+            case _:
+                return "000"
+
+    def _create_error_acknowledgment(
+        self, command: dict, error_code: str
+    ) -> ERoamingAcknowledgment:
+        return ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code=error_code),
+            session_id=SessionID(root=command.get("session_id", "")),
+            cpo_partner_session_id="",
+            emp_partner_session_id=command.get("emp_partner_session_id", ""),
+        )
+
+    def _reject_multiple_start_commands(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart, status: str
+    ) -> None:
+        from ocpi22.commands.repository import SessionRepository
+        from ocpi22.models.session import Session
+
+        if status == Evse.CHARGING:
+            active_session = SessionRepository.find_session_by_evse_id_and_status(
+                evse_id=remote_start_command.evse_id.root, statuses=[Session.ACTIVE]
+            )
+            if active_session:
+                logger.error(
+                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}"
+                )
+                raise HubjectRemoteCommandError(
+                    "602",
+                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}",
+                )
+
+    def _get_and_validate_evse_availability(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ) -> Evse:
+        evse_id = remote_start_command.evse_id.root
+        evse = self._get_evse(evse_id)
+
+        if evse.status not in [Evse.AVAILABLE, Evse.CHARGING]:
+            logger.error(
+                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}"
+            )
+            raise HubjectRemoteCommandError(
+                self._get_hubject_error_code(evse),
+                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}",
+            )
+
+        return evse
+
+    def _get_evse(self, evse_id: str) -> Evse:
+        evse = (
+            Evse.objects.filter(evse_id=evse_id)
+            .select_related("location")
+            .prefetch_related(
+                Prefetch("connectors", queryset=Connector.objects.only("uid"))
+            )
+            .only("status", "evse_id", "uid", "location_id", "location__uid")
+            .first()
+        )
+
+        if not evse:
+            logger.error(f"EVSE with ID {evse_id} not found")
+            raise HubjectRemoteCommandError("603", "EVSE not found")
+
+        return evse
+
+    def _get_sender_party(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ) -> Party:
+        try:
+            sender_country_code, sender_party_id = (
+                self.decode_country_code_and_party_id(
+                    remote_start_command.provider_id.root
+                )
+            )
+        except ValueError as ve:
+            logger.error(f"Failed to decode ProviderID: {ve}")
+            raise HubjectRemoteCommandError("300", "Invalid ProviderID format")
+
+        return Party.from_str(f"{sender_country_code}*{sender_party_id}")
+
+    def process_remote_start_command(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ):
+        from ocpi22.commands.serializers import StartSessionSerializer
+
+        logger.info(
+            "Remote start command received from Hubject",
+            extra={"command": remote_start_command},
+        )
+        evse_status = None
+        try:
+            evse = self._get_and_validate_evse_availability(remote_start_command)
+            evse_status = evse.status
+            self._reject_multiple_start_commands(remote_start_command, evse.status)
+            sender_party = self._get_sender_party(remote_start_command)
+            data = self._prepare_start_session_data(
+                remote_start_command, evse, sender_party
+            )
+
+            serializer = StartSessionSerializer(data=data)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                return self._start_session(
+                    sender_party, remote_start_command, validated_data
+                )
+            else:
+                logger.error(
+                    "Invalid data for starting remote session for Hubject",
+                    extra={"errors": serializer.errors, "data": data},
+                )
+                return self._create_error_acknowledgment(
+                    remote_start_command.model_dump(), "022"
+                )
+        except HubjectRemoteCommandError as hubject_error:
+            if hubject_error.error_code == "021":
+                request_accepted = (
+                    hubject_error.data.get("accepted_status", None)
+                    if hubject_error.data
+                    else None
+                )
+                if (
+                    evse_status
+                    and evse_status == Evse.AVAILABLE
+                    and request_accepted is False
+                ):
+                    return self._create_error_acknowledgment(
+                        remote_start_command.model_dump(), "510"
+                    )
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(), hubject_error.error_code
+            )
+
+    def _start_session(
+        self,
+        sender_party,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        validated_data: dict,
+    ) -> ERoamingAcknowledgment:
+        from ocpi22.commands.services import StartCommandService
+        from ocpi22.commands.repository import SessionRepository
+
+        hubject_party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
+        # There is no hub authentication in OCPI 2.x
+        credentials_role = get_credentialsrole(credentials=None, party=hubject_party)
+        if not credentials_role:
+            # This should be created as the part of the setup manually.
+            logger.error("Hubject Remote Start failed: No hubject credentials found")
+            raise HubjectRemoteCommandError("021", "Credentials not found for Hubject")
+
+        service = StartCommandService()
+        response = service.start_session(
+            sender_party=sender_party,
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+            hub_session_id=remote_start_command.session_id.root,
+        )
+        self._validate_command_response(response.data)
+
+        session = SessionRepository.find_session_by_auth_ref_and_token_uid(
+            validated_data.get("authorization_reference"),
+            validated_data["token"]["uid"],
+        )
+        session_uid = session.uid if session else ""
+        logger.info(
+            f"Hubject remote start command processed successfully, session : {session_uid}"
+        )
+        return ERoamingAcknowledgment(
+            result=True,
+            status_code=StatusCode(Code="000"),
+            session_id=remote_start_command.session_id,
+            cpo_partner_session_id=session_uid,
+            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+        )
+
+    def _get_remote_stop_command_data(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ) -> dict:
+        from ocpi22.commands.repository import SessionRepository
+
+        command_id = remote_stop_command.emp_partner_session_id or None
+        session = SessionRepository.find_session_by_hub_session_id(
+            remote_stop_command.session_id.root
+        )
+        if not session:
+            logger.error(
+                f"No session found to stop with hub session id {remote_stop_command.session_id.root}, hubject remote stop failed"
+            )
+            raise HubjectRemoteCommandError("400", "Session not found")
+
+        data = {
+            "response_url": build_absolute_uri(
+                reverse("chargepoint-remote-command-result", args=(command_id,))
+            ),
+            "session_id": session.uid,
+        }
+        return data
+
+    def _validate_command_response(self, response_data: dict) -> None:
+        status_message = response_data.get("status_message", "")
+        data = response_data.get("data", None)
+        if data == "":
+            if status_message == MessageTexts.get("SESSION_NOT_FOUND"):
+                logger.error(
+                    "Hubject remote command failed: Session not found",
+                    extra={"response": response_data},
+                )
+                raise HubjectRemoteCommandError("400", "Session not found")
+        if not data or data.get("result") != "ACCEPTED":
+            logger.error(
+                "Hubject remote command was rejected", extra={"response": response_data}
+            )
+            raise HubjectRemoteCommandError(
+                "021", "Remote command was rejected", data={"accepted_status": False}
+            )
+        logger.info(f"Hubject remote command was accepted. {data}")
+        return
+
+    def process_remote_stop_command(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ):
+        from ocpi22.commands.serializers import StopSessionSerializer
+        from ocpi22.commands.services import StopCommandServices
+
+        try:
+            evse = self._get_evse(remote_stop_command.evse_id.root)
+            logger.info(
+                "Remote stop command received from Hubject",
+                extra={"command": remote_stop_command, "evse": evse},
+            )
+
+            data = self._get_remote_stop_command_data(remote_stop_command)
+
+            serializer = StopSessionSerializer(data=data)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+            else:
+                logger.error(
+                    "Invalid data for stopping remote session for Hubject",
+                    extra={"errors": serializer.errors, "data": data},
+                )
+                return self._create_error_acknowledgment(
+                    remote_stop_command.model_dump(), "022"
+                )
+
+            service = StopCommandServices()
+            response = service.stop_session(
+                validated_data=validated_data,
+            )
+
+            self._validate_command_response(response.data)
+
+            return ERoamingAcknowledgment(
+                result=True,
+                status_code=StatusCode(Code="000"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id=data.get("session_id", None),
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )
+
+        except HubjectRemoteCommandError as hubject_error:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(), hubject_error.error_code
+            )

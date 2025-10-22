@@ -1,18 +1,21 @@
 import json
 import re
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, Mock
 
 import pytest
 import pytz
 import responses
 import time_machine
 from django.conf import settings
+from django.test import override_settings
 from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 from requests import HTTPError
 from responses import matchers
+from rest_framework import status
 
+from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.schemas import (
     ActionType,
     OperatorEvseData,
@@ -48,22 +51,40 @@ from integrations.hubject.schemas import (
     OperatorEvseStatus,
     EvseStatusRecordItem,
     EvseStatus,
+    ERoamingAuthorizeRemoteStart,
+    Identification,
+    ERoamingAcknowledgment,
+    ProviderID,
+    StatusCode,
+    RemoteIdentification,
+    EvcoID,
+    ERoamingAuthorizeRemoteStop,
+    SessionID,
 )
 from integrations.hubject.services import (
     HubjectService,
 )
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.models.location import Location
+from ocpi22.commands.repository import SessionRepository
+from ocpi22.models.location import Location, Evse
+from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
+from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
     LocationFactory,
     PricingProductDataFactory,
+    CredentialsRoleFactory,
+    ConnectorFactory,
+    OCPISessionFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
+from webhooks.choices import WebhookType, RemoteCommandType
+from webhooks.factories import WebhookFactory
 
 
 @pytest.fixture
@@ -553,7 +574,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
@@ -632,7 +653,7 @@ class TestHubjectService:
                     OpeningTimes=None,
                     HubOperatorID=None,
                     ClearinghouseID=None,
-                    IsHubjectCompatible=False,
+                    IsHubjectCompatible=True,
                     DynamicInfoAvailable=DynamicInfoAvailable.false,
                 )
             ],
@@ -971,3 +992,689 @@ class TestPushEvseStatus:
             "Failed to create payload for EVSE status update"
             in caplog.records[0].message
         )
+
+    def test_post_evse_status_with_value_error_in_payload_returns_none(self, caplog):
+        evse = EvseFactory(status="AVAILABLE")
+        evse.evse_id = "INVALID_EVSE_ID"
+        with patch(
+            "integrations.hubject.services.HubjectService._get_evse_status_update_payload",
+            side_effect=ValueError("Invalid OCPI status [INVALID_EVSE_ID] found"),
+        ):
+            result = HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            assert result is None
+            assert "Invalid OCPI status [INVALID_EVSE_ID] found" in caplog.text
+
+
+class TestPostEroamingChargeDetailRecord:
+    @pytest.fixture
+    def cdr_successful_response(self):
+        return {
+            "message": "Sent CDR to hubject",
+            "success": True,
+        }
+
+    @pytest.fixture
+    def cdr_unsuccessful_response(self):
+        return {
+            "success": False,
+            "errorType": "Hubject server Error",
+            "error": "Hubject server returned 500. Retrying...",
+        }
+
+    def test_post_eroaming_cdr_with_cdr_and_session_id_none_returns_unsuccessful_response(
+        self,
+    ):
+        operator_id = "FI*CPO"
+        ocpi_cdr = None
+
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, ocpi_cdr
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Invalid Input",
+            "error": "Either CDR or session_id must be provided.",
+        }
+
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_with_non_existing_cdr_returns_unsuccessful_response(
+        self,
+    ):
+        operator_id = "FI*CPO"
+
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, None, session_id="session_without_cdr"
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Invalid Input",
+            "error": "No CDR found for session_id session_without_cdr.",
+        }
+
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_with_cdr_route_through_oicp_false_returns_unsuccessful_response(
+        self, ocpi_cdr, monkeypatch
+    ):
+        operator_id = "FI*CPO"
+        monkeypatch.setattr(
+            type(ocpi_cdr.session), "route_through_oicp", property(lambda self: False)
+        )
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, None, session_id=ocpi_cdr.session.uid
+        )
+
+        assert result == {
+            "success": False,
+            "errorType": "Incompatible CDR",
+            "error": f"CDR with session id {ocpi_cdr.session.uid} has not routed through OICP",
+        }
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_eroaming_cdr_with_valid_data_returns_successful_hubject_response(
+        self, ocpi_cdr, cdr_successful_response
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}cdrmgmt/v22/operators/{operator_id}/charge-detail-record",
+            json=cdr_successful_response,
+            status=200,
+        )
+
+        result = HubjectService.post_eroaming_charge_detail_record(
+            operator_id, ocpi_cdr
+        )
+        assert result == cdr_successful_response
+
+
+@pytest.mark.parametrize(
+    "provider_id, expected",
+    [
+        (None, (None, None)),
+        ("US*ABC", ("US", "ABC")),
+        ("DE-XYZ", ("DE", "XYZ")),
+        ("FR123", ("FR", "123")),
+    ],
+)
+def test_decode_valid(provider_id, expected):
+    assert HubjectService.decode_country_code_and_party_id(provider_id) == expected
+
+
+def test_decode_invalid_raises():
+    with pytest.raises(ValueError) as exc:
+        HubjectService.decode_country_code_and_party_id("INVALID_FORMAT")
+    assert "Invalid ProviderID format" in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "invalid_provider_id",
+    [
+        "INVALID",
+        "TOO-LONG-FORMAT",
+        "123",
+        "",
+    ],
+)
+def test_decode_country_code_and_party_id_raises_error_for_invalid_format(
+    invalid_provider_id,
+):
+    with pytest.raises(ValueError, match="Invalid ProviderID format"):
+        HubjectService.decode_country_code_and_party_id(invalid_provider_id)
+
+
+class TestHubjectAuthorizeRemoteStart:
+    hubject_service = HubjectService()
+
+    @pytest.fixture
+    def mock_remote_start_command(self):
+        return ERoamingAuthorizeRemoteStart(
+            session_id="f98efba4-02d8-4fa0-b810-9a9d50d2c527",
+            emp_partner_session_id="MSPSession",
+            evse_id=EvseID(root="DE*ABC*E123456"),
+            provider_id=ProviderID(root="DE*MSP"),
+            identification=Identification(
+                RemoteIdentification=RemoteIdentification(
+                    EvcoID=EvcoID(root="AB-VDC-C1234ABCDA")
+                ),
+                RFIDMifareFamilyIdentification=None,
+                QRCodeIdentification=None,
+                RFIDIdentification=None,
+                PlugAndChargeIdentification=None,
+            ),
+        )
+
+    @pytest.fixture
+    def evse(self):
+        e = EvseFactory(
+            uid="123456",
+            location=LocationFactory(
+                uid="194234D1-0EDD-4B6E-8262-C85BDA16919D",
+                ocpi_master=CredentialsRoleFactory(country_code="DE", party_id="ABC"),
+            ),
+            status="AVAILABLE",
+        )
+
+        ConnectorFactory(evse=e, uid="connector-uid-789")
+        return e
+
+    @pytest.mark.django_db
+    @responses.activate
+    def test_process_remote_start_command_returns_result_true(
+        self, evse, mock_remote_start_command, hubject_credentials
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session",
+            return_value=OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+            ),
+        ):
+            responses.add(
+                responses.POST,
+                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                json={"data": {"result": "ACCEPTED"}},
+                status=200,
+            )
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        session = SessionRepository.find_session_by_auth_ref_and_token_uid(
+            mock_remote_start_command.emp_partner_session_id,
+            mock_remote_start_command.identification.RemoteIdentification.EvcoID.root,
+        )
+        assert result == ERoamingAcknowledgment(
+            result=True,
+            status_code=StatusCode(Code="000"),
+            session_id=mock_remote_start_command.session_id,
+            cpo_partner_session_id=session.uid,
+            emp_partner_session_id=mock_remote_start_command.emp_partner_session_id,
+        )
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_evse_not_found(
+        self, mock_remote_start_command
+    ):
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result == ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code="603"),
+            session_id="f98efba4-02d8-4fa0-b810-9a9d50d2c527",
+            cpo_partner_session_id="",
+            emp_partner_session_id="MSPSession",
+        )
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_provider_id_decode_fails(
+        self, evse, mock_remote_start_command
+    ):
+        mock_remote_start_command.provider_id.root = "INVALID_FORMAT"
+
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert isinstance(result, ERoamingAcknowledgment)
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="300")
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_returns_result_false_when_serializer_invalid(
+        self, mock_remote_start_command, evse
+    ):
+        invalid_data = {
+            "response_url": "http://example12345.com/response",
+            "token": {
+                "uid": "",
+            },
+            "location_id": "",
+            "evse_uid": "",
+            "connector_id": "",
+            "authorization_reference": "",
+        }
+        with patch(
+            "integrations.hubject.services.HubjectService._prepare_start_session_data",
+            return_value=invalid_data,
+        ):
+            result = self.hubject_service.process_remote_start_command(
+                mock_remote_start_command
+            )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="022")
+
+    @patch("integrations.hubject.services.HubjectService._start_session")
+    @pytest.mark.django_db
+    def test_process_remote_start_command_calls_start_session_when_valid(
+        self, mock_start_session, mock_remote_start_command, evse
+    ):
+        expected_acknowledgment = Mock(spec=ERoamingAcknowledgment)
+        mock_start_session.return_value = expected_acknowledgment
+
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        mock_start_session.assert_called_once()
+        assert result == expected_acknowledgment
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_when_evse_is_not_available(
+        self, mock_remote_start_command, evse
+    ):
+        evse.status = "OUTOFORDER"
+        evse.save()
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="700")
+
+    @pytest.mark.django_db
+    @override_settings(HOSTNAME="localhost")
+    def test_prepare_start_session_data_builds_correct_structure(
+        self, mock_remote_start_command, evse
+    ):
+        sender_party = Party(country_code="DE", party_id="MSP")
+
+        result = self.hubject_service._prepare_start_session_data(
+            mock_remote_start_command, evse, sender_party
+        )
+
+        expected_data = {
+            "response_url": "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "token": {
+                "uid": "AB-VDC-C1234ABCDA",
+                "contract_id": "AB-VDC-C1234ABCDA",
+                "country_code": "DE",
+                "party_id": "MSP",
+                "type": "APP_USER",
+            },
+            "location_id": "194234D1-0EDD-4B6E-8262-C85BDA16919D",
+            "evse_uid": "123456",
+            "connector_id": "connector-uid-789",
+            "authorization_reference": "MSPSession",
+        }
+        assert result == expected_data
+
+    @pytest.mark.django_db
+    def test_prepare_start_session_data_handles_no_connectors(
+        self, mock_remote_start_command, evse
+    ):
+        sender_party = Party(country_code="DE", party_id="MSP")
+        evse.connectors.all().delete()
+
+        result = self.hubject_service._prepare_start_session_data(
+            mock_remote_start_command, evse, sender_party
+        )
+
+        assert result["connector_id"] == ""
+
+    @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
+    @pytest.mark.django_db
+    def test_start_session_raises_hubject_command_error_when_response_result_is_not_accepted(
+        self, mock_remote_start_command
+    ):
+        CredentialsRoleFactory(country_code="DE", party_id="ICE")
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session"
+        ) as mock_start_session:
+            mock_start_session.return_value = OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+                data={"data": {"result": "REJECTED"}},
+            )
+            with pytest.raises(HubjectRemoteCommandError):
+                self.hubject_service._start_session(
+                    sender_party=Party(country_code="DE", party_id="MSP"),
+                    remote_start_command=mock_remote_start_command,
+                    validated_data={},
+                )
+
+    @pytest.mark.parametrize(
+        "evse_status, expected_code",
+        [
+            (Evse.AVAILABLE, "000"),
+            (Evse.BLOCKED, "501"),
+            (Evse.CHARGING, "602"),
+            (Evse.INOPERATIVE, "700"),
+            (Evse.OUTOFORDER, "700"),
+            (Evse.PLANNED, "501"),
+            (Evse.REMOVED, "700"),
+            (Evse.RESERVED, "601"),
+            (Evse.UNKNOWN, "501"),
+            ("INVALID_STATUS", "000"),
+            (None, "603"),
+        ],
+    )
+    def test_get_hubject_error_code(self, evse_status, expected_code):
+        service = HubjectService()
+
+        if evse_status is None:
+            evse = None
+        else:
+            evse = Evse(status=evse_status)
+
+        result = service._get_hubject_error_code(evse)
+        assert result == expected_code
+
+    @pytest.mark.django_db
+    def test_process_remote_start_command_with_validation_error_return_acknowledgement_false(
+        self, mock_remote_start_command, evse
+    ):
+        mock_remote_start_command.identification.RemoteIdentification.EvcoID.root = None
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="022")
+
+    @pytest.mark.django_db
+    def test_prepare_start_session_data_assign_hubject_session_id_for_auth_ref_when_emp_session_none(
+        self, mock_remote_start_command, evse
+    ):
+        sender_party = Party(country_code="DE", party_id="MSP")
+        mock_remote_start_command.emp_partner_session_id = None
+        mock_remote_start_command.session_id.root = "hubject-session-id-123"
+
+        result = self.hubject_service._prepare_start_session_data(
+            mock_remote_start_command, evse, sender_party
+        )
+
+        assert result["authorization_reference"] == "hubject-session-id-123"
+
+    @pytest.mark.django_db
+    @override_settings(HUBJECT_OPERATOR_ID="SL*MNP")
+    def test_process_remote_start_command_with_no_hubject_credentials_return_result_false(
+        self, mock_remote_start_command, evse
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session",
+            return_value=OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+            ),
+        ):
+            responses.add(
+                responses.POST,
+                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                json={"data": {"result": "ACCEPTED"}},
+                status=200,
+            )
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="021")
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "evse_status",
+        [
+            "BLOCKED",
+            "INOPERATIVE",
+            "OUTOFORDER",
+            "PLANNED",
+            "RESERVED",
+            "UNKNOWN",
+            "REMOVED",
+        ],
+    )
+    def test_process_remote_start_command_with_evse_status_raises_hubject_remote_command_error(
+        self, mock_remote_start_command, evse, evse_status
+    ):
+        evse.status = evse_status
+        evse.save()
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(
+            Code=self.hubject_service._get_hubject_error_code(evse)
+        )
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("evse_status", ["CHARGING", "AVAILABLE"])
+    def test_get_and_validate_evse_availability_does_not_raise_exception(
+        self, mock_remote_start_command, evse, evse_status
+    ):
+        get_credentialsrole.cache_clear()
+        evse.status = evse_status
+        evse.save()
+        result = self.hubject_service._get_and_validate_evse_availability(
+            mock_remote_start_command
+        )
+
+        assert result == evse
+
+    @pytest.mark.django_db
+    def test_process_remote_start_for_occupied_evse_returns_acknowledgment_false(
+        self, mock_remote_start_command, evse
+    ):
+        evse.status = "CHARGING"
+        evse.save()
+
+        OCPISessionFactory(evse=evse, status="ACTIVE")
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="602")
+
+    @pytest.mark.django_db
+    def test_process_remote_start_returns_acknowledgment_false_when_ev_not_connected(
+        self, mock_remote_start_command, evse, hubject_credentials
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.START_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        with patch(
+            "ocpi22.commands.services.StartCommandService.start_session",
+            return_value=OCPIResponse(
+                status_code=Ocpi.OK,
+                http_status=status.HTTP_200_OK,
+            ),
+        ):
+            responses.add(
+                responses.POST,
+                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                json={"data": {"result": "REJECTED"}},
+                status=200,
+            )
+        result = self.hubject_service.process_remote_start_command(
+            mock_remote_start_command
+        )
+
+        assert result.result is False
+        assert result.status_code == StatusCode(Code="510")
+
+
+class TestHubjectAuthorizeRemoteStop:
+    hubject_service = HubjectService()
+
+    @pytest.fixture
+    def mock_data(self):
+        EvseFactory(uid="12345")
+        OCPISessionFactory(
+            uid="OURSESSIONID",
+            route_through=CredentialsRoleFactory(country_code="DE", party_id="ICE"),
+            hub_session_id="f98efbae-a2d8-rfa0-b810-9a9d50d2c527",
+            authorization_reference="emp_session_456",
+        )
+
+    @pytest.fixture
+    def remote_stop_command(self):
+        return ERoamingAuthorizeRemoteStop(
+            evse_id=EvseID(root="FI*CPO*E12345"),
+            session_id=SessionID(root="f98efbae-a2d8-rfa0-b810-9a9d50d2c527"),
+            cpo_partner_session_id="OURSESSIONID",
+            emp_partner_session_id="emp_session_456",
+            provider_id=ProviderID(root="DEABC"),
+        )
+
+    @pytest.fixture
+    def mock_session(self):
+        session = Mock(spec=Session)
+        session.uid = "session_uid_789"
+        return session
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_evse_not_found(
+        self, remote_stop_command
+    ):
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
+
+        assert result.result is False
+        assert result.status_code.Code == "603"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    @responses.activate
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_session_not_found(
+        self, remote_stop_command
+    ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.STOP_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        responses.add(
+            responses.POST,
+            "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        EvseFactory(uid="12345")
+
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
+
+        assert result.result is False
+        assert result.status_code.Code == "400"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_serializer_invalid(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.serializers.StopSessionSerializer"
+        ) as mock_serializer_class:
+            mock_serializer = Mock()
+            mock_serializer.is_valid.return_value = False
+            mock_serializer.errors = {"session_id": ["Invalid session"]}
+            mock_serializer_class.return_value = mock_serializer
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "022"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_stop_session_rejected(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.services.StopCommandServices"
+        ) as mock_service_class:
+            mock_service = Mock()
+            mock_response = Mock()
+            mock_response.data = {"data": {"result": "REJECTED"}}
+            mock_service.stop_session.return_value = mock_response
+            mock_service_class.return_value = mock_service
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "021"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    def test_process_remote_stop_command_returns_acknowledgment_false_when_stop_session_data_none(
+        self, remote_stop_command, mock_data
+    ):
+        with patch(
+            "ocpi22.commands.services.StopCommandServices"
+        ) as mock_service_class:
+            mock_service = Mock()
+            mock_response = Mock()
+            mock_response.data = {"data": None}
+            mock_service.stop_session.return_value = mock_response
+            mock_service_class.return_value = mock_service
+
+            result = self.hubject_service.process_remote_stop_command(
+                remote_stop_command
+            )
+
+            assert result.result is False
+            assert result.status_code.Code == "021"
+            assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+            assert result.emp_partner_session_id == "emp_session_456"
+
+    @pytest.mark.django_db
+    @responses.activate
+    def test_process_remote_stop_command_returns_success_acknowledgment_when_stop_session_accepted(
+        self, remote_stop_command, mock_data
+    ):
+        responses.add(
+            responses.POST,
+            "http://localhost/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.STOP_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/emp_session_456/",
+        )
+        result = self.hubject_service.process_remote_stop_command(remote_stop_command)
+
+        assert result.result is True
+        assert result.status_code.Code == "000"
+        assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        assert result.cpo_partner_session_id == "OURSESSIONID"
+        assert result.emp_partner_session_id == "emp_session_456"
+
+    def test_validate_command_response_raises_hubject_error_when_session_not_found(
+        self,
+    ):
+        response_data = {"status_message": "Session not found", "data": ""}
+        with pytest.raises(HubjectRemoteCommandError) as exc_info:
+            self.hubject_service._validate_command_response(response_data)
+
+        assert exc_info.value.args[0] == "Session not found"
+        assert exc_info.value.error_code == "400"

@@ -13,7 +13,11 @@ class TestERoamingChargeDetailRecordValidation:
             "session_id": "12345678-1234-1234-1234-123456789012",
             "evse_id": "DE*AB7*E840*6487",
             "identification": {
-                "RFIDMifareFamilyIdentification": {"UID": "7568290FFF765F"}
+                "RFIDMifareFamilyIdentification": {"UID": "7568290FFF765F"},
+                "RemoteIdentification": None,
+                "QRCodeIdentification": None,
+                "RFIDIdentification": None,
+                "PlugAndChargeIdentification": None,
             },
             "charging_start": "2024-01-15T10:00:00Z",
             "charging_end": "2024-01-15T12:00:00Z",

@@ -170,11 +170,17 @@ class TokenAuthorization:
 
 
 def authorize_token(
-    token: Union[str, Token], location=None, request=None, max_age=15, rfid=False
+    token: Union[str, Token],
+    location=None,
+    request=None,
+    max_age=15,
+    rfid=False,
+    evse_id=None,
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not rfid and not isinstance(token, Token):
-            session = get_session_by_token_uid(token, max_age_minutes=max_age)
+            token_uid = token
+            session = get_session_by_token_uid(token_uid, max_age_minutes=max_age)
             if session:
                 # Token is AD HOC
                 logging.info(
@@ -184,7 +190,7 @@ def authorize_token(
                 )
                 messages.success(
                     request,
-                    f"This Token, **{markdown_escape(str(token))}** has been authorized "
+                    f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
                     f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
                     f"authorization was cached in the system.",
                 )
@@ -196,10 +202,10 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        session.billed_to,
-                        token,
-                        TokenType.AD_HOC_USER.value,
-                        session.billed_to,
+                        billed_to=session.billed_to.get_party(),
+                        uid=token_uid,
+                        type=TokenType.AD_HOC_USER.value,
+                        ocpi_master=session.billed_to,
                     ),
                     responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
                     authorization_reference=session.authorization_reference,
@@ -210,7 +216,7 @@ def authorize_token(
 
         # Not AD HOC, so Token should be found from database
         authorization: TokenAuthorization = _authorize_token(
-            token, location, request=request
+            token, location, request=request, evse_id=evse_id
         )
         if (
             authorization
@@ -240,7 +246,7 @@ def authorize_token(
     else True,
 )
 def _authorize_token(
-    token: Union[Token, str], location=None, request=None
+    token: Union[Token, str], location=None, request=None, evse_id=None
 ) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
@@ -274,7 +280,7 @@ def _authorize_token(
             info=MessageTexts.get("TOKEN_ACCEPTED"),
             auth_method=enum.AuthMethodChoices.WHITELIST,
             billed_to=str(token.get_party()),
-            ocpi_master=token.ocpi_master,
+            msp=token.ocpi_master,
         )
 
     route: Route = find_route(
