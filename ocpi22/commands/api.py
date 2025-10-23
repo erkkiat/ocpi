@@ -6,6 +6,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.commands.serializers import (
     StartSessionSerializer,
     StopSessionSerializer,
+    CommandResultType,
 )
 from ocpi22.commands.services import (
     InvalidSenderPartyError,
@@ -20,7 +21,6 @@ from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.ocpi.util import OCPIResponse, options_message, OCPIBadRequestResponse
 from ocpi22.util import OCPIVersioning
 from ocpiconnector.exception_handler import ocpi_exception_handler
-from webhooks.choices import RemoteCommandType
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +68,8 @@ class CommandsViewSet(GenericViewSet):
             return ocpi_response
         except Exception:
             logger.error("Could not process remote start command", exc_info=True)
-            return RemoteCommandServices().create_ocpi_response(
-                {}, RemoteCommandType.START_SESSION
+            return start_command_service.create_ocpi_response(
+                CommandResultType.REJECTED
             )
 
     @ocpi_exception_handler
@@ -85,7 +85,7 @@ class CommandsViewSet(GenericViewSet):
         )
         if not serializer.is_valid():
             return RemoteCommandServices().create_ocpi_response(
-                {}, RemoteCommandType.STOP_SESSION
+                CommandResultType.REJECTED
             )
 
         try:
@@ -94,4 +94,6 @@ class CommandsViewSet(GenericViewSet):
             return response
         except Exception:
             logger.error("Could not process remote stop command", exc_info=True)
-            return RemoteCommandServices().create_ocpi_response({}, "STOP")
+            return RemoteCommandServices().create_ocpi_response(
+                CommandResultType.REJECTED
+            )
