@@ -91,7 +91,7 @@ class CommandsViewSetLegacy(GenericViewSet):
 
     error_response = ResponseData(
         ocpi_status=2000,
-        result=CommandResponse.REJECTED,
+        result="REJECTED",
         http_status=status.HTTP_503_SERVICE_UNAVAILABLE,
         message=[],
         timeout=60,

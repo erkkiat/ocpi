@@ -15,6 +15,7 @@ from ocpi22.commands.serializers import (
     CommandResponse,
     CommandResultSerializer,
     CommandResultType,
+    CommandResponseType,
 )
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.session import Session
@@ -333,18 +334,16 @@ class RemoteCommandServices:
             )
         return sender_party
 
-    def create_ocpi_response(
-        self, result: CommandResultType, message: str | None = None
-    ):
+    def create_ocpi_response(self, result: str, message: str | None = None):
         timeout = 60
 
-        if result == CommandResultType.REJECTED and message:
+        if result == CommandResponseType.REJECTED and message:
             messages = [{"language": "en", "text": message}]
         else:
             default_messages = MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", [])
             messages = MessageTexts.get(result, default_messages)
 
-        if result == CommandResultType.ACCEPTED:
+        if result == CommandResponseType.ACCEPTED:
             ocpi_status = Ocpi.OK
             http_status = status.HTTP_200_OK
         else:
@@ -469,12 +468,13 @@ class StartCommandService(RemoteCommandServices):
                 webhook_response.get("data", {}).get("result", "REJECTED").upper()
             )
             try:
-                result = CommandResultType(result_str)
+                result = CommandResponseType(result_str)
             except ValueError:
                 logger.warning(
                     f"Invalid result type: {result_str}, defaulting to REJECTED"
                 )
-                result = CommandResultType.REJECTED
+                result = CommandResponseType.REJECTED
+
             return self.create_ocpi_response(result, message=None)
 
         if session.status == Session.ACTIVE:
@@ -499,12 +499,13 @@ class StartCommandService(RemoteCommandServices):
                 webhook_response.get("data", {}).get("result", "REJECTED").upper()
             )
             try:
-                result = CommandResultType(result_str)
+                result = CommandResponseType(result_str)
             except ValueError:
                 logger.warning(
                     f"Invalid result type: {result_str}, defaulting to REJECTED"
                 )
-                result = CommandResultType.REJECTED
+                result = CommandResponseType.REJECTED
+
             return self.create_ocpi_response(result, message=None)
         return OCPIResponse(
             None,
@@ -572,7 +573,7 @@ class StopCommandServices(RemoteCommandServices):
             logger.warning(
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
-            return self.create_ocpi_response(CommandResultType.REJECTED)
+            return self.create_ocpi_response(CommandResponseType.REJECTED)
         CallBackService.create_callback(
             session=session,
             callback_url=validated_data["response_url"],
@@ -583,15 +584,15 @@ class StopCommandServices(RemoteCommandServices):
         )
         result_str = response.get("data", {}).get("result", "REJECTED").upper()
         try:
-            result = CommandResultType(result_str)
+            result = CommandResponseType(result_str)
         except ValueError:
             logger.warning(f"Invalid result type: {result_str}, defaulting to REJECTED")
-            result = CommandResultType.REJECTED
+            result = CommandResponseType.REJECTED
 
-        if result == CommandResultType.ACCEPTED:
+        if result == CommandResponseType.ACCEPTED:
             send_callback.delay(
                 session_uid=session.uid,
-                result=result.value,
+                result=CommandResultType.ACCEPTED.value,
                 message=None,
             )
         return self.create_ocpi_response(result)
