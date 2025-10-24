@@ -15,6 +15,7 @@ from ocpi22.commands.serializers import (
     CommandResponse,
     CommandResultSerializer,
     CommandResultType,
+    CommandResponseType,
 )
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.session import Session
@@ -333,16 +334,16 @@ class RemoteCommandServices:
             )
         return sender_party
 
-    def create_ocpi_response(self, webhook_response, command_name):
-        timeout = webhook_response.get("timeout", 60)
-        result = webhook_response.get("data", {}).get("result", "REJECTED").upper()
+    def create_ocpi_response(self, result: str, message: str | None = None):
+        timeout = 60
 
-        message = MessageTexts.get(
-            f"{command_name}_{result}",
-            MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", "Command processed"),
-        )
+        if result == CommandResponseType.REJECTED and message:
+            messages = [{"language": "en", "text": message}]
+        else:
+            default_messages = MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", [])
+            messages = MessageTexts.get(result, default_messages)
 
-        if result == "ACCEPTED":
+        if result == CommandResponseType.ACCEPTED:
             ocpi_status = Ocpi.OK
             http_status = status.HTTP_200_OK
         else:
@@ -350,7 +351,7 @@ class RemoteCommandServices:
             http_status = status.HTTP_200_OK
 
         response_serializer = CommandResponse(
-            data={"result": result, "timeout": timeout, "message": message}
+            data={"result": result, "timeout": timeout, "message": messages}
         )
 
         if not response_serializer.is_valid():
@@ -463,7 +464,18 @@ class StartCommandService(RemoteCommandServices):
                 command_type=RemoteCommandType.START_SESSION,
                 session=session,
             )
-            return self.create_ocpi_response(webhook_response, "START")
+            result_str = (
+                webhook_response.get("data", {}).get("result", "REJECTED").upper()
+            )
+            try:
+                result = CommandResponseType(result_str)
+            except ValueError:
+                logger.warning(
+                    f"Invalid result type: {result_str}, defaulting to REJECTED"
+                )
+                result = CommandResponseType.REJECTED
+
+            return self.create_ocpi_response(result, message=None)
 
         if session.status == Session.ACTIVE:
             logger.info(
@@ -483,7 +495,18 @@ class StartCommandService(RemoteCommandServices):
                 command_type=RemoteCommandType.START_SESSION,
                 session=session,
             )
-            return self.create_ocpi_response(webhook_response, "START")
+            result_str = (
+                webhook_response.get("data", {}).get("result", "REJECTED").upper()
+            )
+            try:
+                result = CommandResponseType(result_str)
+            except ValueError:
+                logger.warning(
+                    f"Invalid result type: {result_str}, defaulting to REJECTED"
+                )
+                result = CommandResponseType.REJECTED
+
+            return self.create_ocpi_response(result, message=None)
         return OCPIResponse(
             None,
             status_message="Cannot start - COMPLETED/INVALID session",
@@ -550,7 +573,7 @@ class StopCommandServices(RemoteCommandServices):
             logger.warning(
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
-            return self.create_ocpi_response({}, RemoteCommandType.STOP_SESSION)
+            return self.create_ocpi_response(CommandResponseType.REJECTED)
         CallBackService.create_callback(
             session=session,
             callback_url=validated_data["response_url"],
@@ -559,15 +582,20 @@ class StopCommandServices(RemoteCommandServices):
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
-        result = response.get("data", {}).get("result", "REJECTED").upper()
-        result = CommandResultType(result)
-        if result == CommandResultType.ACCEPTED:
+        result_str = response.get("data", {}).get("result", "REJECTED").upper()
+        try:
+            result = CommandResponseType(result_str)
+        except ValueError:
+            logger.warning(f"Invalid result type: {result_str}, defaulting to REJECTED")
+            result = CommandResponseType.REJECTED
+
+        if result == CommandResponseType.ACCEPTED:
             send_callback.delay(
                 session_uid=session.uid,
-                result=result,
+                result=CommandResultType.ACCEPTED.value,
                 message=None,
             )
-        return self.create_ocpi_response(response, RemoteCommandType.STOP_SESSION)
+        return self.create_ocpi_response(result)
 
 
 def process_remote_command(

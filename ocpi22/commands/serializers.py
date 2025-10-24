@@ -155,30 +155,16 @@ class UnlockConnectorSerializer(serializers.Serializer):
     )
 
 
+class CommandResponseType(TextChoices):
+    NOT_SUPPORTED = "NOT_SUPPORTED", "Not supported"
+    REJECTED = "REJECTED", "Rejected"
+    ACCEPTED = "ACCEPTED", "Accepted"
+    UNKNOWN_SESSION = "UNKNOWN_SESSION", "Session is not valid"
+
+
 class CommandResponse(serializers.Serializer):
-    NOT_SUPPORTED = "NOT_SUPPORTED"
-    REJECTED = "REJECTED"
-    ACCEPTED = "ACCEPTED"
-    UNKNOWN_SESSION = "UNKNOWN_SESSION"
-
-    RESULT_OPTIONS = (
-        (
-            "NOT_SUPPORTED",
-            "Not supported",
-        ),  # The requested command is not supported by this CPO,
-        # Charge Point, EVSE etc.
-        ("REJECTED", "Rejected"),  # Command request rejected by the CPO.
-        # (Session might not be from a customer
-        # of the eMSP that send this request)
-        ("ACCEPTED", "Accepted"),  # Command request accepted by the CPO.
-        (
-            "UNKNOWN_SESSION",
-            "Session is not valid",
-        ),  # The Session in the requested command is not known by this CPO.
-    )
-
     # Response from the CPO on the command request.
-    result = serializers.ChoiceField(choices=RESULT_OPTIONS)
+    result = serializers.ChoiceField(choices=CommandResponseType.choices)
 
     # Timeout for this command in seconds. When the Result is not received within this timeout,
     # the eMSP can assume that the message might never be send.
