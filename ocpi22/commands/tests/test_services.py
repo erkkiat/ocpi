@@ -682,3 +682,287 @@ class TestStopCommandServices:
         callback = CallBacks.objects.filter(session=session).first()
         assert callback is not None
         assert callback.callback_url == validated_data["response_url"]
+
+
+class TestStartCommandService:
+    @pytest.mark.django_db
+    def test_sets_connector_id_when_missing_but_evse_uid_provided(self):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE123", location=location)
+        connector1 = ConnectorFactory(uid="CONN001", evse=evse)
+        ConnectorFactory(uid="CONN002", evse=evse)
+
+        validated_data = {
+            "evse_uid": "EVSE123",
+            "token": {"uid": "TOKEN123"},
+        }
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert result["connector_id"] == connector1.uid
+        assert result["evse_uid"] == "EVSE123"
+
+    @pytest.mark.django_db
+    def test_does_not_change_connector_id_when_already_provided(self):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE123", location=location)
+        ConnectorFactory(uid="CONN001", evse=evse)
+        ConnectorFactory(uid="CONN002", evse=evse)
+
+        validated_data = {
+            "evse_uid": "EVSE123",
+            "connector_id": "CONN002",
+            "token": {"uid": "TOKEN123"},
+        }
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert result["connector_id"] == "CONN002"
+
+    @pytest.mark.django_db
+    def test_does_nothing_when_neither_connector_id_nor_evse_uid_provided(self):
+        validated_data = {"token": {"uid": "TOKEN123"}}
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert "connector_id" not in result
+        assert "evse_uid" not in result
+
+    @pytest.mark.django_db
+    def test_does_nothing_when_evse_uid_is_none(self):
+        validated_data = {"evse_uid": None, "token": {"uid": "TOKEN123"}}
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert "connector_id" not in result
+
+    @pytest.mark.django_db
+    def test_does_nothing_when_evse_uid_is_empty_string(self):
+        validated_data = {"evse_uid": "", "token": {"uid": "TOKEN123"}}
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert "connector_id" not in result
+
+    @pytest.mark.django_db
+    def test_raises_validation_error_when_evse_not_found(self):
+        validated_data = {"evse_uid": "NONEXISTENT_EVSE", "token": {"uid": "TOKEN123"}}
+
+        with pytest.raises(ValidationError) as exc_info:
+            StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert "EVSE not found for evse_uid NONEXISTENT_EVSE" in str(exc_info.value)
+
+    @pytest.mark.django_db
+    def test_raises_validation_error_when_no_connectors_exist_for_evse(self):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE_NO_CONNECTORS", location=location)
+
+        validated_data = {
+            "evse_uid": "EVSE_NO_CONNECTORS",
+            "token": {"uid": "TOKEN123"},
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert "No connector found for evse_uid EVSE_NO_CONNECTORS" in str(
+            exc_info.value
+        )
+
+    @pytest.mark.django_db
+    def test_picks_first_connector_when_multiple_connectors_exist(self):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE_MULTI", location=location)
+        connector1 = ConnectorFactory(uid="CONN_FIRST", evse=evse)
+        ConnectorFactory(uid="CONN_SECOND", evse=evse)
+        ConnectorFactory(uid="CONN_THIRD", evse=evse)
+
+        validated_data = {"evse_uid": "EVSE_MULTI", "token": {"uid": "TOKEN123"}}
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert result["connector_id"] == connector1.uid
+
+    @pytest.mark.django_db
+    def test_returns_same_validated_data_object(self):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE456", location=location)
+        connector = ConnectorFactory(uid="CONN456", evse=evse)
+
+        validated_data = {"evse_uid": "EVSE456", "token": {"uid": "TOKEN123"}}
+
+        result = StartCommandService._set_first_connector_if_missing(validated_data)
+
+        assert result is validated_data
+        assert result["connector_id"] == connector.uid
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_sets_connector_when_missing(self, mock_send_webhook):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE789", location=location)
+        connector = ConnectorFactory(uid="CONN789", evse=evse)
+        credentials_role = CredentialsRoleFactory()
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN789",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT789",
+            },
+            "authorization_reference": "AUTH789",
+            "evse_uid": evse.uid,
+            "location_id": location.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        service = StartCommandService()
+        service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
+
+        assert validated_data["connector_id"] == connector.uid
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_returns_rejected_when_evse_not_found(
+        self, mock_send_webhook
+    ):
+        credentials_role = CredentialsRoleFactory()
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN999",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT999",
+            },
+            "authorization_reference": "AUTH999",
+            "evse_uid": "NONEXISTENT_EVSE",
+            "location_id": "LOC999",
+            "response_url": "https://example.com/callback",
+        }
+
+        service = StartCommandService()
+        response = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
+
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert "EVSE not found" in str(response.data["data"]["message"])
+        mock_send_webhook.assert_not_called()
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_returns_rejected_when_no_connectors_for_evse(
+        self, mock_send_webhook
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE_EMPTY", location=location)
+        credentials_role = CredentialsRoleFactory()
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN888",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT888",
+            },
+            "authorization_reference": "AUTH888",
+            "evse_uid": evse.uid,
+            "location_id": location.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        service = StartCommandService()
+        response = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
+
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert "No connector found" in str(response.data["data"]["message"])
+        mock_send_webhook.assert_not_called()
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_creates_session_with_picked_connector(
+        self, mock_send_webhook
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(uid="EVSE_CREATE", location=location)
+        connector = ConnectorFactory(uid="CONN_CREATE", evse=evse)
+        credentials_role = CredentialsRoleFactory()
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN_CREATE",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT_CREATE",
+            },
+            "authorization_reference": "AUTH_CREATE",
+            "evse_uid": evse.uid,
+            "location_id": location.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        service = StartCommandService()
+        service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
+
+        session = Session.objects.filter(authorization_reference="AUTH_CREATE").first()
+        assert session is not None
+        assert session.connector.uid == connector.uid
+        assert session.evse.uid == evse.uid
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_returns_rejected_with_custom_error_message_when_evse_not_found(
+        self, mock_send_webhook
+    ):
+        credentials_role = CredentialsRoleFactory()
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN_ERR",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT_ERR",
+            },
+            "authorization_reference": "AUTH_ERR",
+            "evse_uid": "CUSTOM_EVSE_ID",
+            "location_id": "LOC_ERR",
+            "response_url": "https://example.com/callback",
+        }
+
+        service = StartCommandService()
+        response = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
+
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert response.data["data"]["message"] == [
+            {"language": "en", "text": "EVSE not found for evse_uid CUSTOM_EVSE_ID"}
+        ]
