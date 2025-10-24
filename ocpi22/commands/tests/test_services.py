@@ -3,10 +3,18 @@ from unittest.mock import patch, MagicMock
 import pytest
 from django.core.exceptions import ValidationError
 from django.test import override_settings
+from rest_framework import status
 
-from ocpi22.commands.services import StartCommandService, StopCommandServices
+from ocpi22.commands.serializers import CommandResponseType
+from ocpi22.commands.services import (
+    StartCommandService,
+    StopCommandServices,
+    RemoteCommandServices,
+)
+from ocpi22.choices import MessageTexts
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.session import Session
+from ocpi22.ocpi.util import Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
     ConnectorFactory,
@@ -353,6 +361,189 @@ class TestCommandServices:
                 )
 
         mock_create_callback.assert_not_called()
+
+
+class TestRemoteCommandServices:
+    def test_create_ocpi_response_with_accepted_returns_ok_status_and_preparing_message(
+        self,
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(result=CommandResponseType.ACCEPTED)
+
+        assert response.data["status_code"] == Ocpi.OK
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.ACCEPTED
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == MessageTexts.get("ACCEPTED")
+
+    def test_create_ocpi_response_with_rejected_returns_2000_status_and_default_error_message(
+        self,
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(result=CommandResponseType.REJECTED)
+
+        assert response.data["status_code"] == 2000
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == MessageTexts.get("REJECTED")
+
+    def test_create_ocpi_response_with_rejected_and_custom_message_returns_custom_message(
+        self,
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.REJECTED, message="Charger is offline"
+        )
+
+        assert response.data["status_code"] == 2000
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == [
+            {"language": "en", "text": "Charger is offline"}
+        ]
+
+    def test_create_ocpi_response_with_not_supported_returns_2000_status_and_not_supported_message(
+        self,
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.NOT_SUPPORTED
+        )
+
+        assert response.data["status_code"] == 2000
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.NOT_SUPPORTED
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == MessageTexts.get("NOT_SUPPORTED")
+
+    def test_create_ocpi_response_with_unknown_session_returns_2000_status_and_default_error_message(
+        self,
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.UNKNOWN_SESSION
+        )
+
+        assert response.data["status_code"] == 2000
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.UNKNOWN_SESSION
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == MessageTexts.get(
+            "DEFAULT_CHARGER_ERROR_TEXT"
+        )
+
+    def test_create_ocpi_response_with_accepted_ignores_custom_message(self):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.ACCEPTED, message="This should be ignored"
+        )
+
+        assert response.data["data"]["message"] == MessageTexts.get("ACCEPTED")
+
+    def test_create_ocpi_response_with_not_supported_ignores_custom_message(self):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.NOT_SUPPORTED, message="This should be ignored"
+        )
+
+        assert response.data["data"]["message"] == MessageTexts.get("NOT_SUPPORTED")
+
+    @pytest.mark.parametrize(
+        "result,expected_ocpi_status,expected_http_status,expected_message_key",
+        [
+            (
+                CommandResponseType.ACCEPTED,
+                Ocpi.OK,
+                status.HTTP_200_OK,
+                "ACCEPTED",
+            ),
+            (
+                CommandResponseType.REJECTED,
+                2000,
+                status.HTTP_200_OK,
+                "REJECTED",
+            ),
+            (
+                CommandResponseType.NOT_SUPPORTED,
+                2000,
+                status.HTTP_200_OK,
+                "NOT_SUPPORTED",
+            ),
+            (
+                CommandResponseType.UNKNOWN_SESSION,
+                2000,
+                status.HTTP_200_OK,
+                "DEFAULT_CHARGER_ERROR_TEXT",
+            ),
+        ],
+    )
+    def test_create_ocpi_response_maps_result_to_correct_status_and_message(
+        self, result, expected_ocpi_status, expected_http_status, expected_message_key
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(result=result)
+
+        assert response.data["status_code"] == expected_ocpi_status
+        assert response.status_code == expected_http_status
+        assert response.data["data"]["result"] == result
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == MessageTexts.get(
+            expected_message_key
+        )
+
+    @patch("ocpi22.commands.services.CommandResponse")
+    def test_create_ocpi_response_with_invalid_serializer_returns_500_error(
+        self, mock_command_response
+    ):
+        mock_serializer_instance = MagicMock()
+        mock_serializer_instance.is_valid.return_value = False
+        mock_serializer_instance.errors = {"result": ["Invalid choice"]}
+        mock_command_response.return_value = mock_serializer_instance
+
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(result=CommandResponseType.ACCEPTED)
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.data["status_code"] == Ocpi.OK
+        assert response.data["status_message"] == "Internal error"
+        assert response.data["data"] is None
+
+    @pytest.mark.parametrize(
+        "custom_message",
+        [
+            "EVSE is currently offline",
+            "Vehicle not authorized",
+            "Payment method declined",
+            "Maximum concurrent sessions reached",
+        ],
+    )
+    def test_create_ocpi_response_with_rejected_and_various_custom_messages_returns_exact_message(
+        self, custom_message
+    ):
+        service = RemoteCommandServices()
+
+        response = service.create_ocpi_response(
+            result=CommandResponseType.REJECTED, message=custom_message
+        )
+
+        assert response.data["status_code"] == 2000
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["data"]["result"] == CommandResponseType.REJECTED
+        assert response.data["data"]["timeout"] == 60
+        assert response.data["data"]["message"] == [
+            {"language": "en", "text": custom_message}
+        ]
 
 
 class TestStopCommandServices:
