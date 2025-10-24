@@ -18,6 +18,7 @@ from ocpi22.commands.serializers import (
     CommandResponseType,
 )
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
+from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
@@ -399,6 +400,36 @@ class StartCommandService(RemoteCommandServices):
         self.session_repo = SessionRepository()
 
     @staticmethod
+    def _set_first_connector_if_missing(
+        validated_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        if not validated_data.get("connector_id") and validated_data.get("evse_uid"):
+            evse = Evse.objects.filter(uid=validated_data["evse_uid"]).first()
+            if not evse:
+                logger.error(
+                    f"EVSE not found for evse_uid {validated_data['evse_uid']}"
+                )
+                raise ValidationError(
+                    f"EVSE not found for evse_uid {validated_data['evse_uid']}"
+                )
+
+            first_connector = evse.connectors.first()
+            if not first_connector:
+                logger.error(
+                    f"No connector found for evse_uid {validated_data['evse_uid']}"
+                )
+                raise ValidationError(
+                    f"No connector found for evse_uid {validated_data['evse_uid']}"
+                )
+
+            validated_data["connector_id"] = first_connector.uid
+            logger.info(
+                f"Picked connector_id {first_connector.uid} for evse_uid {validated_data['evse_uid']}"
+            )
+
+        return validated_data
+
+    @staticmethod
     def _create_new_session(
         credentials: Credentials,
         validated_data: Dict[str, Any],
@@ -440,6 +471,14 @@ class StartCommandService(RemoteCommandServices):
         hub_session_id: str = None,
     ) -> OCPIResponse:
         validated_data = self._update_auth_reference(validated_data)
+
+        try:
+            validated_data = self._set_first_connector_if_missing(validated_data)
+        except ValidationError as e:
+            logger.error(f"Validation error during connector_id picking: {e}")
+            return self.create_ocpi_response(
+                CommandResponseType.REJECTED, message=str(e)
+            )
 
         # Someone we are not connected to can send a remote start request via Hubs. So create=True
         billed_to = get_credentialsrole(party=sender_party, create=True)
