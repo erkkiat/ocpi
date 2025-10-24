@@ -756,7 +756,7 @@ class TestStartCommandService:
     @pytest.mark.django_db
     def test_raises_validation_error_when_no_connectors_exist_for_evse(self):
         location = LocationFactory()
-        evse = EvseFactory(uid="EVSE_NO_CONNECTORS", location=location)
+        _ = EvseFactory(uid="EVSE_NO_CONNECTORS", location=location)
 
         validated_data = {
             "evse_uid": "EVSE_NO_CONNECTORS",
