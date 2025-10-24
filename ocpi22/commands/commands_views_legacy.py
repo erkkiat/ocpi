@@ -37,6 +37,7 @@ from ocpi22.commands.serializers import (
     CommandResponse,
     CommandResultSerializer,
     ReserveNowSerializer,
+    CommandResponseType,
 )
 from ocpi22.cpo.serializers import (
     CPOReserveNowWebhookSerializer,
@@ -117,7 +118,7 @@ class CommandsViewSetLegacy(GenericViewSet):
 
     error_response = ResponseData(
         ocpi_status=2000,
-        result=CommandResponse.REJECTED,
+        result=CommandResponseType.REJECTED,
         http_status=status.HTTP_503_SERVICE_UNAVAILABLE,
         message=[],
         timeout=60,
@@ -246,7 +247,7 @@ class CommandsViewSetLegacy(GenericViewSet):
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE
             timeout = 60
             status_message = ""
-            ocpi_result = CommandResponse.REJECTED
+            ocpi_result = CommandResponseType.REJECTED
 
             # Prepare the command for CPO management system
             initial_data = dict(
@@ -285,7 +286,7 @@ class CommandsViewSetLegacy(GenericViewSet):
                 )
 
             timeout = int(data.get("timeout", timeout))
-            result = data.get("result", CommandResponse.REJECTED).upper()
+            result = data.get("result", CommandResponseType.REJECTED).upper()
             logger.info(f"Result from charger for command {command_prefix}: {result}")
             message = MessageTexts.get(
                 f"{command_prefix}_{result}",  # E.g. try to get response message for START_<result>
