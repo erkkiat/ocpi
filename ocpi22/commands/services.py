@@ -393,35 +393,45 @@ class RemoteCommandServices:
         return webhook
 
 
+class EvseOccupiedError(ValidationError):
+    pass
+
+
+class EvseNotFoundError(ValidationError):
+    pass
+
+
 class StartCommandService(RemoteCommandServices):
     def __init__(self):
         super().__init__()
         self.webhook_repo = WebhookRepository()
         self.session_repo = SessionRepository()
 
-    @staticmethod
+    def _get_evse(
+        self,
+        evse_uid: str,
+    ) -> Evse:
+        evse = Evse.objects.filter(uid=evse_uid).first()
+        if not evse:
+            raise EvseNotFoundError(f"EVSE not found for evse_uid {evse_uid}")
+        return evse
+
+    def _validate_evse_availability(self, evse: Evse):
+        if evse.status in [Evse.AVAILABLE, Evse.CHARGING]:
+            raise EvseOccupiedError("Evse is not available for starting a session.")
+
     def _set_first_connector_if_missing(
+        self,
         validated_data: Dict[str, Any],
     ) -> Dict[str, Any]:
         if not validated_data.get("connector_id") and validated_data.get("evse_uid"):
-            evse = Evse.objects.filter(uid=validated_data["evse_uid"]).first()
-            if not evse:
-                logger.error(
-                    f"EVSE not found for evse_uid {validated_data['evse_uid']}"
-                )
-                raise ValidationError(
-                    f"EVSE not found for evse_uid {validated_data['evse_uid']}"
-                )
-
+            evse = self._get_evse(validated_data["evse_uid"])
+            self._validate_evse_availability(evse)
             first_connector = evse.connectors.first()
             if not first_connector:
-                logger.error(
-                    f"No connector found for evse_uid {validated_data['evse_uid']}"
-                )
                 raise ValidationError(
                     f"No connector found for evse_uid {validated_data['evse_uid']}"
                 )
-
             validated_data["connector_id"] = first_connector.uid
             logger.info(
                 f"Picked connector_id {first_connector.uid} for evse_uid {validated_data['evse_uid']}"
@@ -612,7 +622,10 @@ class StopCommandServices(RemoteCommandServices):
             logger.warning(
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
-            return self.create_ocpi_response(CommandResponseType.REJECTED)
+            return self.create_ocpi_response(
+                CommandResponseType.UNKNOWN_SESSION, "Could not find the session"
+            )
+
         CallBackService.create_callback(
             session=session,
             callback_url=validated_data["response_url"],
