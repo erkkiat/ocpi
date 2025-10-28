@@ -451,12 +451,6 @@ class StartCommandService(RemoteCommandServices):
         )
         return first_connector
 
-    def _update_auth_reference(self, validated_data: dict[str, Any]):
-        validated_data["authorization_reference"] = (
-            validated_data.get("authorization_reference") or generate_random_token()
-        )
-        return validated_data
-
     def start_session(
         self,
         sender_party: Party,
@@ -487,7 +481,7 @@ class StartCommandService(RemoteCommandServices):
                 session = create_session(
                     location_id=location,
                     evse_uid=evse,
-                    connector_id=connector,
+                    connector_id=connector.uid,
                     billed_to=billed_to.get_party(),
                     credentials=credentials,
                     authorization_reference=validated_data["authorization_reference"],
