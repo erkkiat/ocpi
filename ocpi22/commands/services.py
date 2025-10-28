@@ -1,4 +1,3 @@
-from copy import deepcopy
 from logging import getLogger
 from typing import Dict, Any, NamedTuple
 import requests
@@ -10,7 +9,11 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 
-from ocpi22.commands.repository import SessionRepository, CallBackRepository
+from ocpi22.commands.repository import (
+    SessionRepository,
+    CallBackRepository,
+    LocationRepository,
+)
 from ocpi22.commands.serializers import (
     CommandResponse,
     CommandResultSerializer,
@@ -18,9 +21,15 @@ from ocpi22.commands.serializers import (
     CommandResponseType,
 )
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
-from ocpi22.models.location import Evse
+from ocpi22.exceptions import (
+    EvseNotFoundError,
+    LocationNotFoundError,
+    EvseOccupiedError,
+    ConnectorNotFoundError,
+)
+from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.choices import MessageTexts, OcpiRolesEnum
@@ -38,7 +47,6 @@ from ocpi22.util import build_absolute_uri, generate_random_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.sessions.util import create_session
 from ocpi22.models import enum
-from ocpi22.sessions.services import close_active_sessions_for_evse
 
 from ocpiconnector.party import Party
 from ocpiconnector.ocpi_identities import get_our_party
@@ -393,14 +401,6 @@ class RemoteCommandServices:
         return webhook
 
 
-class EvseOccupiedError(ValidationError):
-    pass
-
-
-class EvseNotFoundError(ValidationError):
-    pass
-
-
 class StartCommandService(RemoteCommandServices):
     def __init__(self):
         super().__init__()
@@ -416,56 +416,40 @@ class StartCommandService(RemoteCommandServices):
             raise EvseNotFoundError(f"EVSE not found for evse_uid {evse_uid}")
         return evse
 
+    def _get_location(self, location_uid: str) -> Location:
+        location = LocationRepository.find_location_by_uid(location_uid)
+        if not location:
+            raise LocationNotFoundError(
+                f"Location not found for location_id {location_uid}"
+            )
+        return location
+
     def _validate_evse_availability(self, evse: Evse):
         if evse.status in [Evse.AVAILABLE, Evse.CHARGING]:
             raise EvseOccupiedError("Evse is not available for starting a session.")
 
-    def _set_first_connector_if_missing(
-        self,
-        validated_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        if not validated_data.get("connector_id") and validated_data.get("evse_uid"):
-            evse = self._get_evse(validated_data["evse_uid"])
-            self._validate_evse_availability(evse)
-            first_connector = evse.connectors.first()
-            if not first_connector:
-                raise ValidationError(
-                    f"No connector found for evse_uid {validated_data['evse_uid']}"
-                )
-            validated_data["connector_id"] = first_connector.uid
-            logger.info(
-                f"Picked connector_id {first_connector.uid} for evse_uid {validated_data['evse_uid']}"
+    def _get_connector(self, connector_uid: str) -> Connector:
+        connector = Connector.objects.filter(uid=connector_uid).first()
+        if not connector:
+            raise ConnectorNotFoundError(
+                f"Connector not found for connector_id {connector_uid}"
             )
+        return connector
 
-        return validated_data
-
-    @staticmethod
-    def _create_new_session(
-        credentials: Credentials,
-        validated_data: Dict[str, Any],
-        billed_to: CredentialsRole,
-        hub_session_id: str = None,
-    ) -> Session:
-        evse_uid = validated_data.get("evse_uid")
-        close_active_sessions_for_evse(evse_uid)
-        adhoc_token_dict = deepcopy(validated_data["token"])
-        adhoc_token_dict["billed_to"] = billed_to.get_party()
-        adhoc_token_dict["ocpi_master"] = billed_to
-        session = create_session(
-            location_id=validated_data["location_id"],
-            evse_uid=validated_data.get("evse_uid"),
-            connector_id=validated_data.get("connector_id"),
-            billed_to=billed_to.get_party(),
-            credentials=credentials,
-            authorization_reference=validated_data.get("authorization_reference"),
-            authorization_method=enum.AuthMethodChoices.COMMAND,
-            ad_hoc_token=AdhocToken.from_dict(adhoc_token_dict),
-            hub_session_id=hub_session_id,
-        )
+    def _get_first_connector_if_missing(
+        self,
+        evse: Evse,
+        connector_id: str | None = None,
+    ) -> Connector:
+        if connector_id:
+            return self._get_connector(connector_id)
+        first_connector = evse.connectors.first()
+        if not first_connector:
+            raise ConnectorNotFoundError(f"No connector found for evse_uid {evse.uid}")
         logger.info(
-            f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['authorization_reference']}"
+            f"Picked connector_id {first_connector.uid} for evse_uid {evse.uid}"
         )
-        return session
+        return first_connector
 
     def _update_auth_reference(self, validated_data: dict[str, Any]):
         validated_data["authorization_reference"] = (
@@ -480,27 +464,36 @@ class StartCommandService(RemoteCommandServices):
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
     ) -> OCPIResponse:
-        validated_data = self._update_auth_reference(validated_data)
-
-        try:
-            validated_data = self._set_first_connector_if_missing(validated_data)
-        except ValidationError as e:
-            logger.error(f"Validation error during connector_id picking: {e}")
-            return self.create_ocpi_response(
-                CommandResponseType.REJECTED, message=str(e)
-            )
-
-        # Someone we are not connected to can send a remote start request via Hubs. So create=True
-        billed_to = get_credentialsrole(party=sender_party, create=True)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],
         )
 
         if not session:
+            location = self._get_location(location_uid=validated_data["location_id"])
+            evse = self._get_evse(evse_uid=validated_data["evse_uid"])
+            self._validate_evse_availability(evse)
+            connector = self._get_first_connector_if_missing(
+                evse, connector_id=validated_data.get("connector_id")
+            )
+            billed_to = get_credentialsrole(party=sender_party, create=True)
+            ad_hoc_token = AdhocToken(
+                billed_to=billed_to.get_party(),
+                ocpi_master=billed_to,
+                **validated_data["token"],
+            )
+
             with transaction.atomic():
-                session = self._create_new_session(
-                    credentials, validated_data, billed_to, hub_session_id
+                session = create_session(
+                    location_id=location,
+                    evse_uid=evse,
+                    connector_id=connector,
+                    billed_to=billed_to.get_party(),
+                    credentials=credentials,
+                    authorization_reference=validated_data["authorization_reference"],
+                    authorization_method=enum.AuthMethodChoices.COMMAND,
+                    ad_hoc_token=ad_hoc_token,
+                    hub_session_id=hub_session_id,
                 )
                 if not session.route_through_oicp:
                     CallBackService.create_callback(

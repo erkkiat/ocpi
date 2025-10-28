@@ -2,6 +2,7 @@ from typing import Optional
 from django.db.models import Q
 
 from ocpi22.commands.models import CallBacks
+from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.util import command_store
 
@@ -75,3 +76,13 @@ class CallBackRepository:
     @staticmethod
     def find_by_session_uid(session_uid: str):
         return CallBacks.objects.filter(session__uid=session_uid).first()
+
+
+class LocationRepository:
+    @staticmethod
+    def find_location_by_uid(location_uid: str):
+        return Location.get_if_exists(uid=location_uid)
+
+    @staticmethod
+    def find_location_by_evse_id(evse_id: str):
+        return Location.objects.filter(evse__evse_id=evse_id).first()

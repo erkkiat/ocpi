@@ -16,6 +16,12 @@ from ocpi22.commands.services import (
 )
 from ocpi22.decorators import requires_sender_role
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.exceptions import (
+    EvseOccupiedError,
+    EvseNotFoundError,
+    LocationNotFoundError,
+    ConnectorNotFoundError,
+)
 from ocpi22.models.session import Session
 from ocpi22.ocpi.auth import OCPIPermission
 from ocpi22.ocpi.util import OCPIResponse, options_message, OCPIBadRequestResponse
@@ -66,8 +72,18 @@ class CommandsViewSet(GenericViewSet):
                 validated_data=serializer.validated_data,
             )
             return ocpi_response
-        except Exception:
-            logger.error("Could not process remote start command", exc_info=True)
+        except (
+            EvseOccupiedError,
+            EvseNotFoundError,
+            LocationNotFoundError,
+            ConnectorNotFoundError,
+        ) as e:
+            logger.exception(e)
+            return start_command_service.create_ocpi_response(
+                CommandResponseType.REJECTED, e.args[0]
+            )
+        except Exception as e:
+            logger.exception(e)
             return start_command_service.create_ocpi_response(
                 CommandResponseType.REJECTED
             )
