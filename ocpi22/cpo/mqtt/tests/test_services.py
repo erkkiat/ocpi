@@ -28,6 +28,7 @@ from ocpi22.cpo.mqtt.services import (
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
     OCPISessionFactory,
@@ -690,6 +691,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_token_dict_authorization(
         self,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory()
         evse = EvseFactory(location=location)
         msp_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="MSP")

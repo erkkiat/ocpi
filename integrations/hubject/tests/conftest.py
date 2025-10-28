@@ -681,6 +681,7 @@ def expected_eroaming_cdr():
 @pytest.fixture
 def remote_command_payload():
     evse = EvseFactory(status="AVAILABLE")
+    ConnectorFactory(evse=evse)
 
     return {
         "Identification": {"RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}},

@@ -1335,7 +1335,7 @@ class TestHubjectAuthorizeRemoteStart:
             mock_start_session.return_value = OCPIResponse(
                 status_code=Ocpi.OK,
                 http_status=status.HTTP_200_OK,
-                data={"data": {"result": "REJECTED"}},
+                data={"result": "REJECTED", "timeout": 60, "message": []},
             )
             with pytest.raises(HubjectRemoteCommandError):
                 self.hubject_service._start_session(
@@ -1672,7 +1672,7 @@ class TestHubjectAuthorizeRemoteStop:
     def test_validate_command_response_raises_hubject_error_when_session_not_found(
         self,
     ):
-        response_data = {"status_message": "Session not found", "data": ""}
+        response_data = {"data": {"result": "UNKNOWN_SESSION"}}
         with pytest.raises(HubjectRemoteCommandError) as exc_info:
             self.hubject_service._validate_command_response(response_data)
 

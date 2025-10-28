@@ -48,7 +48,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
+from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
@@ -787,16 +787,21 @@ class HubjectService:
         return data
 
     def _validate_command_response(self, response_data: dict) -> None:
-        status_message = response_data.get("status_message", "")
-        data = response_data.get("data", None)
-        if data == "":
-            if status_message == MessageTexts.get("SESSION_NOT_FOUND"):
-                logger.error(
-                    "Hubject remote command failed: Session not found",
-                    extra={"response": response_data},
-                )
-                raise HubjectRemoteCommandError("400", "Session not found")
-        if not data or data.get("result") != "ACCEPTED":
+        from ocpi22.commands.serializers import CommandResponseType
+
+        data = response_data["data"]
+        if not data:
+            raise HubjectRemoteCommandError(
+                "021", "Remote command failed", data={"accepted_status": False}
+            )
+        result = data["result"]
+        if result == CommandResponseType.UNKNOWN_SESSION:
+            logger.error(
+                "Hubject remote command failed: Session not found",
+                extra={"response": response_data},
+            )
+            raise HubjectRemoteCommandError("400", "Session not found")
+        if result != CommandResponseType.ACCEPTED:
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
