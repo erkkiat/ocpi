@@ -181,7 +181,8 @@ def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topi
             )
             _publish_not_allowed_auth_response(token_auth_message.correlation_id)
             return
-        session = create_and_save_session(authorization, evse)
+        if not session:
+            session = create_and_save_session(authorization, evse)
         allowed_message = TokenAuthorizationResponse(
             allowed=AuthorizationEnum(authorization.allowed),
             correlation_id=token_auth_message.correlation_id,
