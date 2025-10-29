@@ -530,7 +530,7 @@ class ChargePointViewSet(FlowchartViewSet):
                             raise ValueError(
                                 f"CredentialsRole for {authorization.responding_party} not found in the database."
                             )
-                        if session:
+                        if not session:
                             session = create_session(
                                 credentials=route_through.credentials,
                                 authorization_reference=authorization.authorization_reference,
