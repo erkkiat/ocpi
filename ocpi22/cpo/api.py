@@ -16,6 +16,7 @@ from django.utils.safestring import mark_safe
 from ninja.errors import HttpError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
+from ocpi22 import ocpi_logging
 
 from typing import Union, Optional
 
@@ -86,6 +87,9 @@ from ocpi22.tokens.auth import (
     authorize_token,
     TokenAuthorization,
     get_session_by_token_uid,
+    get_session_by_token_uid_and_evse_uid,
+    get_token_authorization_from_session,
+    _authorize_token,
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.util import MyMetadata
@@ -468,10 +472,31 @@ class ChargePointViewSet(FlowchartViewSet):
                     token: Union[Token, AdhocToken, str] = (
                         serializer.validated_data.get("token")
                     )
-                    data["token"] = get_token_id(token)
-                    authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request, evse_id=evse.evse_id
+                    token_uid = get_token_id(token)
+                    data["token"] = token_uid
+                    session = get_session_by_token_uid_and_evse_uid(
+                        token_uid, evse.uid, max_age_minutes=15
                     )
+                    if session:
+                        ocpi_logging.info(
+                            f"Pre-existing Session **{markdown_escape(session.uid)}** "
+                            f"with authorization **{markdown_escape(session.authorization_reference)}**",
+                            request=request,
+                        )
+                        messages.success(
+                            request,
+                            f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
+                            f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
+                            f"authorization was cached in the system.",
+                        )
+                        authorization = get_token_authorization_from_session(session)
+                    else:
+                        _authorize_token.clear_cache_item(
+                            token, evse.location, request=request, evse_id=evse.evse_id
+                        )
+                        authorization: TokenAuthorization = authorize_token(
+                            token, evse.location, request=request, evse_id=evse.evse_id
+                        )
 
                     if (
                         not authorization
@@ -505,32 +530,33 @@ class ChargePointViewSet(FlowchartViewSet):
                             raise ValueError(
                                 f"CredentialsRole for {authorization.responding_party} not found in the database."
                             )
-                        session = create_session(
-                            credentials=route_through.credentials,
-                            authorization_reference=authorization.authorization_reference,
-                            authorization_method=authorization.auth_method,
-                            billed_to=authorization.msp,
-                            ad_hoc_token=ad_hoc_token,
-                            evse_uid=evse.uid,
-                            connector_id=None,
-                            location_id=evse.location.uid,
-                            hub_session_id=authorization.hub_session_id,
-                        )
-                        save_to_session_cache(
-                            route=find_route_from_credentials(
-                                route_through.credentials, OcpiModuleEnum.SESSIONS
-                            ),
-                            session=session,
-                        )
-                        messages.success(
-                            request,
-                            "A new OCPI Session has been started in `PENDING` status. "
-                            f"Store the Session ID, **{markdown_escape(session.uid)}**. "
-                            "You will need it for `meter_values` and `stop_session`. Next, you can "
-                            f'<a href="{next_url}">start the charging session</a>. '
-                            f"Make sure to use the Token **{get_token_id(token)}**, "
-                            f"which has been authorized. The authorization expires in 15 minutes.",
-                        )
+                        if session:
+                            session = create_session(
+                                credentials=route_through.credentials,
+                                authorization_reference=authorization.authorization_reference,
+                                authorization_method=authorization.auth_method,
+                                billed_to=authorization.msp,
+                                ad_hoc_token=ad_hoc_token,
+                                evse_uid=evse.uid,
+                                connector_id=None,
+                                location_id=evse.location.uid,
+                                hub_session_id=authorization.hub_session_id,
+                            )
+                            save_to_session_cache(
+                                route=find_route_from_credentials(
+                                    route_through.credentials, OcpiModuleEnum.SESSIONS
+                                ),
+                                session=session,
+                            )
+                            messages.success(
+                                request,
+                                "A new OCPI Session has been started in `PENDING` status. "
+                                f"Store the Session ID, **{markdown_escape(session.uid)}**. "
+                                "You will need it for `meter_values` and `stop_session`. Next, you can "
+                                f'<a href="{next_url}">start the charging session</a>. '
+                                f"Make sure to use the Token **{get_token_id(token)}**, "
+                                f"which has been authorized. The authorization expires in 15 minutes.",
+                            )
 
                     if authorization:
                         data = dict(
@@ -625,9 +651,9 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(session_serializer.data)
 
                     # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
-                    authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid,
-                        evse_id=session.evse.evse_id if session.evse else None,
+                    # TODO Reject authorization for stale authorizations
+                    authorization: TokenAuthorization = (
+                        get_token_authorization_from_session(session)
                     )
 
                     if not authorization:
