@@ -425,7 +425,7 @@ class StartCommandService(RemoteCommandServices):
         return location
 
     def _validate_evse_availability(self, evse: Evse):
-        if evse.status in [Evse.AVAILABLE, Evse.CHARGING]:
+        if evse.status not in [Evse.AVAILABLE, Evse.CHARGING]:
             raise EvseOccupiedError("Evse is not available for starting a session.")
 
     def _get_connector(self, connector_uid: str) -> Connector:
