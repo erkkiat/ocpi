@@ -326,6 +326,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         """
         Handle a POST request for a token authorization as a hub. Forward the authorization request.
         """
+        # TODO : Think about how to handle this?
         authorization: TokenAuthorization = authorize_token(
             token, location, request=request
         )
