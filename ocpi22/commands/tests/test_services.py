@@ -752,7 +752,7 @@ class TestStartCommandServiceHelpers:
         service = StartCommandService()
 
         with pytest.raises(EvseOccupiedError) as exc_info:
-            service._validate_evse_availability(evse)
+            service._is_evse_available(evse)
 
         assert "Evse is not available for starting a session" in str(exc_info.value)
 
@@ -776,7 +776,7 @@ class TestStartCommandServiceHelpers:
         evse = EvseFactory(uid="EVSE789", location=location, status=evse_status)
         service = StartCommandService()
 
-        service._validate_evse_availability(evse)
+        service._is_evse_available(evse)
 
     @pytest.mark.django_db
     def test_get_connector_returns_connector_when_exists(self):
