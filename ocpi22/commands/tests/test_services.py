@@ -289,7 +289,9 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        evse = EvseFactory(uid="EVSE001", location=LocationFactory())
+        evse = EvseFactory(
+            uid="EVSE001", location=LocationFactory(), status="AVAILABLE"
+        )
         connector = ConnectorFactory(uid="CONN001", evse=evse)
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -334,7 +336,9 @@ class TestCommandServices:
     ):
         mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
 
-        evse = EvseFactory(uid="EVSE001", location=LocationFactory())
+        evse = EvseFactory(
+            uid="EVSE001", location=LocationFactory(), status="AVAILABLE"
+        )
         connector = ConnectorFactory(uid="CONN001", evse=evse)
         validated_data = {
             "token": {"uid": "TOKEN123", "type": "RFID"},
@@ -740,7 +744,13 @@ class TestStartCommandServiceHelpers:
     @pytest.mark.parametrize(
         "evse_status",
         [
-            Evse.AVAILABLE,
+            Evse.OUTOFORDER,
+            Evse.BLOCKED,
+            Evse.INOPERATIVE,
+            Evse.PLANNED,
+            Evse.REMOVED,
+            Evse.RESERVED,
+            Evse.UNKNOWN,
             Evse.CHARGING,
         ],
     )
@@ -757,23 +767,11 @@ class TestStartCommandServiceHelpers:
         assert "Evse is not available for starting a session" in str(exc_info.value)
 
     @pytest.mark.django_db
-    @pytest.mark.parametrize(
-        "evse_status",
-        [
-            Evse.BLOCKED,
-            Evse.INOPERATIVE,
-            Evse.OUTOFORDER,
-            Evse.PLANNED,
-            Evse.REMOVED,
-            Evse.RESERVED,
-            Evse.UNKNOWN,
-        ],
-    )
-    def test_validate_evse_availability_does_not_raise_error_for_unavailable_statuses(
-        self, evse_status
+    def test_validate_evse_availability_does_not_raise_error_for_available_statuses(
+        self,
     ):
         location = LocationFactory()
-        evse = EvseFactory(uid="EVSE789", location=location, status=evse_status)
+        evse = EvseFactory(uid="EVSE789", location=location, status=Evse.AVAILABLE)
         service = StartCommandService()
 
         service._is_evse_available(evse)
