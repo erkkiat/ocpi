@@ -70,7 +70,6 @@ from ocpi22.commands.repository import SessionRepository
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
@@ -1457,9 +1456,8 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @pytest.mark.parametrize("evse_status", ["CHARGING", "AVAILABLE"])
     def test_get_and_validate_evse_availability_does_not_raise_exception(
-        self, mock_remote_start_command, evse, evse_status
+        self, mock_remote_start_command, evse, evse_status, clear_all_cache
     ):
-        get_credentialsrole.cache_clear()
         evse.status = evse_status
         evse.save()
         result = self.hubject_service._get_and_validate_evse_availability(
