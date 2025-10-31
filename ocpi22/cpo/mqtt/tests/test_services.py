@@ -1037,7 +1037,7 @@ class TestCreateAndSaveSession:
 
     @pytest.mark.django_db
     def test_authorize_and_publish_resend_message_does_not_make_a_new_request_to_msps(
-        self, auth_request_message
+        self, auth_request_message, clear_all_cache
     ):
         decoded_message = orjson.loads(auth_request_message.payload)
         token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)

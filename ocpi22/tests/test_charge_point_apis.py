@@ -309,7 +309,12 @@ class TestChargePointAPI:
             )
 
     def test_resend_authorize_post_does_not_get_new_authorize_reference(
-        self, admin_user_client, available_evse, allowed_token, authorize_token_response
+        self,
+        admin_user_client,
+        available_evse,
+        allowed_token,
+        authorize_token_response,
+        clear_all_cache,
     ):
         request_body = {"evse_id": available_evse.uid, "token_id": allowed_token.uid}
         with patch(
@@ -324,7 +329,12 @@ class TestChargePointAPI:
         assert mock_authorize_token.call_count == 1
 
     def test_resend_authorize_post_does_not_create_a_new_session(
-        self, admin_user_client, available_evse, allowed_token, authorize_token_response
+        self,
+        admin_user_client,
+        available_evse,
+        allowed_token,
+        authorize_token_response,
+        clear_all_cache,
     ):
         request_body = {"evse_id": available_evse.uid, "token_id": allowed_token.uid}
         with patch(
