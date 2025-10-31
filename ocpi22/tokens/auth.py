@@ -20,7 +20,6 @@ from ocpi22.choices import (
     OcpiModuleEnum,
     MessageTexts,
     AuthorizationEnum,
-    TokenType,
     get_language,
     EndpointRoleEnum,
 )
@@ -200,10 +199,10 @@ def get_token_authorization_from_session(
         token=AdhocToken(
             billed_to=session.billed_to.get_party(),
             uid=session.cdr_token.uid,
-            type=TokenType.AD_HOC_USER.value,
+            type=session.cdr_token.token_type,
             ocpi_master=session.billed_to,
         ),
-        responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
+        responding_party=session.credentials.roles.first().party_str(),
         authorization_reference=session.authorization_reference,
         auth_method=session.auth_method,
         billed_to=session.billed_to.party_str(),

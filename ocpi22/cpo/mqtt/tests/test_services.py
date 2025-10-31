@@ -1088,4 +1088,4 @@ class TestCreateAndSaveSession:
             ) as mock_create_session,
         ):
             _authorize_and_publish(token_auth_message, auth_request_message.topic)
-            assert mock_create_session.not_called()
+            mock_create_session.assert_not_called()
