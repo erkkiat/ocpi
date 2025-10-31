@@ -531,20 +531,33 @@ class HubjectService:
         else:
             raise ValueError(f"Invalid ProviderID format: {provider_id}")
 
+    def _get_evse(self, evse_id: str) -> Evse:
+        evse = (
+            Evse.objects.filter(evse_id=evse_id)
+            .select_related("location")
+            .prefetch_related(
+                Prefetch("connectors", queryset=Connector.objects.only("uid"))
+            )
+            .only("status", "evse_id", "uid", "location_id", "location__uid")
+            .first()
+        )
+
+        if not evse:
+            logger.error(f"EVSE with ID {evse_id} not found")
+            raise HubjectRemoteCommandError("603", "EVSE not found")
+
+        return evse
+
     def _prepare_start_session_data(
         self,
         remote_start_command: ERoamingAuthorizeRemoteStart,
+        evse: Evse,
         sender_party: Party,
     ) -> dict:
-        from ocpi22.commands.repository import LocationRepository
-
         command_id = remote_start_command.emp_partner_session_id or None
         authorization_reference = command_id or remote_start_command.session_id.root
         contract_id = (
             remote_start_command.identification.RemoteIdentification.EvcoID.root
-        )
-        location_id = LocationRepository.get_location_uid_by_evse_id(
-            remote_start_command.evse_id.root
         )
         if not contract_id:
             raise HubjectRemoteCommandError(
@@ -561,8 +574,8 @@ class HubjectService:
                 "type": TokenType.APP_USER.value,
                 "contract_id": contract_id,
             },
-            "location_id": location_id,
-            "evse_uid": remote_start_command.evse_id.root,
+            "location_id": evse.location.uid,
+            "evse_uid": evse.uid,
             "connector_id": "",
             "authorization_reference": authorization_reference,
         }
@@ -630,8 +643,11 @@ class HubjectService:
         )
         evse_status = None
         try:
+            evse = self._get_evse(remote_start_command.evse_id.root)
             sender_party = self._get_sender_party(remote_start_command)
-            data = self._prepare_start_session_data(remote_start_command, sender_party)
+            data = self._prepare_start_session_data(
+                remote_start_command, evse, sender_party
+            )
 
             serializer = StartSessionSerializer(data=data)
             if serializer.is_valid():
