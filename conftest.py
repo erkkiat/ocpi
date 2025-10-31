@@ -141,3 +141,9 @@ def hubject_credentials() -> Credentials:
         role="HUB",
         business_details__name="Hubject",
     ).credentials
+
+
+@pytest.fixture
+def clear_all_cache():
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()

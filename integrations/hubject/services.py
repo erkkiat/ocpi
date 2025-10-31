@@ -644,6 +644,7 @@ class HubjectService:
         evse_status = None
         try:
             evse = self._get_evse(remote_start_command.evse_id.root)
+            evse_status = evse.status
             sender_party = self._get_sender_party(remote_start_command)
             data = self._prepare_start_session_data(
                 remote_start_command, evse, sender_party
