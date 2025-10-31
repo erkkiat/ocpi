@@ -424,8 +424,8 @@ class StartCommandService(RemoteCommandServices):
             )
         return location
 
-    def _validate_evse_availability(self, evse: Evse):
-        if evse.status not in [Evse.AVAILABLE, Evse.CHARGING]:
+    def _is_evse_available(self, evse: Evse):
+        if evse.status != Evse.AVAILABLE:
             raise EvseOccupiedError("Evse is not available for starting a session.")
 
     def _get_connector(self, connector_uid: str) -> Connector:
@@ -466,7 +466,6 @@ class StartCommandService(RemoteCommandServices):
         if not session:
             location = self._get_location(location_uid=validated_data["location_id"])
             evse = self._get_evse(evse_uid=validated_data["evse_uid"])
-            self._validate_evse_availability(evse)
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
@@ -513,6 +512,8 @@ class StartCommandService(RemoteCommandServices):
                             authorization_reference=session.authorization_reference,
                             callback_url=validated_data["response_url"],
                         )
+            else:
+                self._is_evse_available(evse)
 
             return self.create_ocpi_response(result, message=None)
 
