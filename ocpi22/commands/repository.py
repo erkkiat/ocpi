@@ -86,3 +86,11 @@ class LocationRepository:
     @staticmethod
     def find_location_by_evse_id(evse_id: str):
         return Location.objects.filter(evse__evse_id=evse_id).first()
+
+    @staticmethod
+    def find_location_uid_by_evse_id(evse_id: str):
+        return (
+            Location.objects.filter(evse__evse_id=evse_id)
+            .values_list("uid", flat=True)
+            .first()
+        )
