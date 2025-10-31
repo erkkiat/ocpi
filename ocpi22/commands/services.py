@@ -470,31 +470,6 @@ class StartCommandService(RemoteCommandServices):
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
-            billed_to = get_credentialsrole(party=sender_party, create=True)
-            ad_hoc_token = AdhocToken(
-                billed_to=billed_to.get_party(),
-                ocpi_master=billed_to,
-                **validated_data["token"],
-            )
-
-            with transaction.atomic():
-                session = create_session(
-                    location_id=location,
-                    evse_uid=evse,
-                    connector_id=connector.uid,
-                    billed_to=billed_to.get_party(),
-                    credentials=credentials,
-                    authorization_reference=validated_data["authorization_reference"],
-                    authorization_method=enum.AuthMethodChoices.COMMAND,
-                    ad_hoc_token=ad_hoc_token,
-                    hub_session_id=hub_session_id,
-                )
-                if not session.route_through_oicp:
-                    CallBackService.create_callback(
-                        session=session,
-                        authorization_reference=session.authorization_reference,
-                        callback_url=validated_data["response_url"],
-                    )
             webhook_response = self.send_start_command_webhook(
                 validated_data=validated_data,
                 command_type=RemoteCommandType.START_SESSION,
@@ -510,6 +485,34 @@ class StartCommandService(RemoteCommandServices):
                     f"Invalid result type: {result_str}, defaulting to REJECTED"
                 )
                 result = CommandResponseType.REJECTED
+
+            if result == CommandResponseType.ACCEPTED:
+                billed_to = get_credentialsrole(party=sender_party, create=True)
+                ad_hoc_token = AdhocToken(
+                    billed_to=billed_to.get_party(),
+                    ocpi_master=billed_to,
+                    **validated_data["token"],
+                )
+                with transaction.atomic():
+                    session = create_session(
+                        location_id=location,
+                        evse_uid=evse,
+                        connector_id=connector.uid,
+                        billed_to=billed_to.get_party(),
+                        credentials=credentials,
+                        authorization_reference=validated_data[
+                            "authorization_reference"
+                        ],
+                        authorization_method=enum.AuthMethodChoices.COMMAND,
+                        ad_hoc_token=ad_hoc_token,
+                        hub_session_id=hub_session_id,
+                    )
+                    if not session.route_through_oicp:
+                        CallBackService.create_callback(
+                            session=session,
+                            authorization_reference=session.authorization_reference,
+                            callback_url=validated_data["response_url"],
+                        )
 
             return self.create_ocpi_response(result, message=None)
 
