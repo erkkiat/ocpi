@@ -687,13 +687,15 @@ class HubjectService:
                 hubject_error.error_code,
                 hubject_error.args[0],
             )
-        except EvseOccupiedError:
-            return self._create_error_acknowledgment(
-                remote_start_command.model_dump(), "602", "EVSE is currently occupied"
-            )
         except EvseNotFoundError:
             return self._create_error_acknowledgment(
                 remote_start_command.model_dump(), "603", "EVSE not found"
+            )
+        except EvseOccupiedError:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(),
+                self._get_hubject_error_code(evse),
+                "EVSE is currently occupied",
             )
 
     def _start_session(
