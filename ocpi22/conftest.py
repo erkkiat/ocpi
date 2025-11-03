@@ -4,8 +4,6 @@ import pytest
 import pytz
 
 from ocpi22.cpo.schemas import LocationIn, GeoLocation, EVSE, Connector as ConnectorIn
-from ocpiconnector.ocpi_identities import get_our_credentialsrole
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.models.session import Session
 from ocpi22.test_tariff_location_and_evse import load_example
 from ocpi22.tests.factories import (
@@ -32,10 +30,7 @@ def completed_session(msp_credentials_with_endpoints) -> Session:
 
 
 @pytest.fixture
-def ocpi_master():
-    get_our_credentialsrole.cache_clear()
-    get_credentialsrole.cache_clear()
-
+def ocpi_master(clear_all_cache):
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
 
 

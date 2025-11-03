@@ -130,9 +130,7 @@ def enable_db_access_for_doctests(request, django_db_blocker):
 
 
 @pytest.fixture
-def hubject_credentials() -> Credentials:
-    get_our_credentialsrole.cache_clear()
-    get_credentialsrole.cache_clear()
+def hubject_credentials(clear_all_cache) -> Credentials:
     party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
 
     return CredentialsRoleFactory(
