@@ -637,6 +637,11 @@ class HubjectService:
             location_id = LocationRepository.find_location_uid_by_evse_id(
                 remote_start_command.evse_id.root
             )
+            if not location_id:
+                logger.error(
+                    f"EVSE {remote_start_command.evse_id.root} not found for Hubject remote start"
+                )
+                raise EvseNotFoundError("Location and EVSE not found")
             sender_party = self._get_sender_party(remote_start_command)
             data = self._prepare_start_session_data(
                 remote_start_command, location_id, sender_party
@@ -755,7 +760,9 @@ class HubjectService:
                 extra={"response": response_data},
             )
             raise HubjectRemoteCommandError("400", "Session not found")
-        if MessageTexts.get("EV_IS_NOT_CONNECTED") in data["message"]:
+        if data.get("message", None) and MessageTexts.get("EV_IS_NOT_CONNECTED")[0][
+            "text"
+        ] in data["message"][0].get("text", ""):
             logger.error(
                 "Hubject remote command failed: EV is not connected to EVSE",
                 extra={"response": response_data},
@@ -822,4 +829,8 @@ class HubjectService:
                 remote_stop_command.model_dump(),
                 hubject_error.error_code,
                 hubject_error.args[0],
+            )
+        except EvseNotFoundError:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(), "603", "EVSE not found"
             )

@@ -512,7 +512,7 @@ class StartCommandService(RemoteCommandServices):
             if result != CommandResponseType.ACCEPTED:
                 self._is_evse_available(evse)
                 return self.create_ocpi_response(
-                    result, message=MessageTexts.get("EV_IS_NOT_CONNECTED")
+                    result, message=MessageTexts.get("EV_IS_NOT_CONNECTED")[0]["text"]
                 )
 
             return self.create_ocpi_response(result, message=None)

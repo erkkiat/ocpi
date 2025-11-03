@@ -1161,16 +1161,23 @@ class TestHubjectAuthorizeRemoteStart:
         ConnectorFactory(evse=e, uid="connector-uid-789")
         return e
 
-    @pytest.mark.django_db
-    @responses.activate
-    def test_process_remote_start_command_returns_result_true(
-        self, evse, mock_remote_start_command, hubject_credentials
-    ):
-        WebhookFactory(
+    @pytest.fixture
+    def start_session_webhook(self):
+        return WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.START_SESSION,
             url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
         )
+
+    @pytest.mark.django_db
+    @responses.activate
+    def test_process_remote_start_command_returns_result_true(
+        self,
+        evse,
+        mock_remote_start_command,
+        hubject_credentials,
+        start_session_webhook,
+    ):
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
             return_value=OCPIResponse(
@@ -1277,13 +1284,12 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @responses.activate
     def test_process_remote_start_command_when_evse_is_not_available(
-        self, mock_remote_start_command, evse, hubject_credentials
+        self,
+        mock_remote_start_command,
+        evse,
+        hubject_credentials,
+        start_session_webhook,
     ):
-        WebhookFactory(
-            type=WebhookType.REMOTE_COMMAND,
-            command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-        )
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
             return_value=OCPIResponse(
@@ -1305,18 +1311,19 @@ class TestHubjectAuthorizeRemoteStart:
 
         assert result.result is False
         assert result.status_code == StatusCode(
-            Code="700", Description="EVSE is currently occupied"
+            Code="602", Description="EVSE is currently occupied"
         )
 
     @pytest.mark.django_db
     @override_settings(HOSTNAME="localhost")
     def test_prepare_start_session_data_builds_correct_structure(
-        self, mock_remote_start_command, evse
+        self, mock_remote_start_command
     ):
         sender_party = Party(country_code="DE", party_id="MSP")
 
+        location_id = "194234D1-0EDD-4B6E-8262-C85BDA16919D"
         result = self.hubject_service._prepare_start_session_data(
-            mock_remote_start_command, evse, sender_party
+            mock_remote_start_command, location_id, sender_party
         )
 
         expected_data = {
@@ -1427,13 +1434,8 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @override_settings(HUBJECT_OPERATOR_ID="SL*MNP")
     def test_process_remote_start_command_with_no_hubject_credentials_return_result_false(
-        self, mock_remote_start_command, evse
+        self, mock_remote_start_command, evse, start_session_webhook
     ):
-        WebhookFactory(
-            type=WebhookType.REMOTE_COMMAND,
-            command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-        )
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
             return_value=OCPIResponse(
@@ -1504,21 +1506,18 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         assert result.result is False
-        assert result.status_code.Code == self.hubject_service._get_hubject_error_code(
-            evse
-        )
+        assert result.status_code.Code == "602"
 
     @pytest.mark.django_db
     @responses.activate
     @override_settings(HOSTNAME="localhost")
     def test_process_remote_start_for_occupied_evse_returns_acknowledgment_false(
-        self, mock_remote_start_command, evse, hubject_credentials
+        self,
+        mock_remote_start_command,
+        evse,
+        hubject_credentials,
+        start_session_webhook,
     ):
-        WebhookFactory(
-            type=WebhookType.REMOTE_COMMAND,
-            command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-        )
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
             return_value=OCPIResponse(
@@ -1548,13 +1547,12 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @override_settings(HOSTNAME="localhost")
     def test_process_remote_start_returns_acknowledgment_false_when_ev_not_connected(
-        self, mock_remote_start_command, evse, hubject_credentials
+        self,
+        mock_remote_start_command,
+        evse,
+        hubject_credentials,
+        start_session_webhook,
     ):
-        WebhookFactory(
-            type=WebhookType.REMOTE_COMMAND,
-            command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-        )
         with patch(
             "ocpi22.commands.services.StartCommandService.start_session",
             return_value=OCPIResponse(
@@ -1611,10 +1609,18 @@ class TestHubjectAuthorizeRemoteStop:
     def test_process_remote_stop_command_returns_acknowledgment_false_when_evse_not_found(
         self, remote_stop_command
     ):
+        WebhookFactory(
+            type=WebhookType.REMOTE_COMMAND,
+            command_type=RemoteCommandType.STOP_SESSION,
+            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+        )
+        OCPISessionFactory(
+            uid="OURSESSIONID", hub_session_id="f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
+        )
         result = self.hubject_service.process_remote_stop_command(remote_stop_command)
 
         assert result.result is False
-        assert result.status_code.Code == "603"
+        assert result.status_code.Code == "021"
         assert result.session_id.root == "f98efbae-a2d8-rfa0-b810-9a9d50d2c527"
         assert result.emp_partner_session_id == "emp_session_456"
 
