@@ -778,10 +778,12 @@ class HubjectService:
         from ocpi22.commands.services import StopCommandServices
 
         try:
-            evse = self._get_evse(remote_stop_command.evse_id.root)
             logger.info(
                 "Remote stop command received from Hubject",
-                extra={"command": remote_stop_command, "evse": evse},
+                extra={
+                    "command": remote_stop_command,
+                    "evse": remote_stop_command.evse_id.root,
+                },
             )
 
             data = self._get_remote_stop_command_data(remote_stop_command)
