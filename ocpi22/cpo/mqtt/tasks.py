@@ -161,13 +161,11 @@ def update_meter_values_async(
         session = (
             Session.objects.select_related(
                 "credentials",
-                "credentials__roles",
                 "evse",
                 "evse__location",
                 "connector",
-                "connector__tariff_ids",
             )
-            .prefetch_related("chargingperiods__dimensions")
+            .prefetch_related("chargingperiods__dimensions", "connector__tariff_ids")
             .filter(uid=session_id)
             .first()
         )
