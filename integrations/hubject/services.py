@@ -558,10 +558,17 @@ class HubjectService:
                 "contract_id": contract_id,
             },
             "location_id": location_id,
-            "evse_uid": remote_start_command.evse_id.root,
+            "evse_uid": self._get_evse_uid(remote_start_command.evse_id.root),
             "connector_id": "",
             "authorization_reference": authorization_reference,
         }
+
+    def _get_evse_uid(self, evse_id: str) -> str:
+        if "*" in evse_id:
+            return evse_id.split("*", 2)[-1][1:]
+        if "-" in evse_id:
+            return evse_id.split("-", 2)[-1][1:]
+        return evse_id[6:]
 
     def _get_hubject_error_code(self, evse: Evse) -> str:
         if not evse:
@@ -748,7 +755,7 @@ class HubjectService:
                 extra={"response": response_data},
             )
             raise HubjectRemoteCommandError("400", "Session not found")
-        if MessageTexts.get("EV_IS_NOT_CONNECTED") in response_data["message"]:
+        if MessageTexts.get("EV_IS_NOT_CONNECTED") in data["message"]:
             logger.error(
                 "Hubject remote command failed: EV is not connected to EVSE",
                 extra={"response": response_data},
