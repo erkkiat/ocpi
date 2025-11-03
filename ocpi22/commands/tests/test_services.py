@@ -869,9 +869,8 @@ class TestStartCommandServiceStartSession:
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
     def test_start_session_creates_new_session_when_no_existing_session_found(
-        self, mock_send_webhook
+        self, mock_send_webhook, clear_all_cache
     ):
-        get_credentialsrole.cache_clear()
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC123")
@@ -1012,9 +1011,13 @@ class TestStartCommandServiceStartSession:
         assert "EVSE not found for evse_uid NONEXISTENT_EVSE" in str(exc_info.value)
 
     @pytest.mark.django_db
-    def test_start_session_raises_evse_occupied_error_when_evse_is_available(self):
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_raises_evse_occupied_error_when_evse_is_not_available(
+        self, mock_send_webhook, clear_all_cache
+    ):
         location = LocationFactory(uid="LOC222")
-        evse = EvseFactory(uid="EVSE222", location=location, status=Evse.AVAILABLE)
+        evse = EvseFactory(uid="EVSE222", location=location, status=Evse.BLOCKED)
+        ConnectorFactory(uid="CONN_SECOND", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1043,9 +1046,13 @@ class TestStartCommandServiceStartSession:
         assert "Evse is not available for starting a session" in str(exc_info.value)
 
     @pytest.mark.django_db
-    def test_start_session_raises_evse_occupied_error_when_evse_is_charging(self):
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_raises_evse_occupied_error_when_evse_is_charging(
+        self, mock_send_webhook, clear_all_cache
+    ):
         location = LocationFactory(uid="LOC333")
         evse = EvseFactory(uid="EVSE333", location=location, status=Evse.CHARGING)
+        ConnectorFactory(uid="CONN_THIRD", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1432,7 +1439,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "REJECTED"}}
 
         location = LocationFactory(uid="LOC103")
-        evse = EvseFactory(uid="EVSE103", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE103", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN103", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -1470,7 +1477,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "INVALID_VALUE"}}
 
         location = LocationFactory(uid="LOC104")
-        evse = EvseFactory(uid="EVSE104", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE104", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN104", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
