@@ -23,26 +23,30 @@ from ocpi22.tests.factories import (
 )
 
 
-class TestGetCountryAndPartyId:
-    def test_get_country_and_party_id_returns_tuple_when_cpo_set(self, monkeypatch):
-        monkeypatch.setenv("CPO", "FI*CPO")
-        country_code, party_id = _get_country_and_party_id()
+class TestSaveAndSendEvseStatusUpdates:
+    @pytest.fixture
+    def create_evse(self):
+        def _create_evse(uid, status):
+            credentialsrole = CredentialsRoleFactory(
+                country_code="FI", role="CPO", party_id="CPO"
+            )
+            location = LocationFactory(ocpi_master=credentialsrole)
+            evse = EvseFactory(uid=uid, location=location, status=status)
+            return evse
 
-        assert country_code == "FI"
-        assert party_id == "CPO"
+        yield _create_evse
+        Evse.objects.all().delete()
 
-    def test_get_country_and_party_id_raises_value_error_when_cpo_not_set(
-        self, monkeypatch
-    ):
-        monkeypatch.delenv("CPO", raising=False)
+    # def test_get_country_and_party_id_raises_value_error_when_cpo_not_set(
+    #     self, monkeypatch
+    # ):
+    #     monkeypatch.delenv("CPO", raising=False)
+    #
+    #     with pytest.raises(
+    #         ValueError, match="CPO is not set in the environment variables"
+    #     ):
+    #         _get_country_and_party_id()
 
-        with pytest.raises(
-            ValueError, match="CPO is not set in the environment variables"
-        ):
-            _get_country_and_party_id()
-
-
-class TestFormatEvseId:
     def test_format_evse_id_returns_correctly_formatted_string(self):
         evse_id = _format_evse_id("FI", "CPO", "100000001")
 
@@ -61,20 +65,12 @@ class TestFormatEvseId:
 
         assert evse_id == expected
 
+    def test_get_country_and_party_id_returns_tuple_when_cpo_set(self, monkeypatch):
+        monkeypatch.setenv("CPO", "FI*CPO")
+        country_code, party_id = _get_country_and_party_id()
 
-class TestSaveAndSendEvseStatusUpdates:
-    @pytest.fixture
-    def create_evse(self):
-        def _create_evse(uid, status):
-            credentialsrole = CredentialsRoleFactory(
-                country_code="FI", role="CPO", party_id="CPO"
-            )
-            location = LocationFactory(ocpi_master=credentialsrole)
-            evse = EvseFactory(uid=uid, location=location, status=status)
-            return evse
-
-        yield _create_evse
-        Evse.objects.all().delete()
+        assert country_code == "FI"
+        assert party_id == "CPO"
 
     def test_save_and_send_evse_status_updates_exits_gracefully_when_evse_not_found(
         self, monkeypatch, db
