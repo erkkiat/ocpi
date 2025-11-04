@@ -951,7 +951,10 @@ class ChargePointViewSet(FlowchartViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except KeyError:
-            logger.exception()
+            logger.exception(
+                "Unable to find eMSP remote command from cache",
+                extra={"command_id": command_id},
+            )
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "
