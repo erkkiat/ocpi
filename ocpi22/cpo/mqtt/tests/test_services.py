@@ -688,7 +688,7 @@ class TestPublishNotAllowedAuthResponse:
 @pytest.mark.django_db
 class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_token_dict_authorization(
-        self,
+        self, clear_all_cache
     ):
         location = LocationFactory()
         evse = EvseFactory(location=location)

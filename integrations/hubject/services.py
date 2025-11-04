@@ -49,6 +49,7 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
+from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
@@ -533,7 +534,7 @@ class HubjectService:
     def _prepare_start_session_data(
         self,
         remote_start_command: ERoamingAuthorizeRemoteStart,
-        evse: Evse,
+        location_id: str,
         sender_party: Party,
     ) -> dict:
         command_id = remote_start_command.emp_partner_session_id or None
@@ -556,13 +557,18 @@ class HubjectService:
                 "type": TokenType.APP_USER.value,
                 "contract_id": contract_id,
             },
-            "location_id": evse.location.uid,
-            "evse_uid": evse.uid,
-            "connector_id": evse.connectors.first().uid
-            if evse.connectors.exists()
-            else "",
+            "location_id": location_id,
+            "evse_uid": self._get_evse_uid(remote_start_command.evse_id.root),
+            "connector_id": "",
             "authorization_reference": authorization_reference,
         }
+
+    def _get_evse_uid(self, evse_id: str) -> str:
+        if "*" in evse_id:
+            return evse_id.split("*", 2)[-1][1:]
+        if "-" in evse_id:
+            return evse_id.split("-", 2)[-1][1:]
+        return evse_id[6:]
 
     def _get_hubject_error_code(self, evse: Evse) -> str:
         if not evse:
@@ -591,68 +597,15 @@ class HubjectService:
                 return "000"
 
     def _create_error_acknowledgment(
-        self, command: dict, error_code: str
+        self, command: dict, error_code: str, error_message: str = None
     ) -> ERoamingAcknowledgment:
         return ERoamingAcknowledgment(
             result=False,
-            status_code=StatusCode(Code=error_code),
+            status_code=StatusCode(Code=error_code, Description=error_message),
             session_id=SessionID(root=command.get("session_id", "")),
             cpo_partner_session_id="",
             emp_partner_session_id=command.get("emp_partner_session_id", ""),
         )
-
-    def _reject_multiple_start_commands(
-        self, remote_start_command: ERoamingAuthorizeRemoteStart, status: str
-    ) -> None:
-        from ocpi22.commands.repository import SessionRepository
-        from ocpi22.models.session import Session
-
-        if status == Evse.CHARGING:
-            active_session = SessionRepository.find_session_by_evse_id_and_status(
-                evse_id=remote_start_command.evse_id.root, statuses=[Session.ACTIVE]
-            )
-            if active_session:
-                logger.error(
-                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}"
-                )
-                raise HubjectRemoteCommandError(
-                    "602",
-                    f"EVSE {remote_start_command.evse_id.root} is occupied with active session {active_session.uid}",
-                )
-
-    def _get_and_validate_evse_availability(
-        self, remote_start_command: ERoamingAuthorizeRemoteStart
-    ) -> Evse:
-        evse_id = remote_start_command.evse_id.root
-        evse = self._get_evse(evse_id)
-
-        if evse.status not in [Evse.AVAILABLE, Evse.CHARGING]:
-            logger.error(
-                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}"
-            )
-            raise HubjectRemoteCommandError(
-                self._get_hubject_error_code(evse),
-                f"Unable to process hubject remote command. EVSE {evse.evse_id} is {evse.status}",
-            )
-
-        return evse
-
-    def _get_evse(self, evse_id: str) -> Evse:
-        evse = (
-            Evse.objects.filter(evse_id=evse_id)
-            .select_related("location")
-            .prefetch_related(
-                Prefetch("connectors", queryset=Connector.objects.only("uid"))
-            )
-            .only("status", "evse_id", "uid", "location_id", "location__uid")
-            .first()
-        )
-
-        if not evse:
-            logger.error(f"EVSE with ID {evse_id} not found")
-            raise HubjectRemoteCommandError("603", "EVSE not found")
-
-        return evse
 
     def _get_sender_party(
         self, remote_start_command: ERoamingAuthorizeRemoteStart
@@ -678,14 +631,20 @@ class HubjectService:
             "Remote start command received from Hubject",
             extra={"command": remote_start_command},
         )
-        evse_status = None
         try:
-            evse = self._get_and_validate_evse_availability(remote_start_command)
-            evse_status = evse.status
-            self._reject_multiple_start_commands(remote_start_command, evse.status)
+            from ocpi22.commands.repository import LocationRepository
+
+            location_id = LocationRepository.find_location_uid_by_evse_id(
+                remote_start_command.evse_id.root
+            )
+            if not location_id:
+                logger.error(
+                    f"EVSE {remote_start_command.evse_id.root} not found for Hubject remote start"
+                )
+                raise EvseNotFoundError("Location and EVSE not found")
             sender_party = self._get_sender_party(remote_start_command)
             data = self._prepare_start_session_data(
-                remote_start_command, evse, sender_party
+                remote_start_command, location_id, sender_party
             )
 
             serializer = StartSessionSerializer(data=data)
@@ -700,25 +659,25 @@ class HubjectService:
                     extra={"errors": serializer.errors, "data": data},
                 )
                 return self._create_error_acknowledgment(
-                    remote_start_command.model_dump(), "022"
+                    remote_start_command.model_dump(),
+                    "022",
+                    "Invalid data for starting session",
                 )
         except HubjectRemoteCommandError as hubject_error:
-            if hubject_error.error_code == "021":
-                request_accepted = (
-                    hubject_error.data.get("accepted_status", None)
-                    if hubject_error.data
-                    else None
-                )
-                if (
-                    evse_status
-                    and evse_status == Evse.AVAILABLE
-                    and request_accepted is False
-                ):
-                    return self._create_error_acknowledgment(
-                        remote_start_command.model_dump(), "510"
-                    )
             return self._create_error_acknowledgment(
-                remote_start_command.model_dump(), hubject_error.error_code
+                remote_start_command.model_dump(),
+                hubject_error.error_code,
+                hubject_error.args[0],
+            )
+        except EvseNotFoundError:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(), "603", "EVSE not found"
+            )
+        except EvseOccupiedError:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(),
+                "602",
+                "EVSE is currently occupied",
             )
 
     def _start_session(
@@ -787,16 +746,29 @@ class HubjectService:
         return data
 
     def _validate_command_response(self, response_data: dict) -> None:
-        status_message = response_data.get("status_message", "")
-        data = response_data.get("data", None)
-        if data == "":
-            if status_message == MessageTexts.get("SESSION_NOT_FOUND"):
-                logger.error(
-                    "Hubject remote command failed: Session not found",
-                    extra={"response": response_data},
-                )
-                raise HubjectRemoteCommandError("400", "Session not found")
-        if not data or data.get("result") != "ACCEPTED":
+        from ocpi22.commands.serializers import CommandResponseType
+
+        data = response_data["data"]
+        if not data:
+            raise HubjectRemoteCommandError(
+                "021", "Remote command failed", data={"accepted_status": False}
+            )
+        result = data["result"]
+        if result == CommandResponseType.UNKNOWN_SESSION:
+            logger.error(
+                "Hubject remote command failed: Session not found",
+                extra={"response": response_data},
+            )
+            raise HubjectRemoteCommandError("400", "Session not found")
+        if data.get("message", None) and MessageTexts.get("EV_IS_NOT_CONNECTED")[0][
+            "text"
+        ] in data["message"][0].get("text", ""):
+            logger.error(
+                "Hubject remote command failed: EV is not connected to EVSE",
+                extra={"response": response_data},
+            )
+            raise HubjectRemoteCommandError("510", "EV is not connected to EVSE")
+        if result != CommandResponseType.ACCEPTED:
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
@@ -813,10 +785,12 @@ class HubjectService:
         from ocpi22.commands.services import StopCommandServices
 
         try:
-            evse = self._get_evse(remote_stop_command.evse_id.root)
             logger.info(
                 "Remote stop command received from Hubject",
-                extra={"command": remote_stop_command, "evse": evse},
+                extra={
+                    "command": remote_stop_command,
+                    "evse": remote_stop_command.evse_id.root,
+                },
             )
 
             data = self._get_remote_stop_command_data(remote_stop_command)
@@ -830,7 +804,9 @@ class HubjectService:
                     extra={"errors": serializer.errors, "data": data},
                 )
                 return self._create_error_acknowledgment(
-                    remote_stop_command.model_dump(), "022"
+                    remote_stop_command.model_dump(),
+                    "022",
+                    "Invalid data for stopping session",
                 )
 
             service = StopCommandServices()
@@ -850,5 +826,11 @@ class HubjectService:
 
         except HubjectRemoteCommandError as hubject_error:
             return self._create_error_acknowledgment(
-                remote_stop_command.model_dump(), hubject_error.error_code
+                remote_stop_command.model_dump(),
+                hubject_error.error_code,
+                hubject_error.args[0],
+            )
+        except EvseNotFoundError:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(), "603", "EVSE not found"
             )

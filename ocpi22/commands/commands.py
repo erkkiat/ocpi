@@ -24,7 +24,7 @@ from rest_framework.viewsets import GenericViewSet
 from ocpi22.util import OCPIVersioning
 from ocpi22.ocpi.serializers import TokenSerializer
 from ocpi22.ocpi.auth import OCPIPermission
-from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum, MessageTexts
+from ocpi22.choices import OcpiModuleEnum, OcpiRolesEnum
 from ocpi22.commands.serializers import (
     StartSessionSerializer,
     StopSessionSerializer,
@@ -233,7 +233,7 @@ class CommandsViewSetLegacy(GenericViewSet):
         authorization = Authorization.objects.filter(authorization_reference=command_id)
         if not session.exists() and not authorization:
             return OCPIResponse(
-                MessageTexts.get("SESSION_NOT_FOUND"),
+                "Session not found",
                 status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
                 http_status=status.HTTP_400_BAD_REQUEST,
             )
