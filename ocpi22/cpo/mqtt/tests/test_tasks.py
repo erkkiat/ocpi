@@ -37,15 +37,15 @@ class TestSaveAndSendEvseStatusUpdates:
         yield _create_evse
         Evse.objects.all().delete()
 
-    # def test_get_country_and_party_id_raises_value_error_when_cpo_not_set(
-    #     self, monkeypatch
-    # ):
-    #     monkeypatch.delenv("CPO", raising=False)
-    #
-    #     with pytest.raises(
-    #         ValueError, match="CPO is not set in the environment variables"
-    #     ):
-    #         _get_country_and_party_id()
+    def test_get_country_and_party_id_raises_value_error_when_cpo_not_set(
+        self, monkeypatch
+    ):
+        monkeypatch.delenv("CPO", raising=False)
+
+        with pytest.raises(
+            ValueError, match="CPO is not set in the environment variables"
+        ):
+            _get_country_and_party_id()
 
     def test_format_evse_id_returns_correctly_formatted_string(self):
         evse_id = _format_evse_id("FI", "CPO", "100000001")
