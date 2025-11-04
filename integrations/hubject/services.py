@@ -194,7 +194,7 @@ class HubjectService:
             )
             payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
         except ValidationError:
-            logger.exception()
+            logger.exception("Validation failed for Hubject authorization")
             raise
         try:
             response = HubjectService.client.post(
@@ -379,7 +379,7 @@ class HubjectService:
                 extra={"hubject_response": e.response.text},
             )
         except requests.exceptions.RequestException as e:
-            logger.error(f"Network error: {e}")
+            logger.error(f"Network error: {e.args[0]}", exc_info=True)
         except Exception as e:
             logger.exception(e)
         return
