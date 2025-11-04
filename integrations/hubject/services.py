@@ -381,7 +381,7 @@ class HubjectService:
         except requests.exceptions.RequestException as e:
             logger.error(f"Network error: {e.args[0]}", exc_info=True)
         except Exception as e:
-            logger.exception(e.args[0])
+            logger.exception(e)
         return
 
     @staticmethod
