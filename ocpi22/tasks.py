@@ -67,6 +67,12 @@ app.conf.beat_schedule = {
         # 'schedule': 120  # For testing
         "schedule": crontab(hour=str(pull_hour), minute=str(pull_minute)),
     },
+    "weekly-hubject-evse-full-load": {
+        "task": "ocpi22.tasks.send_hubject_evse_full_load",
+        "schedule": crontab(
+            hour="2", minute="0", day_of_week="0"
+        ),  # Every Sunday at 02:00AM
+    },
 }
 
 
