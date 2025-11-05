@@ -116,6 +116,9 @@ class HubjectService:
         )
 
         if not locations.exists():
+            logger.warning(
+                f"No locations found for operator {str(party)} to prepare EVSE data"
+            )
             return None
 
         evse_data_records = []

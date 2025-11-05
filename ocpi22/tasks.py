@@ -301,9 +301,8 @@ def send_hubject_evse_full_load(self) -> None:
             payload = service.get_evse_full_load_payload(our_party)
 
             if payload is None:
-                logger.error(
-                    f"Failed to create payload for {str(our_party)} during Hubject EVSE FullLoad",
-                    exc_info=True,
+                logger.warning(
+                    f"Failed to create payload for {str(our_party)} during Hubject EVSE FullLoad. No EVSE/location data available",
                 )
                 return
         except ConnectorTariffNotFoundError:
