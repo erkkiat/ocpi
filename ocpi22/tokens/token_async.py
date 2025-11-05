@@ -56,14 +56,14 @@ async def post_request(
         json_data = await response.json()
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         duration = time.time() - start_time
-        logger.error(
+        logger.exception(
             f"Cannot decode JSON response from url {url}",
             extra={"response_duration": duration, "status_code": response_status},
         )
         json_data = None
     except ClientError:
         duration = time.time() - start_time
-        logger.error(
+        logger.exception(
             f"Cannot connect to {url} for token authorization",
             extra={"response_duration": duration},
         )
