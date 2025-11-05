@@ -81,13 +81,11 @@ async def post_request(
 
 
 def process_task_result(successful_task) -> dict | None:
-    # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     status_code, json_data, ocpi_master = successful_task.result()
     if status_code != 200:
         return None
     if isinstance(json_data, dict):
         json_data = json_data.get("data")
-        # If content is a Token authorize response, then break, otherwise continue
         if isinstance(json_data, dict) and json_data.get("allowed"):
             json_data["responding_party"] = successful_task.get_name()
             token = json_data.get("token", {})
