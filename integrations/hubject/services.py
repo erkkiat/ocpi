@@ -195,7 +195,18 @@ class HubjectService:
             payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
         except ValidationError:
             logger.exception("Validation failed for Hubject authorization")
-            raise
+            return (
+                400,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                    "status_message": "Validation failed for Hubject authorization",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
         try:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}
