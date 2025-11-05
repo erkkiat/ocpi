@@ -113,6 +113,7 @@ class HubjectService:
             return None
 
         evse_data_records = []
+        connectors_with_no_tariffs = []
         operator_name = None
 
         for location in locations.iterator(chunk_size=10):
@@ -125,13 +126,19 @@ class HubjectService:
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if len(connector.get_tariffs()) == 0:
-                        logger.error(
-                            f"EVSE Full Load Failed: No tariffs found for Evse {evse.evse_id} and connector {connector.standard}",
-                            exc_info=True,
+                        connectors_with_no_tariffs.append(
+                            (location.uid, evse.uid, connector.uid)
                         )
-                        raise ConnectorTariffNotFoundError(
-                            f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",
-                        )
+
+        if connectors_with_no_tariffs:
+            logger.error(
+                "EVSE Full Load Failed: There are connectors with no tariffs",
+                extra={"connectors_with_no_tariffs": connectors_with_no_tariffs},
+                exc_info=True,
+            )
+            raise ConnectorTariffNotFoundError(
+                "There are connectors with no tariffs",
+            )
 
         if len(evse_data_records) == 0:
             return None
