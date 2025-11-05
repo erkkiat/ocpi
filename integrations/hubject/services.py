@@ -1,5 +1,7 @@
 import logging
+import re
 from datetime import datetime
+from json import JSONDecodeError
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 
@@ -77,17 +79,29 @@ class HubjectService:
 
     @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
-        locations = Location.objects.filter(
-            ocpi_master__party_id=party.party_id,
-            ocpi_master__country_code=party.country_code,
+        hubject_credentials_role = get_credentialsrole(
+            credentials=None,
+            party=Party.from_str(settings.HUBJECT_OPERATOR_ID),
+            role=OcpiRolesEnum.HUB,
         )
-        evse_data_records = []
-        operator_name = None
-
-        if len(locations) == 0:
+        if not hubject_credentials_role:
+            logger.error(
+                "Hubject credentials not found for fetching operator EVSE data"
+            )
             return None
 
-        locations = Location.objects.prefetch_related(
+        allowed_locations = hubject_credentials_role.credentials.allowed_locations
+
+        location_filter = {
+            "ocpi_master__party_id": party.party_id,
+            "ocpi_master__country_code": party.country_code,
+            "roaming_enabled": True,
+        }
+
+        if allowed_locations:
+            location_filter["uid__in"] = allowed_locations
+
+        locations = Location.objects.filter(**location_filter).prefetch_related(
             Prefetch(
                 "evses",
                 queryset=Evse.objects.prefetch_related(
@@ -101,7 +115,17 @@ class HubjectService:
             )
         )
 
-        for location in locations:
+        if not locations.exists():
+            logger.warning(
+                f"No locations found for operator {str(party)} to prepare EVSE data"
+            )
+            return None
+
+        evse_data_records = []
+        connectors_with_no_tariffs = []
+        operator_name = None
+
+        for location in locations.iterator(chunk_size=10):
             tmp_operator_evse_data = (
                 HubjectService.converter.convert_to_operator_evse_data(location)
             )
@@ -111,11 +135,19 @@ class HubjectService:
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if len(connector.get_tariffs()) == 0:
-                        raise ConnectorTariffNotFoundError(
-                            evse.evse_id,
-                            connector.standard,
-                            f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",
+                        connectors_with_no_tariffs.append(
+                            (location.uid, evse.uid, connector.uid)
                         )
+
+        if connectors_with_no_tariffs:
+            logger.error(
+                "EVSE Full Load Failed: There are connectors with no tariffs",
+                extra={"connectors_with_no_tariffs": connectors_with_no_tariffs},
+                exc_info=True,
+            )
+            raise ConnectorTariffNotFoundError(
+                "There are connectors with no tariffs",
+            )
 
         if len(evse_data_records) == 0:
             return None
@@ -140,6 +172,66 @@ class HubjectService:
         )
 
     @staticmethod
+    def parse_hubject_validation_errors(
+        response_json: dict, payload: ERoamingPushEvseData
+    ) -> dict:
+        try:
+            result = {
+                "message": response_json.get("message", "Unknown error"),
+                "errors": [],
+                "error_count": 0,
+                "field_summary": {},
+                "status_code": 400,
+            }
+
+            validation_errors = response_json.get("validationErrors", [])
+            result["error_count"] = len(validation_errors)
+
+            for error in validation_errors:
+                field_ref = error.get("fieldReference", "unknown")
+                error_msg = error.get("errorMessage", "No error message")
+
+                match = re.search(r"\[(\d+)\]", field_ref)
+                if match:
+                    index = int(match.group(1))
+                else:
+                    index = None
+                    logger.warning(
+                        f"Unexpected fieldReference format: '{field_ref}'. Could not determine EVSE index."
+                    )
+                evse_record = (
+                    payload.OperatorEvseData.EvseDataRecord[index]
+                    if index is not None
+                    and index < len(payload.OperatorEvseData.EvseDataRecord)
+                    else None
+                )
+
+                formatted_error = f"Field: {field_ref} - EVSE: {evse_record.EvseID if evse_record else 'Unknown'} - Error: {error_msg}"
+
+                result["errors"].append(formatted_error)
+
+                if "." in field_ref:
+                    field_pattern = (
+                        field_ref.split("].")[-1]
+                        if "]." in field_ref
+                        else field_ref.split(".")[-1]
+                    )
+                    if field_pattern not in result["field_summary"]:
+                        result["field_summary"][field_pattern] = 0
+                    result["field_summary"][field_pattern] += 1
+
+            return result
+        except Exception:
+            logger.exception("Error parsing Hubject validation errors")
+            return {
+                "message": "Failed to parse validation errors",
+                "errors": response_json,
+                "error_count": 1,
+                "field_summary": {},
+                "status_code": 500,
+            }
+
+    @staticmethod
     def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
@@ -153,10 +245,22 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
+                try:
+                    response_json = response.json()
+                    formatted_errors = HubjectService.parse_hubject_validation_errors(
+                        response_json, payload
+                    )
+                except JSONDecodeError:
+                    formatted_errors = f"{response.status_code} : {response.text}"
+
+                logger.error(
+                    f"Hubject EVSE full load failed with status code {response.status_code}",
+                    extra={"response_text": formatted_errors},
+                )
                 return {
                     "success": False,
                     "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
+                    "error": formatted_errors,
                 }
         except PydanticSerializationError as e:
             logger.exception("Pydantic validation failed")

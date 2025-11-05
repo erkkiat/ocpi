@@ -25,6 +25,14 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     CurrencyID,
     ProductID,
+    ChargingFacility,
+    Accessibility,
+    DynamicInfoAvailable,
+    GeoCoordinates,
+    Address,
+    EvseID,
+    EvseDataRecord,
+    CalibrationLawDataAvailability,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -713,4 +721,98 @@ def remote_stop_session():
 
     return OCPISessionFactory(
         uid="OURSESSIONID", evse=evse, authorization_reference="2345ABC"
+    )
+
+
+@pytest.fixture
+def sample_evse_data_payload():
+    return ERoamingPushEvseData(
+        ActionType=ActionType.fullLoad,
+        OperatorEvseData=OperatorEvseData(
+            OperatorID=OperatorID(root="DE*BER"),
+            OperatorName="MNO Company Pvt Ltd",
+            EvseDataRecord=[
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*EMNOEVSEUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 1")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Test Street",
+                        PostalCode="10115",
+                        HouseNum="1",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.AC_3_PHASE,
+                            Voltage=230,
+                            Amperage=16,
+                            Power=11,
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.None_],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*ESECONDUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 2")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Another Street",
+                        PostalCode="10115",
+                        HouseNum="2",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.DC, Voltage=400, Amperage=125, Power=50
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.Reservation],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+            ],
+        ),
     )
