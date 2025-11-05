@@ -21,9 +21,11 @@ from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from ocpiconnector.settings import setup_sentry
 from util import unwrap
@@ -289,10 +291,11 @@ def send_hubject_request(
 
 
 @shared_task(bind=True, max_retries=3, retry_backoff=60)
-def send_hubject_evse_full_load(self, our_party: Party) -> None:
+def send_hubject_evse_full_load(self) -> None:
     from integrations.hubject.services import HubjectService
 
     try:
+        our_party = get_our_party(OcpiRolesEnum.CPO)
         service = HubjectService()
         try:
             payload = service.get_evse_full_load_payload(our_party)

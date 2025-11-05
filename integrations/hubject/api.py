@@ -34,10 +34,9 @@ api = CustomNinjaAPI(
 hubject_service = HubjectService()
 
 
-@api.post("/evses/full-load/", url_name="hubject-evse-full-load", response=Dict)
+@api.post("/evses/full-load/", url_name="hubject-evse-full-load", response={202: dict})
 def update_oicp_evses_by_operator(request):
-    our_party = get_our_party(OcpiRolesEnum.CPO)
-    send_hubject_evse_full_load.delay(our_party)
+    send_hubject_evse_full_load.delay()
 
     return 202, {
         "message": "EVSE update task queued",
