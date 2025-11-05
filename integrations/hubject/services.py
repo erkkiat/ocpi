@@ -77,17 +77,25 @@ class HubjectService:
 
     @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
+        hubject_credentials_role = get_credentialsrole(
+            credentials=None,
+            party=Party.from_str(settings.HUBJECT_OPERATOR_ID),
+            role=OcpiRolesEnum.HUB,
+        )
+        if not hubject_credentials_role:
+            logger.error(
+                "Hubject credentials not found for fetching operator EVSE data"
+            )
+            return None
+
+        allowed_locations = hubject_credentials_role.credentials.allowed_locations
+
         locations = Location.objects.filter(
             ocpi_master__party_id=party.party_id,
             ocpi_master__country_code=party.country_code,
-        )
-        evse_data_records = []
-        operator_name = None
-
-        if len(locations) == 0:
-            return None
-
-        locations = Location.objects.prefetch_related(
+            uid__in=allowed_locations,
+            roaming_enabled=True,
+        ).prefetch_related(
             Prefetch(
                 "evses",
                 queryset=Evse.objects.prefetch_related(
@@ -101,7 +109,13 @@ class HubjectService:
             )
         )
 
-        for location in locations:
+        if not locations.exists():
+            return None
+
+        evse_data_records = []
+        operator_name = None
+
+        for location in locations.iterator(chunk_size=10):
             tmp_operator_evse_data = (
                 HubjectService.converter.convert_to_operator_evse_data(location)
             )
@@ -111,9 +125,11 @@ class HubjectService:
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if len(connector.get_tariffs()) == 0:
+                        logger.error(
+                            f"EVSE Full Load Failed: No tariffs found for Evse {evse.evse_id} and connector {connector.standard}",
+                            exc_info=True,
+                        )
                         raise ConnectorTariffNotFoundError(
-                            evse.evse_id,
-                            connector.standard,
                             f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",
                         )
 
