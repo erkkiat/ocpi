@@ -110,10 +110,12 @@ from rest_framework.generics import get_object_or_404  # noqa
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
 from ocpi22.cpo.mqtt.custom_orjson_serializer import orjson_serializer  # noqa
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache  # noqa
+from ocpi22.cpo.session_service import SessionService  # noqa
 from ocpi22.locations.services import EvseServices  # noqa
 from ocpi22.models.location import Evse  # noqa
 from ocpi22.models.session import Session  # noqa
 from ocpi22.tasks import send_ocpi_request  # noqa
+from integrations.hubject.schemas import ChargingNotificationType  # noqa
 from ocpiconnector.ocpi_identities import get_our_party  # noqa
 from util import format_session_url  # noqa
 
@@ -145,3 +147,59 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     evse.save(update_fields=["status", "last_updated"])
     EvseServices.send_status_updates(evse)
     return
+
+
+@shared_task(queue="HIGH")
+def update_meter_values_async(
+    session_id: str,
+    timestamp: str,
+    kwh: float,
+    soc: float | None = None,
+    power: float | None = None,
+) -> None:
+    try:
+        session = (
+            Session.objects.select_related(
+                "credentials",
+                "evse",
+                "evse__location",
+                "connector",
+            )
+            .prefetch_related("chargingperiods__dimensions", "connector__tariff_ids")
+            .filter(uid=session_id)
+            .first()
+        )
+
+        if not session:
+            logger.warning(f"No session found for session_id: {session_id}")
+            return
+
+        if session.status != Session.ACTIVE:
+            logger.info(
+                f"Meter values received for non-active session: {session_id} "
+                f"with status {session.status}, skipping"
+            )
+            return
+
+        timestamp_dt = datetime.fromisoformat(timestamp)
+
+        SessionService().update_meter_values(
+            session=session,
+            timestamp=timestamp_dt,
+            kwh=kwh,
+            soc=soc,
+            power=power,
+        )
+
+        session.send_updates(
+            method="put", update_type=ChargingNotificationType.Progress
+        )
+
+        logger.info(f"Successfully processed meter values for session {session_id}")
+
+    except Exception:
+        logger.warning(
+            f"Failed to process meter values for session {session_id}. "
+            f"Next meter value or stop_transaction will provide updated state.",
+            exc_info=True,
+        )
