@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from urllib.error import HTTPError
 from urllib.parse import urljoin
@@ -163,6 +164,60 @@ class HubjectService:
         )
 
     @staticmethod
+    def parse_hubject_validation_errors(
+        response_json: dict, payload: ERoamingPushEvseData
+    ) -> dict:
+        try:
+            result = {
+                "message": response_json.get("message", "Unknown error"),
+                "errors": [],
+                "error_count": 0,
+                "field_summary": {},
+                "status_code": 400,
+            }
+
+            validation_errors = response_json.get("validationErrors", [])
+            result["error_count"] = len(validation_errors)
+
+            for error in validation_errors:
+                field_ref = error.get("fieldReference", "unknown")
+                error_msg = error.get("errorMessage", "No error message")
+
+                match = re.search(r"\[(\d+)\]", field_ref)
+                index = int(match.group(1)) if match else 0
+
+                evse_record = (
+                    payload.OperatorEvseData.EvseDataRecord[index]
+                    if index < len(payload.OperatorEvseData.EvseDataRecord)
+                    else None
+                )
+
+                formatted_error = f"Field: {field_ref} - EVSE: {evse_record.EvseID if evse_record else 'Unknown'} - Error: {error_msg}"
+
+                result["errors"].append(formatted_error)
+
+                if "." in field_ref:
+                    field_pattern = (
+                        field_ref.split("].")[-1]
+                        if "]." in field_ref
+                        else field_ref.split(".")[-1]
+                    )
+                    if field_pattern not in result["field_summary"]:
+                        result["field_summary"][field_pattern] = 0
+                    result["field_summary"][field_pattern] += 1
+
+            return result
+        except Exception:
+            logger.exception("Error parsing Hubject validation errors")
+            return {
+                "message": "Failed to parse validation errors",
+                "errors": response_json,
+                "error_count": 1,
+                "field_summary": {},
+                "status_code": 500,
+            }
+
+    @staticmethod
     def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
         full_load_url = urljoin(
             with_trailing_slash(settings.HUBJECT_URL),
@@ -176,10 +231,17 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
+                formatted_errors = HubjectService.parse_hubject_validation_errors(
+                    response.json(), payload
+                )
+                logger.error(
+                    f"Hubject EVSE full load failed with status code {response.status_code}",
+                    extra={"response_text": formatted_errors},
+                )
                 return {
                     "success": False,
                     "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
+                    "error": formatted_errors,
                 }
         except PydanticSerializationError as e:
             logger.exception("Pydantic validation failed")
