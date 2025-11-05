@@ -91,12 +91,16 @@ class HubjectService:
 
         allowed_locations = hubject_credentials_role.credentials.allowed_locations
 
-        locations = Location.objects.filter(
-            ocpi_master__party_id=party.party_id,
-            ocpi_master__country_code=party.country_code,
-            uid__in=allowed_locations,
-            roaming_enabled=True,
-        ).prefetch_related(
+        location_filter = {
+            "ocpi_master__party_id": party.party_id,
+            "ocpi_master__country_code": party.country_code,
+            "roaming_enabled": True,
+        }
+
+        if allowed_locations:
+            location_filter["uid__in"] = allowed_locations
+
+        locations = Location.objects.filter(**location_filter).prefetch_related(
             Prefetch(
                 "evses",
                 queryset=Evse.objects.prefetch_related(
