@@ -226,6 +226,7 @@ class TestHubjectService:
         emsdetten_tariff,
         berlin_evse2_data,
         emsdetten2_evse,
+        hubject_credentials,
     ):
         berlin2_location.evses_with_connectors = [berlin_evse2_data]
         emsdetten2_location.evses_with_connectors = [emsdetten2_evse]
@@ -238,7 +239,7 @@ class TestHubjectService:
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert result == self.expected_berlin_emsdetten_op_evse_data_record()
+        assert result == self.expected_berlin_op_evse_data_record()
 
     def test_get_evse_full_load(
         self,
@@ -347,7 +348,10 @@ class TestHubjectService:
         }
 
     @responses.activate
-    def test_forbidden_response_for_post_evse_full_load(self, evse_full_load_payload):
+    @pytest.mark.django_db
+    def test_forbidden_response_for_post_evse_full_load(
+        self, evse_full_load_payload, hubject_credentials
+    ):
         operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
 
         responses.add(
@@ -464,9 +468,9 @@ class TestHubjectService:
 
     @pytest.mark.django_db
     def test_get_operator_evse_data_raises_connector_tariff_not_found_when_no_tariffs_assigned_to_evses(
-        self, helsinki_location
+        self, helsinki_location, hubject_credentials
     ):
-        party = get_our_party(OcpiRolesEnum.CPO)
+        party = helsinki_location.ocpi_master.get_party()
 
         evse = helsinki_location.evses.first()
         connector = evse.connectors.first()
@@ -477,7 +481,9 @@ class TestHubjectService:
             self.__hubject_service.get_operator_evse_data(party)
 
     @pytest.mark.django_db
-    def test_get_operator_evse_data_without_evse_data_records_return_none(self):
+    def test_get_operator_evse_data_without_evse_data_records_return_none(
+        self, hubject_credentials
+    ):
         party = get_our_party(OcpiRolesEnum.CPO)
         Location.objects.filter(
             ocpi_master__party_id=party.party_id,
@@ -1749,3 +1755,217 @@ class TestHubjectAuthorizeRemoteStop:
 
         assert exc_info.value.args[0] == "Session not found"
         assert exc_info.value.error_code == "400"
+
+
+@pytest.fixture
+def validation_error_response():
+    return {
+        "message": "Validation failed",
+        "validationErrors": [
+            {
+                "fieldReference": "OperatorEvseData.EvseDataRecord[0].Address.Street",
+                "errorMessage": "Street is required",
+            },
+            {
+                "fieldReference": "OperatorEvseData.EvseDataRecord[1].GeoCoordinates.Latitude",
+                "errorMessage": "Invalid latitude format",
+            },
+        ],
+    }
+
+
+class TestParseHubjectValidationErrors:
+    def test_parse_validation_errors_successfully(
+        self, validation_error_response, sample_evse_data_payload
+    ):
+        result = HubjectService.parse_hubject_validation_errors(
+            validation_error_response, sample_evse_data_payload
+        )
+
+        assert result["message"] == "Validation failed"
+        assert result["error_count"] == 2
+        assert result["status_code"] == 400
+        assert len(result["errors"]) == 2
+        assert "Street is required" in result["errors"][0]
+        assert "Invalid latitude format" in result["errors"][1]
+
+    def test_field_summary_aggregation(
+        self, validation_error_response, sample_evse_data_payload
+    ):
+        result = HubjectService.parse_hubject_validation_errors(
+            validation_error_response, sample_evse_data_payload
+        )
+
+        assert "Address.Street" in result["field_summary"]
+        assert result["field_summary"]["Address.Street"] == 1
+        assert "GeoCoordinates.Latitude" in result["field_summary"]
+        assert result["field_summary"]["GeoCoordinates.Latitude"] == 1
+
+    def test_evse_index_extraction(
+        self, validation_error_response, sample_evse_data_payload
+    ):
+        result = HubjectService.parse_hubject_validation_errors(
+            validation_error_response, sample_evse_data_payload
+        )
+
+        assert "DE*BER*EMNOEVSEUID" in result["errors"][0]
+        assert "DE*BER*ESECONDUID" in result["errors"][1]
+
+    def test_missing_field_reference(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "errorMessage": "Some error without field reference",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert "unknown" in result["errors"][0]
+        assert result["error_count"] == 1
+
+    def test_missing_error_message(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "fieldReference": "OperatorEvseData.EvseDataRecord[0].Address.Street",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert "No error message" in result["errors"][0]
+
+    def test_invalid_index_in_field_reference(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "fieldReference": "OperatorEvseData.EvseDataRecord[999].Address.Street",
+                    "errorMessage": "Invalid index",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert "Unknown" in result["errors"][0]
+
+    def test_unexpected_field_reference_format(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "fieldReference": "OperatorEvseData.SomeField",
+                    "errorMessage": "Invalid field",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert result["error_count"] == 1
+        assert "Unknown" in result["errors"][0]
+
+    def test_empty_validation_errors(self, sample_evse_data_payload):
+        response = {
+            "message": "No validation errors",
+            "validationErrors": [],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert result["error_count"] == 0
+        assert len(result["errors"]) == 0
+        assert result["field_summary"] == {}
+
+    def test_missing_validation_errors_key(self, sample_evse_data_payload):
+        response = {
+            "message": "Some error",
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert result["error_count"] == 0
+        assert result["message"] == "Some error"
+
+    def test_missing_message_key(self, sample_evse_data_payload):
+        response = {
+            "validationErrors": [],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert result["message"] == "Unknown error"
+
+    def test_field_reference_with_bracket_notation(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "fieldReference": "OperatorEvseData.EvseDataRecord[0].Address.Street",
+                    "errorMessage": "Invalid",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert "Address.Street" in result["field_summary"]
+
+    def test_field_reference_without_bracket_notation(self, sample_evse_data_payload):
+        response = {
+            "message": "Validation failed",
+            "validationErrors": [
+                {
+                    "fieldReference": "OperatorEvseData.OperatorName",
+                    "errorMessage": "Invalid",
+                }
+            ],
+        }
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert "OperatorName" in result["field_summary"]
+
+    def test_exception_handling(self, sample_evse_data_payload):
+        response = "invalid_json_string"
+
+        result = HubjectService.parse_hubject_validation_errors(
+            response, sample_evse_data_payload
+        )
+
+        assert result["message"] == "Failed to parse validation errors"
+        assert result["error_count"] == 1
+        assert result["status_code"] == 500
+        assert result["errors"] == "invalid_json_string"
+
+    def test_none_response(self, sample_evse_data_payload):
+        result = HubjectService.parse_hubject_validation_errors(
+            None, sample_evse_data_payload
+        )
+
+        assert result["message"] == "Failed to parse validation errors"
+        assert result["status_code"] == 500
