@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime
+from json import JSONDecodeError
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 
@@ -235,9 +236,14 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
-                formatted_errors = HubjectService.parse_hubject_validation_errors(
-                    response.json(), payload
-                )
+                try:
+                    response_json = response.json()
+                    formatted_errors = HubjectService.parse_hubject_validation_errors(
+                        response_json, payload
+                    )
+                except JSONDecodeError:
+                    formatted_errors = f"{response.status_code} : {response.text}"
+
                 logger.error(
                     f"Hubject EVSE full load failed with status code {response.status_code}",
                     extra={"response_text": formatted_errors},

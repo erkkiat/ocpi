@@ -226,6 +226,7 @@ class TestHubjectService:
         emsdetten_tariff,
         berlin_evse2_data,
         emsdetten2_evse,
+        hubject_credentials,
     ):
         berlin2_location.evses_with_connectors = [berlin_evse2_data]
         emsdetten2_location.evses_with_connectors = [emsdetten2_evse]
@@ -238,7 +239,7 @@ class TestHubjectService:
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert result == self.expected_berlin_emsdetten_op_evse_data_record()
+        assert result == self.expected_berlin_op_evse_data_record()
 
     def test_get_evse_full_load(
         self,
@@ -347,7 +348,10 @@ class TestHubjectService:
         }
 
     @responses.activate
-    def test_forbidden_response_for_post_evse_full_load(self, evse_full_load_payload):
+    @pytest.mark.django_db
+    def test_forbidden_response_for_post_evse_full_load(
+        self, evse_full_load_payload, hubject_credentials
+    ):
         operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
 
         responses.add(
@@ -464,9 +468,9 @@ class TestHubjectService:
 
     @pytest.mark.django_db
     def test_get_operator_evse_data_raises_connector_tariff_not_found_when_no_tariffs_assigned_to_evses(
-        self, helsinki_location
+        self, helsinki_location, hubject_credentials
     ):
-        party = get_our_party(OcpiRolesEnum.CPO)
+        party = helsinki_location.ocpi_master.get_party()
 
         evse = helsinki_location.evses.first()
         connector = evse.connectors.first()
@@ -477,7 +481,9 @@ class TestHubjectService:
             self.__hubject_service.get_operator_evse_data(party)
 
     @pytest.mark.django_db
-    def test_get_operator_evse_data_without_evse_data_records_return_none(self):
+    def test_get_operator_evse_data_without_evse_data_records_return_none(
+        self, hubject_credentials
+    ):
         party = get_our_party(OcpiRolesEnum.CPO)
         Location.objects.filter(
             ocpi_master__party_id=party.party_id,
