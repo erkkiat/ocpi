@@ -1,4 +1,5 @@
 import json
+import time
 from logging import getLogger
 from typing import Union
 from urllib.parse import urljoin
@@ -46,43 +47,54 @@ async def post_request(
     headers = headers or {}
     response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
     headers.update({"Content-Type": "application/json", "Accept": "application/json"})
+
+    start_time = time.time()
     try:
         response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        duration = time.time() - start_time
         response_status = response.status
         json_data = await response.json()
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
-        logger.error(f"Cannot decode JSON response from url {url}")
+        duration = time.time() - start_time
+        logger.error(
+            f"Cannot decode JSON response from url {url}",
+            extra={"response_duration": duration, "status_code": response_status},
+        )
         json_data = None
     except ClientError:
-        logger.error(f"Cannot connect to {url} for token authorization")
+        duration = time.time() - start_time
+        logger.error(
+            f"Cannot connect to {url} for token authorization",
+            extra={"response_duration": duration},
+        )
         return 0, None, None
 
-    logger.info("Response from %s status: %s", url, response_status, extra=json_data)
+    logger.info(
+        "Received authorization from %s with status : %s",
+        url,
+        response_status,
+        extra={**json_data, "response_duration": duration}
+        if json_data
+        else {"response_duration": duration},
+    )
     return response_status, json_data, ocpi_master
 
 
 def process_task_result(successful_task) -> dict | None:
     # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
-    try:
-        status_code, json_data, ocpi_master = successful_task.result()
-        if status_code != 200:
-            return None
-        if isinstance(json_data, dict):
-            json_data = json_data.get("data")
-            # If content is a Token authorize response, then break, otherwise continue
-            if isinstance(json_data, dict) and json_data.get("allowed"):
-                logger.info(f"Received authorization from {successful_task.get_name()}")
-                json_data["responding_party"] = successful_task.get_name()
-                token = json_data.get("token", {})
-                json_data["msp"] = (
-                    f'{token.get("country_code", "")}*{token.get("party_id", "")}'
-                )
-                return json_data
-    except (aiohttp.ContentTypeError, json.JSONDecodeError):
-        # Handle the case where response is not JSON or cannot be decoded
-        logger.error(
-            f"Cannot decode JSON response from party {successful_task.get_name()}"
-        )
+    status_code, json_data, ocpi_master = successful_task.result()
+    if status_code != 200:
+        return None
+    if isinstance(json_data, dict):
+        json_data = json_data.get("data")
+        # If content is a Token authorize response, then break, otherwise continue
+        if isinstance(json_data, dict) and json_data.get("allowed"):
+            json_data["responding_party"] = successful_task.get_name()
+            token = json_data.get("token", {})
+            json_data["msp"] = (
+                f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+            )
+            return json_data
         pass
     return None
 
