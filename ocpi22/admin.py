@@ -9,7 +9,6 @@ from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
-from humanize import naturaltime
 
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
@@ -40,7 +39,6 @@ from ocpiconnector.ocpi_identities import (
     get_our_credentialsrole,
 )
 from ocpiconnector.party import Party
-from webhooks.models import Webhook
 from payment.models import Payment
 
 admin.site.site_header = "Roaming Admin"
@@ -49,7 +47,7 @@ admin.site.index_title = "Dashboard"
 
 class AdminUtilityMixin:
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -423,7 +421,7 @@ class EvseAdmin(SolidNestedModelAdmin):
     location_link.short_description = "Location"
 
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -818,7 +816,7 @@ class CredentialsAdmin(SolidModelAdmin):
         return super().has_change_permission(request, obj=obj)
 
     def last_update(self, obj):
-        return naturaltime(obj.last_connection)
+        return obj.last_connection
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -954,13 +952,6 @@ class AuthorizationAdmin(SolidModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-@admin.register(Webhook)
-class WebhookAdmin(admin.ModelAdmin):
-    model = Webhook
-    list_display = ["event", "url", "created_at", "updated_at"]
-    search_fields = ["event", "url"]
 
 
 admin.site.register(Token, TokenAdmin)

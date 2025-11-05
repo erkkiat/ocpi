@@ -474,7 +474,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
 
         for e in evses:
             connectors = e.pop("connectors", [])
-            capabilities = e.pop("capabilities", None)
             evse = Evse.get_if_exists(
                 uid__iexact=e.get("uid"), location__ocpi_master=location.ocpi_master
             ) or Evse.get_if_exists(uid__iexact=e.get("uid"), location=location)
@@ -482,9 +481,6 @@ class LocationSerializer221(HyperlinkedModelSerializerCleanedUp):
                 self.update_evse(evse, e, location)
             else:
                 evse = Evse.objects.create(**e, location=location)
-
-            if capabilities is not None:
-                evse.capabilities = capabilities
 
             for c in connectors:
                 tariff_ids = c.pop("tariff_ids", [])

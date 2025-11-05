@@ -7,8 +7,6 @@ case "$1" in
     django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
-        echo "Applying migrations"
-        python manage.py migrate --noinput
         echo "Starting Django server with New Relic monitoring..."
         exec newrelic-admin run-program gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;
@@ -22,7 +20,7 @@ case "$1" in
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec newrelic-admin run-program celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME -E
+        exec newrelic-admin run-program celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
         ;;
     *)
         echo "Unknown service: $1"

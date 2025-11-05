@@ -1,9 +1,13 @@
 from base64 import b64encode
 
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.models.credentials import Credentials
+from ocpi22.ocpi.auth import get_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from test_util import cleanup_credentialsrole
 
 from ocpi22.tests.factories import (
@@ -123,3 +127,21 @@ def enable_db_access_for_doctests(request, django_db_blocker):
     """Allow database access for doctests only."""
     if request.node.getparent(pytest.DoctestItem):
         django_db_blocker.unblock()
+
+
+@pytest.fixture
+def hubject_credentials(clear_all_cache) -> Credentials:
+    party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
+
+    return CredentialsRoleFactory(
+        country_code=party.country_code,
+        party_id=party.party_id,
+        role="HUB",
+        business_details__name="Hubject",
+    ).credentials
+
+
+@pytest.fixture
+def clear_all_cache():
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()

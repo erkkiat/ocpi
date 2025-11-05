@@ -8,10 +8,10 @@ import asyncio
 
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
-from integrations.hubject.services import HubjectService
 from ocpi22.choices import (
     OcpiRolesEnum,
     OcpiModuleEnum,
@@ -61,7 +61,7 @@ async def post_request(
     return response_status, json_data, ocpi_master
 
 
-def process_task_result(successful_task):
+def process_task_result(successful_task) -> dict | None:
     # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
         status_code, json_data, ocpi_master = successful_task.result()
@@ -73,7 +73,10 @@ def process_task_result(successful_task):
             if isinstance(json_data, dict) and json_data.get("allowed"):
                 logger.info(f"Received authorization from {successful_task.get_name()}")
                 json_data["responding_party"] = successful_task.get_name()
-                json_data["ocpi_master"] = ocpi_master
+                token = json_data.get("token", {})
+                json_data["msp"] = (
+                    f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+                )
                 return json_data
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
         # Handle the case where response is not JSON or cannot be decoded
@@ -112,22 +115,23 @@ async def create_ssl_context(credential_id):
 
 async def authorize_with_msps(token: Union[str, Token], data, parties):
     """
-    Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
+    Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
+    If no MSP allows the token, returns the first denial response with specific reason.
 
     @param token: token_id as str or Token object
     @param data: the data to be sent in the Token authorization request
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
-    @return:
+    @return: dict with authorization response or None if all tasks fail
     """
+    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
-    # Prefetch credential roles before async operations
     async def prefetch_roles():
+        """Prefetch credential roles before async operations."""
         roles = []
         for _, _, country_code, party_id, credentials in parties:
-            # Prefetch the role in a synchronous context
             role = await sync_to_async(
                 lambda creds, cc, pid: creds.roles.filter(
                     country_code__iexact=cc, party_id__iexact=pid
@@ -137,18 +141,20 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             roles.append(role)
         return roles
 
-    result = None
-    pending_tasks = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
-    # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+
+    # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
-    # Get all roles up front
     prefetched_roles = await prefetch_roles()
 
+    allowed_response = None
+    first_denial_response = None
+
     async with aiohttp.ClientSession() as session:
+        # Create authorization tasks for all MSPs
         tasks = [
             asyncio.create_task(
                 post_request(
@@ -156,7 +162,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     ssl_context=ssl_context,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=role,  # Use prefetched role instead of async lookup
+                    ocpi_master=role,
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
@@ -168,49 +174,54 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                 token_base64,
                 country_code,
                 party_id,
-                _,  # credentials not needed anymore
+                _,
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
 
-        tasks.append(
-            # Do SSL context per request, Hubject/Gireve separately
-            asyncio.create_task(
-                HubjectService().post_authorize_request(
-                    operator_id=str(sender),
-                    token_id=token_id,
-                ),
-                name="Hubject",
+        # Add Hubject task if enabled
+        if settings.ENABLE_HUBJECT:
+            tasks.append(
+                asyncio.create_task(
+                    HubjectService.post_authorize_request(
+                        operator_id=str(sender),
+                        token_id=token_id,
+                    ),
+                    name=settings.HUBJECT_OPERATOR_ID,
+                )
             )
-        )
 
-        while tasks:
+        remaining_tasks = set(tasks)
+
+        while remaining_tasks:
             done_tasks, pending_tasks = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_COMPLETED
+                remaining_tasks, return_when=asyncio.FIRST_COMPLETED
             )
-            # print(f'Processing {len(done_tasks)} done_tasks tasks ({len(pending_tasks)} still pending_tasks)...')
 
             for task in done_tasks:
                 try:
-                    result = process_task_result(task)
-                    if result:
-                        break  # For loop
+                    response_data = process_task_result(task)
+                    if not response_data:
+                        continue
+
+                    if response_data.get("allowed") == AuthorizationEnum.ALLOWED:
+                        allowed_response = response_data
+                        break
+                    elif first_denial_response is None:
+                        first_denial_response = response_data
                 except Exception:
                     logger.exception(f"Task {task.get_name()} failed")
 
-            if result:
-                break  # While loop
+            if allowed_response:
+                break
 
-            if not pending_tasks:
-                # No more tasks pending_tasks, break the loop
-                return result
+            remaining_tasks = pending_tasks
 
-            tasks = set(pending_tasks)
+        for task in remaining_tasks:
+            if not task.done():
+                logger.debug(f"Cancelling task {task.get_name()}")
+                task.cancel()
 
-        # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
-        for task in pending_tasks:
-            logger.debug(f"Cancelling task {task.get_name()}", task.cancel())
-
-        return result
+    return allowed_response or first_denial_response
 
 
 def authorize_with_msps_sync(
@@ -272,16 +283,16 @@ def authorize_with_msps_sync(
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
                 token = serializer.validated_data.pop("token", {})
-                ocpi_master = response.get("ocpi_master")
-                token["ocpi_master"] = ocpi_master
-                token["billed_to"] = ocpi_master
+                msp = response.get("msp")
+                token["billed_to"] = msp
+                token["ocpi_master"] = msp
                 return TokenAuthorization(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=ocpi_master.get_party(),
-                    ocpi_master=ocpi_master,
+                    billed_to=Party.from_str(msp),
+                    msp=msp,
                 )
             else:
                 logger.error(

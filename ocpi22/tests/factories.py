@@ -1,4 +1,5 @@
 import time
+import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -35,7 +36,8 @@ from integrations.hubject.schemas import (
     ERoamingPushEVSEPricing,
     EVSEPricingItem,
 )
-from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum
+from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
+from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -43,9 +45,16 @@ from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
 from ocpi22.models.location import Location, Evse, Connector
-from ocpi22.models.session import Session
-from ocpi22.models.tariff import Tariff, SolidTariff, TariffElement, PriceComponent
+from ocpi22.models.session import Session, CdrDimension, ChargingPeriod
+from ocpi22.models.tariff import (
+    Tariff,
+    SolidTariff,
+    TariffElement,
+    PriceComponent,
+    DefaultTariffs,
+)
 from ocpi22.models.token import Token
+from ocpi22.ocpi.util import Ocpi
 
 fake = Faker()
 
@@ -54,7 +63,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = User
 
-    username = "SolidRoamUser"
+    username = factory.Sequence(lambda n: f"SolidRoamUser{n}")
     email = "user@solidroam.com"
     password = factory.PostGenerationMethodCall(
         "set_password", "j0s9J117uS126dNr915zIj7d1J10UJ2f"
@@ -103,6 +112,16 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     last_connection = factory.Faker("date_time", tzinfo=pytz.UTC)
     version = "22"
     valid = True
+
+
+class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CredentialsRole
+
+    role = "CPO"
+    business_details = factory.SubFactory(BusinessDetailsFactory)
+    country_code = "FI"
+    party_id = "CPO"
 
 
 class CredentialsRoleFactory(factory.django.DjangoModelFactory):
@@ -468,6 +487,9 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
     currency = "EUR"
     price_per_kwh = 0.2
     price_per_min = 0.3
+    price_per_hr = 0.3
+    parking_price_per_min = 0.1
+    parking_price_per_hr = 0.2
     price_flat = 0.3
     vat_percentage = 0.2
     msp = factory.SubFactory(
@@ -505,11 +527,11 @@ class CdrFactory(factory.Factory):
             self.tariffs.add(TariffFactory())
 
     ocpi_master = factory.SubFactory(CredentialsRoleFactory)
-    uid = "UID-12345"
+    uid = "UID12345"
     start_date_time = datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC)
     end_date_time = datetime(2022, 2, 22, 23, 22, 22, tzinfo=pytz.UTC)
-    session_id = "SESSION-123"
-    cdr_token_uid = "TOKEN-123"
+    session_id = "SESSION123"
+    cdr_token_uid = "TOKEN123"
     cdr_token_type = "RFID"
     cdr_token_contract_id = "CONTRACT-123"
     auth_method = "WHITELIST"
@@ -522,8 +544,12 @@ class CdrFactory(factory.Factory):
     cdr_location_latitude = "47.662249"
     cdr_location_longitude = "9.360922"
     cdr_location_name = "Location A"
-    cdr_location_evse_uid = "EVSE-123"
-    cdr_location_evse_id = f"{str(ocpi_master)}*E{cdr_location_evse_uid}"[:48]
+    cdr_location_evse_uid = "EVSE123"
+    cdr_location_evse_id = factory.LazyAttribute(
+        lambda obj: f"{obj.ocpi_master.country_code}*{obj.ocpi_master.party_id}*E{obj.cdr_location_evse_uid}"[
+            :48
+        ]
+    )
     cdr_location_connector_id = "1"
     cdr_location_connector_standard = "IEC_62196_T2"
     cdr_location_connector_format = "CABLE"
@@ -531,7 +557,7 @@ class CdrFactory(factory.Factory):
     currency = "EUR"
     total_cost_excl_vat = 0.1
     total_cost_incl_vat = 0.2
-    total_energy = 1.1
+    total_energy = 120.0
     billed_to = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="FI", party_id="MSP"
     )
@@ -548,7 +574,7 @@ class CdrTokenFactory(factory.django.DjangoModelFactory):
         role="EMSP",
         business_details__name="Test MSP",
     )
-    uid = "CDRTOKEN-12345"
+    uid = "DEADC0DE"
     token_type = "RFID"
     contract_id = "CONTRACT-12345"
 
@@ -557,7 +583,7 @@ class CdrLocationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CdrLocation
 
-    uid = "LOC-12345"
+    uid = "LOC12345"
     name = "Location A"
     address = "Alfred Nobellaan 22 App 150Z"
     city = "Harelbeke"
@@ -584,7 +610,9 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         role="CPO",
         business_details__name="Test CPO",
     )
-    uid = "SESSION-12345"
+    uid = str(uuid.uuid4())
+    reservation_id = "EMSPSESSION1"
+    hub_session_id = "b2688855-7f00-0002-6d8e-48d883f6abb6"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
     end_date_time = datetime(2021, 1, 1, 12, 0, 0, tzinfo=pytz.UTC)
     start_kwh = 0.0
@@ -623,3 +651,84 @@ class TokenFactory(factory.django.DjangoModelFactory):
     updated = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     created = factory.Faker("date_time", tzinfo=ZoneInfo("UTC"))
     customer = factory.SubFactory(UserFactory)
+
+
+class CdrDimensionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CdrDimension
+
+    type = CdrDimensionEnum.ENERGY.value
+    volume = 10.0
+
+
+class ChargingPeriodFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ChargingPeriod
+
+    start_date_time = factory.LazyFunction(lambda: datetime.now(pytz.UTC))
+    session = factory.SubFactory(OCPISessionFactory)
+    tariff = factory.SubFactory(TariffFactory)
+
+    @factory.post_generation
+    def dimensions(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for dimension in extracted:
+                self.dimensions.add(dimension)
+        else:
+            CdrDimensionFactory(
+                chargingperiod=self, type=CdrDimensionEnum.ENERGY.value, volume=10.0
+            )
+            CdrDimensionFactory(
+                chargingperiod=self, type=CdrDimensionEnum.TIME.value, volume=1.5
+            )
+
+    @classmethod
+    def create_with_dimensions(cls, energy_volume=10.0, time_volume=1.5, **kwargs):
+        period = cls.create(**kwargs)
+
+        CdrDimensionFactory(
+            chargingperiod=period,
+            type=CdrDimensionEnum.ENERGY.value,
+            volume=energy_volume,
+        )
+
+        CdrDimensionFactory(
+            chargingperiod=period, type=CdrDimensionEnum.TIME.value, volume=time_volume
+        )
+
+        return period
+
+
+class DefaultTariffsFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DefaultTariffs
+
+    standard = factory.LazyFunction(Ocpi.STANDARD_CHOICES[0][0])
+
+    @factory.post_generation
+    def tariffs(self, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted:
+            for tariff in extracted:
+                self.tariffs.add(tariff)
+        else:
+            tariff1 = TariffFactory()
+            self.tariffs.add(tariff1)
+
+
+class CallBackFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CallBacks
+
+    session = factory.SubFactory(OCPISessionFactory)
+    callback_url = "https://example.com/callback"
+    authorization_reference = factory.Faker("uuid4")
+    execution_status = CallBackExecutionStatus.PENDING
+    response_status_code = None
+    response_body = None
+    executed_at = None

@@ -33,10 +33,9 @@ class Route:
     credentials_id: int = 0
     token_base64: str = ""
     alive: bool = True
-    direct: bool = False
     version: OCPIVersion = OCPIVersion("2.2.1")
     to: Party = Party("", "")
-    is_hubject: bool = False
+    route_through_oicp: bool = False
 
     @property
     def through_hub(self) -> bool:
@@ -47,7 +46,7 @@ class Route:
             self.version = OCPIVersion(self.version)
 
     def __bool__(self):
-        return bool(self.url and self.credentials_id)
+        return bool((self.url or self.route_through_oicp) and self.credentials_id)
 
     @property
     def credentials(self):
@@ -88,6 +87,9 @@ def find_route_from_credentials(
     ocpi_module: OcpiModuleEnum,
     role: Union[str, EndpointRoleEnum] = "RECEIVER",
 ) -> Route:
+    if str(credentials.roles.first().get_party()) == settings.HUBJECT_OPERATOR_ID:
+        return Route(credentials_id=credentials.pk, route_through_oicp=True)
+
     from ocpi22.models.credentials import Endpoint
 
     endpoints = Endpoint.objects.filter(
@@ -105,14 +107,11 @@ def find_route_from_credentials(
             identifier=ocpi_module,
             credentials_id=credentials.pk,
             token_base64=credentials.theirs_base64(),
-            direct=True,
             alive=credentials.responding(),
             version=OCPIVersion(credentials.version),
             to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
         )  # Todo: How to figure out the role, or is it relevant?
-    error_text = (
-        f"Endpoint `{ocpi_module.value}` {role} not found for party {credentials}"
-    )
+    error_text = f"Endpoint `{ocpi_module.value}` {role} not found for party {credentials} {credentials.party_str() or 'Unknown Party'}"
     raise ValueError(error_text)
 
 
@@ -132,7 +131,6 @@ def find_first_hub_route(ocpi_module: OcpiModuleEnum) -> Optional[Route]:
             identifier=ocpi_module,
             credentials_id=credentials.pk,
             token_base64=credentials.theirs_base64(),
-            direct=False,
             alive=credentials.responding(),
             version=credentials.version,
             to=credentials.get_party_for_role(OcpiRolesEnum.HUB),
@@ -246,7 +244,6 @@ def process_incoming_remote_command_at_hub(request: HttpRequest, data: str) -> s
                 identifier=OcpiModuleEnum.COMMANDS,
                 credentials_id=credentials.pk,
                 token_base64=credentials.theirs_base64(),
-                direct=True,
                 alive=credentials.responding(),
                 to=credentials.get_party_for_role(OcpiRolesEnum.EMSP),
                 version=credentials.version,

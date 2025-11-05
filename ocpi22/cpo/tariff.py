@@ -54,7 +54,15 @@ class SolidTariffViewSet(
         serializer = SolidTariffSerializer(
             self.service.get_all_latest_solid_tariffs(), many=True
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+        for item in data:
+            if "ocpi_tariff" in item and item["ocpi_tariff"]:
+                item["ocpi_tariff"] = (
+                    item["ocpi_tariff"].uid
+                    if hasattr(item["ocpi_tariff"], "uid")
+                    else item["ocpi_tariff"]
+                )
+        return Response(data, status=status.HTTP_200_OK)
 
     def put(
         self, request, external_id=None, country_code=None, party_id=None

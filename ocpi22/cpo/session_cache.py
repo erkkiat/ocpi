@@ -1,28 +1,29 @@
-from cachetools import cached, TTLCache
+import logging
+
 from django.conf import settings
 
-from ocpi22.choices import OcpiModuleEnum
 from ocpi22.cpo.mqtt.schemas import CachedSession
-from ocpi22.routing import find_route_from_credentials
 from util import RedisStore
+
+logger = logging.getLogger(__name__)
 
 session_store = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 
-@cached(cache=TTLCache(maxsize=0, ttl=4 * 60 * 60))
-def get_cached_session(session_id) -> CachedSession:
-    return session_store.retrieve(session_id)
+def get_cached_session(session_id) -> CachedSession | None:
+    try:
+        return session_store.retrieve(session_id)
+    except KeyError:
+        logger.warning(f"Session {session_id} not found in RedisStore.")
+        return None
 
 
-def save_to_session_cache(credentialsrole, session):
-    """Save a cached session to the Redis store for quick access (mainly by process_meter_values)"""
+def save_to_session_cache(route, session):
     cached_session = CachedSession(
         session_id=session.uid,
         kwh=session.kwh,
         timestamp=session.last_updated,
-        route_to_msp=find_route_from_credentials(
-            credentialsrole.credentials, OcpiModuleEnum.SESSIONS
-        ),
+        route_to_msp=route,
     )
     store_session_cache(cached_session)
 

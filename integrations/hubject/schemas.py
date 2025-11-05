@@ -9,6 +9,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+from django.conf import settings
+from ninja import Schema
 from pydantic import (
     BaseModel,
     Field,
@@ -17,8 +19,20 @@ from pydantic import (
     constr,
     RootModel,
     field_validator,
+    ConfigDict,
+    AwareDatetime,
+    NonNegativeFloat,
+    model_validator,
 )
+from pydantic.alias_generators import to_pascal
 
+from integrations.mixins import (
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
+    MeterValueEndValidatorMixin,
+    ChargingStartValidatorMixin,
+)
 from ocpi22.util import VALID_CURRENCY_CODE_SET
 
 """
@@ -47,6 +61,10 @@ the charge point location due to the need for time based charging fees.
 """
 
 
+class HubjectBaseModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_pascal, populate_by_name=True)
+
+
 class AuthorizationStatus(Enum):
     Authorized = "Authorized"
     NotAuthorized = "NotAuthorized"
@@ -60,6 +78,41 @@ class MeteringStatus(Enum):
     Start = "Start"
     Progress = "Progress"
     End = "End"
+
+
+STATUS_CODE_TEXT: dict[str, str] = {
+    "000": "Success",
+    "001": "Hubject system error",
+    "002": "Hubject database error",
+    "009": "Data transaction error",
+    "017": "Unauthorized Access",
+    "018": "Inconsistent EvseID",
+    "019": "Inconsistent EvcoID",
+    "021": "System error",
+    "022": "Data error",
+    "101": "QR Code Authentication failed – Invalid Credentials",
+    "102": "RFID Authentication failed – invalid UID",
+    "103": "RFID Authentication failed – card not readable",
+    "105": "PLC Authentication failed - invalid EvcoID",
+    "106": "No positive authentication response",
+    "110": "QR Code App Authentication failed – time out error",
+    "120": "PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID",
+    "121": "PLC (ISO/ IEC 15118) Authentication failed – invalid certificate",
+    "122": "PLC (ISO/ IEC 15118) Authentication failed – time out error",
+    "200": "EvcoID locked",
+    "210": "No valid contract",
+    "300": "Partner not found",
+    "310": "Partner did not respond",
+    "320": "Service not available",
+    "400": "Session is invalid",
+    "501": "Communication to EVSE failed",
+    "510": "No EV connected to EVSE",
+    "601": "EVSE already reserved",
+    "602": "EVSE already in use/ wrong token",
+    "603": "Unknown EVSE ID",
+    "604": "EVSE ID is not Hubject compatible",
+    "700": "EVSE out of service",
+}
 
 
 class SignedMeteringValue(BaseModel):
@@ -232,43 +285,7 @@ class RFID(Enum):
 
 
 class StatusCode(BaseModel):
-    Code: str = Field(
-        # I wonder why this is not an enum
-        ...,
-        description="| Option | Description | Area of Usage |"
-        "| -------|-------------|---------------|"
-        "| 000 | Success. | General codes |"
-        "| 001 | Hubject system error. | Internal system codes |"
-        "| 002 | Hubject database error. |Internal system codes|"
-        "| 009 |Data transaction error. | Internal system codes|"
-        "|017 |Unauthorized Access. |Internal system codes |"
-        "|018 |Inconsistent EvseID. |Internal system codes |"
-        "|019 |Inconsistent EvcoID. |Internal system codes |"
-        "|021 |System error. |General codes |"
-        "|022 |Data error. |General codes |"
-        "|101 |QR Code Authentication failed – Invalid Credentials. |Authentication codes |"
-        "|102 |RFID Authentication failed – invalid UID. |Authentication codes |"
-        "|103 |RFID Authentication failed – card not readable. |Authentication codes |"
-        "|105 |PLC Authentication failed - invalid EvcoID. |Authentication codes |"
-        "|106 |No positive authentication response. |Authentication codes / Internal system codes |"
-        "|110 |QR Code App Authentication failed – time out error. |Authentication codes |"
-        "|120 |PLC (ISO/ IEC 15118) Authentication failed – invalid underlying EvcoID. |Authentication codes |"
-        "|121 |PLC (ISO/ IEC 15118) Authentication failed – invalid certificate. |Authentication codes |"
-        "|122 |PLC (ISO/ IEC 15118) Authentication failed – time out error. |Authentication codes |"
-        "|200 |EvcoID locked. |Authentication codes |"
-        "|210 |No valid contract. |Session codes |"
-        "|300 |Partner not found. |Session codes |"
-        "|310 |Partner did not respond. |Session codes |"
-        "|320 |Service not available. |Session codes |"
-        "|400 |Session is invalid. |Session codes |"
-        "|501 |Communication to EVSE failed. |EVSE codes |"
-        "|510 |No EV connected to EVSE. |EVSE codes |"
-        "|601 |EVSE already reserved. |EVSE codes |"
-        "|602 |EVSE already in use/ wrong token. |EVSE codes |"
-        "|603 |Unknown EVSE ID. |EVSE codes |"
-        "|604 |EVSE ID is not Hubject compatible. |EVSE codes |"
-        "|700 |EVSE out of service. |EVSE codes |",
-    )
+    Code: str = Field(...)
     Description: Optional[str] = Field(None, description="description")
     AdditionalInfo: Optional[str] = Field(
         None, description="More information can be provided here"
@@ -622,19 +639,22 @@ class OpeningTimes(BaseModel):
     )
 
 
-class ERoamingAcknowledgment(BaseModel):
-    Result: bool = Field(
+class ERoamingAcknowledgment(HubjectBaseModel):
+    result: bool = Field(
         ...,
+        alias="Result",
         description="If result is true, the message was received and the respective operation was performed successfully.\n\nIf result is false, the message was received and the respective operation was not performed successfully.\n",
     )
-    StatusCode: StatusCode
-    SessionID: Optional[SessionID] = None
-    CPOPartnerSessionID: Optional[str] = Field(
+    status_code: StatusCode = Field(..., alias="StatusCode")
+    session_id: Optional[SessionID] = Field(None, alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
 
@@ -668,18 +688,20 @@ class ERoamingAuthorizeRemoteReservationStop(BaseModel):
     EvseID: EvseID
 
 
-class ERoamingAuthorizeRemoteStop(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStop(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by the CPO to the related operation.",
+        alias="CPOPartnerSessionID",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
         description="Optional field containing the session id assigned by an EMP to the related operation.",
+        alias="EMPPartnerSessionID",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
 
 
 class EVSEPricingItem(BaseModel):
@@ -697,22 +719,22 @@ class ERoamingPushEVSEPricing(BaseModel):
     )
 
 
-class EvseStatusRecordItem(BaseModel):
-    EvseID: EvseID
-    EvseStatus: EvseStatus
+class EvseStatusRecordItem(HubjectBaseModel):
+    evse_id: EvseID = Field(..., alias="EvseID")
+    evse_status: EvseStatus
 
 
-class OperatorEvseStatus(BaseModel):
-    OperatorID: OperatorID
-    OperatorName: Optional[str] = Field(None, description="Free text for operator")
-    EvseStatusRecord: List[EvseStatusRecordItem] = Field(
+class OperatorEvseStatus(HubjectBaseModel):
+    operator_id: OperatorID = Field(..., alias="OperatorID")
+    operator_name: Optional[str] = Field(None, description="Free text for operator")
+    evse_status_record: List[EvseStatusRecordItem] = Field(
         ..., description="EvseStatus list"
     )
 
 
-class ERoamingPushEvseStatus(BaseModel):
-    ActionType: ActionType
-    OperatorEvseStatus: OperatorEvseStatus
+class ERoamingPushEvseStatus(HubjectBaseModel):
+    action_type: ActionType
+    operator_evse_status: OperatorEvseStatus
 
 
 class PricingProductData(BaseModel):
@@ -734,7 +756,7 @@ class ERoamingPushPricingProductData(BaseModel):
     PricingProductData: PricingProductData
 
 
-class RFIDMifareFamilyIdentification(BaseModel):
+class RFIDMifareFamilyIdentificationClass(BaseModel):
     UID: UID
 
 
@@ -753,11 +775,11 @@ class RFIDIdentification(BaseModel):
 
 
 class Identification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification]
-    # RFIDIdentification: Optional[RFIDIdentification] = Field(default=None)
-    # QRCodeIdentification: Optional[QRCodeIdentification] = Field(default=None)
-    # PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = Field(default=None)
-    # RemoteIdentification: Optional[RemoteIdentification] = Field(default=None)
+    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentificationClass]
+    RFIDIdentification: Optional[RFIDIdentification]
+    QRCodeIdentification: Optional[QRCodeIdentification]
+    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification]
+    RemoteIdentification: Optional[RemoteIdentification]
 
 
 class EvseDataRecord(BaseModel):
@@ -855,12 +877,8 @@ class EvseDataRecord(BaseModel):
     DynamicInfoAvailable: DynamicInfoAvailable
 
 
-class AuthorizationStopIdentification(BaseModel):
-    RFIDMifareFamilyIdentification: Optional[RFIDMifareFamilyIdentification] = None
-    RFIDIdentification: Optional[RFIDIdentification] = None
-    QRCodeIdentification: Optional[QRCodeIdentification] = None
-    PlugAndChargeIdentification: Optional[PlugAndChargeIdentification] = None
-    RemoteIdentification: Optional[RemoteIdentification] = None
+class AuthorizationStopIdentification(Identification):
+    pass
 
 
 class ERoamingAuthorizationStart(BaseModel):
@@ -908,232 +926,264 @@ class ERoamingAuthorizeRemoteReservationStart(BaseModel):
     )
 
 
-class ERoamingAuthorizeRemoteStart(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeRemoteStart(HubjectBaseModel):
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    ProviderID: ProviderID
-    EvseID: EvseID
-    Identification: Identification
-    PartnerProductID: Optional[ProductID] = None
+    provider_id: ProviderID = Field(..., alias="ProviderID")
+    evse_id: EvseID = Field(..., alias="EvseID")
+    identification: Identification = Field(..., alias="Identification")
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
-class ERoamingAuthorizeStart(BaseModel):
-    SessionID: Optional[SessionID] = None
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeStart(HubjectBaseModel):
+    session_id: Optional[SessionID] = Field(None, alias="SessionID")
+    operator_id: OperatorID = Field(..., alias="OperatorID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    OperatorID: OperatorID
-    EvseID: Optional[EvseID] = None
-    Identification: Identification
-    PartnerProductID: Optional[ProductID] = None
+    evse_id: Optional[EvseID] = Field(None, alias="EvseID")
+    identification: Identification
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
 
 
-class ERoamingAuthorizeStop(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingAuthorizeStop(HubjectBaseModel):
+    session_id: SessionID = Field(None, alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    OperatorID: OperatorID
-    EvseID: Optional[EvseID] = None
-    Identification: Identification
+    operator_id: OperatorID = Field(..., alias="OperatorID")
+    evse_id: Optional[EvseID] = Field(None, alias="EvseID")
+    identification: Identification
 
 
-class ERoamingChargeDetailRecord(BaseModel):
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ERoamingChargeDetailRecord(
+    HubjectBaseModel,
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
+    MeterValueEndValidatorMixin,
+    ChargingStartValidatorMixin,
+):
+    session_id: SessionID = Field(
+        ..., alias="SessionID", description="The hubject session ID."
+    )
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session id assigned by the CPO to the related operation.",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session id assigned by an EMP to the related operation.",
     )
-    PartnerProductID: Optional[ProductID] = None
-    EvseID: EvseID
-    Identification: Identification
-    ChargingStart: datetime = Field(
+    partner_product_id: Optional[ProductID] = Field(
+        None,
+        alias="PartnerProductID",
+        description="The pricing product id related to the CDR",
+    )
+    evse_id: EvseID = Field(
+        ..., alias="EvseID", description="The EVSE ID of the charging station."
+    )
+    identification: Identification
+    charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    ChargingEnd: datetime = Field(
-        ..., description="The date and time at which the charging process stoped."
+    charging_end: AwareDatetime = Field(
+        ...,
+        description="The date and time at which the charging process stopped.",
     )
-    SessionStart: datetime = Field(
+    session_start: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    SessionEnd: datetime = Field(
+    session_end: AwareDatetime = Field(
         ...,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    MeterValueStart: Optional[float] = Field(
+    meter_value_start: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueEnd: Optional[float] = Field(
+    meter_value_end: Optional[NonNegativeFloat] = Field(
         None, description="The ending meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
-    ConsumedEnergy: float = Field(
-        ...,
-        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
+    meter_value_in_between: Optional[MeterValueInBetween] = Field(
+        None, description="Meter values in between start and end"
     )
-    SignedMeteringValues: Optional[List[SignedMeteringValue]] = Field(
+    consumed_energy: NonNegativeFloat = Field(
+        ...,
+        description="The difference between MeterValueEnd and MeterValueStart in kWh. Must be less than or equal to 1000 kWh.",
+    )
+    signed_metering_values: Optional[List[SignedMeteringValue]] = Field(
         None,
         description="Metering Signature basically contains all metering signature values (these values should be in Transparency software format) for different status of charging session for eg start, end or progress. In total you can provide maximum 10 metering signature values",
     )
-    CalibrationLawVerificationInfo: Optional[CalibrationLawVerificationInfo]
-    HubOperatorID: Optional[OperatorID] = None
-    HubProviderID: Optional[ProviderID] = None
+    calibration_law_verification_info: Optional[CalibrationLawVerificationInfo] = Field(
+        None, description="Calibration law verification information"
+    )
+    hub_operator_id: Optional[OperatorID] = Field(None, alias="HubOperatorID")
+    hub_provider_id: Optional[ProviderID] = Field(None, alias="HubProviderID")
 
 
-class ERoamingChargingNotificationEnd(BaseModel):
-    Type: ChargingNotificationType
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
+class ChargingNotificationBase(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_pascal,
+        populate_by_name=True,
+        json_encoders={
+            AwareDatetime: lambda date_time: date_time.strftime(
+                settings.OICP_DATE_FORMAT
+            )
+        },
+    )
+
+    session_id: SessionID = Field(..., alias="SessionID")
+    cpo_partner_session_id: Optional[str] = Field(
         None,
+        alias="CPOPartnerSessionID",
         description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    EMPPartnerSessionID: Optional[str] = Field(
+    emp_partner_session_id: Optional[str] = Field(
         None,
+        alias="EMPPartnerSessionID",
         description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
     )
-    Identification: Optional[Identification] = None
-    EvseID: EvseID
-    ChargingStart: Optional[datetime] = Field(
-        None, description="The date and time at which the charging process started."
-    )
-    ChargingEnd: datetime = Field(
-        ..., description="The date and time at which the charging process stoped."
-    )
-    SessionStart: Optional[datetime] = Field(
-        None,
-        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
-    )
-    SessionEnd: Optional[datetime] = Field(
-        None,
-        description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
-    )
-    ConsumedEnergy: Optional[float] = Field(
-        None,
-        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
-    )
-    MeterValueStart: Optional[float] = Field(
-        None, description="The starting meter value in kWh."
-    )
-    MeterValueEnd: Optional[float] = Field(
-        None, description="The ending meter value in kWh."
-    )
-    MeterValueInBetween: Optional[MeterValueInBetween]
-    OperatorID: OperatorID
-    PartnerProductID: Optional[ProductID] = None
-    PenaltyTimeStart: Optional[datetime] = Field(
-        None,
-        description="The date and time at which the penalty time start after the grace period.",
-    )
+    identification: Optional[Identification] = None
+    evse_id: EvseID = Field(..., alias="EvseID")
+    operator_id: OperatorID = Field(..., alias="OperatorID")
 
 
-class ERoamingChargingNotificationError(BaseModel):
-    Type: ChargingNotificationType
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[Identification] = None
-    OperatorID: OperatorID
-    EvseID: EvseID
-    ErrorType: ErrorType
-    ErrorAdditionalInfo: Optional[str] = Field(
+class ERoamingChargingNotificationError(ChargingNotificationBase):
+    type: ChargingNotificationType = Field(default=ChargingNotificationType.Error)
+    error_type: ErrorType
+    error_additional_info: Optional[str] = Field(
         None,
         description="The CPO can put in the additional information about the error",
     )
 
 
-class ERoamingChargingNotificationProgress(BaseModel):
-    Type: ChargingNotificationType
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[Identification] = None
-    EvseID: EvseID
-    ChargingStart: datetime = Field(
+class ERoamingChargingNotificationProgress(ChargingNotificationBase):
+    type: ChargingNotificationType = Field(default=ChargingNotificationType.Progress)
+    charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    EventOccurred: datetime = Field(
+    event_occurred: AwareDatetime = Field(
         ...,
         description="The date and time at which the charging progress parameters are captured.",
     )
-    ChargingDuration: Optional[int] = Field(
+    charging_duration: Optional[int] = Field(
         None,
         description="Charging Duration = EventOccurred - ChargingStart. It is a time in millisecond.\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
-    SessionStart: Optional[datetime] = Field(
+    session_start: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    ConsumedEnergyProgress: Optional[float] = Field(
+    consumed_energy_progress: Optional[NonNegativeFloat] = Field(
         None,
         description="This represents the consumed energy in kWh from the start of the charging process until the charging progress notification is generated (EventOccurred).\n\nEither ChargingDuration or ConsumedEnergyProgress should be provided. Both can also be provided with each progress notification.\n",
     )
-    MeterValueStart: Optional[float] = Field(
+    meter_value_start: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    MeterValueInBetween: Optional[MeterValueInBetween]
-    OperatorID: OperatorID
-    PartnerProductID: Optional[ProductID] = None
+    meter_value_in_between: Optional[MeterValueInBetween] = Field(default=None)
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
+
+    @model_validator(mode="after")
+    def validate_duration_or_energy_required(self):
+        if self.charging_duration is None and self.consumed_energy_progress is None:
+            raise ValueError(
+                "Either ChargingDuration or ConsumedEnergyProgress must be provided"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_event_occurred_after_charging_start(self):
+        if self.event_occurred <= self.charging_start:
+            raise ValueError("EventOccurred must be after ChargingStart")
+        return self
 
 
-class ERoamingChargingNotificationStart(BaseModel):
-    Type: ChargingNotificationType
-    SessionID: SessionID
-    CPOPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by the CPO to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    EMPPartnerSessionID: Optional[str] = Field(
-        None,
-        description="Optional field containing the session ID assigned by an EMP to the related operation.\n\nPartner systems can use this field to link their own session handling to HBS processes.\n",
-    )
-    Identification: Optional[Identification] = None
-    EvseID: EvseID
-    ChargingStart: datetime = Field(
+class ERoamingChargingPeriod(ChargingNotificationBase, ChargingStartValidatorMixin):
+    charging_start: AwareDatetime = Field(
         ..., description="The date and time at which the charging process started."
     )
-    SessionStart: Optional[datetime] = Field(
+    session_start: Optional[AwareDatetime] = Field(
         None,
         description="The date and time at which the session started, e.g. swipe of RFID or cable connected.",
     )
-    MeterValueStart: Optional[float] = Field(
+
+
+class ERoamingChargingNotificationStart(ERoamingChargingPeriod):
+    type: ChargingNotificationType = Field(default=ChargingNotificationType.Start)
+    meter_value_start: Optional[NonNegativeFloat] = Field(
         None, description="The starting meter value in kWh."
     )
-    OperatorID: OperatorID
-    PartnerProductID: Optional[ProductID] = None
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
+
+
+class ERoamingChargingNotificationEnd(
+    ERoamingChargingPeriod,
+    ConsumedEnergyValidatorMixin,
+    ChargingEndValidatorMixin,
+    SessionEndValidatorMixin,
+):
+    type: ChargingNotificationType = Field(default=ChargingNotificationType.End)
+    charging_end: AwareDatetime = Field(
+        ..., description="The date and time at which the charging process stopped."
+    )
+    session_end: Optional[AwareDatetime] = Field(
+        None,
+        description="The date and time at which the session ended, e.g. swipe of RFID or cable disconnected.",
+    )
+    consumed_energy: Optional[NonNegativeFloat] = Field(
+        None,
+        description="The difference between MeterValueEnd and MeterValueStart in kWh.",
+        le=1000.0,
+    )
+    meter_value_start: Optional[NonNegativeFloat] = Field(
+        None, description="The starting meter value in kWh."
+    )
+    meter_value_end: Optional[NonNegativeFloat] = Field(
+        None, description="The ending meter value in kWh."
+    )
+    meter_value_in_between: Optional[MeterValueInBetween] = Field(default=None)
+    partner_product_id: Optional[ProductID] = Field(None, alias="PartnerProductID")
+    penalty_time_start: Optional[AwareDatetime] = Field(
+        None,
+        description="The date and time at which the penalty time start after the grace period.",
+    )
+
+    @model_validator(mode="after")
+    def validate_penalty_time_start_after_charging_end(self):
+        if (
+            self.penalty_time_start is not None
+            and self.charging_end > self.penalty_time_start
+        ):
+            raise ValueError("PenaltyTimeStart should be after or equal to ChargingEnd")
+        return self
 
 
 class OperatorEvseData(BaseModel):
@@ -1186,3 +1236,57 @@ class HubjectDefaultTariff(BaseModel):
                 return HubjectPriceComponent.HOUR
             case _:
                 raise ValueError("Invalid price_component")
+
+
+class HubjectCDRError(Schema):
+    success: bool
+    errorType: str
+    error: str
+
+
+class RemoteCommandStart(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
+    identification: Optional[IdentificationIn] = Field(None, alias="Identification")
+    partner_product_id: Optional[str] = Field(None, alias="PartnerProductID")
+
+
+class RemoteCommandStop(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    session_id: Optional[str] = Field(None, alias="SessionID")
+    evse_id: Optional[str] = Field(None, alias="EvseID")
+    provider_id: Optional[str] = Field(None, alias="ProviderID")
+    cpo_partner_session_id: Optional[str] = Field(None, alias="CPOPartnerSessionID")
+    emp_partner_session_id: Optional[str] = Field(None, alias="EMPPartnerSessionID")
+
+
+class IdentificationIn(Schema):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, alias_generator=to_pascal
+    )
+
+    rfid_mifare_family_identification: Optional[RFIDMifareFamilyIdentificationClass] = (
+        Field(None, alias="RFIDMifareFamilyIdentification")
+    )
+    rfid_identification: Optional[RFIDIdentification] = Field(
+        None, alias="RFIDIdentification"
+    )
+    qr_code_identification: Optional[QRCodeIdentification] = Field(
+        None, alias="QRCodeIdentification"
+    )
+    plug_and_charge_identification: Optional[PlugAndChargeIdentification] = Field(
+        None, alias="PlugAndChargeIdentification"
+    )
+    remote_identification: Optional[RemoteIdentification] = Field(
+        None, alias="RemoteIdentification"
+    )

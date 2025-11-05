@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -34,6 +35,8 @@ from ocpi22.util import (
 )
 
 from ocpiconnector.party import Party
+
+logger = logging.getLogger(__name__)
 
 
 class EvseSerializer(HyperlinkedModelSerializerCleanedUp):
@@ -147,6 +150,7 @@ class SessionIdSerializer(fields.CharField):
     """To be used only for CPO API, cannot handle overlapping IDs"""
 
     def to_internal_value(self, data):
+        logger.info(f"Got session id {data}")
         if data:
             return Session.objects.get(uid=data.upper())
         return None
@@ -266,10 +270,9 @@ class StopTransactionSerializer(serializers.Serializer):
         source="session",
         help_text="The OCPI session ID (from the response of the start_transaction endpoint)",
     )
-    stop_kwh = serializers.DecimalField(
-        max_digits=8,
-        decimal_places=4,
-        required=False,
+    stop_kwh = serializers.FloatField(
+        min_value=0.0,
+        required=True,
         help_text="Optionally, the final kWh reading from the charger",
     )
     timestamp = UTCDateTimeField(
@@ -437,8 +440,13 @@ class PriceKwhSerializer(PriceSerializer):
 
 
 class PriceMinSerializer(PriceSerializer):
-    tariff_type = "TIME"
+    tariff_type = "TIME_MIN"
     key = "price_per_min"
+
+
+class PriceHourSerializer(PriceSerializer):
+    tariff_type = "TIME_HR"
+    key = "price_per_hr"
 
 
 class PriceFlatSerializer(PriceSerializer):
@@ -447,8 +455,13 @@ class PriceFlatSerializer(PriceSerializer):
 
 
 class ParkingPricePerMinSerializer(PriceSerializer):
-    tariff_type = "PARKING_TIME"
+    tariff_type = "PARKING_TIME_MIN"
     key = "parking_price_per_min"
+
+
+class ParkingPricePerHourSerializer(PriceSerializer):
+    tariff_type = "PARKING_TIME_HR"
+    key = "parking_price_per_hr"
 
 
 class SolidTariffSerializer(SerializerCleanedUp):
@@ -462,34 +475,50 @@ class SolidTariffSerializer(SerializerCleanedUp):
     price_per_kwh = PriceKwhSerializer(
         source="*",
         max_digits=8,
-        decimal_places=4,
+        decimal_places=2,
         required=False,
         allow_null=True,
         help_text="The price per kWh of electricity charged excluding tax",
     )
     price_per_min = PriceMinSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=4,
+        max_digits=15,
+        decimal_places=10,
         required=False,
         allow_null=True,
         help_text="The price per minute of charging, excluding parking and tax",
     )
+    price_per_hr = PriceHourSerializer(
+        source="*",
+        max_digits=12,
+        decimal_places=6,
+        required=False,
+        allow_null=True,
+        help_text="The price per hour of charging, excluding parking and tax",
+    )
     price_flat = PriceFlatSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=4,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The flat price per started charging session excluding tax",
     )
     parking_price_per_min = ParkingPricePerMinSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=4,
+        max_digits=15,
+        decimal_places=10,
         required=False,
         allow_null=True,
         help_text="The parking price per min excluding tax",
+    )
+    parking_price_per_hr = ParkingPricePerHourSerializer(
+        source="*",
+        max_digits=12,
+        decimal_places=6,
+        required=False,
+        allow_null=True,
+        help_text="The parking price per hour excluding tax",
     )
     parking_grace_period = serializers.IntegerField(
         required=False,
@@ -506,6 +535,12 @@ class SolidTariffSerializer(SerializerCleanedUp):
         help_text="The party ID of the eMSP",
         required=False,
         allow_null=True,
+    )
+    ocpi_tariff = serializers.CharField(
+        max_length=settings.OCPI_22_MAX_UID_LENGTH,
+        required=False,
+        allow_null=True,
+        help_text="The OCPI identifier of the tariff",
     )
     last_updated = UTCDateTimeField(required=False)
 

@@ -25,6 +25,14 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     CurrencyID,
     ProductID,
+    ChargingFacility,
+    Accessibility,
+    DynamicInfoAvailable,
+    GeoCoordinates,
+    Address,
+    EvseID,
+    EvseDataRecord,
+    CalibrationLawDataAvailability,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -41,6 +49,10 @@ from ocpi22.tests.factories import (
     OCPIImageFactory,
     SolidTariffFactory,
     ERoamingPushPricingProductDataFactory,
+    CdrTokenFactory,
+    OCPISessionFactory,
+    CdrFactory,
+    CdrLocationFactory,
     ERoamingPushEVSEPricingFactory,
 )
 
@@ -637,4 +649,186 @@ def pricing_product_data_successful_result():
                 ],
             ),
         ],
+    )
+
+
+@pytest.fixture
+def session_for_cdr():
+    cdr_token = CdrTokenFactory(uid="BAADF00D")
+
+    return OCPISessionFactory(
+        uid="SESSION123",
+        cdr_token=cdr_token,
+    )
+
+
+@pytest.fixture
+def ocpi_cdr(session_for_cdr):
+    cdr_location = CdrLocationFactory(
+        evse_uid="EVSECONVERT", evse_id="FI*CPO*EEVSECONVERT"
+    )
+    cdr = CdrFactory(session_id=session_for_cdr.uid, cdr_location=cdr_location)
+
+    return cdr
+
+
+@pytest.fixture
+def expected_eroaming_cdr():
+    return {
+        "CPOPartnerSessionID": "SESSION123",
+        "CalibrationLawVerificationInfo": None,
+        "ChargingEnd": "2022-02-22T23:22:22Z",
+        "ChargingStart": "2022-02-22T22:22:22Z",
+        "ConsumedEnergy": 120.0,
+        "EMPPartnerSessionID": "EMSPSESSION1",
+        "EvseID": "FI*CPO*EEVSECONVERT",
+        "HubOperatorID": "FI*CPO",
+        "HubProviderID": "FI*MSP",
+        "Identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "BAADF00D"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
+        "MeterValueEnd": 120.0,
+        "MeterValueInBetween": None,
+        "MeterValueStart": 0.0,
+        "PartnerProductID": None,
+        "SessionEnd": "2022-02-22T23:22:22Z",
+        "SessionID": "b2688855-7f00-0002-6d8e-48d883f6abb6",
+        "SessionStart": "2022-02-22T22:22:22Z",
+        "SignedMeteringValues": None,
+    }
+
+
+@pytest.fixture
+def remote_command_payload():
+    evse = EvseFactory(status="AVAILABLE")
+    ConnectorFactory(evse=evse)
+
+    return {
+        "Identification": {"RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}},
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "PartnerProductID": "AC1",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_command_payload():
+    evse = EvseFactory(status="CHARGING")
+
+    return {
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_session():
+    evse = EvseFactory(status="CHARGING")
+
+    return OCPISessionFactory(
+        uid="OURSESSIONID", evse=evse, authorization_reference="2345ABC"
+    )
+
+
+@pytest.fixture
+def sample_evse_data_payload():
+    return ERoamingPushEvseData(
+        ActionType=ActionType.fullLoad,
+        OperatorEvseData=OperatorEvseData(
+            OperatorID=OperatorID(root="DE*BER"),
+            OperatorName="MNO Company Pvt Ltd",
+            EvseDataRecord=[
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*EMNOEVSEUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 1")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Test Street",
+                        PostalCode="10115",
+                        HouseNum="1",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.AC_3_PHASE,
+                            Voltage=230,
+                            Amperage=16,
+                            Power=11,
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.None_],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*ESECONDUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 2")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Another Street",
+                        PostalCode="10115",
+                        HouseNum="2",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.DC, Voltage=400, Amperage=125, Power=50
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.Reservation],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+            ],
+        ),
     )

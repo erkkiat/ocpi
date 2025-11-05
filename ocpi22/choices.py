@@ -74,7 +74,7 @@ class SessionStatus:
     RESERVATION = "RESERVATION"
 
 
-class TokenType:
+class TokenType(str, Enum):
     AD_HOC_USER = "AD_HOC_USER"
     RFID = "RFID"
     APP_USER = "APP_USER"
@@ -82,18 +82,11 @@ class TokenType:
 
 
 TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
+    (TokenType.AD_HOC_USER.value, "Ad-hoc user"),
+    (TokenType.RFID.value, "RFID"),
+    (TokenType.APP_USER.value, "Application user"),
+    (TokenType.OTHER.value, "Other"),
 ]
-
-
-class TokenType(Enum):
-    AD_HOC_USER = "AD_HOC_USER"
-    RFID = "RFID"
-    APP_USER = "APP_USER"
-    OTHER = "OTHER"
 
 
 class OcpiModuleEnum(Enum):
@@ -256,6 +249,9 @@ class MessageTexts:
                 "There is a communication error with one of the service provider internal systems"
             )
         )
+        EV_IS_NOT_CONNECTED = _make_texts(
+            _("The electric vehicle is not connected to evse")
+        )
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,
@@ -281,6 +277,7 @@ class MessageTexts:
             UNKNOWN_RESERVATION=_make_texts(
                 _("There has been a problem with the reservation")
             ),
+            EV_IS_NOT_CONNECTED=EV_IS_NOT_CONNECTED,
         )
         return _texts.get(s, default)
 

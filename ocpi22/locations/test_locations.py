@@ -18,7 +18,7 @@ from unittest.mock import ANY
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.tariff import Tariff
-from ocpi22.ocpi.auth import get_credentialsrole, find_credentials
+from ocpi22.ocpi.auth import find_credentials
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.test_tariff_location_and_evse import load_example
 from ocpi22.tests.factories import (
@@ -32,9 +32,6 @@ from ocpi22.tests.factories import (
 from ocpiconnector.party import Party
 from util import reverse
 
-from ocpiconnector.ocpi_identities import (
-    get_our_credentialsrole,
-)
 
 from ocpi22.credentials.util import find_endpoints_by_roles
 
@@ -60,7 +57,6 @@ def msp_de_ice():
 class TestLocations(TestCase):
     @pytest.mark.django_db
     def test_serialization_of_ocpi_specification_example(self):
-        get_credentialsrole.cache_clear()
         serializer = load_json(
             "ocpi22/data/examples/location_example_parking_garage_opening_hours.json",
             LocationSerializer221,
@@ -251,7 +247,7 @@ class TestEvseMove:
             "ocpi22/data/examples/location_example_added_evse.json",
         )
         assert result.response.status_code == 200
-        assert list(result.location.evses.values_list("uid", flat=True)) == [
+        assert sorted(list(result.location.evses.values_list("uid", flat=True))) == [
             "3256",
             "3257",
             "3299",
@@ -386,10 +382,7 @@ def hub_fr_gir():
 
 
 @pytest.fixture
-def ocpi_master():
-    get_our_credentialsrole.cache_clear()
-    get_credentialsrole.cache_clear()
-
+def ocpi_master(clear_all_cache):
     return CredentialsRoleFactory(country_code="FI", party_id="CPO")
 
 
