@@ -192,11 +192,17 @@ class HubjectService:
                 error_msg = error.get("errorMessage", "No error message")
 
                 match = re.search(r"\[(\d+)\]", field_ref)
-                index = int(match.group(1)) if match else 0
-
+                if match:
+                    index = int(match.group(1))
+                else:
+                    index = None
+                    logger.warning(
+                        f"Unexpected fieldReference format: '{field_ref}'. Could not determine EVSE index."
+                    )
                 evse_record = (
                     payload.OperatorEvseData.EvseDataRecord[index]
-                    if index < len(payload.OperatorEvseData.EvseDataRecord)
+                    if index is not None
+                    and index < len(payload.OperatorEvseData.EvseDataRecord)
                     else None
                 )
 
