@@ -1,4 +1,6 @@
 import functools
+from decimal import Decimal
+
 import regex
 import logging
 from datetime import datetime
@@ -223,13 +225,15 @@ class SolidToHubjectConverter:
             return ProviderIDAsterisk(root="*")
         return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
 
-    def _get_primary_price(self, solid_tariff: SolidTariff) -> tuple[float, str]:
+    def _get_primary_price(
+        self, solid_tariff: SolidTariff
+    ) -> tuple[float, HubjectPriceComponent]:
         if solid_tariff.price_per_kwh is not None:
-            return float(solid_tariff.price_per_kwh), HubjectPriceComponent.KWH.value
+            return float(solid_tariff.price_per_kwh), HubjectPriceComponent.KWH
         elif solid_tariff.price_per_hr is not None:
-            return float(solid_tariff.price_per_hr), HubjectPriceComponent.HOUR.value
+            return float(solid_tariff.price_per_hr), HubjectPriceComponent.HOUR
         elif solid_tariff.price_per_min is not None:
-            return float(solid_tariff.price_per_min), HubjectPriceComponent.MINUTE.value
+            return float(solid_tariff.price_per_min), HubjectPriceComponent.MINUTE
 
         raise ValidationError(
             f"SolidTariff {solid_tariff.external_id} is a free tariff without any price defined."
@@ -237,43 +241,43 @@ class SolidToHubjectConverter:
 
     def _get_hourly_price_additional_reference(
         self,
-        price: float,
+        price: Decimal,
         primary_reference_unit: HubjectPriceComponent,
     ):
         if (
             price is not None
-            and primary_reference_unit == HubjectPriceComponent.HOUR.value
+            and not primary_reference_unit == HubjectPriceComponent.HOUR
         ):
             return AdditionalReference(
                 AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=price,
+                PricePerAdditionalReferenceUnit=float(price),
             )
         return None
 
     def _get_minute_price_additional_reference(
         self,
-        price: float,
+        price: Decimal,
         primary_reference_unit: HubjectPriceComponent,
     ):
         if (
             price is not None
-            and primary_reference_unit == HubjectPriceComponent.MINUTE.value
+            and not primary_reference_unit == HubjectPriceComponent.MINUTE
         ):
             return AdditionalReference(
                 AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.MINUTE.value
                 ),
-                PricePerAdditionalReferenceUnit=price,
+                PricePerAdditionalReferenceUnit=float(price),
             )
         return None
 
     def _get_flat_price_additional_reference(
         self,
-        price: float,
+        price: Decimal,
     ) -> Optional[AdditionalReference]:
         if price is not None:
             return AdditionalReference(
@@ -281,7 +285,7 @@ class SolidToHubjectConverter:
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=price,
+                PricePerAdditionalReferenceUnit=float(price),
             )
 
         return None
@@ -292,15 +296,7 @@ class SolidToHubjectConverter:
     ) -> PricingProductDataRecord:
         primary_price, primary_reference_unit = self._get_primary_price(solid_tariff)
         pricing_product_base_data_record = PricingProductDataRecord(
-            AdditionalReferences=[
-                AdditionalReference(
-                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                    AdditionalReferenceUnit=ReferenceUnit(
-                        root=HubjectPriceComponent.HOUR.value
-                    ),
-                    PricePerAdditionalReferenceUnit=float(solid_tariff.price_flat),
-                ),
-            ],
+            AdditionalReferences=[],
             IsValid24hours=True,
             MaximumProductChargingPower=self.get_maximum_product_charging_power(),
             PricePerReferenceUnit=primary_price,
@@ -311,11 +307,11 @@ class SolidToHubjectConverter:
                 )
             ),
             ProductPriceCurrency=CurrencyID(root=solid_tariff.currency),
-            ReferenceUnit=ReferenceUnit(root=primary_reference_unit),
+            ReferenceUnit=ReferenceUnit(root=primary_reference_unit.value),
         )
 
         price_flat_additional_reference = self._get_flat_price_additional_reference(
-            float(solid_tariff.price_flat)
+            solid_tariff.price_flat
         )
         if price_flat_additional_reference:
             pricing_product_base_data_record.AdditionalReferences.append(
@@ -324,7 +320,7 @@ class SolidToHubjectConverter:
 
         price_per_hour_additional_reference = (
             self._get_hourly_price_additional_reference(
-                float(solid_tariff.price_per_hr, primary_reference_unit)
+                solid_tariff.price_per_hr, primary_reference_unit
             )
         )
         if price_per_hour_additional_reference:
@@ -334,7 +330,7 @@ class SolidToHubjectConverter:
         else:
             price_per_minute_additional_reference = (
                 self._get_minute_price_additional_reference(
-                    float(solid_tariff.price_per_min, primary_reference_unit)
+                    solid_tariff.price_per_min, primary_reference_unit
                 )
             )
             if price_per_minute_additional_reference:
@@ -684,9 +680,7 @@ class SolidToHubjectConverter:
         if solid_tariff:
             partner_product_id = self.get_pricing_product_id(
                 solid_tariff.external_id,
-                HubjectPriceComponent.KWH,
-                operator_party_str,
-                msp_party_str,
+                solid_tariff.ocpi_tariff.uid,
             )
 
         eroaming_cdr = ERoamingChargeDetailRecord(

@@ -842,13 +842,13 @@ class TestOICPDynamicPricingService:
         return PricingProductData(
             OperatorID=OperatorID(root="FI*CPO"),
             OperatorName="Smappee Pvt Ltd",
-            ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+            ProviderID=ProviderIDAsterisk(root="*"),
             PricingDefaultPrice=0.3,
             PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
             PricingDefaultReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
             PricingProductDataRecords=[
                 PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ProductID=ProductID(root="SMP1*OCPITARIFF1"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                     ProductPriceCurrency=CurrencyID(root="EUR"),
                     PricePerReferenceUnit=0.2,
@@ -860,27 +860,16 @@ class TestOICPDynamicPricingService:
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
-                    ],
-                ),
-                PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
-                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                    ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.3,
-                    MaximumProductChargingPower=0.0,
-                    IsValid24hours=True,
-                    ProductAvailabilityTimes=[],
-                    AdditionalReferences=[
+                        ),
                         AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
+                        ),
                     ],
                 ),
                 PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE"),
+                    ProductID=ProductID(root="SMP2*OCPITARIFF2"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                     ProductPriceCurrency=CurrencyID(root="EUR"),
                     PricePerReferenceUnit=0.2,
@@ -892,23 +881,12 @@ class TestOICPDynamicPricingService:
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
-                    ],
-                ),
-                PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP2*MINUTE*DE*ICE"),
-                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                    ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.3,
-                    MaximumProductChargingPower=0.0,
-                    IsValid24hours=True,
-                    ProductAvailabilityTimes=[],
-                    AdditionalReferences=[
+                        ),
                         AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
+                        ),
                     ],
                 ),
             ],

@@ -381,47 +381,14 @@ class TestMappings:
         max_power = self._ocpi_to_oicp_converter.get_maximum_product_charging_power()
         assert max_power == 10
 
-    @pytest.mark.parametrize(
-        "solid_tariff_id, ref_unit, operator_id, msp_id, expected",
-        [
-            (
-                "SMP1",
-                HubjectPriceComponent.MINUTE,
-                "BE*SMP",
-                "DE*ICE",
-                "BE*SMP*SMP1*MINUTE*DE*ICE",
-            ),
-            (
-                "SMP2",
-                HubjectPriceComponent.KWH,
-                "NL*CPO",
-                "FR*MSP",
-                "NL*CPO*SMP2*KILOWATT_HOUR*FR*MSP",
-            ),
-            (
-                "SMP3",
-                HubjectPriceComponent.HOUR,
-                "US*CPO",
-                "GB*MSP",
-                "US*CPO*SMP3*HOUR*GB*MSP",
-            ),
-            ("SMP3", HubjectPriceComponent.HOUR, "US*CPO", "", "US*CPO*SMP3*HOUR*"),
-        ],
-    )
-    def test_get_pricing_product_id(
-        self, solid_tariff_id, ref_unit, operator_id, msp_id, expected
-    ):
+    def test_get_pricing_product_id(self):
+        solid_tariff_id = "SD123"
+        ocpi_tariff_uid = "TARIFF456"
         result = self._ocpi_to_oicp_converter.get_pricing_product_id(
-            solid_tariff_id, ref_unit, operator_id, msp_id
+            solid_tariff_id, ocpi_tariff_uid
         )
+        expected = "SD123*TARIFF456"
         assert result == expected, f"Expected {expected}, but got {result}"
-
-    def test_get_pricing_product_id_raises_value_error_when_none_values_provided(self):
-        with pytest.raises(
-            ValueError,
-            match="Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID.",
-        ):
-            self._ocpi_to_oicp_converter.get_pricing_product_id(None, None, None, "")
 
     @pytest.mark.django_db
     def test_convert_to_pricing_product_data_records_success(
@@ -431,10 +398,9 @@ class TestMappings:
     ):
         pricing_product_data_records = (
             self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_all_records, "FI*CPO"
+                smp1_solid_tariff_with_all_records
             )
         )
-        assert len(pricing_product_data_records) == 2
         assert (
             pricing_product_data_records
             == pricing_product_data_record_successful_result
@@ -446,12 +412,13 @@ class TestMappings:
         smp1_solid_tariff_with_none_prices,
         pricing_product_data_record_successful_result,
     ):
-        pricing_product_data_records = (
+        with pytest.raises(
+            ValidationError,
+            match=f"['SolidTariff {smp1_solid_tariff_with_none_prices.external_id} is a free tariff without any price defined.']",
+        ):
             self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_none_prices, "FI*CPO"
+                smp1_solid_tariff_with_none_prices
             )
-        )
-        assert len(pricing_product_data_records) == 0
 
     @pytest.mark.django_db
     def test_get_provider_ids_for_solid_tariffs_with_msp(
@@ -845,9 +812,7 @@ class TestConvertOCPICDRToERoamingCDR:
         assert (
             eroaming_cdr.partner_product_id.root
             == self._ocpi_to_oicp_converter.get_pricing_product_id(
-                solid_tariff_id=solid_tariff.external_id,
-                ref_unit=HubjectPriceComponent.KWH,
-                operator_id=solid_tariff.operator.party_str(),
-                msp_id=solid_tariff.msp.party_str(),
+                external_id=solid_tariff.external_id,
+                ocpi_tariff_uid=solid_tariff.ocpi_tariff.uid,
             )
         )
