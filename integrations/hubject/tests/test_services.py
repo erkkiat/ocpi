@@ -1,6 +1,6 @@
-import json
 import re
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import patch, MagicMock, AsyncMock, Mock
 
 import pytest
@@ -813,7 +813,7 @@ class TestOICPDynamicPricingService:
         result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
-        response_content = json.loads(result["error"].split(":", 1)[1])
+        response_content = result["error"]
         assert isinstance(response_content, dict)
         assert response_content == hubject_unsuccessful_response
 
@@ -848,10 +848,10 @@ class TestOICPDynamicPricingService:
             PricingDefaultReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
             PricingProductDataRecords=[
                 PricingProductDataRecord(
-                    ProductID=ProductID(root="SMP1*OCPITARIFF1"),
+                    ProductID=ProductID(root="OCPITARIFF1*SMP1"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                     ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.2,
+                    PricePerReferenceUnit=Decimal("0.200"),
                     MaximumProductChargingPower=0.0,
                     IsValid24hours=True,
                     ProductAvailabilityTimes=[],
@@ -859,12 +859,12 @@ class TestOICPDynamicPricingService:
                         AdditionalReference(
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                            PricePerAdditionalReferenceUnit=0.3,
+                            PricePerAdditionalReferenceUnit=Decimal("0.300"),
                         ),
                         AdditionalReference(
                             AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                            PricePerAdditionalReferenceUnit=0.3,
+                            PricePerAdditionalReferenceUnit=Decimal("0.300"),
                         ),
                     ],
                 ),

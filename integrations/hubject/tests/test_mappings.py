@@ -387,7 +387,7 @@ class TestMappings:
         result = self._ocpi_to_oicp_converter.get_pricing_product_id(
             solid_tariff_id, ocpi_tariff_uid
         )
-        expected = "SD123*TARIFF456"
+        expected = "TARIFF456*SD123"
         assert result == expected, f"Expected {expected}, but got {result}"
 
     @pytest.mark.django_db

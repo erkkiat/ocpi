@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import factory
@@ -464,12 +465,12 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
 
     external_id = f"SD{int(time.time())}"
     currency = "EUR"
-    price_per_kwh = 0.2
-    price_per_min = 0.3
-    price_per_hr = 0.3
-    parking_price_per_min = 0.1
-    parking_price_per_hr = 0.2
-    price_flat = 0.3
+    price_per_kwh = Decimal("0.2")
+    price_per_min = Decimal("0.3")
+    price_per_hr = Decimal("0.3")
+    parking_price_per_min = Decimal("0.1")
+    parking_price_per_hr = Decimal("0.2")
+    price_flat = Decimal("0.3")
     vat_percentage = 0.2
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"

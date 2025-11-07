@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 import factory
 import pytest
@@ -565,22 +566,22 @@ def pricing_product_data_record_successful_result():
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=0.3,
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
             ),
             AdditionalReference(
                 AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=0.3,
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
             ),
         ],
         IsValid24hours=True,
         MaximumProductChargingPower=0,
-        PricePerReferenceUnit=0.2,
+        PricePerReferenceUnit=Decimal("0.200"),
         ProductAvailabilityTimes=[],
-        ProductID="SMP1*TARIFFNONE",
-        ProductPriceCurrency="EUR",
+        ProductID=ProductID(root="TARIFFNONE*SMP1"),
+        ProductPriceCurrency=CurrencyID(root="EUR"),
         ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
     )
 
@@ -596,10 +597,10 @@ def pricing_product_data_successful_result():
         PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
         PricingProductDataRecords=[
             PricingProductDataRecord(
-                ProductID=ProductID(root="SMP1*TARIFFNONE"),
+                ProductID=ProductID(root="TARIFFNONE*SMP1"),
                 ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                 ProductPriceCurrency=CurrencyID(root="EUR"),
-                PricePerReferenceUnit=0.2,
+                PricePerReferenceUnit=Decimal("0.200"),
                 MaximumProductChargingPower=0.0,
                 IsValid24hours=True,
                 ProductAvailabilityTimes=[],
@@ -607,12 +608,12 @@ def pricing_product_data_successful_result():
                     AdditionalReference(
                         AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
                     ),
                     AdditionalReference(
                         AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
                     ),
                 ],
             ),
