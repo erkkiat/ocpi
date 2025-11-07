@@ -813,9 +813,8 @@ class TestOICPDynamicPricingService:
         result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
-        response_content = result["error"]
-        assert isinstance(response_content, dict)
-        assert response_content == hubject_unsuccessful_response
+        assert result["error"]["message"] == "Error parsing/validating JSON."
+        assert "must not be empty" in result["error"]["errors"][0]
 
     @responses.activate
     def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
@@ -869,7 +868,7 @@ class TestOICPDynamicPricingService:
                     ],
                 ),
                 PricingProductDataRecord(
-                    ProductID=ProductID(root="SMP2*OCPITARIFF2"),
+                    ProductID=ProductID(root="OCPITARIFF2*SMP2"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                     ProductPriceCurrency=CurrencyID(root="EUR"),
                     PricePerReferenceUnit=0.2,
