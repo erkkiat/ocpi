@@ -1,5 +1,5 @@
 import functools
-from decimal import Decimal
+from decimal import Decimal, ROUND_UP
 
 import regex
 import logging
@@ -227,13 +227,13 @@ class SolidToHubjectConverter:
 
     def _get_primary_price(
         self, solid_tariff: SolidTariff
-    ) -> tuple[float, HubjectPriceComponent]:
+    ) -> tuple[Decimal, HubjectPriceComponent]:
         if solid_tariff.price_per_kwh is not None:
-            return float(solid_tariff.price_per_kwh), HubjectPriceComponent.KWH
+            return solid_tariff.price_per_kwh, HubjectPriceComponent.KWH
         elif solid_tariff.price_per_hr is not None:
-            return float(solid_tariff.price_per_hr), HubjectPriceComponent.HOUR
+            return solid_tariff.price_per_hr, HubjectPriceComponent.HOUR
         elif solid_tariff.price_per_min is not None:
-            return float(solid_tariff.price_per_min), HubjectPriceComponent.MINUTE
+            return solid_tariff.price_per_min, HubjectPriceComponent.MINUTE
 
         raise ValidationError(
             f"SolidTariff {solid_tariff.external_id} is a free tariff without any price defined."
@@ -253,7 +253,9 @@ class SolidToHubjectConverter:
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=float(price),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
             )
         return None
 
@@ -271,7 +273,9 @@ class SolidToHubjectConverter:
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.MINUTE.value
                 ),
-                PricePerAdditionalReferenceUnit=float(price),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
             )
         return None
 
@@ -285,7 +289,9 @@ class SolidToHubjectConverter:
                 AdditionalReferenceUnit=ReferenceUnit(
                     root=HubjectPriceComponent.HOUR.value
                 ),
-                PricePerAdditionalReferenceUnit=float(price),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
             )
 
         return None
@@ -295,6 +301,9 @@ class SolidToHubjectConverter:
         solid_tariff: SolidTariff,
     ) -> PricingProductDataRecord:
         primary_price, primary_reference_unit = self._get_primary_price(solid_tariff)
+
+        primary_price = primary_price.quantize(Decimal("0.001"), rounding=ROUND_UP)
+
         pricing_product_base_data_record = PricingProductDataRecord(
             AdditionalReferences=[],
             IsValid24hours=True,
