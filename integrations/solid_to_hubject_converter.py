@@ -353,7 +353,12 @@ class SolidToHubjectConverter:
         external_id: str,
         ocpi_tariff_uid: str,
     ) -> str:
-        return f"{external_id}*{ocpi_tariff_uid}"
+        product_id = f"{ocpi_tariff_uid}*{external_id}"
+        if len(product_id) <= 50:
+            return product_id
+
+        truncated = f"{external_id[:6]}_{external_id[-6:]}"
+        return f"{ocpi_tariff_uid}*{truncated}"
 
     def get_plug(self, connector_std: str) -> Plug:
         """
