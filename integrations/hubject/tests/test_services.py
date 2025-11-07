@@ -898,11 +898,8 @@ class TestOICPDynamicPricingService:
         key = "FI*CPO*Evse1"
         evse_product_id_provider_id_map = {
             key: [
-                [
-                    ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
-                    ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
-                ],
-                [ProviderIDAsterisk(root="DE*ICE"), ProviderIDAsterisk(root="DE*ICE")],
+                ProductID(root="OCPITARIFF1*SMP1"),
+                ProductID(root="OCPITARIFF2*SMP2"),
             ]
         }
 
@@ -912,10 +909,8 @@ class TestOICPDynamicPricingService:
 
         assert isinstance(result, ERoamingPushEVSEPricing)
         assert len(result.EVSEPricing[0].EvseIDProductList) == 2
-        assert (
-            result.EVSEPricing[0].EvseIDProductList[0].root
-            == "FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"
-        )
+        assert result.EVSEPricing[0].EvseIDProductList[0].root == "OCPITARIFF1*SMP1"
+        assert result.EVSEPricing[0].EvseIDProductList[1].root == "OCPITARIFF2*SMP2"
 
     @responses.activate
     @pytest.mark.django_db

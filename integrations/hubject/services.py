@@ -50,8 +50,6 @@ from integrations.hubject.schemas import (
     PricingProductData,
     ERoamingPushPricingProductData,
     ERoamingPushEVSEPricing,
-    HubjectPriceComponent,
-    ProductID,
     ProviderIDAsterisk,
     EVSEPricingItem,
 )
@@ -86,16 +84,16 @@ class HubjectService:
     converter = SolidToHubjectConverter()
 
     @staticmethod
+    def _get_hubject_credentials_role() -> Optional[CredentialsRole]:
+        country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
+        return CredentialsRole.objects.filter(
+            country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
+        ).first()
+
+    @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
-        hubject_credentials_role = get_credentialsrole(
-            credentials=None,
-            party=Party.from_str(settings.HUBJECT_OPERATOR_ID),
-            role=OcpiRolesEnum.HUB,
-        )
+        hubject_credentials_role = HubjectService._get_hubject_credentials_role()
         if not hubject_credentials_role:
-            logger.error(
-                "Hubject credentials not found for fetching operator EVSE data"
-            )
             return None
 
         allowed_locations = hubject_credentials_role.credentials.allowed_locations
@@ -494,11 +492,23 @@ class HubjectService:
                 "error": str(e),
             }
 
-    def get_evse_product_provider_maps(self, party: Party) -> defaultdict:
-        evses = Evse.objects.filter(
-            location__ocpi_master__country_code=party.country_code,
-            location__ocpi_master__party_id=party.party_id,
-        ).prefetch_related(
+    def get_evse_product_maps(self, party: Party) -> defaultdict | None:
+        hubject_credentials_role = HubjectService._get_hubject_credentials_role()
+        if not hubject_credentials_role or not hubject_credentials_role.credentials:
+            return None
+
+        allowed_locations = hubject_credentials_role.credentials.allowed_locations
+
+        location_based_filter = {
+            "location__ocpi_master__party_id": party.party_id,
+            "location__ocpi_master__country_code": party.country_code,
+            "location__roaming_enabled": True,
+        }
+
+        if allowed_locations:
+            location_based_filter["location__uid__in"] = allowed_locations
+
+        evses = Evse.objects.filter(**location_based_filter).prefetch_related(
             Prefetch(
                 "connectors",
                 queryset=Connector.objects.prefetch_related(
@@ -508,85 +518,37 @@ class HubjectService:
             )
         )
 
-        all_tariff_uids = {
-            tariff.uid
-            for evse in evses
-            for connector in evse.connectors_with_tariffs
-            for tariff in connector.tariff_ids.all()
-        }
-
-        solid_tariffs = (
-            SolidTariff.objects.filter(external_id__in=all_tariff_uids)
-            .select_related("msp")
-            .values(
-                "external_id",
-                "price_per_kwh",
-                "price_per_min",
-                "msp__country_code",
-                "msp__party_id",
-            )
-        )
-
-        solid_tariff_map = defaultdict(list)
-        for solid_tariff in solid_tariffs:
-            solid_tariff_map[solid_tariff["external_id"]].append(solid_tariff)
-
-        party_str = str(party)
-        evse_pricing_product_id_provider_id_map = defaultdict(lambda: [[], []])
+        evse_pricing_product_id_map = defaultdict(list)
 
         for evse in evses:
-            for connector in evse.connectors_with_tariffs:
-                tariff_uids = {tariff.uid for tariff in connector.tariff_ids.all()}
-                print(tariff_uids)
-                related_solid_tariffs = [
-                    solid_tariff
-                    for uid in tariff_uids
-                    for solid_tariff in solid_tariff_map.get(uid, [])
-                ]
+            connector = evse.connectors_with_tariffs[0]  # One evse has one connector
+            if not connector:
+                logger.error(f"Evse {evse.uid} has no connectors")
+                continue
+            pricing_product_ids = []
 
-                for solid_tariff in related_solid_tariffs:
-                    if not solid_tariff.get("msp__country_code"):
-                        logger.info(
-                            f"No MSP found for SolidTariff {solid_tariff.get('external_id')}"
-                        )
-                        continue
+            for tariff in connector.tariff_ids.all():
+                pricing_product_id = self.converter.get_pricing_product_id(
+                    tariff.solid_tariff.external_id,
+                    tariff.uid,
+                )
+                pricing_product_ids.append(pricing_product_id)
 
-                    for component, has_price in [
-                        (HubjectPriceComponent.KWH, solid_tariff["price_per_kwh"]),
-                        (HubjectPriceComponent.MINUTE, solid_tariff["price_per_min"]),
-                    ]:
-                        if has_price:
-                            pricing_product_id = self.converter.get_pricing_product_id(
-                                solid_tariff.get("external_id"),
-                                component,
-                                party_str,
-                                f"{solid_tariff['msp__country_code']}*{solid_tariff['msp__party_id']}",
-                            )
+            evse_pricing_product_id_map[evse.evse_id] = pricing_product_ids
 
-                            evse_pricing_product_id_provider_id_map[evse.evse_id][
-                                0
-                            ].append(ProductID(root=pricing_product_id))
-                            evse_pricing_product_id_provider_id_map[evse.evse_id][
-                                1
-                            ].append(
-                                ProviderIDAsterisk(
-                                    root=f"{solid_tariff['msp__country_code']}*{solid_tariff['msp__party_id']}"
-                                )
-                            )
-
-        return evse_pricing_product_id_provider_id_map
+        return evse_pricing_product_id_map
 
     def get_evse_pricing_product_data_full_load_payload(
-        self, evse_product_id_provider_id_map: dict
+        self, evse_product_id_map: dict
     ) -> ERoamingPushEVSEPricing:
         evse_pricing_items = []
-        for evse_id, tariff_id_msp_list in evse_product_id_provider_id_map.items():
+        for evse_id, product_ids in evse_product_id_map.items():
             evse_pricing_items.append(
                 EVSEPricingItem(
                     EvseID=evse_id,
                     # todo: According to Mike we should have a list here. But as of now a list is not accepted by hubject
-                    ProviderID=tariff_id_msp_list[1][0],
-                    EvseIDProductList=tariff_id_msp_list[0],
+                    ProviderID=ProviderIDAsterisk("*"),
+                    EvseIDProductList=product_ids,
                 )
             )
 
