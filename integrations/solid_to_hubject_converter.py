@@ -243,7 +243,7 @@ class SolidToHubjectConverter:
         self,
         price: Decimal,
         primary_reference_unit: HubjectPriceComponent,
-    ):
+    ) -> Optional[AdditionalReference]:
         if (
             price is not None
             and not primary_reference_unit == HubjectPriceComponent.HOUR
@@ -263,7 +263,7 @@ class SolidToHubjectConverter:
         self,
         price: Decimal,
         primary_reference_unit: HubjectPriceComponent,
-    ):
+    ) -> Optional[AdditionalReference]:
         if (
             price is not None
             and not primary_reference_unit == HubjectPriceComponent.MINUTE
