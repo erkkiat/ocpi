@@ -617,11 +617,12 @@ class StopCommandServices(RemoteCommandServices):
                 CommandResponseType.UNKNOWN_SESSION, "Could not find the session"
             )
 
-        CallBackService.create_callback(
-            session=session,
-            callback_url=validated_data["response_url"],
-            authorization_reference=session.authorization_reference,
-        )
+        if not session.route_through_oicp:
+            CallBackService.create_callback(
+                session=session,
+                callback_url=validated_data["response_url"],
+                authorization_reference=session.authorization_reference,
+            )
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )

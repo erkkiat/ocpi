@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 from rest_framework import status
 
+from ocpi22.commands.models import CallBacks
 from ocpi22.commands.serializers import CommandResponseType
 from ocpi22.commands.services import (
     StartCommandService,
@@ -571,8 +572,6 @@ class TestStopCommandServices:
         service.webhook_repo = MagicMock()
         service.webhook_repo.get_remote_command_webhook = mock_get_webhook
 
-        from ocpi22.commands.services import StopCommandServices
-
         result = StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
         assert result == mock_webhook
 
@@ -581,9 +580,6 @@ class TestStopCommandServices:
         self, mock_get_webhook
     ):
         mock_get_webhook.return_value = None
-
-        from ocpi22.commands.services import StopCommandServices
-        from django.core.exceptions import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
@@ -657,8 +653,6 @@ class TestStopCommandServices:
             "response_url": "https://example.com/callback",
         }
 
-        from ocpi22.commands.services import StopCommandServices
-
         StopCommandServices().stop_session(validated_data=validated_data)
 
         mock_send_callback.assert_not_called()
@@ -686,14 +680,41 @@ class TestStopCommandServices:
             "response_url": "https://example.com/callback",
         }
 
-        from ocpi22.commands.services import StopCommandServices
-        from ocpi22.commands.models import CallBacks
-
         StopCommandServices().stop_session(validated_data=validated_data)
 
         callback = CallBacks.objects.filter(session=session).first()
         assert callback is not None
         assert callback.callback_url == validated_data["response_url"]
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StopCommandServices.send_stop_command_webhook")
+    def test_stop_session_does_not_create_callback_record_when_route_through_oicp(
+        self, mock_send_webhook, hubject_credentials
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+        credentials_role = hubject_credentials.roles.first()
+        session = OCPISessionFactory(
+            uid="SESSION_789",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+        )
+
+        validated_data = {
+            "session_id": session.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        StopCommandServices().stop_session(validated_data=validated_data)
+
+        callback = CallBacks.objects.filter(session=session).first()
+        assert callback is None
 
 
 class TestStartCommandServiceHelpers:
