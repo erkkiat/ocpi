@@ -874,7 +874,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC123")
-        evse = EvseFactory(uid="EVSE123", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE123", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN123", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -916,7 +916,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC456")
-        evse = EvseFactory(uid="EVSE456", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE456", location=location, status=Evse.AVAILABLE)
         connector1 = ConnectorFactory(uid="CONN_FIRST", evse=evse)
         _ = ConnectorFactory(uid="CONN_SECOND", evse=evse)
         credentials_role = CredentialsRoleFactory()
@@ -1085,7 +1085,7 @@ class TestStartCommandServiceStartSession:
         self,
     ):
         location = LocationFactory(uid="LOC444")
-        evse = EvseFactory(uid="EVSE444", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE444", location=location, status=Evse.AVAILABLE)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1121,7 +1121,7 @@ class TestStartCommandServiceStartSession:
         self,
     ):
         location = LocationFactory(uid="LOC555")
-        evse = EvseFactory(uid="EVSE555", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE555", location=location, status=Evse.AVAILABLE)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1156,7 +1156,7 @@ class TestStartCommandServiceStartSession:
     ):
         get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC666")
-        evse = EvseFactory(uid="EVSE666", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE666", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN666", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -1401,7 +1401,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC102")
-        evse = EvseFactory(uid="EVSE102", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE102", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN102", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -1516,7 +1516,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC105")
-        evse = EvseFactory(uid="EVSE105", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE105", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN105", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
