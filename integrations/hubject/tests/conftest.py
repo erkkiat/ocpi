@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 import factory
 import pytest
@@ -506,14 +507,20 @@ def msp_de_icd():
 @pytest.fixture
 def smp1_solid_tariff(operator_fi_cpo, msp_de_ice):
     return SolidTariffFactory(
-        external_id="SMP1", operator=operator_fi_cpo, msp=msp_de_ice
+        external_id="SMP1",
+        operator=operator_fi_cpo,
+        msp=msp_de_ice,
+        ocpi_tariff=TariffFactory(uid="OCPITARIFF1"),
     )
 
 
 @pytest.fixture
 def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
     return SolidTariffFactory(
-        external_id="SMP2", operator=operator_fi_cpo, msp=msp_de_ice
+        external_id="SMP2",
+        operator=operator_fi_cpo,
+        msp=msp_de_ice,
+        ocpi_tariff=TariffFactory(uid="OCPITARIFF2"),
     )
 
 
@@ -544,13 +551,15 @@ def connector_max_electric_power_none():
 
 @pytest.fixture
 def smp1_solid_tariff_with_all_records():
-    return SolidTariffFactory(external_id="SMP1")
+    return SolidTariffFactory(
+        external_id="SMP1", ocpi_tariff=TariffFactory(uid="TARIFFNONE")
+    )
 
 
 @pytest.fixture
 def smp1_solid_tariff_with_none_prices():
     return SolidTariffFactory(
-        external_id="SMP1", price_per_kwh=None, price_per_min=None
+        external_id="SMP1", price_per_kwh=None, price_per_min=None, price_per_hr=None
     )
 
 
@@ -566,44 +575,31 @@ def smp1_solid_tariff_without_msp():
 
 @pytest.fixture
 def pricing_product_data_record_successful_result():
-    return [
-        PricingProductDataRecord(
-            AdditionalReferences=[
-                AdditionalReference(
-                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                    AdditionalReferenceUnit=ReferenceUnit(
-                        root=HubjectPriceComponent.HOUR.value
-                    ),
-                    PricePerAdditionalReferenceUnit=0.3,
+    return PricingProductDataRecord(
+        AdditionalReferences=[
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
                 ),
-            ],
-            IsValid24hours=True,
-            MaximumProductChargingPower=0,
-            PricePerReferenceUnit=0.2,
-            ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
-            ProductPriceCurrency="EUR",
-            ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
-        ),
-        PricingProductDataRecord(
-            AdditionalReferences=[
-                AdditionalReference(
-                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                    AdditionalReferenceUnit=ReferenceUnit(
-                        root=HubjectPriceComponent.HOUR.value
-                    ),
-                    PricePerAdditionalReferenceUnit=0.3,
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
                 ),
-            ],
-            IsValid24hours=True,
-            MaximumProductChargingPower=0,
-            PricePerReferenceUnit=0.3,
-            ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*MINUTE*DE*ICE",
-            ProductPriceCurrency="EUR",
-            ReferenceUnit=ReferenceUnit(root="MINUTE"),
-        ),
-    ]
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+        ],
+        IsValid24hours=True,
+        MaximumProductChargingPower=0,
+        PricePerReferenceUnit=Decimal("0.200"),
+        ProductAvailabilityTimes=[],
+        ProductID=ProductID(root="TARIFFNONE*SMP1"),
+        ProductPriceCurrency=CurrencyID(root="EUR"),
+        ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+    )
 
 
 @pytest.fixture
@@ -611,16 +607,16 @@ def pricing_product_data_successful_result():
     return PricingProductData(
         OperatorID=OperatorID(root="FI*CPO"),
         OperatorName="Smappee eRoam CPO",
-        ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+        ProviderID=ProviderIDAsterisk(root="*"),
         PricingDefaultPrice=0.3,
         PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
         PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
         PricingProductDataRecords=[
             PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                ProductID=ProductID(root="TARIFFNONE*SMP1"),
                 ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                 ProductPriceCurrency=CurrencyID(root="EUR"),
-                PricePerReferenceUnit=0.2,
+                PricePerReferenceUnit=Decimal("0.200"),
                 MaximumProductChargingPower=0.0,
                 IsValid24hours=True,
                 ProductAvailabilityTimes=[],
@@ -628,24 +624,13 @@ def pricing_product_data_successful_result():
                     AdditionalReference(
                         AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
-                    )
-                ],
-            ),
-            PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
-                ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                ProductPriceCurrency=CurrencyID(root="EUR"),
-                PricePerReferenceUnit=0.3,
-                MaximumProductChargingPower=0.0,
-                IsValid24hours=True,
-                ProductAvailabilityTimes=[],
-                AdditionalReferences=[
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                    ),
                     AdditionalReference(
-                        AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                        AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
-                    )
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                    ),
                 ],
             ),
         ],

@@ -62,6 +62,8 @@ def start_pricing_product_full_load(request) -> dict:
         )
     except SolidTariff.DoesNotExist:
         return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
+    except ValidationError as e:
+        return {"success": False, "message": f"Validation error: {str(e)}"}
 
 
 @api.post(

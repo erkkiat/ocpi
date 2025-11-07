@@ -466,6 +466,7 @@ class StartCommandService(RemoteCommandServices):
         if not session:
             location = self._get_location(location_uid=validated_data["location_id"])
             evse = self._get_evse(evse_uid=validated_data["evse_uid"])
+            self._is_evse_available(evse)
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
@@ -510,7 +511,6 @@ class StartCommandService(RemoteCommandServices):
                 result = CommandResponseType.REJECTED
 
             if result != CommandResponseType.ACCEPTED:
-                self._is_evse_available(evse)
                 return self.create_ocpi_response(
                     result, message=MessageTexts.get("EV_IS_NOT_CONNECTED")[0]["text"]
                 )

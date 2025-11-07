@@ -181,7 +181,8 @@ class HubjectService:
 
     @staticmethod
     def parse_hubject_validation_errors(
-        response_json: dict, payload: ERoamingPushEvseData
+        response_json: dict,
+        payload: ERoamingPushEvseData | ERoamingPushPricingProductData,
     ) -> dict:
         try:
             result = {
@@ -205,16 +206,32 @@ class HubjectService:
                 else:
                     index = None
                     logger.warning(
-                        f"Unexpected fieldReference format: '{field_ref}'. Could not determine EVSE index."
+                        f"Unexpected fieldReference format: '{field_ref}'. Could not determine the index."
                     )
-                evse_record = (
-                    payload.OperatorEvseData.EvseDataRecord[index]
-                    if index is not None
-                    and index < len(payload.OperatorEvseData.EvseDataRecord)
-                    else None
-                )
+                record_id = "Unknown"
+                if isinstance(payload, ERoamingPushEvseData):
+                    evse_record = (
+                        payload.OperatorEvseData.EvseDataRecord[index]
+                        if index is not None
+                        and index < len(payload.OperatorEvseData.EvseDataRecord)
+                        else None
+                    )
+                    record_id = evse_record.EvseID if evse_record else "Unknown"
+                elif isinstance(payload, ERoamingPushPricingProductData):
+                    price_record = (
+                        payload.PricingProductData.PricingProductDataRecords[index]
+                        if index is not None
+                        and index
+                        < len(payload.PricingProductData.PricingProductDataRecords)
+                        else None
+                    )
+                    record_id = (
+                        price_record.ProductID.root if price_record else "Unknown"
+                    )
 
-                formatted_error = f"Field: {field_ref} - EVSE: {evse_record.EvseID if evse_record else 'Unknown'} - Error: {error_msg}"
+                formatted_error = (
+                    f"Field: {field_ref} - UID: {record_id} - Error: {error_msg}"
+                )
 
                 result["errors"].append(formatted_error)
 
@@ -452,10 +469,22 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
+                try:
+                    response_json = response.json()
+                    formatted_errors = HubjectService.parse_hubject_validation_errors(
+                        response_json, payload
+                    )
+                except JSONDecodeError:
+                    formatted_errors = f"{response.status_code} : {response.text}"
+
+                logger.error(
+                    f"Hubject Pricing Product full load failed with status code {response.status_code}",
+                    extra={"response_text": formatted_errors},
+                )
                 return {
                     "success": False,
                     "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
+                    "error": formatted_errors,
                 }
         except PydanticSerializationError as e:
             logger.exception("Pydantic validation failed")
