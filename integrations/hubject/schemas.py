@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 
@@ -437,8 +438,11 @@ class AdditionalReference(BaseModel):
         description='Additional pricing components to be considered in addition to the base pricing\n\n| Option | Description |\n| ------ | ----------- |\n| START FEE | Can be used in case a fixed fee is charged for the initiation of the charging session. This is a fee charged on top of the main base price defined in the field "PricePerReferenceUnit" for any particular pricing product. |\n| FIXED FEE | Can be used if a single price is charged irrespective of charging duration or energy consumption (for instance if all sessions are to be charged a single fixed fee). When used, the value set in the field "PricePerReferenceUnit" for the main base price of respective pricing product SHOULD be set to zero. |\n| PARKING FEE | Can be used in case sessions are to be charged for both parking and charging. When used, it needs to be specified in the corresponding service offer on the HBS Portal when parking applies (e.g. from session start to charging start and charging end to session end or for the entire session duration, or x-minutes after charging end, etc) |\n| MINIMUM FEE | Can be used in case there is a minimum fee to be paid for all charging sessions. When used, this implies that the eventual price to be paid cannot be less than this minimum fee but can however be a price above/greater than the minimum fee. |\n| MAXIMUM FEE | Can be used in case there is a maximum fee to be charged for all charging sessions. When used, this implies that the eventual price to be paid cannot be more than this maximum fee but can however be a price below/lower than the maximum fee. |\n',
     )
     AdditionalReferenceUnit: ReferenceUnit
-    PricePerAdditionalReferenceUnit: float = Field(
-        ..., description="A price in the given currency"
+    PricePerAdditionalReferenceUnit: Decimal = Field(
+        ...,
+        description="A price in the given currency",
+        decimal_places=3,
+        max_digits=22,
     )
 
 
@@ -446,7 +450,9 @@ class PricingProductDataRecord(BaseModel):
     ProductID: ProductID
     ReferenceUnit: ReferenceUnit
     ProductPriceCurrency: CurrencyID
-    PricePerReferenceUnit: float = Field(..., description="A price per reference unit")
+    PricePerReferenceUnit: Decimal = Field(
+        ..., description="A price per reference unit", decimal_places=3, max_digits=22
+    )
     MaximumProductChargingPower: float = Field(..., description="A value in kWh")
     IsValid24hours: bool = Field(
         ...,
@@ -459,6 +465,13 @@ class PricingProductDataRecord(BaseModel):
         None,
         description="A list of additional reference units and their respective prices",
     )
+
+    @field_validator("ProductID")
+    @classmethod
+    def validate_product_id_length(cls, v: ProductID) -> ProductID:
+        if len(v.root) > 50:
+            raise ValueError("ProductID must be at most 50 characters")
+        return v
 
 
 class DeltaType(Enum):

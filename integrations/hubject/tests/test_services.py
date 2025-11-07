@@ -1,6 +1,6 @@
-import json
 import re
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import patch, MagicMock, AsyncMock, Mock
 
 import pytest
@@ -813,9 +813,8 @@ class TestOICPDynamicPricingService:
         result = self.hubject_service.post_pricing_products_full_load(
             operator_id, pricing_products_full_load_payload
         )
-        response_content = json.loads(result["error"].split(":", 1)[1])
-        assert isinstance(response_content, dict)
-        assert response_content == hubject_unsuccessful_response
+        assert result["error"]["message"] == "Error parsing/validating JSON."
+        assert "must not be empty" in result["error"]["errors"][0]
 
     @responses.activate
     def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
@@ -842,13 +841,34 @@ class TestOICPDynamicPricingService:
         return PricingProductData(
             OperatorID=OperatorID(root="FI*CPO"),
             OperatorName="Smappee Pvt Ltd",
-            ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+            ProviderID=ProviderIDAsterisk(root="*"),
             PricingDefaultPrice=0.3,
             PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
             PricingDefaultReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
             PricingProductDataRecords=[
                 PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ProductID=ProductID(root="OCPITARIFF1*SMP1"),
+                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+                    ProductPriceCurrency=CurrencyID(root="EUR"),
+                    PricePerReferenceUnit=Decimal("0.200"),
+                    MaximumProductChargingPower=0.0,
+                    IsValid24hours=True,
+                    ProductAvailabilityTimes=[],
+                    AdditionalReferences=[
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                        ),
+                        AdditionalReference(
+                            AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
+                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                            PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                        ),
+                    ],
+                ),
+                PricingProductDataRecord(
+                    ProductID=ProductID(root="OCPITARIFF2*SMP2"),
                     ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                     ProductPriceCurrency=CurrencyID(root="EUR"),
                     PricePerReferenceUnit=0.2,
@@ -860,55 +880,12 @@ class TestOICPDynamicPricingService:
                             AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
-                    ],
-                ),
-                PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
-                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                    ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.3,
-                    MaximumProductChargingPower=0.0,
-                    IsValid24hours=True,
-                    ProductAvailabilityTimes=[],
-                    AdditionalReferences=[
+                        ),
                         AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                            AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                             AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
                             PricePerAdditionalReferenceUnit=0.3,
-                        )
-                    ],
-                ),
-                PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP2*KILOWATT_HOUR*DE*ICE"),
-                    ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
-                    ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.2,
-                    MaximumProductChargingPower=0.0,
-                    IsValid24hours=True,
-                    ProductAvailabilityTimes=[],
-                    AdditionalReferences=[
-                        AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
-                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                            PricePerAdditionalReferenceUnit=0.3,
-                        )
-                    ],
-                ),
-                PricingProductDataRecord(
-                    ProductID=ProductID(root="FI*CPO*SMP2*MINUTE*DE*ICE"),
-                    ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                    ProductPriceCurrency=CurrencyID(root="EUR"),
-                    PricePerReferenceUnit=0.3,
-                    MaximumProductChargingPower=0.0,
-                    IsValid24hours=True,
-                    ProductAvailabilityTimes=[],
-                    AdditionalReferences=[
-                        AdditionalReference(
-                            AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
-                            AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                            PricePerAdditionalReferenceUnit=0.3,
-                        )
+                        ),
                     ],
                 ),
             ],
