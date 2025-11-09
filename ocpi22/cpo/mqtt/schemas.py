@@ -66,3 +66,4 @@ class CachedSession:
     kwh: float
     timestamp: datetime
     route_to_msp: Route
+    meter_value_update_date_time: Optional[datetime] = None
