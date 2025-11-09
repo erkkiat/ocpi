@@ -11,6 +11,7 @@ from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
 from base_task_services import RefreshTokenBaseTask
+from ocpi22.cpo.api import send_meter_values_updates
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
@@ -191,9 +192,7 @@ def update_meter_values_async(
             power=power,
         )
 
-        session.send_updates(
-            method="put", update_type=ChargingNotificationType.Progress
-        )
+        send_meter_values_updates(session, timestamp_dt)
 
         logger.info(f"Successfully processed meter values for session {session_id}")
 

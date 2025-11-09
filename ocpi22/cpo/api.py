@@ -30,7 +30,7 @@ from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_service import SessionService
-from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.session_cache import save_to_session_cache, get_cached_session
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
@@ -167,6 +167,31 @@ def create_charging_periods(session: Session):
     return [process(m) for m in meter_values]
 
 
+def send_meter_values_updates(session: Session, timestamp: datetime) -> None:
+    meter_value_frequency = session.credentials.meter_value_frequency
+    if not meter_value_frequency:
+        session.send_updates(
+            method="put", update_type=ChargingNotificationType.Progress
+        )
+        return
+
+    if timestamp.tzinfo is None:
+        timestamp = pytz.utc.localize(timestamp)
+
+    cached_session = get_cached_session(session.uid)
+    last_update = (
+        cached_session.meter_value_update_date_time if cached_session else None
+    )
+    elapsed_time = (timestamp - last_update).total_seconds()
+
+    if not last_update or elapsed_time >= meter_value_frequency:
+        session.send_updates(
+            method="put", update_type=ChargingNotificationType.Progress
+        )
+        save_to_session_cache(session, meter_value_update_date_time=timestamp)
+    return
+
+
 def process_meter_values(
     request,
     kwh,
@@ -194,9 +219,7 @@ def process_meter_values(
         SessionService().update_meter_values(
             session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
-        session.send_updates(
-            method="put", update_type=ChargingNotificationType.Progress
-        )
+        send_meter_values_updates(session, timestamp)
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
