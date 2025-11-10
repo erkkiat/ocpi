@@ -979,15 +979,9 @@ class TestOICPDynamicPricingService:
 
         with pytest.raises(HTTPError):
             service = HubjectService()
-            result = service.post_evse_pricing_item_full_load(
+            service.post_evse_pricing_item_full_load(
                 operator_id, evse_pricing_full_load_payload
             )
-
-            assert result == {
-                "success": False,
-                "errorType": "HTTP request failed",
-                "error": "HTTP request failed",
-            }
 
     @pytest.mark.django_db
     def test_post_evse_pricing_products_full_load_pydantic_error(self):
