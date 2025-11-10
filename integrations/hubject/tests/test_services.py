@@ -970,11 +970,10 @@ class TestOICPDynamicPricingService:
     ):
         operator_id = "FI*CPO"
 
-        responses.add(
+        responses.add_callback(
             responses.POST,
             f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
-            body=HTTPError("HTTP request failed"),
-            status=500,
+            callback=lambda request: HTTPError("HTTP request failed"),
         )
 
         with pytest.raises(HTTPError):
