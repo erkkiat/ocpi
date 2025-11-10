@@ -5,7 +5,6 @@ from json import JSONDecodeError
 from typing import Any
 from collections import defaultdict
 from urllib.error import HTTPError
-from urllib.parse import urljoin
 
 import pytz
 import requests
@@ -256,9 +255,8 @@ class HubjectService:
 
     @staticmethod
     def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"evsepush/v23/operators/{operator_id}/data-records",
+        full_load_url = (
+            f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records"
         )
 
         try:
@@ -455,10 +453,7 @@ class HubjectService:
     def post_pricing_products_full_load(
         self, operator_id: str, payload: ERoamingPushPricingProductData
     ) -> dict:
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"dynamicpricing/v10/operators/{operator_id}/pricing-products",
-        )
+        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
 
         try:
             payload_json = payload.model_dump(mode="json")
@@ -559,10 +554,7 @@ class HubjectService:
     def post_evse_pricing_item_full_load(
         self, operator_id: str, payload: ERoamingPushEVSEPricing
     ):
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"dynamicpricing/v10/operators/{operator_id}/evse-pricing",
-        )
+        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
 
         try:
             payload_json = payload.model_dump_json()
