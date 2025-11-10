@@ -82,9 +82,7 @@ def map_evses_and_pricing_products(request) -> Dict:
     )
     if len(payload.EVSEPricing) == 0:
         return {"status_message": "EvsePricing cannot be empty."}
-    return hubject_service.post_evse_pricing_item_full_load(
-        str(get_our_party()), payload
-    )
+    return hubject_service.post_evse_pricing_item_full_load(str(party), payload)
 
 
 @api.post(

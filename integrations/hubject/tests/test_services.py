@@ -686,7 +686,7 @@ def operator():
     country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
     party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
 
-    CredentialsRoleFactory(
+    return CredentialsRoleFactory(
         country_code=country_code,
         party_id=party_id,
     )

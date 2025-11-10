@@ -501,7 +501,7 @@ def msp_de_ice():
 
 @pytest.fixture
 def msp_de_icd():
-    CredentialsRoleFactory(country_code="DE", party_id="ICD")
+    return CredentialsRoleFactory(country_code="DE", party_id="ICD")
 
 
 @pytest.fixture

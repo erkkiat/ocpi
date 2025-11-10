@@ -362,6 +362,8 @@ class SolidToHubjectConverter:
         external_id: str,
         ocpi_tariff_uid: str,
     ) -> str:
+        if not external_id or external_id == "":
+            return ocpi_tariff_uid
         product_id = f"{ocpi_tariff_uid}*{external_id}"
         if len(product_id) <= 50:
             return product_id

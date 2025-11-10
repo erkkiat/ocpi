@@ -516,15 +516,26 @@ class HubjectService:
         evse_pricing_product_id_map = defaultdict(list)
 
         for evse in evses:
-            connector = evse.connectors_with_tariffs[0]  # One evse has one connector
+            connector = (
+                evse.connectors_with_tariffs[0]
+                if not evse.connectors_with_tariffs
+                else None
+            )  # One evse has one connector
             if not connector:
-                logger.error(f"Evse {evse.uid} has no connectors")
+                logger.warning(f"Evse {evse.uid} has no connectors")
                 continue
             pricing_product_ids = []
 
             for tariff in connector.tariff_ids.all():
+                try:
+                    external_id = tariff.solid_tariff.external_id
+                except SolidTariff.DoesNotExist:
+                    logger.warning(
+                        f"Tariff {tariff.uid} has no related SolidTariff, skipping."
+                    )
+                    external_id = None
                 pricing_product_id = self.converter.get_pricing_product_id(
-                    tariff.solid_tariff.external_id,
+                    external_id,
                     tariff.uid,
                 )
                 pricing_product_ids.append(pricing_product_id)
