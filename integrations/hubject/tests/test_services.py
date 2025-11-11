@@ -931,7 +931,7 @@ class TestOICPDynamicPricingService:
             ],
         )
         result = self.hubject_service.post_evse_pricing_item_full_load(
-            operator_id, evse_pricing_full_load_payload
+            evse_pricing_full_load_payload
         )
 
         assert result == hubject_successful_response
@@ -958,7 +958,7 @@ class TestOICPDynamicPricingService:
             ],
         )
         result = self.hubject_service.post_evse_pricing_item_full_load(
-            operator_id, evse_pricing_full_load_payload
+            evse_pricing_full_load_payload
         )
 
         assert result == hubject_unsuccessful_response
@@ -978,22 +978,16 @@ class TestOICPDynamicPricingService:
 
         with pytest.raises(HTTPError):
             service = HubjectService()
-            service.post_evse_pricing_item_full_load(
-                operator_id, evse_pricing_full_load_payload
-            )
+            service.post_evse_pricing_item_full_load(evse_pricing_full_load_payload)
 
     @pytest.mark.django_db
     def test_post_evse_pricing_products_full_load_pydantic_error(self):
-        operator_id = "DE+MSP"
-
         payload_mock = MagicMock()
         payload_mock.model_dump_json.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
-        result = self.hubject_service.post_evse_pricing_item_full_load(
-            operator_id, payload_mock
-        )
+        result = self.hubject_service.post_evse_pricing_item_full_load(payload_mock)
 
         assert result == {
             "success": False,
