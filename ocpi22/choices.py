@@ -249,9 +249,6 @@ class MessageTexts:
                 "There is a communication error with one of the service provider internal systems"
             )
         )
-        EV_IS_NOT_CONNECTED = _make_texts(
-            _("The electric vehicle is not connected to evse")
-        )
 
         _texts = dict(
             START_ACCEPTED=PREPARING_TO_CHARGE,
@@ -277,7 +274,6 @@ class MessageTexts:
             UNKNOWN_RESERVATION=_make_texts(
                 _("There has been a problem with the reservation")
             ),
-            EV_IS_NOT_CONNECTED=EV_IS_NOT_CONNECTED,
         )
         return _texts.get(s, default)
 
