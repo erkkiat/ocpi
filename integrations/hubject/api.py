@@ -72,8 +72,7 @@ def start_pricing_product_full_load(request) -> dict:
     response=Dict,
 )
 def map_evses_and_pricing_products(request) -> Dict:
-    party = get_our_party(OcpiRolesEnum.CPO)
-    evse_product_id_map = hubject_service.get_evse_product_maps(party)
+    evse_product_id_map = hubject_service.get_evse_product_maps()
     if evse_product_id_map is None:
         return {"status_message": "No EVSE to Pricing Product mappings found."}
 
@@ -82,7 +81,7 @@ def map_evses_and_pricing_products(request) -> Dict:
     )
     if len(payload.EVSEPricing) == 0:
         return {"status_message": "EvsePricing cannot be empty."}
-    return hubject_service.post_evse_pricing_item_full_load(str(party), payload)
+    return hubject_service.post_evse_pricing_item_full_load(payload)
 
 
 @api.post(

@@ -64,7 +64,7 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity
+from ocpiconnector.ocpi_identities import get_our_identity, get_our_party
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import TYPE_CHECKING, Optional
@@ -83,15 +83,8 @@ class HubjectService:
     converter = SolidToHubjectConverter()
 
     @staticmethod
-    def _get_hubject_credentials_role() -> Optional[CredentialsRole]:
-        country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
-        return CredentialsRole.objects.filter(
-            country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
-        ).first()
-
-    @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
-        hubject_credentials_role = HubjectService._get_hubject_credentials_role()
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
         if not hubject_credentials_role:
             return None
 
@@ -487,11 +480,12 @@ class HubjectService:
                 "error": str(e),
             }
 
-    def get_evse_product_maps(self, party: Party) -> defaultdict | None:
-        hubject_credentials_role = HubjectService._get_hubject_credentials_role()
+    def get_evse_product_maps(self) -> defaultdict | None:
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
         if not hubject_credentials_role or not hubject_credentials_role.credentials:
             return None
 
+        party = get_our_party(OcpiRolesEnum.CPO)
         evses = CredentialsRepository.get_evses_by_party(
             hubject_credentials_role.credentials, party
         )
@@ -545,9 +539,8 @@ class HubjectService:
             ActionType=ActionType.fullLoad, EVSEPricing=evse_pricing_items
         )
 
-    def post_evse_pricing_item_full_load(
-        self, operator_id: str, payload: ERoamingPushEVSEPricing
-    ):
+    def post_evse_pricing_item_full_load(self, payload: ERoamingPushEVSEPricing):
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
         full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
 
         try:

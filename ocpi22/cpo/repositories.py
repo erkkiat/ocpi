@@ -1,6 +1,10 @@
+from typing import Optional
+
+from django.conf import settings
 from django.db.models import Q, QuerySet, Max, Prefetch
 
-from ocpi22.models.credentials import Credentials
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.models.location import Evse, Connector
 from ocpi22.models.tariff import SolidTariff, Tariff
 from ocpiconnector.party import Party
@@ -68,3 +72,10 @@ class CredentialsRepository:
                 to_attr="connectors_with_tariffs",
             )
         )
+
+    @staticmethod
+    def find_hubject_credentials_role() -> Optional[CredentialsRole]:
+        country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
+        return CredentialsRole.objects.filter(
+            country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
+        ).first()
