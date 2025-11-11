@@ -10,7 +10,7 @@ import pytz
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.db.models import Prefetch
+from django.db.models import Prefetch, QuerySet
 from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
@@ -480,16 +480,7 @@ class HubjectService:
                 "error": str(e),
             }
 
-    def get_evse_product_maps(self) -> defaultdict | None:
-        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
-        if not hubject_credentials_role or not hubject_credentials_role.credentials:
-            return None
-
-        party = get_our_party(OcpiRolesEnum.CPO)
-        evses = CredentialsRepository.get_evses_by_party(
-            hubject_credentials_role.credentials, party
-        )
-
+    def evse_product_id_map_generator(self, evses: QuerySet) -> defaultdict:
         evse_pricing_product_id_map = defaultdict(list)
 
         for evse in evses:
@@ -499,7 +490,7 @@ class HubjectService:
                 else None
             )  # One evse has one connector
             if not connector:
-                logger.warning(f"Evse {evse.uid} has no connectors")
+                logger.info(f"Evse {evse.uid} has no connectors")
                 continue
             pricing_product_ids = []
 
@@ -518,6 +509,19 @@ class HubjectService:
                 pricing_product_ids.append(pricing_product_id)
 
             evse_pricing_product_id_map[evse.evse_id] = pricing_product_ids
+        return evse_pricing_product_id_map
+
+    def get_evse_product_maps(self) -> defaultdict | None:
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
+        if not hubject_credentials_role or not hubject_credentials_role.credentials:
+            return None
+
+        party = get_our_party(OcpiRolesEnum.CPO)
+        evses = CredentialsRepository.get_evses_by_party(
+            hubject_credentials_role.credentials, party
+        )
+
+        evse_pricing_product_id_map = self.evse_product_id_map_generator(evses)
 
         return evse_pricing_product_id_map
 
