@@ -1527,37 +1527,6 @@ class TestHubjectAuthorizeRemoteStart:
             Code="602", Description="EVSE is currently occupied"
         )
 
-    @pytest.mark.django_db
-    @override_settings(HOSTNAME="localhost")
-    def test_process_remote_start_returns_acknowledgment_false_when_ev_not_connected(
-        self,
-        mock_remote_start_command,
-        evse,
-        hubject_credentials,
-        start_session_webhook,
-    ):
-        with patch(
-            "ocpi22.commands.services.StartCommandService.start_session",
-            return_value=OCPIResponse(
-                status_code=Ocpi.OK,
-                http_status=status.HTTP_200_OK,
-            ),
-        ):
-            responses.add(
-                responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-                json={"data": {"result": "REJECTED"}},
-                status=200,
-            )
-        result = self.hubject_service.process_remote_start_command(
-            mock_remote_start_command
-        )
-
-        assert result.result is False
-        assert result.status_code == StatusCode(
-            Code="510", Description="EV is not connected to EVSE"
-        )
-
 
 class TestHubjectAuthorizeRemoteStop:
     hubject_service = HubjectService()

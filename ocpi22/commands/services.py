@@ -510,11 +510,6 @@ class StartCommandService(RemoteCommandServices):
                 )
                 result = CommandResponseType.REJECTED
 
-            if result != CommandResponseType.ACCEPTED:
-                return self.create_ocpi_response(
-                    result, message=MessageTexts.get("EV_IS_NOT_CONNECTED")[0]["text"]
-                )
-
             return self.create_ocpi_response(result, message=None)
 
         if session.status == Session.ACTIVE:

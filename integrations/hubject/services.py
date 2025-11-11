@@ -50,7 +50,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
+from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
@@ -904,14 +904,6 @@ class HubjectService:
                 extra={"response": response_data},
             )
             raise HubjectRemoteCommandError("400", "Session not found")
-        if data.get("message", None) and MessageTexts.get("EV_IS_NOT_CONNECTED")[0][
-            "text"
-        ] in data["message"][0].get("text", ""):
-            logger.error(
-                "Hubject remote command failed: EV is not connected to EVSE",
-                extra={"response": response_data},
-            )
-            raise HubjectRemoteCommandError("510", "EV is not connected to EVSE")
         if result != CommandResponseType.ACCEPTED:
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
