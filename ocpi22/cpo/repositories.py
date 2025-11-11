@@ -1,6 +1,9 @@
-from django.db.models import Q, QuerySet, Max
+from django.db.models import Q, QuerySet, Max, Prefetch
 
-from ocpi22.models.tariff import SolidTariff
+from ocpi22.models.credentials import Credentials
+from ocpi22.models.location import Evse, Connector
+from ocpi22.models.tariff import SolidTariff, Tariff
+from ocpiconnector.party import Party
 
 
 class SolidTariffRepository:
@@ -37,3 +40,31 @@ class SolidTariffRepository:
             )
         except SolidTariff.DoesNotExist:
             return None
+
+
+class CredentialsRepository:
+    @staticmethod
+    def get_evses_by_party(credentials: Credentials, party: Party) -> QuerySet:
+        if not credentials:
+            return None
+
+        allowed_locations = credentials.allowed_locations
+
+        location_based_filter = {
+            "location__ocpi_master__party_id": party.party_id,
+            "location__ocpi_master__country_code": party.country_code,
+            "location__roaming_enabled": True,
+        }
+
+        if allowed_locations:
+            location_based_filter["location__uid__in"] = allowed_locations
+
+        return Evse.objects.filter(**location_based_filter).prefetch_related(
+            Prefetch(
+                "connectors",
+                queryset=Connector.objects.prefetch_related(
+                    Prefetch("tariff_ids", queryset=Tariff.objects.only("uid"))
+                ),
+                to_attr="connectors_with_tariffs",
+            )
+        )

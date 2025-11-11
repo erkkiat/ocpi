@@ -55,6 +55,7 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum, TokenType, MessageTexts
+from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
@@ -62,7 +63,6 @@ from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import build_absolute_uri
-from ocpi22.models.tariff import Tariff
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_identity
 from ocpiconnector.party import Party
@@ -492,25 +492,8 @@ class HubjectService:
         if not hubject_credentials_role or not hubject_credentials_role.credentials:
             return None
 
-        allowed_locations = hubject_credentials_role.credentials.allowed_locations
-
-        location_based_filter = {
-            "location__ocpi_master__party_id": party.party_id,
-            "location__ocpi_master__country_code": party.country_code,
-            "location__roaming_enabled": True,
-        }
-
-        if allowed_locations:
-            location_based_filter["location__uid__in"] = allowed_locations
-
-        evses = Evse.objects.filter(**location_based_filter).prefetch_related(
-            Prefetch(
-                "connectors",
-                queryset=Connector.objects.prefetch_related(
-                    Prefetch("tariff_ids", queryset=Tariff.objects.only("uid"))
-                ),
-                to_attr="connectors_with_tariffs",
-            )
+        evses = CredentialsRepository.get_evses_by_party(
+            hubject_credentials_role.credentials, party
         )
 
         evse_pricing_product_id_map = defaultdict(list)
