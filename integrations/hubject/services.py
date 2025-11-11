@@ -545,16 +545,17 @@ class HubjectService:
 
         try:
             payload_json = payload.model_dump_json()
-
-            response = HubjectService.client.post(full_load_url, data=payload_json)
-            return response.json()
         except PydanticSerializationError as e:
-            logging.error(e)
+            logging.exception(e)
             return {
                 "success": False,
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
             }
+
+        try:
+            response = HubjectService.client.post(full_load_url, data=payload_json)
+            return response.json()
         except HTTPError as exc:
             logging.error(exc)
             return {
