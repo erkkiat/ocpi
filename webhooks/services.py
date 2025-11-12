@@ -1,9 +1,11 @@
+import orjson
 import requests
 import logging
 
 from django.core.exceptions import ValidationError
 from requests import Response
 
+from json_encoders import serialize_datetime_and_enum_to_string
 from webhooks.models import Webhook, WebhookEvent, WebhookEventStatus, WebhookEventType
 from django.utils import timezone
 
@@ -29,6 +31,9 @@ class WebhookEventService:
     def create_event(cls, webhook: Webhook, event_type: str, payload: dict):
         if event_type not in WebhookEventType:
             raise ValidationError(f"Invalid event type: {event_type}")
+        payload = orjson.loads(
+            orjson.dumps(payload, default=serialize_datetime_and_enum_to_string)
+        )  # Avoiding migration for now
         return WebhookEvent.objects.create(
             webhook=webhook, event_type=event_type, payload=payload
         )
