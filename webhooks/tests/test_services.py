@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import pytest
 from unittest.mock import Mock, patch
@@ -85,6 +85,27 @@ class TestWebhookService:
 
 @pytest.mark.django_db
 class TestWebhookEventService:
+    @pytest.mark.parametrize(
+        "timestamp,expected",
+        [
+            (datetime(2024, 1, 15, 10, 30, 0), "2024-01-15T10:30:00"),
+            (
+                datetime(2024, 6, 1, 15, 45, 30, tzinfo=timezone.utc),
+                "2024-06-01T15:45:30+00:00",
+            ),
+        ],
+    )
+    def test_create_event_payload_datetime_is_serialized_as_string(
+        self, timestamp, expected
+    ):
+        webhook = WebhookFactory()
+        event_type = WebhookEventType.SESSION_STARTED
+        payload = {"event_time": timestamp}
+
+        event = WebhookEventService.create_event(webhook, event_type, payload)
+
+        assert event.payload["event_time"] == expected
+
     def test_create_event_creates_webhook_event_with_provided_data(self):
         webhook = WebhookFactory()
         event_type = WebhookEventType.SESSION_STARTED
@@ -772,7 +793,8 @@ class TestWebhookExecutionService:
         WebhookExecutionService().execute_webhook_event(event)
 
         mock_logger.warning.assert_called_once_with(
-            f"Webhook event {event.id} failed with HTTP 500", extra={'response_content': b''}
+            f"Webhook event {event.id} failed with HTTP 500",
+            extra={"response_content": b""},
         )
 
     @patch("webhooks.services.logger")
@@ -824,7 +846,8 @@ class TestWebhookExecutionService:
 
         assert result == {}
         mock_logger.exception.assert_called_once_with(
-            "Failed to parse webhook response for event 123 for status 200", extra={'response_content': mock_response.content}
+            "Failed to parse webhook response for event 123 for status 200",
+            extra={"response_content": mock_response.content},
         )
 
     @pytest.mark.parametrize(
