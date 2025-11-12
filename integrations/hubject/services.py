@@ -681,8 +681,7 @@ class HubjectService:
         location_id: str,
         sender_party: Party,
     ) -> dict:
-        command_id = remote_start_command.emp_partner_session_id or None
-        authorization_reference = command_id or remote_start_command.session_id.root
+        authorization_reference = remote_start_command.session_id.root
         contract_id = (
             remote_start_command.identification.RemoteIdentification.EvcoID.root
         )
@@ -692,7 +691,9 @@ class HubjectService:
             )
         return {
             "response_url": build_absolute_uri(
-                reverse("chargepoint-remote-command-result", args=(command_id,))
+                reverse(
+                    "chargepoint-remote-command-result", args=(authorization_reference,)
+                )
             ),
             "token": {
                 "uid": contract_id,  # Hubject does not send a token UID for remote start

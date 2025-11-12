@@ -1149,7 +1149,7 @@ class TestHubjectAuthorizeRemoteStart:
         return WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            url="http://localhost/api/cpo/v2/chargepoint/start-session/",
         )
 
     @pytest.mark.django_db
@@ -1170,7 +1170,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
@@ -1179,7 +1179,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
-            mock_remote_start_command.emp_partner_session_id,
+            mock_remote_start_command.session_id.root,
             mock_remote_start_command.identification.RemoteIdentification.EvcoID.root,
         )
         assert result == ERoamingAcknowledgment(
@@ -1282,7 +1282,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "REJECTED"}},
                 status=200,
             )
@@ -1310,7 +1310,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         expected_data = {
-            "response_url": "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "response_url": f"http://localhost/api/cpo/v2/chargepoint/remote_command_result/{mock_remote_start_command.session_id.root}/",
             "token": {
                 "uid": "AB-VDC-C1234ABCDA",
                 "contract_id": "AB-VDC-C1234ABCDA",
@@ -1321,7 +1321,7 @@ class TestHubjectAuthorizeRemoteStart:
             "location_id": "194234D1-0EDD-4B6E-8262-C85BDA16919D",
             "evse_uid": "123456",
             "connector_id": "",
-            "authorization_reference": "MSPSession",
+            "authorization_reference": "f98efba4-02d8-4fa0-b810-9a9d50d2c527",
         }
         assert result == expected_data
 
@@ -1428,7 +1428,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
