@@ -42,10 +42,8 @@ from integrations.hubject.schemas import (
     AdditionalReferenceChoice,
     CurrencyID,
     PricingProductData,
-    ERoamingPushPricingProductData,
     ProductID,
     ProviderIDAsterisk,
-    ERoamingPushEVSEPricing,
     HubjectDefaultTariff,
     HubjectPriceComponent,
     ERoamingPushEvseStatus,
@@ -68,6 +66,7 @@ from integrations.hubject.services import (
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.repository import SessionRepository
+from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
@@ -79,6 +78,7 @@ from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     ConnectorFactory,
     OCPISessionFactory,
+    CredentialsFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
@@ -763,7 +763,6 @@ class TestOICPDynamicPricingService:
             pricing_product_data, action_type
         )
 
-        assert isinstance(result, ERoamingPushPricingProductData)
         assert result.ActionType == action_type
         assert result.PricingProductData == pricing_product_data
 
@@ -907,7 +906,6 @@ class TestOICPDynamicPricingService:
             evse_product_id_provider_id_map
         )
 
-        assert isinstance(result, ERoamingPushEVSEPricing)
         assert len(result.EVSEPricing[0].EvseIDProductList) == 2
         assert result.EVSEPricing[0].EvseIDProductList[0].root == "OCPITARIFF1*SMP1"
         assert result.EVSEPricing[0].EvseIDProductList[1].root == "OCPITARIFF2*SMP2"
@@ -993,6 +991,36 @@ class TestOICPDynamicPricingService:
             "success": False,
             "errorType": "Pydantic validation failed",
             "error": "serialization error",
+        }
+
+    @pytest.mark.django_db
+    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self):
+        result = self.hubject_service.get_evse_product_maps()
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_evse_product_id_map_generator_returns_the_map_in_proper_format(
+        self, smp1_solid_tariff, smp2_solid_tariff
+    ):
+        location = LocationFactory(
+            ocpi_master=smp1_solid_tariff.operator, roaming_enabled=True
+        )
+        ConnectorFactory(
+            tariff_ids=[smp1_solid_tariff.ocpi_tariff],
+            evse=EvseFactory(uid="EVSE01", location=location),
+        )
+        ConnectorFactory(
+            tariff_ids=[smp2_solid_tariff.ocpi_tariff],
+            evse=EvseFactory(uid="EVSE02", location=location),
+        )
+
+        evses = CredentialsRepository.get_evses_by_party(
+            CredentialsFactory(), smp1_solid_tariff.operator.get_party()
+        )
+        result = self.hubject_service.evse_product_id_map_generator(evses)
+        assert result == {
+            "FI*CPO*EEVSE01": ["OCPITARIFF1*SMP1"],
+            "FI*CPO*EEVSE02": ["OCPITARIFF2*SMP2"],
         }
 
     def get_expected_pricing_product_data(self):
