@@ -486,7 +486,7 @@ class HubjectService:
         for evse in evses:
             connector = (
                 evse.connectors_with_tariffs[0]
-                if not evse.connectors_with_tariffs
+                if evse.connectors_with_tariffs
                 else None
             )  # One evse has one connector
             if not connector:
@@ -495,13 +495,8 @@ class HubjectService:
             pricing_product_ids = []
 
             for tariff in connector.tariff_ids.all():
-                try:
-                    external_id = tariff.solid_tariff.external_id
-                except SolidTariff.DoesNotExist:
-                    logger.warning(
-                        f"Tariff {tariff.uid} has no related SolidTariff, skipping."
-                    )
-                    external_id = None
+                solid_tariff = tariff.solid_tariff.first()
+                external_id = solid_tariff.external_id if solid_tariff else None
                 pricing_product_id = self.converter.get_pricing_product_id(
                     external_id,
                     tariff.uid,
@@ -548,7 +543,7 @@ class HubjectService:
         full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
 
         try:
-            payload_json = payload.model_dump_json()
+            payload_json = payload.model_dump(mode="json")
         except PydanticSerializationError as e:
             logging.exception(e)
             return {
@@ -558,7 +553,7 @@ class HubjectService:
             }
 
         try:
-            response = HubjectService.client.post(full_load_url, data=payload_json)
+            response = HubjectService.client.post(full_load_url, json=payload_json)
             return response.json()
         except HTTPError as exc:
             logging.error(exc)

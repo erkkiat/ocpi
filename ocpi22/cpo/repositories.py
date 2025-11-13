@@ -67,7 +67,15 @@ class CredentialsRepository:
             Prefetch(
                 "connectors",
                 queryset=Connector.objects.prefetch_related(
-                    Prefetch("tariff_ids", queryset=Tariff.objects.only("uid"))
+                    Prefetch(
+                        "tariff_ids",
+                        queryset=Tariff.objects.only("uid").prefetch_related(
+                            Prefetch(
+                                "solid_tariff",
+                                queryset=SolidTariff.objects.only("external_id"),
+                            )
+                        ),
+                    )
                 ),
                 to_attr="connectors_with_tariffs",
             )
