@@ -233,13 +233,18 @@ def send_ocpi_request(
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
-    env = os.environ["ENV"]
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+    if 300 <= response.status_code < 500:
+        logger.error(
+            f"{url} responded with {response.status_code}, not retrying",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.content,
+                "status_code": response.status_code,
+            },
         )
-    if response.status_code >= 500 and env == "production":
+        return
+    if response.status_code >= 500:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")

@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 
 
-def custom_orjson_dumps(obj):
+def serialize_datetime_and_enum_to_string(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()
     elif isinstance(obj, Enum):
@@ -12,4 +12,4 @@ def custom_orjson_dumps(obj):
 
 
 def orjson_serializer(obj):
-    return orjson.dumps(obj, default=custom_orjson_dumps).decode()
+    return orjson.dumps(obj, default=serialize_datetime_and_enum_to_string).decode()
