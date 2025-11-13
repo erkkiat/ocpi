@@ -981,7 +981,7 @@ class TestOICPDynamicPricingService:
     @pytest.mark.django_db
     def test_post_evse_pricing_products_full_load_pydantic_error(self):
         payload_mock = MagicMock()
-        payload_mock.model_dump_json.side_effect = PydanticSerializationError(
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
