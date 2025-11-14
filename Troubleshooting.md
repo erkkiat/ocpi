@@ -9,6 +9,7 @@
 5. [System Monitoring (htop)](#system-monitoring-htop)
 6. [Container Memory Usage](#container-memory-usage)
 7. [Sentry & OpenSearch Coordination](#sentry--opensearch-coordination)
+8. [Relevant Links](#relevant-links)
 
 ---
 
@@ -359,14 +360,11 @@ docker cp <container_name>:/path/in/container /local/path
 docker cp /local/path <container_name>:/path/in/container
 ```
 
-### Docker Compose
+### Docker Commands for Service Management
 
 ```bash
-# Start all services
+# Start all services (if using docker-compose file)
 docker-compose up -d
-
-# Start services in foreground (see logs)
-docker-compose up
 
 # Stop all services
 docker-compose down
@@ -375,112 +373,89 @@ docker-compose down
 docker-compose down -v
 
 # View logs for all services
-docker-compose logs -f
+docker logs -f django-app &
+docker logs -f mqtt-subscriber &
+docker logs -f celery-mqtt &
+docker logs -f celery-django &
 
 # View logs for specific service
-docker-compose logs -f django-app
-docker-compose logs -f mqtt-subscriber
-docker-compose logs -f celery-mqtt
-docker-compose logs -f celery-django
+docker logs -f django-app
+docker logs -f mqtt-subscriber
+docker logs -f celery-mqtt
+docker logs -f celery-django
 
 # View logs with timestamps
-docker-compose logs -f -t django-app
+docker logs -f -t django-app
 
 # Restart specific service
-docker-compose restart django-app
-docker-compose restart mqtt-subscriber
-docker-compose restart celery-mqtt
-docker-compose restart celery-django
+docker restart django-app
+docker restart mqtt-subscriber
+docker restart celery-mqtt
+docker restart celery-django
 
 # Stop specific service
-docker-compose stop django-app
+docker stop django-app
 
 # Start specific service
-docker-compose start django-app
-
-# Scale service (Note: remove container_name to scale)
-docker-compose up -d --scale celery-mqtt=2
+docker start django-app
 
 # View running services
-docker-compose ps
+docker ps
 
 # View all services including stopped
-docker-compose ps -a
+docker ps -a
 
 # Execute command in service
-docker-compose exec django-app python manage.py shell
-docker-compose exec django-app python manage.py createsuperuser
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect stats
+docker exec django-app python manage.py shell
+docker exec django-app python manage.py createsuperuser
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect stats
 
-# Run one-off command (new container)
-docker-compose run --rm django-app python manage.py test
-docker-compose run --rm migrations python manage.py migrate
-
-# Rebuild specific service
-docker-compose build django-app
-
-# Rebuild and restart
-docker-compose up -d --build django-app
-
-# Pull latest images
-docker-compose pull
-
-# View service configuration
+# View service configuration (if using docker-compose)
 docker-compose config
 
 # Validate docker-compose.yml
 docker-compose config --quiet
-
-# Check which env files are loaded
-docker-compose config | grep -A5 "env_file"
 ```
 
-### Docker Compose Service-Specific Commands
+### Service-Specific Commands
 
 ```bash
 # Django App Operations
-docker-compose exec django-app python manage.py check
-docker-compose exec django-app python manage.py showmigrations
-docker-compose exec django-app python manage.py collectstatic --noinput
-docker-compose exec django-app python manage.py shell_plus
-docker-compose logs -f django-app --tail=100
+docker exec django-app python manage.py check
+docker exec django-app python manage.py showmigrations
+docker exec django-app python manage.py collectstatic --noinput
+docker exec django-app python manage.py shell_plus
+docker logs -f django-app --tail=100
 
 # MQTT Subscriber Operations
-docker-compose logs -f mqtt-subscriber
-docker-compose exec mqtt-subscriber ls -lh /var/log/mqtt/
-docker-compose restart mqtt-subscriber
+docker logs -f mqtt-subscriber
+docker exec mqtt-subscriber ls -lh /var/log/mqtt/
+docker restart mqtt-subscriber
 
 # Celery MQTT Worker Operations
-docker-compose logs -f celery-mqtt
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect active
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect stats
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect registered
-docker-compose exec celery-mqtt ls -lh /var/log/celery/
-docker-compose restart celery-mqtt
+docker logs -f celery-mqtt
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect active
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect stats
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect registered
+docker exec celery-mqtt ls -lh /var/log/celery/
+docker restart celery-mqtt
 
 # Celery Django Worker Operations
-docker-compose logs -f celery-django
-docker-compose exec celery-django celery -A ocpi22.tasks inspect active
-docker-compose exec celery-django celery -A ocpi22.tasks inspect stats
-docker-compose exec celery-django celery -A ocpi22.tasks inspect registered
-docker-compose exec celery-django ls -lh /var/log/celery/
-docker-compose restart celery-django
+docker logs -f celery-django
+docker exec celery-django celery -A ocpi22.tasks inspect active
+docker exec celery-django celery -A ocpi22.tasks inspect stats
+docker exec celery-django celery -A ocpi22.tasks inspect registered
+docker exec celery-django ls -lh /var/log/celery/
+docker restart celery-django
 
 # Migrations Service
 docker logs django-migrations
-docker-compose run --rm migrations python manage.py showmigrations
-docker-compose run --rm migrations python manage.py migrate --plan
+```
 
 
 ### Environment File Management
 
 ```bash
-# View environment variables for each service
-docker-compose config | grep -A20 "django-app:"
-docker-compose config | grep -A20 "mqtt-subscriber:"
-docker-compose config | grep -A20 "celery-mqtt:"
-docker-compose config | grep -A20 "celery-django:"
-
 # Check which env file each service uses
 ls -lh *.env
 cat django-app.env
@@ -489,10 +464,10 @@ cat celery-mqtt.env
 cat celery-django.env
 
 # Validate environment variables are loaded
-docker-compose exec django-app env | grep DJANGO
-docker-compose exec mqtt-subscriber env | grep MQTT
-docker-compose exec celery-mqtt env | grep CELERY
-docker-compose exec celery-django env | grep CELERY
+docker exec django-app env | grep DJANGO
+docker exec mqtt-subscriber env | grep MQTT
+docker exec celery-mqtt env | grep CELERY
+docker exec celery-django env | grep CELERY
 ```
 
 ### System Cleanup
@@ -685,7 +660,6 @@ docker exec celery-django celery -A ocpi22.tasks inspect active
 
 # Migrations
 docker logs django-migrations
-docker-compose run --rm migrations python manage.py showmigrations
 ```
 
 ### Memory Troubleshooting
@@ -875,9 +849,9 @@ docker logs --since "1 hour ago" celery-mqtt | grep "trace-abc-123"
 docker logs --since "1 hour ago" celery-django | grep "trace-abc-123"
 docker logs --since "1 hour ago" django-app | grep "trace-abc-123"
 
-# Alternative: using docker-compose
-docker-compose logs --since 1h mqtt-subscriber | grep "trace-abc-123"
-docker-compose logs --since 1h celery-mqtt | grep "trace-abc-123"
+# Alternative: using docker
+docker logs --since 1h mqtt-subscriber | grep "trace-abc-123"
+docker logs --since 1h celery-mqtt | grep "trace-abc-123"
 ```
 
 
@@ -891,11 +865,11 @@ docker-compose logs --since 1h celery-mqtt | grep "trace-abc-123"
 **Step 7: Check Celery task status**
 ```bash
 # Check active tasks
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect active
-docker-compose exec celery-django celery -A ocpi22.tasks inspect active
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect active
+docker exec celery-django celery -A ocpi22.tasks inspect active
 
 # Check registered tasks
-docker-compose exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect registered
+docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect registered
 ```
 
 **Step 8: Check container health and resources**
@@ -992,3 +966,8 @@ When investigating an issue:
 - [ ] Review recent deployments or config changes
 - [ ] Check external service status (MQTT broker, external APIs)
 - [ ] Analyze full trace flow across all services in OpenSearch Dashboard
+
+# Relevant Links
+* [Docker Cheatsheet](https://docs.docker.com/get-started/docker_cheatsheet.pdf)
+* [Docker Documentation](https://docs.docker.com/)
+* [Fluent Bit - Opensearch](https://docs.fluentbit.io/manual/data-pipeline/outputs/opensearch)
