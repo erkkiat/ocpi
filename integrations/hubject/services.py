@@ -1,31 +1,34 @@
 import logging
+import re
 from datetime import datetime
+from json import JSONDecodeError
+from typing import Any
+from collections import defaultdict
 from urllib.error import HTTPError
-from urllib.parse import urljoin
 
 import pytz
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.db.models import Prefetch
+from django.db.models import Prefetch, QuerySet
+from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
 from integrations.hubject.client import HubjectClient
+from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.ocpi_to_oicp_converter import (
     convert_to_charging_notification_progress,
     convert_to_charging_notification_start,
     convert_to_charging_notification_end,
 )
 from integrations.hubject.oicp_to_ocpi_converter import (
-    map_oicp_authorization_response_to_ocpi_221,
+    map_successful_oicp_authorization_response_to_ocpi_221,
 )
 from integrations.hubject.schemas import (
     ERoamingPushEvseData,
     ActionType,
     OperatorEvseData,
-    PricingProductData,
-    ERoamingPushPricingProductData,
     OperatorID,
     ERoamingAuthorizeStart,
     Identification,
@@ -37,20 +40,38 @@ from integrations.hubject.schemas import (
     OperatorEvseStatus,
     EvseStatusRecordItem,
     EvseID,
+    ERoamingAcknowledgment,
+    ERoamingAuthorizeRemoteStart,
+    StatusCode,
+    ERoamingAuthorizeRemoteStop,
+    STATUS_CODE_TEXT,
+    SessionID,
+    PricingProductData,
+    ERoamingPushPricingProductData,
+    ERoamingPushEVSEPricing,
+    ProviderIDAsterisk,
+    EVSEPricingItem,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, TokenType
+from ocpi22.cpo.repositories import CredentialsRepository
+from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
+from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity, get_our_credentialsrole
+from ocpiconnector.ocpi_identities import (
+    get_our_identity,
+    get_our_party,
+    get_our_credentialsrole,
+)
 from ocpiconnector.party import Party
 from util import with_trailing_slash
-from typing import Any, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional
 from ocpi22.tasks import send_hubject_request
 
 if TYPE_CHECKING:
@@ -67,17 +88,22 @@ class HubjectService:
 
     @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
-        locations = Location.objects.filter(
-            ocpi_master__party_id=party.party_id,
-            ocpi_master__country_code=party.country_code,
-        )
-        evse_data_records = []
-        operator_name = None
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
+        if not hubject_credentials_role:
+            return None
 
-        if len(locations) == 0:
-            return
+        allowed_locations = hubject_credentials_role.credentials.allowed_locations
 
-        locations = Location.objects.prefetch_related(
+        location_filter = {
+            "ocpi_master__party_id": party.party_id,
+            "ocpi_master__country_code": party.country_code,
+            "roaming_enabled": True,
+        }
+
+        if allowed_locations:
+            location_filter["uid__in"] = allowed_locations
+
+        locations = Location.objects.filter(**location_filter).prefetch_related(
             Prefetch(
                 "evses",
                 queryset=Evse.objects.prefetch_related(
@@ -91,7 +117,17 @@ class HubjectService:
             )
         )
 
-        for location in locations:
+        if not locations.exists():
+            logger.warning(
+                f"No locations found for operator {str(party)} to prepare EVSE data"
+            )
+            return None
+
+        evse_data_records = []
+        connectors_with_no_tariffs = []
+        operator_name = None
+
+        for location in locations.iterator(chunk_size=10):
             tmp_operator_evse_data = (
                 HubjectService.converter.convert_to_operator_evse_data(location)
             )
@@ -101,11 +137,19 @@ class HubjectService:
             for evse in location.evses_with_connectors:
                 for connector in evse.connectors_with_tariffs:
                     if len(connector.get_tariffs()) == 0:
-                        raise ConnectorTariffNotFoundError(
-                            evse.evse_id,
-                            connector.standard,
-                            f"No Tariff found for Evse {evse.evse_id} and connector {connector.standard}",
+                        connectors_with_no_tariffs.append(
+                            (location.uid, evse.uid, connector.uid)
                         )
+
+        if connectors_with_no_tariffs:
+            logger.error(
+                "EVSE Full Load Failed: There are connectors with no tariffs",
+                extra={"connectors_with_no_tariffs": connectors_with_no_tariffs},
+                exc_info=True,
+            )
+            raise ConnectorTariffNotFoundError(
+                "There are connectors with no tariffs",
+            )
 
         if len(evse_data_records) == 0:
             return None
@@ -122,7 +166,7 @@ class HubjectService:
         operator_evse_data: OperatorEvseData = self.get_operator_evse_data(operator_id)
 
         if operator_evse_data is None:
-            return
+            return None
 
         return ERoamingPushEvseData(
             ActionType=ActionType.fullLoad,
@@ -130,10 +174,86 @@ class HubjectService:
         )
 
     @staticmethod
+    def parse_hubject_validation_errors(
+        response_json: dict,
+        payload: ERoamingPushEvseData | ERoamingPushPricingProductData,
+    ) -> dict:
+        try:
+            result = {
+                "message": response_json.get("message", "Unknown error"),
+                "errors": [],
+                "error_count": 0,
+                "field_summary": {},
+                "status_code": 400,
+            }
+
+            validation_errors = response_json.get("validationErrors", [])
+            result["error_count"] = len(validation_errors)
+
+            for error in validation_errors:
+                field_ref = error.get("fieldReference", "unknown")
+                error_msg = error.get("errorMessage", "No error message")
+
+                match = re.search(r"\[(\d+)\]", field_ref)
+                if match:
+                    index = int(match.group(1))
+                else:
+                    index = None
+                    logger.warning(
+                        f"Unexpected fieldReference format: '{field_ref}'. Could not determine the index."
+                    )
+                record_id = "Unknown"
+                if isinstance(payload, ERoamingPushEvseData):
+                    evse_record = (
+                        payload.OperatorEvseData.EvseDataRecord[index]
+                        if index is not None
+                        and index < len(payload.OperatorEvseData.EvseDataRecord)
+                        else None
+                    )
+                    record_id = evse_record.EvseID if evse_record else "Unknown"
+                elif isinstance(payload, ERoamingPushPricingProductData):
+                    price_record = (
+                        payload.PricingProductData.PricingProductDataRecords[index]
+                        if index is not None
+                        and index
+                        < len(payload.PricingProductData.PricingProductDataRecords)
+                        else None
+                    )
+                    record_id = (
+                        price_record.ProductID.root if price_record else "Unknown"
+                    )
+
+                formatted_error = (
+                    f"Field: {field_ref} - UID: {record_id} - Error: {error_msg}"
+                )
+
+                result["errors"].append(formatted_error)
+
+                if "." in field_ref:
+                    field_pattern = (
+                        field_ref.split("].")[-1]
+                        if "]." in field_ref
+                        else field_ref.split(".")[-1]
+                    )
+                    if field_pattern not in result["field_summary"]:
+                        result["field_summary"][field_pattern] = 0
+                    result["field_summary"][field_pattern] += 1
+
+            return result
+        except Exception:
+            logger.exception("Error parsing Hubject validation errors")
+            return {
+                "message": "Failed to parse validation errors",
+                "errors": response_json,
+                "error_count": 1,
+                "field_summary": {},
+                "status_code": 500,
+            }
+
+    @staticmethod
     def post_evse_full_load(operator_id: str, payload: ERoamingPushEvseData) -> dict:
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"evsepush/v23/operators/{operator_id}/data-records",
+        full_load_url = (
+            f"{settings.HUBJECT_URL}evsepush/v23/operators/{operator_id}/data-records"
         )
 
         try:
@@ -143,10 +263,22 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
+                try:
+                    response_json = response.json()
+                    formatted_errors = HubjectService.parse_hubject_validation_errors(
+                        response_json, payload
+                    )
+                except JSONDecodeError:
+                    formatted_errors = f"{response.status_code} : {response.text}"
+
+                logger.error(
+                    f"Hubject EVSE full load failed with status code {response.status_code}",
+                    extra={"response_text": formatted_errors},
+                )
                 return {
                     "success": False,
                     "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
+                    "error": formatted_errors,
                 }
         except PydanticSerializationError as e:
             logger.exception("Pydantic validation failed")
@@ -175,13 +307,28 @@ class HubjectService:
                 identification=Identification(
                     RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
                         UID=UID(root=token_id)
-                    )
+                    ),
+                    RemoteIdentification=None,
+                    QRCodeIdentification=None,
+                    RFIDIdentification=None,
+                    PlugAndChargeIdentification=None,
                 ),
             )
             payload_dict = payload.model_dump(exclude_none=True, by_alias=True)
         except ValidationError:
-            logger.exception()
-            raise
+            logger.exception("Validation failed for Hubject authorization")
+            return (
+                400,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
+                    "status_message": "Validation failed for Hubject authorization",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                CredentialsRole.objects.none(),
+            )
         try:
             response = HubjectService.client.post(
                 url, json=payload_dict, headers={"accept": "application/json"}
@@ -207,7 +354,7 @@ class HubjectService:
                 f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
             )
             status_code = response_json.get("StatusCode", {}).get("Code")
-
+            mapped_response = None
             ocpi_master = None
             if response.status_code == 200 and status_code == "000":
                 ocpi_master = await sync_to_async(get_credentialsrole)(
@@ -216,10 +363,17 @@ class HubjectService:
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
+                mapped_response = (
+                    map_successful_oicp_authorization_response_to_ocpi_221(
+                        response_json, token_id
+                    )
+                )
+            else:
+                logger.warning(
+                    f"Authorization failed with status code {response.status_code} "
+                    f"and Hubject error code {status_code} ({STATUS_CODE_TEXT.get(status_code, 'Unknown')})"
+                )
 
-            mapped_response = map_oicp_authorization_response_to_ocpi_221(
-                response_json, token_id
-            )
             return (
                 response.status_code,
                 mapped_response,
@@ -296,10 +450,7 @@ class HubjectService:
     def post_pricing_products_full_load(
         self, operator_id: str, payload: ERoamingPushPricingProductData
     ) -> dict:
-        full_load_url = urljoin(
-            with_trailing_slash(settings.HUBJECT_URL),
-            f"dynamicpricing/v10/operators/{operator_id}/pricing-products",
-        )
+        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
 
         try:
             payload_json = payload.model_dump(mode="json")
@@ -308,10 +459,22 @@ class HubjectService:
             if response.status_code == 200:
                 return response.json()
             else:
+                try:
+                    response_json = response.json()
+                    formatted_errors = HubjectService.parse_hubject_validation_errors(
+                        response_json, payload
+                    )
+                except JSONDecodeError:
+                    formatted_errors = f"{response.status_code} : {response.text}"
+
+                logger.error(
+                    f"Hubject Pricing Product full load failed with status code {response.status_code}",
+                    extra={"response_text": formatted_errors},
+                )
                 return {
                     "success": False,
                     "errorType": "HTTP Error",
-                    "error": f"{response.status_code} : {response.text}",
+                    "error": formatted_errors,
                 }
         except PydanticSerializationError as e:
             logger.exception("Pydantic validation failed")
@@ -319,6 +482,89 @@ class HubjectService:
                 "success": False,
                 "errorType": "Pydantic validation failed",
                 "error": str(e),
+            }
+
+    def evse_product_id_map_generator(self, evses: QuerySet) -> defaultdict:
+        evse_pricing_product_id_map = defaultdict(list)
+
+        for evse in evses:
+            connector = (
+                evse.connectors_with_tariffs[0]
+                if evse.connectors_with_tariffs
+                else None
+            )  # One evse has one connector
+            if not connector:
+                logger.info(f"Evse {evse.uid} has no connectors")
+                continue
+            pricing_product_ids = []
+
+            for tariff in connector.tariff_ids.all():
+                solid_tariff = tariff.solid_tariff.first()
+                external_id = solid_tariff.external_id if solid_tariff else None
+                pricing_product_id = self.converter.get_pricing_product_id(
+                    external_id,
+                    tariff.uid,
+                )
+                pricing_product_ids.append(pricing_product_id)
+
+            evse_pricing_product_id_map[evse.evse_id] = pricing_product_ids
+        return evse_pricing_product_id_map
+
+    def get_evse_product_maps(self) -> defaultdict | None:
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
+        if not hubject_credentials_role or not hubject_credentials_role.credentials:
+            return None
+
+        party = get_our_party(OcpiRolesEnum.CPO)
+        evses = CredentialsRepository.get_evses_by_party(
+            hubject_credentials_role.credentials, party
+        )
+
+        evse_pricing_product_id_map = self.evse_product_id_map_generator(evses)
+
+        return evse_pricing_product_id_map
+
+    def get_evse_pricing_product_data_full_load_payload(
+        self, evse_product_id_map: dict
+    ) -> ERoamingPushEVSEPricing:
+        evse_pricing_items = []
+        for evse_id, product_ids in evse_product_id_map.items():
+            evse_pricing_items.append(
+                EVSEPricingItem(
+                    EvseID=evse_id,
+                    # todo: According to Mike we should have a list here. But as of now a list is not accepted by hubject
+                    ProviderID=ProviderIDAsterisk("*"),
+                    EvseIDProductList=product_ids,
+                )
+            )
+
+        return ERoamingPushEVSEPricing(
+            ActionType=ActionType.fullLoad, EVSEPricing=evse_pricing_items
+        )
+
+    def post_evse_pricing_item_full_load(self, payload: ERoamingPushEVSEPricing):
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
+        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
+
+        try:
+            payload_json = payload.model_dump(mode="json")
+        except PydanticSerializationError as e:
+            logging.exception(e)
+            return {
+                "success": False,
+                "errorType": "Pydantic validation failed",
+                "error": str(e),
+            }
+
+        try:
+            response = HubjectService.client.post(full_load_url, json=payload_json)
+            return response.json()
+        except HTTPError as exc:
+            logging.error(exc)
+            return {
+                "success": False,
+                "errorType": "HTTP request failed",
+                "error": str(exc),
             }
 
     @classmethod
@@ -358,7 +604,7 @@ class HubjectService:
                 extra={"hubject_response": e.response.text},
             )
         except requests.exceptions.RequestException as e:
-            logger.error(f"Network error: {e}")
+            logger.error(f"Network error: {e.args[0]}", exc_info=True)
         except Exception as e:
             logger.exception(e)
         return
@@ -525,3 +771,327 @@ class HubjectService:
             "success": True,
             "message": "Sent CDR to hubject",
         }
+
+    @staticmethod
+    def decode_country_code_and_party_id(
+        provider_id: str | None,
+    ) -> tuple[str | None, str | None]:
+        if provider_id is None:
+            return None, None
+
+        asterisk_count = provider_id.count("*")
+        dash_count = provider_id.count("-")
+
+        if (
+            asterisk_count > 1
+            or dash_count > 1
+            or (asterisk_count > 0 and dash_count > 0)
+        ):
+            raise ValueError(f"Invalid ProviderID format: {provider_id}")
+
+        if "*" in provider_id:
+            return tuple(provider_id.split("*", 1))
+        elif "-" in provider_id:
+            return tuple(provider_id.split("-", 1))
+        elif len(provider_id) == 5 and provider_id.isalnum():
+            # Assuming the format is 'CCPPP' where CC is country code and PPP is party ID
+            return provider_id[:2], provider_id[2:]
+        else:
+            raise ValueError(f"Invalid ProviderID format: {provider_id}")
+
+    def _prepare_start_session_data(
+        self,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        location_id: str,
+        sender_party: Party,
+    ) -> dict:
+        authorization_reference = remote_start_command.session_id.root
+        contract_id = (
+            remote_start_command.identification.RemoteIdentification.EvcoID.root
+        )
+        if not contract_id:
+            raise HubjectRemoteCommandError(
+                "022", "EvcoID is required for remote start command"
+            )
+        return {
+            "response_url": build_absolute_uri(
+                reverse(
+                    "chargepoint-remote-command-result", args=(authorization_reference,)
+                )
+            ),
+            "token": {
+                "uid": contract_id,  # Hubject does not send a token UID for remote start
+                "country_code": sender_party.country_code,
+                "party_id": sender_party.party_id,
+                "type": TokenType.APP_USER.value,
+                "contract_id": contract_id,
+            },
+            "location_id": location_id,
+            "evse_uid": self._get_evse_uid(remote_start_command.evse_id.root),
+            "connector_id": "",
+            "authorization_reference": authorization_reference,
+        }
+
+    def _get_evse_uid(self, evse_id: str) -> str:
+        if "*" in evse_id:
+            return evse_id.split("*", 2)[-1][1:]
+        if "-" in evse_id:
+            return evse_id.split("-", 2)[-1][1:]
+        return evse_id[6:]
+
+    def _get_hubject_error_code(self, evse: Evse) -> str:
+        if not evse:
+            return "603"
+
+        match evse.status:
+            case Evse.AVAILABLE:
+                return "000"  # Success
+            case Evse.BLOCKED:
+                return "501"
+            case Evse.CHARGING:
+                return "602"
+            case Evse.INOPERATIVE:
+                return "700"
+            case Evse.OUTOFORDER:
+                return "700"
+            case Evse.PLANNED:
+                return "501"
+            case Evse.REMOVED:
+                return "700"
+            case Evse.RESERVED:
+                return "601"
+            case Evse.UNKNOWN:
+                return "501"
+            case _:
+                return "000"
+
+    def _create_error_acknowledgment(
+        self, command: dict, error_code: str, error_message: str = None
+    ) -> ERoamingAcknowledgment:
+        return ERoamingAcknowledgment(
+            result=False,
+            status_code=StatusCode(Code=error_code, Description=error_message),
+            session_id=SessionID(root=command.get("session_id", "")),
+            cpo_partner_session_id="",
+            emp_partner_session_id=command.get("emp_partner_session_id", ""),
+        )
+
+    def _get_sender_party(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ) -> Party:
+        try:
+            sender_country_code, sender_party_id = (
+                self.decode_country_code_and_party_id(
+                    remote_start_command.provider_id.root
+                )
+            )
+        except ValueError as ve:
+            logger.error(f"Failed to decode ProviderID: {ve}")
+            raise HubjectRemoteCommandError("300", "Invalid ProviderID format")
+
+        return Party.from_str(f"{sender_country_code}*{sender_party_id}")
+
+    def process_remote_start_command(
+        self, remote_start_command: ERoamingAuthorizeRemoteStart
+    ):
+        from ocpi22.commands.serializers import StartSessionSerializer
+
+        logger.info(
+            "Remote start command received from Hubject",
+            extra={"command": remote_start_command},
+        )
+        try:
+            from ocpi22.commands.repository import LocationRepository
+
+            location_id = LocationRepository.find_location_uid_by_evse_id(
+                remote_start_command.evse_id.root
+            )
+            if not location_id:
+                logger.error(
+                    f"EVSE {remote_start_command.evse_id.root} not found for Hubject remote start"
+                )
+                raise EvseNotFoundError("Location and EVSE not found")
+            sender_party = self._get_sender_party(remote_start_command)
+            data = self._prepare_start_session_data(
+                remote_start_command, location_id, sender_party
+            )
+
+            serializer = StartSessionSerializer(data=data)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+                return self._start_session(
+                    sender_party, remote_start_command, validated_data
+                )
+            else:
+                logger.error(
+                    "Invalid data for starting remote session for Hubject",
+                    extra={"errors": serializer.errors, "data": data},
+                )
+                return self._create_error_acknowledgment(
+                    remote_start_command.model_dump(),
+                    "022",
+                    "Invalid data for starting session",
+                )
+        except HubjectRemoteCommandError as hubject_error:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(),
+                hubject_error.error_code,
+                hubject_error.args[0],
+            )
+        except EvseNotFoundError:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(), "603", "EVSE not found"
+            )
+        except EvseOccupiedError:
+            return self._create_error_acknowledgment(
+                remote_start_command.model_dump(),
+                "602",
+                "EVSE is currently occupied",
+            )
+
+    def _start_session(
+        self,
+        sender_party,
+        remote_start_command: ERoamingAuthorizeRemoteStart,
+        validated_data: dict,
+    ) -> ERoamingAcknowledgment:
+        from ocpi22.commands.services import StartCommandService
+        from ocpi22.commands.repository import SessionRepository
+
+        hubject_party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
+        # There is no hub authentication in OCPI 2.x
+        credentials_role = get_credentialsrole(credentials=None, party=hubject_party)
+        if not credentials_role:
+            # This should be created as the part of the setup manually.
+            logger.error("Hubject Remote Start failed: No hubject credentials found")
+            raise HubjectRemoteCommandError("021", "Credentials not found for Hubject")
+
+        service = StartCommandService()
+        response = service.start_session(
+            sender_party=sender_party,
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+            hub_session_id=remote_start_command.session_id.root,
+        )
+        self._validate_command_response(response.data)
+
+        session = SessionRepository.find_session_by_auth_ref_and_token_uid(
+            validated_data.get("authorization_reference"),
+            validated_data["token"]["uid"],
+        )
+        session_uid = session.uid if session else ""
+        logger.info(
+            f"Hubject remote start command processed successfully, session : {session_uid}"
+        )
+        return ERoamingAcknowledgment(
+            result=True,
+            status_code=StatusCode(Code="000"),
+            session_id=remote_start_command.session_id,
+            cpo_partner_session_id=session_uid,
+            emp_partner_session_id=remote_start_command.emp_partner_session_id,
+        )
+
+    def _get_remote_stop_command_data(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ) -> dict:
+        from ocpi22.commands.repository import SessionRepository
+
+        command_id = remote_stop_command.emp_partner_session_id or None
+        session = SessionRepository.find_session_by_hub_session_id(
+            remote_stop_command.session_id.root
+        )
+        if not session:
+            logger.error(
+                f"No session found to stop with hub session id {remote_stop_command.session_id.root}, hubject remote stop failed"
+            )
+            raise HubjectRemoteCommandError("400", "Session not found")
+
+        data = {
+            "response_url": build_absolute_uri(
+                reverse("chargepoint-remote-command-result", args=(command_id,))
+            ),
+            "session_id": session.uid,
+        }
+        return data
+
+    def _validate_command_response(self, response_data: dict) -> None:
+        from ocpi22.commands.serializers import CommandResponseType
+
+        data = response_data["data"]
+        if not data:
+            raise HubjectRemoteCommandError(
+                "021", "Remote command failed", data={"accepted_status": False}
+            )
+        result = data["result"]
+        if result == CommandResponseType.UNKNOWN_SESSION:
+            logger.error(
+                "Hubject remote command failed: Session not found",
+                extra={"response": response_data},
+            )
+            raise HubjectRemoteCommandError("400", "Session not found")
+        if result != CommandResponseType.ACCEPTED:
+            logger.error(
+                "Hubject remote command was rejected", extra={"response": response_data}
+            )
+            raise HubjectRemoteCommandError(
+                "021", "Remote command was rejected", data={"accepted_status": False}
+            )
+        logger.info(f"Hubject remote command was accepted. {data}")
+        return
+
+    def process_remote_stop_command(
+        self, remote_stop_command: ERoamingAuthorizeRemoteStop
+    ):
+        from ocpi22.commands.serializers import StopSessionSerializer
+        from ocpi22.commands.services import StopCommandServices
+
+        try:
+            logger.info(
+                "Remote stop command received from Hubject",
+                extra={
+                    "command": remote_stop_command,
+                    "evse": remote_stop_command.evse_id.root,
+                },
+            )
+
+            data = self._get_remote_stop_command_data(remote_stop_command)
+
+            serializer = StopSessionSerializer(data=data)
+            if serializer.is_valid():
+                validated_data = serializer.validated_data
+            else:
+                logger.error(
+                    "Invalid data for stopping remote session for Hubject",
+                    extra={"errors": serializer.errors, "data": data},
+                )
+                return self._create_error_acknowledgment(
+                    remote_stop_command.model_dump(),
+                    "022",
+                    "Invalid data for stopping session",
+                )
+
+            service = StopCommandServices()
+            response = service.stop_session(
+                validated_data=validated_data,
+            )
+
+            self._validate_command_response(response.data)
+
+            return ERoamingAcknowledgment(
+                result=True,
+                status_code=StatusCode(Code="000"),
+                session_id=remote_stop_command.session_id,
+                cpo_partner_session_id=data.get("session_id", None),
+                emp_partner_session_id=remote_stop_command.emp_partner_session_id,
+            )
+
+        except HubjectRemoteCommandError as hubject_error:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(),
+                hubject_error.error_code,
+                hubject_error.args[0],
+            )
+        except EvseNotFoundError:
+            return self._create_error_acknowledgment(
+                remote_stop_command.model_dump(), "603", "EVSE not found"
+            )

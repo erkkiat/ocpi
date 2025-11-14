@@ -11,7 +11,11 @@ import requests
 from asgiref.sync import sync_to_async
 
 from ocpi22.ssl_services import load_ssl_context
-from ocpi22.tasks import get_cert_from_env, _get_ssl_session_client, get_request_session
+from ocpi22.tasks import (
+    get_cert_from_env,
+    _get_ssl_session_client,
+    get_certificate_loaded_request,
+)
 from ocpi22.tests.factories import CredentialsFactory
 from ocpi22.tokens.token_async import create_ssl_context
 
@@ -165,7 +169,7 @@ class TestRequestSession:
         ) as mock_filter:
             mock_filter.return_value.first.return_value = None
 
-            session = get_request_session(credential_id="non-existent-id")
+            session = get_certificate_loaded_request(credential_id="non-existent-id")
 
             https_adapter = session.adapters.get("https://")
             ssl_context = getattr(
@@ -196,7 +200,7 @@ class TestRequestSession:
         )
 
         with pytest.raises(ssl.SSLError):
-            get_request_session(creds.id)
+            get_certificate_loaded_request(creds.id)
 
 
 class TestClientCertificateRequest:
@@ -231,7 +235,7 @@ class TestClientCertificateRequest:
             ca_certificate_name="CA_CERT",
         )
 
-        session = get_request_session(creds.id)
+        session = get_certificate_loaded_request(creds.id)
         response = session.get("https://localhost:4443", verify=ca_path)
 
         assert response.status_code == 200

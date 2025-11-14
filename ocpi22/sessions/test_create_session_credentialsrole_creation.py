@@ -47,6 +47,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="NL*EMO",
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         created_credentialsrole = CredentialsRole.objects.get(
@@ -84,6 +85,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=party,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         created_credentialsrole = CredentialsRole.objects.get(
@@ -119,6 +121,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="BE*ICE",
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == existing_credentialsrole
@@ -155,6 +158,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=party,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == existing_credentialsrole
@@ -195,6 +199,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="CH*SWI",
                 credentials=credentials,
                 ad_hoc_token=ad_hoc_token,
+                authorization_method="AUTH_REQUEST",
             )
 
         created_credentialsrole = CredentialsRole.objects.get(
@@ -226,6 +231,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=None,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == token_ocpi_master

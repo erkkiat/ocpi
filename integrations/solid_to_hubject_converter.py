@@ -1,4 +1,6 @@
 import functools
+from decimal import Decimal, ROUND_UP
+
 import regex
 import logging
 from datetime import datetime
@@ -44,8 +46,10 @@ from integrations.hubject.schemas import (
     ProductID,
     RFIDMifareFamilyIdentificationClass,
     EvseStatus as OICPEvseStatus,
+    RemoteIdentification,
+    EvcoID,
 )
-from ocpi22.choices import OCPICapability
+from ocpi22.choices import OCPICapability, TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
@@ -54,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
+    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -166,7 +171,7 @@ class SolidToHubjectConverter:
             OpeningTimes=None,
             # todo : HubOperatorID missing in ocpi22,
             # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=False,
+            IsHubjectCompatible=True,
             DynamicInfoAvailable=DynamicInfoAvailable.false,
         )
 
@@ -197,24 +202,21 @@ class SolidToHubjectConverter:
         operator_name: str,
     ) -> PricingProductData:
         return PricingProductData(
-            OperatorID=operator_id,
+            OperatorID=OperatorID(root=operator_id),
             OperatorName=operator_name,
             PricingDefaultPrice=hubject_default_tariff.price,
             PricingDefaultPriceCurrency=CurrencyID(
                 root=hubject_default_tariff.currency
             ),
             PricingDefaultReferenceUnit=ReferenceUnit(
-                root=hubject_default_tariff.price_component
+                root=hubject_default_tariff.price_component.value
             ),
             PricingProductDataRecords=[
-                record
+                self.convert_to_pricing_product_data_records(solid_tariff)
                 for solid_tariff in solid_tariffs
-                for record in self.convert_to_pricing_product_data_records(
-                    solid_tariff, operator_id
-                )
             ],
             # todo: Offer to all should not be used in production.
-            ProviderID=self.get_provider_ids(solid_tariffs),
+            ProviderID=ProviderIDAsterisk(root="*"),
         )
 
     def get_provider_ids(self, solid_tariffs: list[SolidTariff]) -> ProviderIDAsterisk:
@@ -223,51 +225,129 @@ class SolidToHubjectConverter:
             return ProviderIDAsterisk(root="*")
         return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
 
+    def _get_primary_price(
+        self, solid_tariff: SolidTariff
+    ) -> tuple[Decimal, HubjectPriceComponent]:
+        if solid_tariff.price_per_kwh is not None:
+            return solid_tariff.price_per_kwh, HubjectPriceComponent.KWH
+        elif solid_tariff.price_per_hr is not None:
+            return solid_tariff.price_per_hr, HubjectPriceComponent.HOUR
+        elif solid_tariff.price_per_min is not None:
+            return solid_tariff.price_per_min, HubjectPriceComponent.MINUTE
+
+        raise ValidationError(
+            f"SolidTariff {solid_tariff.external_id} is a free tariff without any price defined."
+        )
+
+    def _get_hourly_price_additional_reference(
+        self,
+        price: Decimal,
+        primary_reference_unit: HubjectPriceComponent,
+    ) -> Optional[AdditionalReference]:
+        if (
+            price is not None
+            and not primary_reference_unit == HubjectPriceComponent.HOUR
+        ):
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+        return None
+
+    def _get_minute_price_additional_reference(
+        self,
+        price: Decimal,
+        primary_reference_unit: HubjectPriceComponent,
+    ) -> Optional[AdditionalReference]:
+        if (
+            price is not None
+            and not primary_reference_unit == HubjectPriceComponent.MINUTE
+        ):
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.MINUTE.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+        return None
+
+    def _get_flat_price_additional_reference(
+        self,
+        price: Decimal,
+    ) -> Optional[AdditionalReference]:
+        if price is not None:
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+
+        return None
+
     def convert_to_pricing_product_data_records(
         self,
         solid_tariff: SolidTariff,
-        operator_id: str,
-    ) -> list[PricingProductDataRecord]:
-        conditions = [
-            (
-                HubjectPriceComponent.KWH,
-                solid_tariff.price_per_kwh,
-            ),
-            (
-                HubjectPriceComponent.MINUTE,
-                solid_tariff.price_per_min,
-            ),
-        ]
+    ) -> PricingProductDataRecord:
+        primary_price, primary_reference_unit = self._get_primary_price(solid_tariff)
 
-        pricing_product_data_records = []
-        for ref_unit, price in conditions:
-            if price is not None:
-                pricing_product_data_records.append(
-                    PricingProductDataRecord(
-                        AdditionalReferences=[
-                            AdditionalReference(
-                                AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                                AdditionalReferenceUnit=ReferenceUnit(
-                                    root=HubjectPriceComponent.HOUR.value
-                                ),
-                                PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
-                            ),
-                        ],
-                        IsValid24hours=True,
-                        MaximumProductChargingPower=self.get_maximum_product_charging_power(),
-                        PricePerReferenceUnit=price,
-                        ProductAvailabilityTimes=[],
-                        ProductID=self.get_pricing_product_id(
-                            solid_tariff.external_id,
-                            ref_unit,
-                            operator_id,
-                            solid_tariff.msp.party_str() if solid_tariff.msp else "",
-                        ),
-                        ProductPriceCurrency=solid_tariff.currency,
-                        ReferenceUnit=ReferenceUnit(root=ref_unit),
-                    )
+        primary_price = primary_price.quantize(Decimal("0.001"), rounding=ROUND_UP)
+
+        pricing_product_base_data_record = PricingProductDataRecord(
+            AdditionalReferences=[],
+            IsValid24hours=True,
+            MaximumProductChargingPower=self.get_maximum_product_charging_power(),
+            PricePerReferenceUnit=primary_price,
+            ProductAvailabilityTimes=[],
+            ProductID=ProductID(
+                root=self.get_pricing_product_id(
+                    solid_tariff.external_id, solid_tariff.ocpi_tariff.uid
                 )
-        return pricing_product_data_records
+            ),
+            ProductPriceCurrency=CurrencyID(root=solid_tariff.currency),
+            ReferenceUnit=ReferenceUnit(root=primary_reference_unit.value),
+        )
+
+        price_flat_additional_reference = self._get_flat_price_additional_reference(
+            solid_tariff.price_flat
+        )
+        if price_flat_additional_reference:
+            pricing_product_base_data_record.AdditionalReferences.append(
+                price_flat_additional_reference
+            )
+
+        price_per_hour_additional_reference = (
+            self._get_hourly_price_additional_reference(
+                solid_tariff.price_per_hr, primary_reference_unit
+            )
+        )
+        if price_per_hour_additional_reference:
+            pricing_product_base_data_record.AdditionalReferences.append(
+                price_per_hour_additional_reference
+            )
+        else:
+            price_per_minute_additional_reference = (
+                self._get_minute_price_additional_reference(
+                    solid_tariff.price_per_min, primary_reference_unit
+                )
+            )
+            if price_per_minute_additional_reference:
+                pricing_product_base_data_record.AdditionalReferences.append(
+                    price_per_minute_additional_reference
+                )
+
+        return pricing_product_base_data_record
 
     def get_maximum_product_charging_power(self):
         return (
@@ -279,16 +359,17 @@ class SolidToHubjectConverter:
 
     def get_pricing_product_id(
         self,
-        solid_tariff_id: str,
-        ref_unit: HubjectPriceComponent,
-        operator_id: str,
-        msp_id: str,
+        external_id: str,
+        ocpi_tariff_uid: str,
     ) -> str:
-        if not operator_id or not solid_tariff_id or not ref_unit:
-            raise ValueError(
-                "Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID."
-            )
-        return f"{operator_id}*{solid_tariff_id}*{ref_unit.value}*{msp_id}"
+        if not external_id or external_id == "":
+            return ocpi_tariff_uid
+        product_id = f"{ocpi_tariff_uid}*{external_id}"
+        if len(product_id) <= 50:
+            return product_id
+
+        truncated = f"{external_id[:6]}_{external_id[-6:]}"
+        return f"{ocpi_tariff_uid}*{truncated}"
 
     def get_plug(self, connector_std: str) -> Plug:
         """
@@ -567,6 +648,33 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
+    @staticmethod
+    def get_identification(session: "Session") -> Identification:
+        token_type = session.cdr_token.token_type
+        identification = Identification(
+            RFIDMifareFamilyIdentification=None,
+            RFIDIdentification=None,
+            QRCodeIdentification=None,
+            PlugAndChargeIdentification=None,
+            RemoteIdentification=None,
+        )
+
+        match token_type:
+            case TokenType.RFID | TokenType.AD_HOC_USER | TokenType.OTHER:
+                identification.RFIDMifareFamilyIdentification = (
+                    RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=session.cdr_token.uid)
+                    )
+                )
+            case TokenType.APP_USER:
+                identification.RemoteIdentification = RemoteIdentification(
+                    EvcoID=EvcoID(root=session.cdr_token.contract_id)
+                )
+            case _:
+                raise ValidationError(f"Unsupported token type: {token_type}")
+
+        return identification
+
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
@@ -588,9 +696,7 @@ class SolidToHubjectConverter:
         if solid_tariff:
             partner_product_id = self.get_pricing_product_id(
                 solid_tariff.external_id,
-                HubjectPriceComponent.KWH,
-                operator_party_str,
-                msp_party_str,
+                solid_tariff.ocpi_tariff.uid,
             )
 
         eroaming_cdr = ERoamingChargeDetailRecord(
@@ -601,11 +707,7 @@ class SolidToHubjectConverter:
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=session.token_id)
-                ),
-            ),
+            identification=self.get_identification(session),
             charging_start=cdr.start_date_time,
             charging_end=cdr.end_date_time,
             session_start=cdr.start_date_time,

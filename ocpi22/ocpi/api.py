@@ -31,7 +31,7 @@ from ocpi22.choices import (
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -227,7 +227,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                     "token_id": token_uid,
                     "location_id": location.uid if location else None,
                 }
-                msp_response = send_to_webhook(
+                msp_response = send_to_webhook_legacy(
                     webhook_data, MSPAuthorizeCallbackSerializer, timeout=28
                 )  # Just under the 30 second limit which is maximum for Heroku requests
                 if msp_response:
@@ -326,6 +326,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         """
         Handle a POST request for a token authorization as a hub. Forward the authorization request.
         """
+        # TODO : Think about how to handle this?
         authorization: TokenAuthorization = authorize_token(
             token, location, request=request
         )
@@ -803,7 +804,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                     "exclude_urls": True,
                 },
             ).data
-            send_to_webhook(
+            send_to_webhook_legacy(
                 data, MSPSessionCallbackSerializer, serialized_data=outbound_data
             )
             stop_session_if_money_runs_out(request, session)

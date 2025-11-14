@@ -1,24 +1,33 @@
+import logging
+
 from integrations.hubject.schemas import (
     ERoamingChargingNotificationStart,
     SessionID,
     EvseID,
     OperatorID,
-    Identification,
-    RFIDMifareFamilyIdentificationClass,
-    UID,
     ERoamingChargingNotificationProgress,
     ERoamingChargingNotificationEnd,
 )
 from typing import TYPE_CHECKING
 
+from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from util import hours_to_milliseconds
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
 
+logger = logging.getLogger(__name__)
+
 
 def convert_to_charging_notification_base_data(ocpi_session: "Session") -> dict:
     ocpi_master = ocpi_session.location.ocpi_master
+    try:
+        identification = SolidToHubjectConverter.get_identification(
+            session=ocpi_session
+        )
+    except Exception:
+        logger.exception(exc_info=True)
+        raise
     return {
         "session_id": SessionID(root=ocpi_session.hub_session_id),
         "evse_id": EvseID(root=ocpi_session.evse.evse_id),
@@ -27,11 +36,7 @@ def convert_to_charging_notification_base_data(ocpi_session: "Session") -> dict:
         "operator_id": OperatorID(
             root=f"{ocpi_master.country_code}*{ocpi_master.party_id}"
         ),
-        "identification": Identification(
-            RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                UID=UID(root=ocpi_session.cdr_token.uid)
-            )
-        ),
+        "identification": identification,
         "meter_value_start": ocpi_session.start_kwh or 0.0,
     }
 

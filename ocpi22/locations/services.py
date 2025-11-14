@@ -26,7 +26,7 @@ class EvseServices:
             case "AVAILABLE":
                 return Evse.AVAILABLE
             case "PREPARING":
-                return Evse.CHARGING
+                return Evse.AVAILABLE
             case "CHARGING":
                 return Evse.CHARGING
             case "SUSPENDEDEV":

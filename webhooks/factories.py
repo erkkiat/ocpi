@@ -42,6 +42,7 @@ class WebhookFactory(factory.django.DjangoModelFactory):
         model = Webhook
 
     type = WebhookType.CHARGEPOINT_STATUS
+    command_type = RemoteCommandType.START_SESSION
     url = factory.Sequence(lambda n: f"https://example.com/webhook/{n}")
     max_retries = 3
     timeout_seconds = 30

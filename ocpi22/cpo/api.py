@@ -9,7 +9,6 @@ from django.utils.datetime_safe import datetime
 
 import pytz
 from django.contrib.auth.decorators import login_required
-from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.decorators import method_decorator
@@ -17,6 +16,7 @@ from django.utils.safestring import mark_safe
 from ninja.errors import HttpError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
+from ocpi22 import ocpi_logging
 
 from typing import Union, Optional
 
@@ -29,7 +29,8 @@ from rest_framework.exceptions import ValidationError
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
-from ocpi22.cpo.session_cache import get_cached_session, save_to_session_cache
+from ocpi22.cpo.session_service import SessionService
+from ocpi22.cpo.session_cache import save_to_session_cache
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
@@ -74,7 +75,7 @@ from ocpi22.messages import messages
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.tariff import TariffElement
 from ocpi22.util import command_store, clear_empty
-from ocpi22.models.location import Location, Evse, Connector
+from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
@@ -86,13 +87,16 @@ from ocpi22.tokens.auth import (
     authorize_token,
     TokenAuthorization,
     get_session_by_token_uid,
+    get_session_by_token_uid_and_evse_uid,
+    get_token_authorization_from_session,
+    _authorize_token,
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.util import MyMetadata
 
 from pprint import PrettyPrinter
 
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.ocpi_identities import get_our_party, get_our_credentialsrole
 from ocpiconnector.party import party_from_str, Party
 
@@ -100,24 +104,6 @@ pp = PrettyPrinter(indent=4).pprint
 session_cache = RedisStore(namespace=settings.REDIS_SESSION_CACHE_NAMESPACE)
 
 logger = getLogger(__name__)
-
-
-def close_active_sessions_for_evse(evse_uid: str):
-    # evse = get_evse_object(evse)
-    active_sessions = Session.objects.filter(
-        evse__uid=evse_uid, status__in=(Session.ACTIVE, Session.PENDING)
-    )
-    active_sessions.update(
-        last_updated=datetime.now(pytz.utc),
-        status=Session.COMPLETED,
-        end_date_time=F("last_updated"),
-    )
-
-    for session in active_sessions:
-        session.send_updates()
-        logger.error(
-            f"Completed active Session {session.uid} which has been left hanging"
-        )
 
 
 def applying_tariff_element(
@@ -205,25 +191,12 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
-        session.stop_kwh = kwh
-        session.update_last_updated()
-        kwh_delta = session.stop_kwh - session.start_kwh
-        session.update_charging_periods(kwh_delta, soc, power, timestamp)
-
-        session.calculate_price()
-        session.save(
-            update_fields=[
-                "stop_kwh",
-                "total_cost_incl_vat",
-                "total_cost_excl_vat",
-                "last_updated",
-            ]
+        SessionService().update_meter_values(
+            session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
-
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
-        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
-
+        )
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
@@ -499,10 +472,31 @@ class ChargePointViewSet(FlowchartViewSet):
                     token: Union[Token, AdhocToken, str] = (
                         serializer.validated_data.get("token")
                     )
-                    data["token"] = get_token_id(token)
-                    authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request, evse_id=evse.evse_id
+                    token_uid = get_token_id(token)
+                    data["token"] = token_uid
+                    session = get_session_by_token_uid_and_evse_uid(
+                        token_uid, evse.uid, max_age_minutes=15
                     )
+                    if session:
+                        ocpi_logging.info(
+                            f"Pre-existing Session **{markdown_escape(session.uid)}** "
+                            f"with authorization **{markdown_escape(session.authorization_reference)}**",
+                            request=request,
+                        )
+                        messages.success(
+                            request,
+                            f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
+                            f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
+                            f"authorization was cached in the system.",
+                        )
+                        authorization = get_token_authorization_from_session(session)
+                    else:
+                        _authorize_token.clear_cache_item(
+                            token, evse.location, request=request, evse_id=evse.evse_id
+                        )
+                        authorization: TokenAuthorization = authorize_token(
+                            token, evse.location, request=request, evse_id=evse.evse_id
+                        )
 
                     if (
                         not authorization
@@ -536,32 +530,33 @@ class ChargePointViewSet(FlowchartViewSet):
                             raise ValueError(
                                 f"CredentialsRole for {authorization.responding_party} not found in the database."
                             )
-                        session = create_session(
-                            credentials=route_through.credentials,
-                            authorization_reference=authorization.authorization_reference,
-                            authorization_method=authorization.auth_method,
-                            billed_to=authorization.msp,
-                            ad_hoc_token=ad_hoc_token,
-                            evse_uid=evse.uid,
-                            connector_id=None,
-                            location_id=evse.location.uid,
-                            hub_session_id=authorization.hub_session_id,
-                        )
-                        save_to_session_cache(
-                            route=find_route_from_credentials(
-                                route_through.credentials, OcpiModuleEnum.SESSIONS
-                            ),
-                            session=session,
-                        )
-                        messages.success(
-                            request,
-                            "A new OCPI Session has been started in `PENDING` status. "
-                            f"Store the Session ID, **{markdown_escape(session.uid)}**. "
-                            "You will need it for `meter_values` and `stop_session`. Next, you can "
-                            f'<a href="{next_url}">start the charging session</a>. '
-                            f"Make sure to use the Token **{get_token_id(token)}**, "
-                            f"which has been authorized. The authorization expires in 15 minutes.",
-                        )
+                        if not session:
+                            session = create_session(
+                                credentials=route_through.credentials,
+                                authorization_reference=authorization.authorization_reference,
+                                authorization_method=authorization.auth_method,
+                                billed_to=authorization.msp,
+                                ad_hoc_token=ad_hoc_token,
+                                evse_uid=evse.uid,
+                                connector_id=None,
+                                location_id=evse.location.uid,
+                                hub_session_id=authorization.hub_session_id,
+                            )
+                            save_to_session_cache(
+                                route=find_route_from_credentials(
+                                    route_through.credentials, OcpiModuleEnum.SESSIONS
+                                ),
+                                session=session,
+                            )
+                            messages.success(
+                                request,
+                                "A new OCPI Session has been started in `PENDING` status. "
+                                f"Store the Session ID, **{markdown_escape(session.uid)}**. "
+                                "You will need it for `meter_values` and `stop_session`. Next, you can "
+                                f'<a href="{next_url}">start the charging session</a>. '
+                                f"Make sure to use the Token **{get_token_id(token)}**, "
+                                f"which has been authorized. The authorization expires in 15 minutes.",
+                            )
 
                     if authorization:
                         data = dict(
@@ -642,12 +637,23 @@ class ChargePointViewSet(FlowchartViewSet):
                     connector_id: str = serializer.validated_data["connector_id"]
                     session.start_kwh = serializer.validated_data["start_kwh"]
                     session.stop_kwh = session.start_kwh
-                    authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid,
-                        evse_id=session.evse.evse_id if session.evse else None,
-                    )
-                    logger.info(
-                        f"Debugging: start_transaction incoming data after serializer: {serializer.validated_data}"
+                    session_service = SessionService()
+                    if session.auth_method == enum.AuthMethodChoices.COMMAND:
+                        session_service.start_command_session(
+                            session=session,
+                            start_kwh=session.start_kwh,
+                        )
+                        session.send_updates()
+                        session_serializer = CpoSessionSerializer(
+                            instance=session,
+                            context={"version": request.version, "request": request},
+                        )
+                        return Response(session_serializer.data)
+
+                    # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
+                    # TODO Reject authorization for stale authorizations
+                    authorization: TokenAuthorization = (
+                        get_token_authorization_from_session(session)
                     )
 
                     if not authorization:
@@ -658,26 +664,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )
-                    session.connector = Connector.objects.prefetch_related(
-                        "tariff_ids"
-                    ).get_if_exists(
-                        uid=connector_id, evse=session.evse, raise_exception=True
+                    session_service.set_currency_and_start(
+                        session=session, connector_id=connector_id
                     )
-                    session.status = Session.ACTIVE
-                    if session.connector.tariff_ids:
-                        first_tariff = session.connector.tariff_ids.first()
-                        if first_tariff:
-                            session.currency = first_tariff.currency
-                    session.save(
-                        update_fields=[
-                            "connector",
-                            "status",
-                            "currency",
-                            "start_kwh",
-                            "stop_kwh",
-                        ]
-                    )
-
                     session.send_updates(update_type=ChargingNotificationType.Start)
 
                     messages.info(
@@ -804,10 +793,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 if serializer.is_valid():
                     session = serializer.validated_data["session"]
                     stop_kwh = serializer.validated_data.get("stop_kwh")
-                    stop_timestamp = serializer.validated_data.get(
-                        "timestamp", datetime.now(pytz.utc)
-                    )
-
+                    stop_timestamp = serializer.validated_data.get("timestamp")
                     if session.is_final():
                         return Response(
                             dict(
@@ -815,37 +801,10 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
-
-                    if stop_kwh:
-                        session.stop_kwh = stop_kwh
-                    else:
-                        cached_session = get_cached_session(session.uid)
-                        if cached_session and cached_session.kwh > session.kwh:
-                            session.stop_kwh = cached_session.kwh
-                        # Todo: process also SoC, power, timestamp from cached_session
-
-                    session.update_charging_periods(
-                        kwh=session.kwh, timestamp=stop_timestamp
-                    )
-                    session.status = Session.COMPLETED
-                    session.end_date_time = stop_timestamp.replace(tzinfo=pytz.utc)
-                    session.last_updated = datetime.now(pytz.utc)
-                    session.calculate_price()
-                    session.save(
-                        update_fields=[
-                            "stop_kwh",
-                            "status",
-                            "last_updated",
-                            "end_date_time",
-                            "total_cost_incl_vat",
-                            "total_cost_excl_vat",
-                        ]
+                    SessionService().stop_and_create_cdr(
+                        session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
                     )
                     session.send_updates(update_type=ChargingNotificationType.End)
-                    logger.info(
-                        f"Stopped session {session.uid} at {stop_timestamp} with {session.kwh} kWh and "
-                        f"cost {session.total_cost_incl_vat} {session.currency}"
-                    )
 
                     extra_information = {
                         enum.AuthMethodChoices.COMMAND: "<div>This session was started by using the MSP mobile application, "
@@ -863,12 +822,6 @@ class ChargePointViewSet(FlowchartViewSet):
                         f"invoicing webhook, the CDR is sent to the webhook. "
                         f"{extra_information}",
                     )
-                    # Create the corresponding CDR (it will also be sent to other party)
-                    from ocpi22.cpo.services import CdrService
-
-                    CdrService.get_or_create_cdr(
-                        session
-                    )  # Todo: Do this in a celery task
 
                     session_serializer = CpoSessionSerializer(
                         instance=session,
@@ -998,7 +951,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except KeyError:
-            logger.exception()
+            logger.exception("Unable to find eMSP remote command from cache")
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "
@@ -1291,7 +1244,7 @@ def cdr_post_save(sender, instance: Cdr, created, *_args, raw, **_kwargs):
     try:
         if settings.ENV != "test":
             cdr_serializer = CdrSerializer(instance)
-            send_to_webhook(
+            send_to_webhook_legacy(
                 serialized_data=cdr_serializer.data,
                 serializer=InvoicingCallbackSerializer,
             )

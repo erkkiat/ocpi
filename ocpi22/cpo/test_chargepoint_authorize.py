@@ -73,7 +73,7 @@ def test_authorize_successful_with_200(
 
 
 def test_authorize_with_non_existent_credentialsrole_fails_with_404(
-    monkeypatch, evse, token, ocpi_master, caplog, admin_user_client
+    monkeypatch, evse, token, ocpi_master, caplog, admin_user_client, clear_all_cache
 ):
     auth = TokenAuthorization(
         allowed=AuthorizationEnum.ALLOWED,
@@ -85,7 +85,8 @@ def test_authorize_with_non_existent_credentialsrole_fails_with_404(
         msp=ocpi_master,
     )
     monkeypatch.setattr(
-        "ocpi22.cpo.api.authorize_token", lambda token, location, evse_id=evse.evse_id, request=None: auth
+        "ocpi22.cpo.api.authorize_token",
+        lambda token, location, evse_id=evse.evse_id, request=None: auth,
     )
     response = admin_user_client.post(
         reverse("chargepoint-authorize"),
@@ -102,7 +103,8 @@ def test_authorize_disallowed(monkeypatch, evse, token, admin_user_client):
         allowed=AuthorizationEnum.NOT_ALLOWED, token=token, responding_party="FR*107"
     )
     monkeypatch.setattr(
-        "ocpi22.cpo.api.authorize_token", lambda token, location, evse_id=evse.evse_id, request=None: auth
+        "ocpi22.cpo.api.authorize_token",
+        lambda token, location, evse_id=evse.evse_id, request=None: auth,
     )
     response = admin_user_client.post(
         reverse("chargepoint-authorize"),

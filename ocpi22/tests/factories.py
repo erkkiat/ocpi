@@ -1,5 +1,7 @@
 import time
+import uuid
 from datetime import datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import factory
@@ -32,8 +34,11 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     PricingProductData,
     PricingProductDataRecord,
+    ERoamingPushEVSEPricing,
+    EVSEPricingItem,
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
+from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -417,6 +422,25 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     )
 
 
+class EvsePricingItemFactory(factory.Factory):
+    class Meta:
+        model = EVSEPricingItem
+
+    EvseID = "BE*SMP*ESDEVSEID"
+    ProviderID = "DE*SMP"
+    EvseIDProductList = ["SMP1"]
+
+
+class ERoamingPushEVSEPricingFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushEVSEPricing
+
+    ActionType = ActionType.fullLoad
+    EVSEPricing = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")]
+    )
+
+
 class PricingProductDataRecordFactory(factory.Factory):
     class Meta:
         model = PricingProductDataRecord
@@ -462,12 +486,12 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
 
     external_id = f"SD{int(time.time())}"
     currency = "EUR"
-    price_per_kwh = 0.2
-    price_per_min = 0.3
-    price_per_hr = 0.3
-    parking_price_per_min = 0.1
-    parking_price_per_hr = 0.2
-    price_flat = 0.3
+    price_per_kwh = Decimal("0.2")
+    price_per_min = Decimal("0.3")
+    price_per_hr = Decimal("0.3")
+    parking_price_per_min = Decimal("0.1")
+    parking_price_per_hr = Decimal("0.2")
+    price_flat = Decimal("0.3")
     vat_percentage = 0.2
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"
@@ -587,7 +611,7 @@ class OCPISessionFactory(factory.django.DjangoModelFactory):
         role="CPO",
         business_details__name="Test CPO",
     )
-    uid = "SESSION12345"
+    uid = str(uuid.uuid4())
     reservation_id = "EMSPSESSION1"
     hub_session_id = "b2688855-7f00-0002-6d8e-48d883f6abb6"
     start_date_time = datetime(2021, 1, 1, 10, 0, 0, tzinfo=pytz.UTC)
@@ -696,3 +720,16 @@ class DefaultTariffsFactory(factory.django.DjangoModelFactory):
         else:
             tariff1 = TariffFactory()
             self.tariffs.add(tariff1)
+
+
+class CallBackFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CallBacks
+
+    session = factory.SubFactory(OCPISessionFactory)
+    callback_url = "https://example.com/callback"
+    authorization_reference = factory.Faker("uuid4")
+    execution_status = CallBackExecutionStatus.PENDING
+    response_status_code = None
+    response_body = None
+    executed_at = None
