@@ -1,14 +1,53 @@
 # Troubleshooting
 
 ## Table of Contents
-1. [Fluent Bit Commands](#fluent-bit-commands)
-2. [Journalctl Commands](#journalctl-commands)
-3. [Docker Commands](#docker-commands)
-4. [System Monitoring (htop)](#system-monitoring-htop)
-5. [Container Memory Usage](#container-memory-usage)
-6. [Sentry & OpenSearch Coordination](#sentry--opensearch-coordination)
+1. [Scenarios](#scenarios)
+2. [Tools](#tools)
+2. [Fluent Bit Commands](#fluent-bit-commands)
+3. [Journalctl Commands](#journalctl-commands)
+4. [Docker Commands](#docker-commands)
+5. [System Monitoring (htop)](#system-monitoring-htop)
+6. [Container Memory Usage](#container-memory-usage)
+7. [Sentry & OpenSearch Coordination](#sentry--opensearch-coordination)
 
 ---
+
+## Scenarios
+* Instance out of memory errors
+    -  Go to instance
+    - Check htop for memory usage
+    - Check docker stats for container memory usage
+    - If they are recovering memory, monitor over time
+    - Check docker logs for OOM errors or in the opensearch dashboard logs for memory errors
+    - If persistent OOM errors for specific container, consider restarting the container by docker restart <container_name>
+    - if not, try redeploying the same image by doing `sudo bash smappee-deployment/deploy.sh`
+    - If issue persists, consider increasing instance memory (Reach out to Heiko/Sander) or optimizing application memory usage
+  
+* Redeploying
+   - ssh into instance
+   - Make sure that there are no new images in production
+   - Run `sudo bash smappee-deployment/deploy.sh`
+   - Run `docker ps` to verify that containers are running
+   - Make sure to deploy in all the instances depending on the environment
+
+* Application errors/exceptions
+   - Go to OpenSearch Dashboard
+   - Go to Discover tab
+   - Set time range to last 15 minutes
+   - Add filter level: "error/info"
+   - Identify error patterns, affected components, trace_id
+   - Use trace_id to correlate logs across services
+   - Check docker logs for specific containers using trace_id/container name in sentry or docker id in opensearch
+   - Check Sentry for related issues using trace_id or error message
+
+## Tools
+| Tool | Staging | Production |
+|------|---------|------------|
+| **OpenSearch Dashboard** | [staging-opensearch](https://dashboards.eu-west-1.aoss.amazonaws.com/_login/?collectionId=yrhk1cu9lpunn04fnl57) | [production-opensearch](https://dashboards.eu-west-1.aoss.amazonaws.com/_login/?collectionId=yrhk1cu9lpunn04fnl57) |
+| **Sentry** | [staging-sentry](https://smappee-nv-mj.sentry.io/issues/?environment=staging&project=4509235472498768&statsPeriod=24h) | [production-sentry](https://smappee-nv-mj.sentry.io/issues/?environment=production&project=4509235472498768&statsPeriod=24h) |
+| **SolidRoam Portal** | [staging-solidroam](https://solidroam.f3-smappee.net/) | [production-solidroam](https://solidroam.smappee.net/) |
+
+
 
 ## Fluent Bit Commands
 
@@ -872,24 +911,14 @@ docker inspect --format='{{.RestartCount}}' mqtt-subscriber
 docker inspect --format='{{.RestartCount}}' celery-mqtt
 ```
 
-**Step 9: Review context around error time**
-- In OpenSearch Dashboard, remove trace_id filter
-- Add filter: `component: "mqtt_subscriber"`
-- Set time range: ±5 minutes around error timestamp
-- Look for:
-  - Warning messages before the error
-  - Connection issues
-  - Resource constraints
-  - External service failures
-
-**Step 10: Analyze the timeline in OpenSearch Dashboard**
+**Step 9: Analyze the timeline in OpenSearch Dashboard**
 - Create a timeline visualization
 - X-axis: @timestamp (histogram)
 - Y-axis: Count of logs
 - Split by: `level.keyword` (to see errors vs warnings vs info)
 - Identify when the issue started and if it's ongoing
 
-**Step 11: Check external dependencies**
+**Step 10: Check external dependencies**
 ```bash
 # Check MQTT broker connectivity (if accessible)
 # Check database connectivity
@@ -914,18 +943,6 @@ sudo journalctl -u fluent-bit -n 50
 - Create reproduction steps
 - Plan the fix
 
-
----
-
-### 2. Best Practices
-
-#### Log Correlation
-- **Always use `trace_id`** to correlate logs across services (Django → Celery → MQTT)
-- Use consistent field names across all services (trace_id, component, operation, level)
-- Generate trace_id at the entry point (HTTP request, MQTT message) and propagate it through the entire flow
-- Add trace_id to HTTP response headers for client-side correlation
-- Include trace_id in Celery task kwargs to maintain correlation in async tasks
-
 #### Sensitive Data Handling
 - Filter sensitive data (passwords, tokens, API keys, credit cards) from logs
 - Use `***REDACTED***` placeholder for filtered fields
@@ -939,19 +956,6 @@ sudo journalctl -u fluent-bit -n 50
 - Include trace_id in all performance logs for correlation
 
 ---
-
-### 3. Quick Reference Commands
-
-#### OpenSearch Dashboard Access
-```bash
-# Access OpenSearch Dashboard in browser
-# URL: https://your-opensearch-domain:5601
-
-# Common Dashboard workflows:
-# 1. Discover tab: Search and filter logs
-# 2. Visualize tab: Create charts and aggregations
-# 3. Dashboard tab: View combined visualizations
-```
 
 #### Quick Log Searches in Dashboard
 **Find errors in last hour:**
@@ -988,17 +992,3 @@ When investigating an issue:
 - [ ] Review recent deployments or config changes
 - [ ] Check external service status (MQTT broker, external APIs)
 - [ ] Analyze full trace flow across all services in OpenSearch Dashboard
-
----
-
-## Summary
-
-This guide provides comprehensive commands for:
-- **Fluent Bit**: Configuration, monitoring, and debugging log shipping
-- **Journalctl**: System log exploration and filtering
-- **Docker**: Container management, logging, and resource monitoring
-- **htop**: Real-time system resource monitoring
-- **Container Memory**: Specific commands for your Docker containers
-- **OpenSearch Dashboard**: Log analysis, trace_id correlation, and pattern detection
-
-**Key Principle**: Use OpenSearch Dashboard for comprehensive log analysis and trace_id for correlating error/exception logs across all services (Django, Celery, MQTT) throughout the entire request/message flow.
