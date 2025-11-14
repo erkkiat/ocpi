@@ -3,12 +3,14 @@ from unittest.mock import patch
 import pytest
 
 from ocpi22.models.cdr import Cdr
+from ocpi22.ocpi.auth import get_credentialsrole
 
 
 @pytest.mark.django_db
 def test_cdr_send_update_url_to_be_without_path_components(
-    msp_credentials_with_endpoints, completed_session, clear_all_cache
+    msp_credentials_with_endpoints, completed_session
 ):
+    get_credentialsrole.cache_clear()
     cdr = Cdr.objects.get(session_id=completed_session.uid)
 
     with patch("ocpi22.ocpi.util.OcpiModule.send_background_update") as mock_send:

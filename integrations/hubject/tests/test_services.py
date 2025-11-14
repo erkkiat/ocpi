@@ -1648,7 +1648,6 @@ class TestHubjectAuthorizeRemoteStart:
         evse,
         evse_status,
         hubject_credentials,
-        clear_all_cache,
     ):
         build_absolute_uri.cache_clear()
         evse.status = evse_status

@@ -28,6 +28,7 @@ from ocpi22.cpo.mqtt.services import (
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
     OCPISessionFactory,
@@ -688,8 +689,9 @@ class TestPublishNotAllowedAuthResponse:
 @pytest.mark.django_db
 class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_token_dict_authorization(
-        self, clear_all_cache
+        self,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory()
         evse = EvseFactory(location=location)
         msp_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="MSP")
@@ -1034,58 +1036,3 @@ class TestCreateAndSaveSession:
             mock_authorize_token.assert_called_once_with(
                 token, evse.location, evse_id=evse.evse_id
             )
-
-    @pytest.mark.django_db
-    def test_authorize_and_publish_resend_message_does_not_make_a_new_request_to_msps(
-        self, auth_request_message, clear_all_cache
-    ):
-        decoded_message = orjson.loads(auth_request_message.payload)
-        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
-
-        location = LocationFactory()
-        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
-        token = TokenFactory(uid=token_auth_message.token_id)
-
-        mock_authorization = TokenAuthorization(
-            allowed=AuthorizationEnum.ALLOWED,
-            token=token,
-            responding_party=str(token.ocpi_master.get_party()),
-            authorization_reference="auth-ref-resend",
-            auth_method="AUTH_REQUEST",
-            msp=token.ocpi_master,
-        )
-        with (
-            patch(
-                "ocpi22.cpo.mqtt.services.authorize_token",
-                return_value=mock_authorization,
-            ) as mock_authorize_token,
-            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
-        ):
-            _authorize_and_publish(token_auth_message, auth_request_message.topic)
-
-            # Simulate resending the same message
-            _authorize_and_publish(token_auth_message, auth_request_message.topic)
-
-            mock_authorize_token.assert_called_once_with(
-                token, evse.location, evse_id=evse.evse_id
-            )
-
-    @pytest.mark.django_db
-    def test_authorize_and_publish_does_not_create_a_new_session_when_a_recent_session_exists(
-        self, auth_request_message
-    ):
-        decoded_message = orjson.loads(auth_request_message.payload)
-        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
-
-        mock_session = MagicMock(spec=Session)
-        with (
-            patch(
-                "ocpi22.cpo.mqtt.services.get_session_by_token_uid_and_evse_uid",
-                return_value=mock_session,
-            ),
-            patch(
-                "ocpi22.cpo.mqtt.services.create_and_save_session"
-            ) as mock_create_session,
-        ):
-            _authorize_and_publish(token_auth_message, auth_request_message.topic)
-            mock_create_session.assert_not_called()

@@ -20,6 +20,7 @@ from ocpi22.choices import (
     OcpiModuleEnum,
     MessageTexts,
     AuthorizationEnum,
+    TokenType,
     get_language,
     EndpointRoleEnum,
 )
@@ -60,26 +61,6 @@ def get_session_by_token_uid(
         & Q(status__in=statuses)
         & Q(created__gte=time_start)
     ).order_by("-created")
-    return sessions.first()
-
-
-def get_session_by_token_uid_and_evse_uid(
-    token_uid: str,
-    evse_uid: str,
-    max_age_minutes=15,
-    statuses=(Session.PENDING, Session.ACTIVE),
-) -> Optional[Session]:
-    time_start = datetime.now(pytz.utc) - timedelta(minutes=max_age_minutes)
-    sessions = (
-        Session.objects.select_related("cdr_token", "evse")
-        .filter(
-            Q(cdr_token__uid=token_uid)
-            & Q(evse__uid=evse_uid)
-            & Q(status__in=statuses)
-            & Q(created__gte=time_start)
-        )
-        .order_by("-created")
-    )
     return sessions.first()
 
 
@@ -188,35 +169,51 @@ class TokenAuthorization:
         return self.token.get("language", "en") if self.token else "en"
 
 
-def get_token_authorization_from_session(
-    session: Session,
-) -> Optional[TokenAuthorization]:
-    if not session.authorization_reference:
-        raise ValueError(f"Session {session.uid} is missing authorization_reference")
-    return TokenAuthorization(
-        allowed="ALLOWED",
-        info=MessageTexts.get("TOKEN_ACCEPTED"),
-        token=AdhocToken(
-            billed_to=session.billed_to.get_party(),
-            uid=session.cdr_token.uid,
-            type=session.cdr_token.token_type,
-            ocpi_master=session.billed_to,
-        ),
-        responding_party=session.credentials.roles.first().party_str(),
-        authorization_reference=session.authorization_reference,
-        auth_method=session.auth_method,
-        billed_to=session.billed_to.party_str(),
-        msp=session.billed_to,
-    )
-
-
 def authorize_token(
     token: Union[str, Token],
     location=None,
     request=None,
+    max_age=15,
+    rfid=False,
     evse_id=None,
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
+        if not rfid and not isinstance(token, Token):
+            token_uid = token
+            session = get_session_by_token_uid(token_uid, max_age_minutes=max_age)
+            if session:
+                # Token is AD HOC
+                logging.info(
+                    f"Pre-existing Session **{markdown_escape(session.uid)}** "
+                    f"with authorization **{markdown_escape(session.authorization_reference)}**",
+                    request=request,
+                )
+                messages.success(
+                    request,
+                    f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
+                    f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
+                    f"authorization was cached in the system.",
+                )
+                if not session.authorization_reference:
+                    raise ValueError(
+                        f"Session {session.uid} is missing authorization_reference"
+                    )
+                return TokenAuthorization(
+                    allowed="ALLOWED",
+                    info=MessageTexts.get("TOKEN_ACCEPTED"),
+                    token=AdhocToken(
+                        billed_to=session.billed_to.get_party(),
+                        uid=token_uid,
+                        type=TokenType.AD_HOC_USER.value,
+                        ocpi_master=session.billed_to,
+                    ),
+                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
+                    authorization_reference=session.authorization_reference,
+                    auth_method=session.auth_method,
+                    billed_to=session.billed_to.party_str(),
+                    msp=session.billed_to,
+                )
+
         # Not AD HOC, so Token should be found from database
         authorization: TokenAuthorization = _authorize_token(
             token, location, request=request, evse_id=evse_id
