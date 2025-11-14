@@ -363,14 +363,14 @@ docker cp /local/path <container_name>:/path/in/container
 ### Docker Commands for Service Management
 
 ```bash
-# Start all services (if using docker-compose file)
-docker-compose up -d
+# Start all services (if using docker compose file)
+docker compose up -d
 
 # Stop all services
-docker-compose down
+docker compose down
 
 # Stop and remove volumes
-docker-compose down -v
+docker compose down -v
 
 # View logs for all services
 docker logs -f django-app &
@@ -410,11 +410,11 @@ docker exec django-app python manage.py shell
 docker exec django-app python manage.py createsuperuser
 docker exec celery-mqtt celery -A ocpi22.cpo.mqtt.tasks inspect stats
 
-# View service configuration (if using docker-compose)
-docker-compose config
+# View service configuration (if using docker compose)
+docker compose config
 
-# Validate docker-compose.yml
-docker-compose config --quiet
+# Validate docker compose.yml
+docker compose config --quiet
 ```
 
 ### Service-Specific Commands
@@ -580,7 +580,7 @@ watch -n 1 free -h
 
 ### Your Docker Containers
 
-Based on your docker-compose.yml, here are commands for monitoring your specific containers:
+Based on your docker compose.yml, here are commands for monitoring your specific containers:
 
 ```bash
 # Django App Container
