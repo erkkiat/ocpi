@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
@@ -258,11 +259,9 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
 @pytest.mark.django_db
 @responses.activate
 def test_remote_start_returns_200_for_minimal_data(
-    authenticated_user_client,
-    remote_command_payload,
-    hubject_credentials,
-    clear_all_cache,
+    authenticated_user_client, remote_command_payload, hubject_credentials
 ):
+    get_credentialsrole.cache_clear()
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
         command_type=RemoteCommandType.START_SESSION,
