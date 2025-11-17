@@ -87,3 +87,27 @@ class CredentialsRepository:
         return CredentialsRole.objects.filter(
             country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
         ).first()
+
+
+class EvseRepository:
+    @staticmethod
+    def iterate_status_by_credentials(our_credentials_role):
+        hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
+        if not hubject_credentials_role or not hubject_credentials_role.credentials:
+            return
+
+        filter_criteria = {
+            "location__ocpi_master": our_credentials_role,
+            "location__roaming_enabled": True,
+        }
+        allowed_locations = hubject_credentials_role.credentials.allowed_locations
+        if allowed_locations:
+            filter_criteria["location__uid__in"] = allowed_locations
+
+        queryset = (
+            Evse.objects.values_list("evse_id", "status")
+            .filter(**filter_criteria)
+            .iterator(chunk_size=100)
+        )
+        for evse_id, status in queryset:
+            yield evse_id, status

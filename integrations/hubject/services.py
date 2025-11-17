@@ -55,7 +55,7 @@ from integrations.hubject.schemas import (
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum, TokenType
-from ocpi22.cpo.repositories import CredentialsRepository
+from ocpi22.cpo.repositories import CredentialsRepository, EvseRepository
 from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
@@ -64,7 +64,11 @@ from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
-from ocpiconnector.ocpi_identities import get_our_identity, get_our_party
+from ocpiconnector.ocpi_identities import (
+    get_our_identity,
+    get_our_party,
+    get_our_credentialsrole,
+)
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import TYPE_CHECKING, Optional
@@ -618,8 +622,14 @@ class HubjectService:
 
     @classmethod
     def _get_evse_status_update_payload(
-        cls, evse: Evse, operator_id: str, operator_name: str
-    ) -> ERoamingPushEvseStatus:
+        cls, evse: Evse
+    ) -> ERoamingPushEvseStatus | None:
+        if not evse:
+            return None
+        ocpi_master = evse.location.ocpi_master
+        operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
+        operator_name = ocpi_master.business_details.name
+
         return ERoamingPushEvseStatus(
             action_type=ActionType.update,
             operator_evse_status=OperatorEvseStatus(
@@ -635,23 +645,58 @@ class HubjectService:
         )
 
     @classmethod
-    def post_eroaming_push_evse_status(cls, evse: Evse, retries=3) -> None:
-        if not evse:
+    def _get_evse_status_full_load_payload(cls) -> ERoamingPushEvseStatus | None:
+        our_credentials_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        if not our_credentials_role:
+            logger.error("Cannot determine our credentials role for CPO")
+            return None
+        evse_record_items = []
+
+        for evse_id, status in EvseRepository.iterate_status_by_credentials(
+            our_credentials_role
+        ):
+            evse_record_items.append(
+                EvseStatusRecordItem(
+                    evse_id=EvseID(root=evse_id),
+                    evse_status=cls.converter.convert_ocpi_evse_status(status),
+                )
+            )
+
+        if not evse_record_items:
+            logger.warning("No EVSE records found")
+            return None
+
+        return ERoamingPushEvseStatus(
+            action_type=ActionType.fullLoad,
+            operator_evse_status=OperatorEvseStatus(
+                operator_id=OperatorID(root=our_credentials_role.party_str()),
+                operator_name=our_credentials_role.business_details.name,
+                evse_status_record=evse_record_items,
+            ),
+        )
+
+    @classmethod
+    def post_eroaming_push_evse_status(cls, evse: Evse, full_load=False) -> None:
+        if not evse and not full_load:
             logger.warning("No EVSE provided for hubject status update")
             return
-        ocpi_master = evse.location.ocpi_master
-        operator_id = f"{ocpi_master.country_code}*{ocpi_master.party_id}"
-        operator_name = ocpi_master.business_details.name
-
         try:
-            payload = cls._get_evse_status_update_payload(
-                evse, operator_id, operator_name
+            payload = (
+                cls._get_evse_status_full_load_payload()
+                if full_load
+                else cls._get_evse_status_update_payload(evse)
             )
         except (ValidationError, ValueError):
             logger.error(
                 "Failed to create payload for EVSE status update", exc_info=True
             )
             return
+
+        if not payload:
+            logger.warning("No payload created for EVSE status update")
+            return
+
+        operator_id = payload.operator_evse_status.operator_id.root
 
         payload_json = payload.model_dump(mode="json", by_alias=True)
 

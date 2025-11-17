@@ -239,3 +239,15 @@ api.add_router(
     remote_command_router,
     tags=["Hubject Remote Commands"],
 )
+
+
+@api.post(
+    "/evse-status/full-load/", url_name="hubject-evse-status-full-load", response=Dict
+)
+def start_evse_status_full_load(request) -> dict:
+    try:
+        hubject_service.post_eroaming_push_evse_status(evse=None, full_load=True)
+        return {"success": True, "message": "Evse status full load accepted."}
+    except Exception:
+        logger.exception()
+        return {"success": False, "message": "PushEvseStatus full load failed."}

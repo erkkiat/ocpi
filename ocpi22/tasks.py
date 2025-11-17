@@ -15,6 +15,7 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
+from pydantic import ValidationError
 from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
@@ -272,6 +273,31 @@ def send_hubject_request(
             json=payload_json,
             timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
+        if response.status_code == 200:
+            from integrations.hubject.schemas import ERoamingAcknowledgment
+
+            try:
+                ack = ERoamingAcknowledgment.model_validate(response.json())
+                if not ack.result:
+                    logger.error(
+                        f"Hubject responded with negative acknowledgment for {url}",
+                        extra={
+                            "path": url,
+                            "method": response.request.method,
+                            "response_data": ack,
+                            "status_code": response.status_code,
+                        },
+                    )
+            except ValidationError:
+                logger.error(
+                    f"Validation error when parsing Hubject acknowledgment for {url}",
+                    extra={
+                        "path": url,
+                        "method": response.request.method,
+                        "response_data": response.text,
+                        "status_code": response.status_code,
+                    },
+                )
         if self.app.conf.task_always_eager:
             return response.json() if response.text else None
         retry_count = self.request.retries
