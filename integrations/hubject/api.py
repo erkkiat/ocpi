@@ -245,17 +245,9 @@ api.add_router(
     "/evse-status/full-load/", url_name="hubject-evse-status-full-load", response=Dict
 )
 def start_evse_status_full_load(request) -> dict:
-    party = get_our_party(OcpiRolesEnum.CPO)
-    our_credentials_role = party.get_role_if_exists()
-    if not our_credentials_role:
-        logger.error("Cannot determine our credentials role for CPO")
-        return {
-            "success": False,
-            "message": "Cannot determine our credentials role for CPO",
-        }
     try:
         hubject_service.post_eroaming_push_evse_status(evse=None, full_load=True)
         return {"success": True, "message": "Evse status full load accepted."}
     except Exception:
-        logger.exception(exc_info=True)
-        return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
+        logger.exception()
+        return {"success": False, "message": "PushEvseStatus full load failed."}

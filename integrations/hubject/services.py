@@ -647,6 +647,9 @@ class HubjectService:
     @classmethod
     def _get_evse_status_full_load_payload(cls) -> ERoamingPushEvseStatus | None:
         our_credentials_role = get_our_credentialsrole(OcpiRolesEnum.CPO)
+        if not our_credentials_role:
+            logger.error("Cannot determine our credentials role for CPO")
+            return None
         evse_record_items = []
 
         for evse_id, status in EvseRepository.iterate_status_by_credentials(
