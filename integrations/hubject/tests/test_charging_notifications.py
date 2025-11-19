@@ -326,6 +326,19 @@ def test_send_updates_calls_correct_method(
     assert json.loads(response.request.body)["Type"] == notification_type.value
 
 
+@pytest.mark.django_db
+def test_send_progress_update_does_not_send_update_for_kwh_zero(
+    charge_notification_payload,
+):
+    session = OCPISessionFactory(start_kwh=0.0, stop_kwh=0.0)
+    with patch(
+        "integrations.hubject.services.HubjectService.post_charging_notification"
+    ) as mock_post:
+        HubjectService.send_update(session, ChargingNotificationType.Progress)
+
+    assert not mock_post.called
+
+
 @responses.activate
 @pytest.mark.django_db
 @pytest.mark.parametrize(
