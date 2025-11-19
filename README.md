@@ -70,6 +70,9 @@ pytest
 
 ---
 
+## [Helpful Commands for Troubleshooting (Click Here)](Troubleshooting.md)
+
+
 ## 🤖 Working with Claude AI
 
 This project includes an intelligent context management system for efficient AI-assisted development. See [.claude/README.md](.claude/README.md) for complete details.

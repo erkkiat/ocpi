@@ -2,6 +2,7 @@ from typing import Optional
 from django.db.models import Q
 
 from ocpi22.commands.models import CallBacks
+from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.util import command_store
 
@@ -45,8 +46,22 @@ class SessionRepository:
         ).first()
 
     @staticmethod
+    def find_session_by_hub_session_id(hub_session_id: str) -> Optional[Session]:
+        return Session.objects.filter(hub_session_id=hub_session_id).first()
+
+    @staticmethod
     def find_session_by_auth_ref(auth_reference: str) -> Optional[Session]:
         return Session.objects.filter(authorization_reference=auth_reference).first()
+
+    @staticmethod
+    def find_session_by_evse_id_and_status(
+        evse_id: str, statuses=(Session.ACTIVE, Session.PENDING)
+    ) -> Optional[Session]:
+        return (
+            Session.objects.select_related("evse")
+            .filter(evse__evse_id=evse_id, status__in=statuses)
+            .first()
+        )
 
 
 class CommandRepository:
@@ -61,3 +76,21 @@ class CallBackRepository:
     @staticmethod
     def find_by_session_uid(session_uid: str):
         return CallBacks.objects.filter(session__uid=session_uid).first()
+
+
+class LocationRepository:
+    @staticmethod
+    def find_location_by_uid(location_uid: str):
+        return Location.get_if_exists(uid=location_uid)
+
+    @staticmethod
+    def find_location_by_evse_id(evse_id: str):
+        return Location.objects.filter(evses__evse_id=evse_id).first()
+
+    @staticmethod
+    def find_location_uid_by_evse_id(evse_id: str) -> Optional[str]:
+        return (
+            Location.objects.filter(evses__evse_id=evse_id)
+            .values_list("uid", flat=True)
+            .first()
+        )

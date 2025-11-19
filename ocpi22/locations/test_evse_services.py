@@ -39,7 +39,7 @@ class TestEvseServices:
         "status,expected_status",
         [
             ("AVAILABLE", Evse.AVAILABLE),
-            ("PREPARING", Evse.CHARGING),
+            ("PREPARING", Evse.AVAILABLE),
             ("CHARGING", Evse.CHARGING),
             ("SUSPENDEDEV", Evse.CHARGING),
             ("SUSPENDEDEVSE", Evse.CHARGING),

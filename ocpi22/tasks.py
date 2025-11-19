@@ -15,14 +15,18 @@ from celery.schedules import crontab
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils.module_loading import import_string
+from pydantic import ValidationError
 from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from ocpiconnector.settings import setup_sentry
 from util import unwrap
@@ -65,6 +69,12 @@ app.conf.beat_schedule = {
         "task": "ocpi22.tasks.pull_all_objects",
         # 'schedule': 120  # For testing
         "schedule": crontab(hour=str(pull_hour), minute=str(pull_minute)),
+    },
+    "weekly-hubject-evse-full-load": {
+        "task": "ocpi22.tasks.send_hubject_evse_full_load",
+        "schedule": crontab(
+            hour="2", minute="0", day_of_week="0"
+        ),  # Every Sunday at 02:00AM
     },
 }
 
@@ -224,13 +234,18 @@ def send_ocpi_request(
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
-    env = os.environ["ENV"]
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+    if 300 <= response.status_code < 500:
+        logger.error(
+            f"{url} responded with {response.status_code}, not retrying",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.content,
+                "status_code": response.status_code,
+            },
         )
-    if response.status_code >= 500 and env == "production":
+        return
+    if response.status_code >= 500:
         logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
         raise self.retry(
             exc=Exception(f"Server Error for {response.url}: {response.status_code}")
@@ -258,6 +273,31 @@ def send_hubject_request(
             json=payload_json,
             timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
+        if response.status_code == 200:
+            from integrations.hubject.schemas import ERoamingAcknowledgment
+
+            try:
+                ack = ERoamingAcknowledgment.model_validate(response.json())
+                if not ack.result:
+                    logger.error(
+                        f"Hubject responded with negative acknowledgment for {url}",
+                        extra={
+                            "path": url,
+                            "method": response.request.method,
+                            "response_data": ack,
+                            "status_code": response.status_code,
+                        },
+                    )
+            except ValidationError:
+                logger.error(
+                    f"Validation error when parsing Hubject acknowledgment for {url}",
+                    extra={
+                        "path": url,
+                        "method": response.request.method,
+                        "response_data": response.text,
+                        "status_code": response.status_code,
+                    },
+                )
         if self.app.conf.task_always_eager:
             return response.json() if response.text else None
         retry_count = self.request.retries
@@ -279,6 +319,31 @@ def send_hubject_request(
         logger.warning(f"Request failed for {url}")
         if retry_count < self.max_retries:
             raise self.retry(exc=e)
+
+
+@shared_task(bind=True, max_retries=3, retry_backoff=60)
+def send_hubject_evse_full_load(self) -> None:
+    from integrations.hubject.services import HubjectService
+
+    try:
+        our_party = get_our_party(OcpiRolesEnum.CPO)
+        service = HubjectService()
+        try:
+            payload = service.get_evse_full_load_payload(our_party)
+
+            if payload is None:
+                logger.warning(
+                    f"Failed to create payload for {str(our_party)} during Hubject EVSE FullLoad. No EVSE/location data available",
+                )
+                return
+        except ConnectorTariffNotFoundError:
+            return
+
+        HubjectService.post_evse_full_load(str(our_party), payload)
+
+    except Exception as exc:
+        logger.exception(f"Error updating OICP EVSEs for {str(our_party)}")
+        raise self.retry(exc=exc, countdown=60)
 
 
 @shared_task(max_retries=2, retry_backoff=2)

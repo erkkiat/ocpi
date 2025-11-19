@@ -187,25 +187,12 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
-        session.stop_kwh = kwh
-        session.update_last_updated()
-        kwh_delta = session.stop_kwh - session.start_kwh
-        session.update_charging_periods(kwh_delta, soc, power, timestamp)
-
-        session.calculate_price()
-        session.save(
-            update_fields=[
-                "stop_kwh",
-                "total_cost_incl_vat",
-                "total_cost_excl_vat",
-                "last_updated",
-            ]
+        SessionService().update_meter_values(
+            session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
-
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
-        )  # Until Gireve implements OCPI 2.2.1 Session PATCH
-
+        )
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "
@@ -788,24 +775,9 @@ class ChargePointViewSet(FlowchartViewSet):
                             ),
                             status=status.HTTP_409_CONFLICT,
                         )
-                    if session.auth_method == enum.AuthMethodChoices.COMMAND:
-                        stopped = SessionService().stop_command_session(
-                            session=session,
-                            stop_kwh=stop_kwh,
-                            stop_timestamp=stop_timestamp,
-                        )
-                        if not stopped:
-                            return Response(
-                                dict(
-                                    status_text="Unable to stop the session, please try again"
-                                ),
-                                status=status.HTTP_400_BAD_REQUEST,
-                            )
-                    else:
-                        SessionService().stop_and_create_cdr(
-                            session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
-                        )
-
+                    SessionService().stop_and_create_cdr(
+                        session=session, stop_kwh=stop_kwh, timestamp=stop_timestamp
+                    )
                     session.send_updates(update_type=ChargingNotificationType.End)
 
                     extra_information = {
@@ -885,7 +857,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     if not session:
                         return Response(
                             dict(
-                                status_text=MessageTexts.get("SESSION_NOT_FOUND"),
+                                status_text="Session not found",
                                 token_id=token_id,
                                 authorization_reference=command[
                                     "authorization_reference"
@@ -953,7 +925,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except KeyError:
-            logger.exception()
+            logger.exception("Unable to find eMSP remote command from cache")
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "

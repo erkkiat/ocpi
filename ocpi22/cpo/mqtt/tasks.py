@@ -2,7 +2,6 @@ import os
 import ssl
 from datetime import datetime
 from distutils.util import strtobool
-from enum import Enum
 from logging import getLogger
 from zoneinfo import ZoneInfo
 
@@ -11,23 +10,12 @@ from celery import shared_task, Celery
 from kombu import Queue, Exchange
 from kombu.serialization import register
 from base_task_services import RefreshTokenBaseTask
+from json_encoders import orjson_serializer
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
 
 django.setup()
-
-
-def custom_orjson_dumps(obj):
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    elif isinstance(obj, Enum):
-        return obj.value
-    raise TypeError(f"Type {type(obj)} is not serializable")
-
-
-def orjson_serializer(obj):
-    return orjson.dumps(obj, default=custom_orjson_dumps).decode()
 
 
 register(
@@ -108,7 +96,7 @@ app.autodiscover_tasks()
 from rest_framework.generics import get_object_or_404  # noqa
 
 from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
-from ocpi22.cpo.mqtt.custom_orjson_serializer import orjson_serializer  # noqa
+from json_encoders import orjson_serializer  # noqa
 from ocpi22.cpo.session_cache import get_cached_session, store_session_cache  # noqa
 from ocpi22.locations.services import EvseServices  # noqa
 from ocpi22.models.location import Evse  # noqa

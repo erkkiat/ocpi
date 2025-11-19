@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 import pytz
 from django.db import transaction
@@ -30,6 +29,8 @@ class SessionService:
         session.start_kwh = start_kwh
         session.stop_kwh = start_kwh
         session.save(update_fields=["status", "start_kwh", "stop_kwh"])
+        if session.route_through_oicp:
+            return
         if original_status != Session.PENDING:
             logger.info("Cannot send ACCEPTED callback for non-pending session")
         send_callback.delay(
@@ -38,30 +39,30 @@ class SessionService:
         )
         return
 
-    def stop_command_session(
+    def update_meter_values(
         self,
         session: Session,
-        stop_kwh: Optional[float],
-        stop_timestamp: datetime | None = None,
-    ) -> bool:
-        if not stop_timestamp:
-            stop_timestamp = datetime.now(pytz.utc)
-        try:
-            self.stop_and_create_cdr(session, stop_kwh, stop_timestamp)
-        except Exception:
-            message = f"Error stopping remote command session {session.uid}, sending REJECTED callback"
-            logger.exception(message)
-            send_callback.delay(
-                session_uid=session.uid,
-                result=CommandResultType.REJECTED.value,
-                message=f"Error stopping session {session.uid}",
-            )
-            return False
-        send_callback.delay(
-            session_uid=session.uid,
-            result=CommandResultType.ACCEPTED.value,
+        timestamp: datetime,
+        kwh: float,
+        soc: float | None = None,
+        power: float | None = None,
+    ) -> None:
+        if session.start_kwh == 0:
+            session.start_kwh = kwh
+        session.stop_kwh = kwh
+        session.calculate_price()
+        session.update_last_updated()
+        kwh_delta = float(session.stop_kwh) - float(session.start_kwh)
+        session.update_charging_periods(kwh_delta, soc, power, timestamp)
+        session.save(
+            update_fields=[
+                "start_kwh",
+                "stop_kwh",
+                "total_cost_incl_vat",
+                "total_cost_excl_vat",
+                "last_updated",
+            ]
         )
-        return True
 
     def stop_and_create_cdr(
         self,

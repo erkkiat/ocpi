@@ -280,10 +280,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def route_through_oicp(self):
-        return (
-            str(self.credentials.roles.first().get_party())
-            == settings.HUBJECT_OPERATOR_ID
-        )
+        credentials_role = self.credentials.roles.first() if self.credentials else None
+        if not credentials_role:
+            raise ValidationError(
+                f"Credentials id {self.credentials.id} - url {self.credentials.url} has no roles"
+                if self.credentials
+                else f"Credentials not set for Session {self.uid}"
+            )
+        return str(credentials_role.get_party()) == settings.HUBJECT_OPERATOR_ID
 
     # This is the eMSP that will be billed for this Session
     billed_to = models.ForeignKey(

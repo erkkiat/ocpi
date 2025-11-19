@@ -7,7 +7,8 @@ from celery.exceptions import Retry
 from requests import RequestException
 from responses import matchers
 
-from ocpi22.tasks import send_hubject_request
+from ocpi22.tasks import send_hubject_request, send_hubject_evse_full_load
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
 
 class TestSendHubjectRequest:
@@ -165,3 +166,23 @@ class TestSendHubjectRequest:
                 )
 
                 mock_retry.assert_called()
+
+
+class TestSendHubjectEvseFullLoad:
+    def test_send_hubject_evse_full_load_return_none_for_empty_payload(self):
+        with patch(
+            "integrations.hubject.services.HubjectService.get_evse_full_load_payload",
+            return_value=None,
+        ):
+            result = send_hubject_evse_full_load()
+            assert result is None
+
+    def test_send_hubject_evse_full_load_return_none_when_evses_do_not_have_connectors(
+        self,
+    ):
+        with patch(
+            "integrations.hubject.services.HubjectService.get_evse_full_load_payload"
+        ) as mock_get_payload:
+            mock_get_payload.side_effect = ConnectorTariffNotFoundError()
+            result = send_hubject_evse_full_load()
+            assert result is None
