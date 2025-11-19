@@ -26,12 +26,8 @@ def map_successful_oicp_authorization_response_to_ocpi_221(
             extra={"ProviderID": oicp_response.get("ProviderID"), "error": str(e)},
         )
         return None
-    if settings.HUBJECT_EMP_ID:
-        authorization_reference = (
-            oicp_response.get("EMPPartnerSessionID", None) or settings.HUBJECT_EMP_ID
-        )
-    else:
-        authorization_reference = oicp_response["EMPPartnerSessionID"]
+
+    authorization_reference = oicp_response["SessionID"]
 
     if authorization_status and country_code and party_id:
         data = {
@@ -39,7 +35,7 @@ def map_successful_oicp_authorization_response_to_ocpi_221(
                 authorization_status, "NOT_ALLOWED"
             ),
             "authorization_reference": authorization_reference,
-            "hub_session_id": oicp_response.get("SessionID"),
+            "hub_session_id": oicp_response["SessionID"],
             "responding_party": settings.HUBJECT_OPERATOR_ID,
             "token": {
                 "contract_id": "N/A",
