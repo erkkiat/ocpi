@@ -7,12 +7,10 @@ import ocpi22.ocpi_logging as logging
 import os
 from typing import Union
 
-from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
 from typing import TYPE_CHECKING
 
-from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.dataclasses import AdhocToken
 
@@ -22,7 +20,6 @@ if TYPE_CHECKING:
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
 from ocpi22.tokens.util import get_token_id
@@ -95,23 +92,6 @@ def create_session(
         if connector_id
         else None
     )
-    if not authorization_method:
-        from ocpi22.tokens.auth import TokenAuthorization, authorize_token
-
-        authorization: TokenAuthorization = authorize_token(token.uid, location)
-        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
-            msg = (
-                f'Token {token} is not authorized for use by MSP at this time: '
-                f'{authorization.info if authorization else ""}'
-            )
-            logging.error(msg)
-            raise exceptions.PermissionDenied(msg)
-        authorization_method, authorization_reference = (
-            authorization.auth_method,
-            authorization.authorization_reference,
-        )
-    else:
-        authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
     from ocpi22.models.credentials import CredentialsRole
 

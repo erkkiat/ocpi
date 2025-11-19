@@ -857,7 +857,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     if not session:
                         return Response(
                             dict(
-                                status_text=MessageTexts.get("SESSION_NOT_FOUND"),
+                                status_text="Session not found",
                                 token_id=token_id,
                                 authorization_reference=command[
                                     "authorization_reference"
@@ -925,7 +925,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except KeyError:
-            logger.exception()
+            logger.exception("Unable to find eMSP remote command from cache")
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "

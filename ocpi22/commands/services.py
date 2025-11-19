@@ -1,4 +1,3 @@
-from copy import deepcopy
 from logging import getLogger
 from typing import Dict, Any, NamedTuple
 import requests
@@ -10,15 +9,27 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 
-from ocpi22.commands.repository import SessionRepository, CallBackRepository
+from ocpi22.commands.repository import (
+    SessionRepository,
+    CallBackRepository,
+    LocationRepository,
+)
 from ocpi22.commands.serializers import (
     CommandResponse,
     CommandResultSerializer,
     CommandResultType,
+    CommandResponseType,
 )
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
+from ocpi22.exceptions import (
+    EvseNotFoundError,
+    LocationNotFoundError,
+    EvseOccupiedError,
+    ConnectorNotFoundError,
+)
+from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.credentials import Credentials, CredentialsRole
+from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
 from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.choices import MessageTexts, OcpiRolesEnum
@@ -36,7 +47,6 @@ from ocpi22.util import build_absolute_uri, generate_random_token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.sessions.util import create_session
 from ocpi22.models import enum
-from ocpi22.sessions.services import close_active_sessions_for_evse
 
 from ocpiconnector.party import Party
 from ocpiconnector.ocpi_identities import get_our_party
@@ -333,16 +343,16 @@ class RemoteCommandServices:
             )
         return sender_party
 
-    def create_ocpi_response(self, webhook_response, command_name):
-        timeout = webhook_response.get("timeout", 60)
-        result = webhook_response.get("data", {}).get("result", "REJECTED").upper()
+    def create_ocpi_response(self, result: str, message: str | None = None):
+        timeout = 60
 
-        message = MessageTexts.get(
-            f"{command_name}_{result}",
-            MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", "Command processed"),
-        )
+        if result == CommandResponseType.REJECTED and message:
+            messages = [{"language": "en", "text": message}]
+        else:
+            default_messages = MessageTexts.get("DEFAULT_CHARGER_ERROR_TEXT", [])
+            messages = MessageTexts.get(result, default_messages)
 
-        if result == "ACCEPTED":
+        if result == CommandResponseType.ACCEPTED:
             ocpi_status = Ocpi.OK
             http_status = status.HTTP_200_OK
         else:
@@ -350,7 +360,7 @@ class RemoteCommandServices:
             http_status = status.HTTP_200_OK
 
         response_serializer = CommandResponse(
-            data={"result": result, "timeout": timeout, "message": message}
+            data={"result": result, "timeout": timeout, "message": messages}
         )
 
         if not response_serializer.is_valid():
@@ -397,39 +407,49 @@ class StartCommandService(RemoteCommandServices):
         self.webhook_repo = WebhookRepository()
         self.session_repo = SessionRepository()
 
-    @staticmethod
-    def _create_new_session(
-        credentials: Credentials,
-        validated_data: Dict[str, Any],
-        billed_to: CredentialsRole,
-        hub_session_id: str = None,
-    ) -> Session:
-        evse_uid = validated_data.get("evse_uid")
-        close_active_sessions_for_evse(evse_uid)
-        adhoc_token_dict = deepcopy(validated_data["token"])
-        adhoc_token_dict["billed_to"] = billed_to.get_party()
-        adhoc_token_dict["ocpi_master"] = billed_to
-        session = create_session(
-            location_id=validated_data["location_id"],
-            evse_uid=validated_data.get("evse_uid"),
-            connector_id=validated_data.get("connector_id"),
-            billed_to=billed_to.get_party(),
-            credentials=credentials,
-            authorization_reference=validated_data.get("authorization_reference"),
-            authorization_method=enum.AuthMethodChoices.COMMAND,
-            ad_hoc_token=AdhocToken.from_dict(adhoc_token_dict),
-            hub_session_id=hub_session_id,
-        )
-        logger.info(
-            f"Created a {session.status} session for remote start for token_uid: {validated_data['token']['uid']}, auth_reference: {validated_data['authorization_reference']}"
-        )
-        return session
+    def _get_evse(
+        self,
+        evse_uid: str,
+    ) -> Evse:
+        evse = Evse.objects.filter(uid=evse_uid).first()
+        if not evse:
+            raise EvseNotFoundError(f"EVSE not found for evse_uid {evse_uid}")
+        return evse
 
-    def _update_auth_reference(self, validated_data: dict[str, Any]):
-        validated_data["authorization_reference"] = (
-            validated_data.get("authorization_reference") or generate_random_token()
+    def _get_location(self, location_uid: str) -> Location:
+        location = LocationRepository.find_location_by_uid(location_uid)
+        if not location:
+            raise LocationNotFoundError(
+                f"Location not found for location_id {location_uid}"
+            )
+        return location
+
+    def _is_evse_available(self, evse: Evse):
+        if evse.status != Evse.AVAILABLE:
+            raise EvseOccupiedError("Evse is not available for starting a session.")
+
+    def _get_connector(self, connector_uid: str) -> Connector:
+        connector = Connector.objects.filter(uid=connector_uid).first()
+        if not connector:
+            raise ConnectorNotFoundError(
+                f"Connector not found for connector_id {connector_uid}"
+            )
+        return connector
+
+    def _get_first_connector_if_missing(
+        self,
+        evse: Evse,
+        connector_id: str | None = None,
+    ) -> Connector:
+        if connector_id:
+            return self._get_connector(connector_id)
+        first_connector = evse.connectors.first()
+        if not first_connector:
+            raise ConnectorNotFoundError(f"No connector found for evse_uid {evse.uid}")
+        logger.info(
+            f"Picked connector_id {first_connector.uid} for evse_uid {evse.uid}"
         )
-        return validated_data
+        return first_connector
 
     def start_session(
         self,
@@ -438,19 +458,35 @@ class StartCommandService(RemoteCommandServices):
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
     ) -> OCPIResponse:
-        validated_data = self._update_auth_reference(validated_data)
-
-        # Someone we are not connected to can send a remote start request via Hubs. So create=True
-        billed_to = get_credentialsrole(party=sender_party, create=True)
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],
         )
 
         if not session:
+            location = self._get_location(location_uid=validated_data["location_id"])
+            evse = self._get_evse(evse_uid=validated_data["evse_uid"])
+            self._is_evse_available(evse)
+            connector = self._get_first_connector_if_missing(
+                evse, connector_id=validated_data.get("connector_id")
+            )
+            billed_to = get_credentialsrole(party=sender_party, create=True)
+            ad_hoc_token = AdhocToken(
+                billed_to=billed_to.get_party(),
+                ocpi_master=billed_to,
+                **validated_data["token"],
+            )
             with transaction.atomic():
-                session = self._create_new_session(
-                    credentials, validated_data, billed_to, hub_session_id
+                session = create_session(
+                    location_id=location,
+                    evse_uid=evse,
+                    connector_id=connector.uid,
+                    billed_to=billed_to.get_party(),
+                    credentials=credentials,
+                    authorization_reference=validated_data["authorization_reference"],
+                    authorization_method=enum.AuthMethodChoices.COMMAND,
+                    ad_hoc_token=ad_hoc_token,
+                    hub_session_id=hub_session_id,
                 )
                 if not session.route_through_oicp:
                     CallBackService.create_callback(
@@ -463,7 +499,18 @@ class StartCommandService(RemoteCommandServices):
                 command_type=RemoteCommandType.START_SESSION,
                 session=session,
             )
-            return self.create_ocpi_response(webhook_response, "START")
+            result_str = (
+                webhook_response.get("data", {}).get("result", "REJECTED").upper()
+            )
+            try:
+                result = CommandResponseType(result_str)
+            except ValueError:
+                logger.warning(
+                    f"Invalid result type: {result_str}, defaulting to REJECTED"
+                )
+                result = CommandResponseType.REJECTED
+
+            return self.create_ocpi_response(result, message=None)
 
         if session.status == Session.ACTIVE:
             logger.info(
@@ -483,7 +530,18 @@ class StartCommandService(RemoteCommandServices):
                 command_type=RemoteCommandType.START_SESSION,
                 session=session,
             )
-            return self.create_ocpi_response(webhook_response, "START")
+            result_str = (
+                webhook_response.get("data", {}).get("result", "REJECTED").upper()
+            )
+            try:
+                result = CommandResponseType(result_str)
+            except ValueError:
+                logger.warning(
+                    f"Invalid result type: {result_str}, defaulting to REJECTED"
+                )
+                result = CommandResponseType.REJECTED
+
+            return self.create_ocpi_response(result, message=None)
         return OCPIResponse(
             None,
             status_message="Cannot start - COMPLETED/INVALID session",
@@ -550,24 +608,33 @@ class StopCommandServices(RemoteCommandServices):
             logger.warning(
                 f"Could not find any session for provided uid: {validated_data['session_id']}"
             )
-            return self.create_ocpi_response({}, RemoteCommandType.STOP_SESSION)
-        CallBackService.create_callback(
-            session=session,
-            callback_url=validated_data["response_url"],
-            authorization_reference=session.authorization_reference,
-        )
+            return self.create_ocpi_response(
+                CommandResponseType.UNKNOWN_SESSION, "Could not find the session"
+            )
+
+        if not session.route_through_oicp:
+            CallBackService.create_callback(
+                session=session,
+                callback_url=validated_data["response_url"],
+                authorization_reference=session.authorization_reference,
+            )
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
-        result = response.get("data", {}).get("result", "REJECTED").upper()
-        result = CommandResultType(result)
-        if result == CommandResultType.ACCEPTED:
+        result_str = response.get("data", {}).get("result", "REJECTED").upper()
+        try:
+            result = CommandResponseType(result_str)
+        except ValueError:
+            logger.warning(f"Invalid result type: {result_str}, defaulting to REJECTED")
+            result = CommandResponseType.REJECTED
+
+        if result == CommandResponseType.ACCEPTED:
             send_callback.delay(
                 session_uid=session.uid,
-                result=result,
+                result=CommandResultType.ACCEPTED.value,
                 message=None,
             )
-        return self.create_ocpi_response(response, RemoteCommandType.STOP_SESSION)
+        return self.create_ocpi_response(result)
 
 
 def process_remote_command(
