@@ -327,9 +327,7 @@ def test_send_updates_calls_correct_method(
 
 
 @pytest.mark.django_db
-def test_send_progress_update_does_not_send_update_for_kwh_zero(
-    charge_notification_payload,
-):
+def test_send_progress_update_does_not_send_update_for_kwh_zero():
     session = OCPISessionFactory(start_kwh=0.0, stop_kwh=0.0)
     with patch(
         "integrations.hubject.services.HubjectService.post_charging_notification"
