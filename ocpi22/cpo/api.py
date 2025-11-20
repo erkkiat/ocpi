@@ -167,13 +167,10 @@ def create_charging_periods(session: Session):
     return [process(m) for m in meter_values]
 
 
-def send_meter_values_updates(session: Session, timestamp: datetime) -> None:
+def check_meter_values_frequency(session: Session, timestamp: datetime) -> bool:
     meter_value_frequency = session.credentials.meter_value_frequency
     if not meter_value_frequency:
-        session.send_updates(
-            method="put", update_type=ChargingNotificationType.Progress
-        )
-        return
+        return True
 
     if timestamp.tzinfo is None:
         timestamp = pytz.utc.localize(timestamp)
@@ -185,11 +182,8 @@ def send_meter_values_updates(session: Session, timestamp: datetime) -> None:
     elapsed_time = (timestamp - last_update).total_seconds()
 
     if not last_update or elapsed_time >= meter_value_frequency:
-        session.send_updates(
-            method="put", update_type=ChargingNotificationType.Progress
-        )
-        save_to_session_cache(session, meter_value_update_date_time=timestamp)
-    return
+        return True
+    return False
 
 
 def process_meter_values(
@@ -216,10 +210,35 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
+        if not check_meter_values_frequency(session, timestamp):
+            logger.info(
+                f"Meter values for session {session.uid} received too frequently, skipping update"
+            )
+            return Response(
+                dict(
+                    status_text="Meter values received too frequently, skipping update",
+                    session_id=session.uid,
+                    start_kwh=session.start_kwh,
+                    now_kwh=kwh,
+                    total_kwh=session.kwh,
+                    power=power,
+                    price=session.cost(),
+                    soc=soc,
+                )
+            )
         SessionService().update_meter_values(
             session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
-        send_meter_values_updates(session, timestamp)
+        session.send_updates(
+            method="put", update_type=ChargingNotificationType.Progress
+        )
+        save_to_session_cache(
+            route=find_route_from_credentials(
+                credentials=session.credentials, ocpi_module=OcpiModuleEnum.SESSIONS
+            ),
+            session=session,
+            meter_value_update_date_time=timestamp,
+        )
         messages.success(
             request,
             f"You have updated the OCPI Session **{markdown_escape(session.uid)}** "

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
+from ocpi22.cpo.api import check_meter_values_frequency
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -70,6 +71,13 @@ def process_meter_values_data(message) -> None:
     }
 
     try:
+        if not check_meter_values_frequency(
+            session_id=meter_data["session_id"], timestamp=meter_data["timestamp"]
+        ):
+            logger.info(
+                f"Skipping meter values update for session {meter_values.session_id} due to high frequency"
+            )
+            return
         update_meter_values_async.apply_async(kwargs=meter_data, expires=60)
         logger.info(
             f"Dispatched meter values update task for session {meter_values.session_id}"
