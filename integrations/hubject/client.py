@@ -3,11 +3,13 @@ import requests
 
 from django.conf import settings
 
+from ocpi22.tasks import get_cert_from_env
+
 
 class HubjectClient:
-    CLIENT_CERTIFICATE = settings.HUBJECT_CLIENT_CERTIFICATE
-    PRIVATE_KEY = settings.HUBJECT_PRIVATE_KEY
-    CA_CERTIFICATE = settings.HUBJECT_CA_CERTIFICATE
+    CLIENT_CERTIFICATE = get_cert_from_env("HUBJECT_CLIENT_CERTIFICATE")
+    PRIVATE_KEY = get_cert_from_env("HUBJECT_PRIVATE_KEY")
+    CA_CERTIFICATE = get_cert_from_env("HUBJECT_CA_CERTIFICATE")
 
     def __init__(self, rewrite_cert_files=False):
         self.client_cert_path = os.path.join(
