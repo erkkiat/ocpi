@@ -168,7 +168,9 @@ def create_charging_periods(session: Session):
 
 
 def check_meter_values_frequency(session: Session, timestamp: datetime) -> bool:
-    meter_value_frequency = session.credentials.meter_value_frequency
+    meter_value_frequency = (
+        session.credentials.meter_value_frequency if session else None
+    )
     if not meter_value_frequency:
         return True
 
