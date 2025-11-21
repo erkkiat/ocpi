@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import getLogger
 
 from kombu.exceptions import OperationalError
@@ -71,8 +72,9 @@ def process_meter_values_data(message) -> None:
     }
 
     try:
+        session = Session.objects.get(uid=meter_data["session_id"])
         if not check_meter_values_frequency(
-            session_id=meter_data["session_id"], timestamp=meter_data["timestamp"]
+            session=session, timestamp=datetime.fromisoformat(meter_data["timestamp"])
         ):
             logger.info(
                 f"Skipping meter values update for session {meter_values.session_id} due to high frequency"
