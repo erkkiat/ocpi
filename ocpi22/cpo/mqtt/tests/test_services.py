@@ -63,6 +63,7 @@ class TestDecodeMessage:
         )
 
 
+@pytest.mark.django_db
 class TestProcessMeterValuesData:
     def test_process_meter_values_data_exits_early_when_decode_message_fails(
         self, smappee_meter_message
@@ -120,6 +121,7 @@ class TestProcessMeterValuesData:
                 for record in caplog.records
             )
 
+    @pytest.mark.django_db
     def test_process_meter_values_data_dispatches_task_with_correct_parameters(
         self, smappee_meter_message
     ):
@@ -177,6 +179,7 @@ class TestProcessMeterValuesData:
     ):
         from paho.mqtt.client import MQTTMessage
 
+        OCPISessionFactory(uid="test-session-123")
         message = MQTTMessage()
         message.topic = smappee_meter_topic.encode("utf-8")
         message.payload = orjson.dumps(
@@ -232,6 +235,7 @@ class TestProcessMeterValuesData:
     ):
         from paho.mqtt.client import MQTTMessage
 
+        OCPISessionFactory(uid="test-session-456")
         message = MQTTMessage()
         message.topic = smappee_meter_topic.encode("utf-8")
         message.payload = orjson.dumps(

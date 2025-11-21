@@ -4,7 +4,7 @@ import orjson
 import pytest
 from paho.mqtt.client import MQTTMessage
 
-from ocpi22.tests.factories import LocationFactory, EvseFactory
+from ocpi22.tests.factories import LocationFactory, EvseFactory, OCPISessionFactory
 
 
 @pytest.fixture
@@ -55,6 +55,7 @@ def smappee_status_update_message(evse, smappee_status_topic):
 
 @pytest.fixture
 def smappee_meter_message(smappee_meter_topic):
+    OCPISessionFactory(uid="94f5993d-232a-4916-a801-4e408c24c9cc")
     message = MQTTMessage()
     message.topic = smappee_meter_topic.encode("utf-8")
     message.payload = orjson.dumps(
