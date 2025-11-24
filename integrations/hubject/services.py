@@ -593,6 +593,13 @@ class HubjectService:
         """
         Send an update to the OICP client based on the session and update type.
         """
+        if notification_type == ChargingNotificationType.Progress:
+            kwh = session.kwh
+            if kwh == 0:
+                logger.info(
+                    f"Ignored progress notification for session {session.uid} with kWh {kwh}"
+                )
+                return
         payload = cls.create_charging_notification_payload(session, notification_type)
         try:
             cls.post_charging_notification(payload)
