@@ -33,7 +33,6 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
-HUBJECT_URL = os.getenv("HUBJECT_URL", "")
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-int-f1.smappee.net")
 MQTT_PORT = os.getenv("MQTT_PORT", 8085)
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "")
