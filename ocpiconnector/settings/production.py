@@ -13,7 +13,7 @@ from ocpiconnector.settings.infra_services import (
 ENV = os.getenv("ENV", "production").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
-HUBJECT_URL = "Add the hubject production base url"
+HUBJECT_URL = os.getenv("HUBJECT_URL", "https://service.hubject.com/api/oicp/")
 HUBJECT_HOSTS = ["18.194.114.107", "35.157.60.250"]
 
 CSRF_TRUSTED_ORIGINS = ["https://solidroam.smappee.net"]
