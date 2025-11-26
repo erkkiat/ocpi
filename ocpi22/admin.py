@@ -259,11 +259,27 @@ def send_updates(modeladmin, request, queryset):
             level=messages.ERROR,
         )
         return
+    count = queryset.count()
+    MAX_OBJECTS = 100
+    WARN_OBJECTS = 50
+    if count > MAX_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Cannot send updates to more than {MAX_OBJECTS} {model_cls.__name__}s at once. Please select fewer {model_cls.__name__}s.",
+            level=messages.ERROR,
+        )
+        return
+    elif count > WARN_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Warning: Sending updates to {count} {model_cls.__name__}s may take some time.",
+            level=messages.WARNING,
+        )
     for obj in queryset:
         obj.send_updates()
     modeladmin.message_user(
         request,
-        f"Updates sent for {queryset.count()} {model_cls.__name__}s.",
+        f"Updates sent for {count} {model_cls.__name__}s.",
         level=messages.SUCCESS,
     )
 
