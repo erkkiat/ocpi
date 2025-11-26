@@ -249,6 +249,25 @@ class EvseAdminForm(forms.ModelForm):
         fields = "__all__"
 
 
+@admin.action(description="Send background updates to interested parties")
+def send_updates(modeladmin, request, queryset):
+    model_cls = queryset.model
+    if not hasattr(model_cls, "send_updates"):
+        modeladmin.message_user(
+            request,
+            f"{model_cls.__name__} does not have a send_updates method.",
+            level=messages.ERROR,
+        )
+        return
+    for obj in queryset:
+        obj.send_updates()
+    modeladmin.message_user(
+        request,
+        f"Updates sent for {queryset.count()} {model_cls.__name__}s.",
+        level=messages.SUCCESS,
+    )
+
+
 class LocationAdmin(SolidNestedModelAdmin):
     class EvseInline(NestedStackedInline):
         model = Evse
@@ -335,6 +354,7 @@ class LocationAdmin(SolidNestedModelAdmin):
     inlines = [EvseInline]  # [OpeningTimesInline, EvseInline]
     autocomplete_fields = ["publish_allowed_to", "operator", "suboperator", "owner"]
     radio_fields = dict(parking_type=admin.VERTICAL)
+    actions = [send_updates]
 
     def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.is_ours() and super().has_change_permission(request, obj)
@@ -733,6 +753,7 @@ class TariffAdmin(SolidNestedModelAdmin):
             ),
         ),
     ]
+    actions = [send_updates]
 
     def get_queryset(self, _request):
         # Hide archived
