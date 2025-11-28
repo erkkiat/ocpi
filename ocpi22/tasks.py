@@ -242,9 +242,9 @@ def send_ocpi_request(
             response_json = {}
         status_code = response_json.get("status_code", 1000)
         status_message = response_json.get("status_message", "")
-        if status_code >= 2000:
+        if 2000 <= status_code < 3000:
             logger.error(
-                f"{url} responded with OCPI error code {status_code}: {status_message}",
+                f"{url} responded with OCPI error code {status_code}: {status_message}, not retrying",
                 extra={
                     "path": url,
                     "method": response.request.method,
@@ -252,7 +252,16 @@ def send_ocpi_request(
                     "status_code": response.status_code,
                 },
             )
-        return
+            return
+        elif status_code >= 3000:
+            logger.warning(
+                f"Got OCPI error code {status_code} for {response.url}: Retrying"
+            )
+            raise self.retry(
+                exc=Exception(
+                    f"OCPI Server Error for {response.url}: {response.status_code}"
+                )
+            )
     if 300 <= response.status_code < 500:
         logger.error(
             f"{url} responded with {response.status_code}, not retrying",
