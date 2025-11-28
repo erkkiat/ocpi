@@ -7,7 +7,12 @@ from celery.exceptions import Retry
 from requests import RequestException
 from responses import matchers
 
-from ocpi22.tasks import send_hubject_request, send_hubject_evse_full_load
+from ocpi22.tasks import (
+    send_hubject_request,
+    send_hubject_evse_full_load,
+    send_ocpi_request,
+)
+from ocpi22.tests.factories import CredentialsFactory
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
 
@@ -186,3 +191,77 @@ class TestSendHubjectEvseFullLoad:
             mock_get_payload.side_effect = ConnectorTariffNotFoundError()
             result = send_hubject_evse_full_load()
             assert result is None
+
+
+class TestSendOCPIRequestOCPIErrorCode:
+    @responses.activate
+    @pytest.mark.django_db
+    def test_send_ocpi_request_logs_errors_with_status_code_more_than_2000(
+        self, caplog
+    ):
+        data = {"id": "12345", "value": "test_value"}
+        url = "https://somerandomurl.random.com/resource"
+        credentials = CredentialsFactory()
+        responses.add(
+            responses.POST,
+            url,
+            json={
+                "status_code": 3000,
+                "status_message": "OCPI specific error occurred",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "data": None,
+            },
+            status=200,
+            match=[matchers.json_params_matcher(data)],
+        )
+        send_ocpi_request(
+            data=data,
+            url=url,
+            token_base64="dG9rZW4=",
+            to_country_code="NL",
+            to_party_id="ABC",
+            from_country_code="NL",
+            from_party_id="XYZ",
+            credentials_id=credentials.id,
+            method="post",
+        )
+
+        assert (
+            f"{url} responded with OCPI error code 3000: OCPI specific error occurred"
+            in caplog.text
+        )
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_send_ocpi_request_does_not_log_errors_with_status_code_lt_2000(
+        self, caplog
+    ):
+        data = {"id": "12345", "value": "test_value"}
+        url = "https://somerandomurl.random.com/resource"
+        credentials = CredentialsFactory()
+        responses.add(
+            responses.POST,
+            url,
+            json={
+                "status_code": 1000,
+                "status_message": "Success",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "data": None,
+            },
+            status=200,
+            match=[matchers.json_params_matcher(data)],
+        )
+        result = send_ocpi_request(
+            data=data,
+            url=url,
+            token_base64="dG9rZW4=",
+            to_country_code="NL",
+            to_party_id="ABC",
+            from_country_code="NL",
+            from_party_id="XYZ",
+            credentials_id=credentials.id,
+            method="post",
+        )
+
+        assert result is None
+        assert f"{url} responded with OCPI error code 1000: Success" not in caplog.text

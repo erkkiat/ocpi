@@ -234,13 +234,33 @@ def send_ocpi_request(
     response: requests.Response = function(**kwargs)
     if self.request.is_eager:
         return response
+    if response.status_code < 300:
+        from json import JSONDecodeError
+
+        try:
+            response_json = response.json()
+        except JSONDecodeError:
+            response_json = {}
+        status_code = response_json.get("status_code", 1000)
+        status_message = response_json.get("status_message", "")
+        if status_code >= 2000:
+            logger.error(
+                f"{url} responded with OCPI error code {status_code}: {status_message}",
+                extra={
+                    "path": url,
+                    "method": response.request.method,
+                    "response_data": response_json or response.text,
+                    "status_code": response.status_code,
+                },
+            )
+        return
     if 300 <= response.status_code < 500:
         logger.error(
             f"{url} responded with {response.status_code}, not retrying",
             extra={
                 "path": url,
                 "method": response.request.method,
-                "response_data": response.content,
+                "response_data": response.text,
                 "status_code": response.status_code,
             },
         )
