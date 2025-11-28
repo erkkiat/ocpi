@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 import celery
 import pytz
 import requests
+from json import JSONDecodeError
 
 from celery import shared_task
 from celery.schedules import crontab
@@ -235,8 +236,6 @@ def send_ocpi_request(
     if self.request.is_eager:
         return response
     if response.status_code < 300:
-        from json import JSONDecodeError
-
         try:
             response_json = response.json()
         except JSONDecodeError:
