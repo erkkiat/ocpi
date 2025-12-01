@@ -177,9 +177,12 @@ def check_meter_values_frequency(session: Session, timestamp: datetime) -> bool:
     last_update = (
         cached_session.meter_value_update_date_time if cached_session else None
     )
+    if not last_update:
+        return True
+
     elapsed_time = (timestamp - last_update).total_seconds()
 
-    if not last_update or elapsed_time >= meter_value_frequency:
+    if elapsed_time >= meter_value_frequency:
         return True
     return False
 

@@ -1,17 +1,20 @@
 import logging
+from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 import orjson
 import pytest
+import pytz
 from kombu.exceptions import OperationalError
 
 from ocpi22.choices import AuthorizationEnum
-from ocpi22.cpo.api import process_meter_values
+from ocpi22.cpo.api import process_meter_values, check_meter_values_frequency
 from ocpi22.cpo.mqtt.schemas import (
     EvseStatusUpdate,
     TokenAuthorizationMessageIn,
     TokenAuthorizationResponse,
+    CachedSession,
 )
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
@@ -1049,3 +1052,55 @@ class TestCreateAndSaveSession:
             mock_authorize_token.assert_called_once_with(
                 token, evse.location, evse_id=evse.evse_id
             )
+
+
+@pytest.mark.django_db
+class TestCheckMeterValuesFrequency:
+    @pytest.fixture
+    def session(self):
+        return OCPISessionFactory(
+            uid="meter-value-frequency-test-session",
+            credentials=CredentialsFactory(meter_value_frequency=60),
+        )
+
+    def test_returns_true_when_meter_value_frequency_none(self, session):
+        session.credentials.meter_value_frequency = None
+        session.credentials.save()
+        assert check_meter_values_frequency(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_no_cached_session(self, mock_get_cached, session):
+        mock_get_cached.return_value = None
+        assert check_meter_values_frequency(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_false_when_elapsed_time_less_than_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=30)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=10)
+        assert check_meter_values_frequency(session, now) is False
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_elapsed_time_exceeds_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=120)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=121)
+        assert check_meter_values_frequency(session, now) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_naive_datetime_is_localized_to_utc(self, mock_get_cached, session):
+        last_update = datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.utc)
+        cached = Mock()
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = datetime(2024, 1, 1, 12, 0, 30)
+        session.credentials.meter_value_frequency = 60
+        assert check_meter_values_frequency(session, now) is False
