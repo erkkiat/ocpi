@@ -67,6 +67,24 @@ def start_pricing_product_full_load(request) -> dict:
 
 
 @api.post(
+    "/evse-pricing-products/full-load/",
+    url_name="hubject-evse-pricing-full-load",
+    response=Dict,
+)
+def map_evses_and_pricing_products(request) -> Dict:
+    evse_product_id_map = hubject_service.get_evse_product_maps()
+    if evse_product_id_map is None:
+        return {"status_message": "No EVSE to Pricing Product mappings found."}
+
+    payload = hubject_service.get_evse_pricing_product_data_full_load_payload(
+        evse_product_id_map
+    )
+    if len(payload.EVSEPricing) == 0:
+        return {"status_message": "EvsePricing cannot be empty."}
+    return hubject_service.post_evse_pricing_item_full_load(payload)
+
+
+@api.post(
     "/cdr/",
     url_name="hubject-cdr",
     response={
@@ -221,3 +239,15 @@ api.add_router(
     remote_command_router,
     tags=["Hubject Remote Commands"],
 )
+
+
+@api.post(
+    "/evse-status/full-load/", url_name="hubject-evse-status-full-load", response=Dict
+)
+def start_evse_status_full_load(request) -> dict:
+    try:
+        hubject_service.post_eroaming_push_evse_status(evse=None, full_load=True)
+        return {"success": True, "message": "Evse status full load accepted."}
+    except Exception:
+        logger.exception()
+        return {"success": False, "message": "PushEvseStatus full load failed."}

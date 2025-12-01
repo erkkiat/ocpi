@@ -54,6 +54,7 @@ from ocpi22.tests.factories import (
     OCPISessionFactory,
     CdrFactory,
     CdrLocationFactory,
+    ERoamingPushEVSEPricingFactory,
 )
 
 
@@ -480,6 +481,11 @@ def hubject_unsuccessful_response():
 
 
 @pytest.fixture
+def smp1_ocpi_tariff():
+    return TariffFactory(uid="SMP1")
+
+
+@pytest.fixture
 def operator_fi_cpo():
     return CredentialsRoleFactory(
         country_code="FI",
@@ -491,6 +497,11 @@ def operator_fi_cpo():
 @pytest.fixture
 def msp_de_ice():
     return CredentialsRoleFactory(country_code="DE", party_id="ICE")
+
+
+@pytest.fixture
+def msp_de_icd():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICD")
 
 
 @pytest.fixture
@@ -550,6 +561,11 @@ def smp1_solid_tariff_with_none_prices():
     return SolidTariffFactory(
         external_id="SMP1", price_per_kwh=None, price_per_min=None, price_per_hr=None
     )
+
+
+@pytest.fixture
+def evse_pricing_full_load_payload():
+    return ERoamingPushEVSEPricingFactory()
 
 
 @pytest.fixture

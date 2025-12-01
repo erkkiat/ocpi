@@ -34,6 +34,8 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     PricingProductData,
     PricingProductDataRecord,
+    ERoamingPushEVSEPricing,
+    EVSEPricingItem,
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
@@ -417,6 +419,25 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     ActionType = ActionType.fullLoad
     OperatorEvseData = factory.SubFactory(
         "ocpi22.tests.factories.OperatorEvseDataFactory"
+    )
+
+
+class EvsePricingItemFactory(factory.Factory):
+    class Meta:
+        model = EVSEPricingItem
+
+    EvseID = "BE*SMP*ESDEVSEID"
+    ProviderID = "DE*SMP"
+    EvseIDProductList = ["SMP1"]
+
+
+class ERoamingPushEVSEPricingFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushEVSEPricing
+
+    ActionType = ActionType.fullLoad
+    EVSEPricing = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")]
     )
 
 

@@ -50,7 +50,9 @@ async def post_request(
 
     start_time = time.time()
     try:
-        response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        response = await session.post(
+            url, json=data, headers=headers, ssl=ssl_context, timeout=8
+        )
         duration = time.time() - start_time
         response_status = response.status
         json_data = await response.json()

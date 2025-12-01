@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ocpi22', '0031_callbacks'),
+        ('ocpi22', '0032_alter_solidtariff_ocpi_tariff'),
     ]
 
     operations = [

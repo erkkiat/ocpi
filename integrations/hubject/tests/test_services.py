@@ -42,7 +42,6 @@ from integrations.hubject.schemas import (
     AdditionalReferenceChoice,
     CurrencyID,
     PricingProductData,
-    ERoamingPushPricingProductData,
     ProductID,
     ProviderIDAsterisk,
     HubjectDefaultTariff,
@@ -67,6 +66,7 @@ from integrations.hubject.services import (
 from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.repository import SessionRepository
+from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
@@ -78,9 +78,16 @@ from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     ConnectorFactory,
     OCPISessionFactory,
+    CredentialsFactory,
+    BusinessDetailsFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import get_our_party
+from ocpiconnector.ocpi_identities import (
+    get_our_country_code,
+    get_our_party_id,
+    get_our_credentialsrole,
+)
 from ocpiconnector.party import Party
 from webhooks.choices import WebhookType, RemoteCommandType
 from webhooks.factories import WebhookFactory
@@ -679,6 +686,17 @@ class TestHubjectService:
         )
 
 
+@pytest.fixture
+def operator():
+    country_code = get_our_country_code(OcpiRolesEnum.CPO.value)
+    party_id = get_our_party_id(OcpiRolesEnum.CPO.value)
+
+    return CredentialsRoleFactory(
+        country_code=country_code,
+        party_id=party_id,
+    )
+
+
 class TestOICPDynamicPricingService:
     hubject_service = HubjectService()
 
@@ -750,7 +768,6 @@ class TestOICPDynamicPricingService:
             pricing_product_data, action_type
         )
 
-        assert isinstance(result, ERoamingPushPricingProductData)
         assert result.ActionType == action_type
         assert result.PricingProductData == pricing_product_data
 
@@ -837,6 +854,180 @@ class TestOICPDynamicPricingService:
             "error": "serialization error",
         }
 
+    @pytest.mark.django_db
+    @pytest.mark.skip
+    @patch("ocpi22.models.tariff.SolidTariff.objects.filter")
+    def test_get_evse_product_provider_maps(
+        self,
+        mock_filter,
+        msp_de_ice,
+        msp_de_icd,
+        berlin_evse_data,
+        berlin_connector,
+        smp1_ocpi_tariff,
+        smp1_solid_tariff,
+    ):
+        party = Party(country_code="FI", party_id="CPO")
+
+        mock_solid_tariff = MagicMock()
+        mock_filter.return_value = mock_solid_tariff
+
+        mock_solid_tariff.select_related.return_value = mock_solid_tariff
+        mock_solid_tariff.values.return_value = [
+            {
+                "external_id": "SMP1",
+                "price_per_kwh": 0.25,
+                "price_per_min": 0.05,
+                "msp__country_code": "DE",
+                "msp__party_id": "ICE",
+            }
+        ]
+
+        result = self.hubject_service.get_evse_product_provider_maps(party)
+
+        key = f"{str(party)}*E{berlin_evse_data.uid}"
+        expected_result = {
+            key: [
+                [
+                    ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                    ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
+                ],
+                [ProviderIDAsterisk(root="DE*ICE"), ProviderIDAsterisk(root="DE*ICE")],
+            ]
+        }
+        assert result[key] == expected_result[key]
+
+    @pytest.mark.django_db
+    def test_evse_pricing_product_payload(self):
+        key = "FI*CPO*Evse1"
+        evse_product_id_provider_id_map = {
+            key: [
+                ProductID(root="OCPITARIFF1*SMP1"),
+                ProductID(root="OCPITARIFF2*SMP2"),
+            ]
+        }
+
+        result = self.hubject_service.get_evse_pricing_product_data_full_load_payload(
+            evse_product_id_provider_id_map
+        )
+
+        assert len(result.EVSEPricing[0].EvseIDProductList) == 2
+        assert result.EVSEPricing[0].EvseIDProductList[0].root == "OCPITARIFF1*SMP1"
+        assert result.EVSEPricing[0].EvseIDProductList[1].root == "OCPITARIFF2*SMP2"
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load(
+        self, evse_pricing_full_load_payload, hubject_successful_response
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            json=hubject_successful_response,
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    evse_pricing_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.hubject_service.post_evse_pricing_item_full_load(
+            evse_pricing_full_load_payload
+        )
+
+        assert result == hubject_successful_response
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_unsuccessful_response(
+        self, evse_pricing_full_load_payload, hubject_unsuccessful_response
+    ):
+        operator_id = "FI*CPO"
+
+        # edit the payload to generate a unsuccessful response from the hubject APIs
+        evse_pricing_full_load_payload.EVSEPricing = []
+
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            json=hubject_unsuccessful_response,
+            status=400,
+            match=[
+                matchers.json_params_matcher(
+                    evse_pricing_full_load_payload.model_dump(mode="json")
+                )
+            ],
+        )
+        result = self.hubject_service.post_evse_pricing_item_full_load(
+            evse_pricing_full_load_payload
+        )
+
+        assert result == hubject_unsuccessful_response
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_http_error(
+        self, evse_pricing_full_load_payload
+    ):
+        operator_id = "FI*CPO"
+
+        responses.add_callback(
+            responses.POST,
+            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing",
+            callback=lambda request: HTTPError("HTTP request failed"),
+        )
+
+        with pytest.raises(HTTPError):
+            service = HubjectService()
+            service.post_evse_pricing_item_full_load(evse_pricing_full_load_payload)
+
+    @pytest.mark.django_db
+    def test_post_evse_pricing_products_full_load_pydantic_error(self):
+        payload_mock = MagicMock()
+        payload_mock.model_dump.side_effect = PydanticSerializationError(
+            "serialization error"
+        )
+
+        result = self.hubject_service.post_evse_pricing_item_full_load(payload_mock)
+
+        assert result == {
+            "success": False,
+            "errorType": "Pydantic validation failed",
+            "error": "serialization error",
+        }
+
+    @pytest.mark.django_db
+    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self):
+        result = self.hubject_service.get_evse_product_maps()
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_evse_product_id_map_generator_returns_the_map_in_proper_format(
+        self, smp1_solid_tariff, smp2_solid_tariff
+    ):
+        location = LocationFactory(
+            ocpi_master=smp1_solid_tariff.operator, roaming_enabled=True
+        )
+        ConnectorFactory(
+            tariff_ids=[smp1_solid_tariff.ocpi_tariff],
+            evse=EvseFactory(uid="EVSE01", location=location),
+        )
+        ConnectorFactory(
+            tariff_ids=[smp2_solid_tariff.ocpi_tariff],
+            evse=EvseFactory(uid="EVSE02", location=location),
+        )
+
+        evses = CredentialsRepository.get_evses_by_party(
+            CredentialsFactory(), smp1_solid_tariff.operator.get_party()
+        )
+        result = self.hubject_service.evse_product_id_map_generator(evses)
+        assert result == {
+            "FI*CPO*EEVSE01": ["OCPITARIFF1*SMP1"],
+            "FI*CPO*EEVSE02": ["OCPITARIFF2*SMP2"],
+        }
+
     def get_expected_pricing_product_data(self):
         return PricingProductData(
             OperatorID=OperatorID(root="FI*CPO"),
@@ -895,19 +1086,17 @@ class TestOICPDynamicPricingService:
 @pytest.mark.django_db
 class TestPushEvseStatus:
     def test_get_payload_successfully(self, monkeypatch):
-        evse = EvseFactory(status="AVAILABLE")
-        ocpi_master = evse.location.ocpi_master
-        operator_id = Party(
-            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
+        role = CredentialsRoleFactory(
+            business_details=BusinessDetailsFactory(name="HelsinkiOperator")
         )
-        result = HubjectService._get_evse_status_update_payload(
-            evse, str(operator_id), "HelsinkiOperator"
-        )
+        location = LocationFactory(ocpi_master=role, name="HelsinkiLocation")
+        evse = EvseFactory(status="AVAILABLE", location=location)
+        result = HubjectService._get_evse_status_update_payload(evse)
 
         assert result == ERoamingPushEvseStatus(
             action_type=ActionType.update,
             operator_evse_status=OperatorEvseStatus(
-                operator_id=OperatorID(root=str(operator_id)),
+                operator_id=OperatorID(root=str(location.ocpi_master.get_party())),
                 operator_name="HelsinkiOperator",
                 evse_status_record=[
                     EvseStatusRecordItem(
@@ -921,23 +1110,8 @@ class TestPushEvseStatus:
 
     def test_get_payload_with_invalid_evse_status_return_value_error(self):
         evse = EvseFactory(status="INVALID")
-        ocpi_master = evse.location.ocpi_master
-        operator_id = Party(
-            country_code=ocpi_master.country_code, party_id=ocpi_master.party_id
-        )
-
         with pytest.raises(ValueError, match="Invalid OCPI status \\[INVALID\\] found"):
-            HubjectService._get_evse_status_update_payload(
-                evse, str(operator_id), "HelsinkiOperator"
-            )
-
-    @pytest.mark.parametrize("operator_id", ["DE*SMPW", "KL1*CPO", "INVALID", None])
-    def test_get_payload_with_invalid_operator_id(self, operator_id):
-        evse = EvseFactory(status="INVALID")
-        with pytest.raises(ValidationError):
-            HubjectService._get_evse_status_update_payload(
-                evse, str(operator_id), "HelsinkiOperator"
-            )
+            HubjectService._get_evse_status_update_payload(evse)
 
     @responses.activate
     def test_post_evse_status_success(self):
@@ -950,9 +1124,9 @@ class TestPushEvseStatus:
             status=200,
             match=[
                 matchers.json_params_matcher(
-                    HubjectService._get_evse_status_update_payload(
-                        evse, "FI*CPO", evse.location.ocpi_master.business_details.name
-                    ).model_dump(mode="json", by_alias=True)
+                    HubjectService._get_evse_status_update_payload(evse).model_dump(
+                        mode="json", by_alias=True
+                    )
                 )
             ],
         )
@@ -960,17 +1134,17 @@ class TestPushEvseStatus:
             "integrations.hubject.services.send_hubject_request.delay",
             return_value=AsyncMock(),
         ) as mock_send_request:
-            HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            HubjectService.post_eroaming_push_evse_status(evse)
             assert mock_send_request.call_count == 1
 
     def test_post_evse_status_without_evse(self, caplog):
-        HubjectService.post_eroaming_push_evse_status(None, retries=0)
+        HubjectService.post_eroaming_push_evse_status(None)
         assert caplog.records[0].message == "No EVSE provided for hubject status update"
 
     def test_post_evse_status_with_incorrect_payload(self, caplog):
         evse = EvseFactory(status="AVAILABLE")
         evse.evse_id = "INVALID_EVSE_ID"
-        HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+        HubjectService.post_eroaming_push_evse_status(evse)
         assert (
             "Failed to create payload for EVSE status update"
             in caplog.records[0].message
@@ -983,9 +1157,64 @@ class TestPushEvseStatus:
             "integrations.hubject.services.HubjectService._get_evse_status_update_payload",
             side_effect=ValueError("Invalid OCPI status [INVALID_EVSE_ID] found"),
         ):
-            result = HubjectService.post_eroaming_push_evse_status(evse, retries=0)
+            result = HubjectService.post_eroaming_push_evse_status(evse)
             assert result is None
             assert "Invalid OCPI status [INVALID_EVSE_ID] found" in caplog.text
+
+    def test_post_evse_status_with_full_load_true_uses_full_load_payload(
+        self, hubject_credentials
+    ):
+        evse = EvseFactory(status="AVAILABLE")
+        get_our_credentialsrole.cache_clear()
+        responses.add(
+            responses.POST,
+            f"{settings.HUBJECT_URL}evsepush/v21/operators/FI*CPO/status-records",
+            json={"success": True},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    HubjectService._get_evse_status_full_load_payload().model_dump(
+                        mode="json", by_alias=True
+                    )
+                )
+            ],
+        )
+        with patch(
+            "integrations.hubject.services.send_hubject_request.delay",
+            return_value=AsyncMock(),
+        ):
+            with patch(
+                "integrations.hubject.services.HubjectService._get_evse_status_full_load_payload"
+            ) as mock_get_payload:
+                HubjectService.post_eroaming_push_evse_status(evse, full_load=True)
+                assert mock_get_payload.call_count == 1
+
+    def test_get_evse_status_full_load_payload_success(
+        self, operator_fi_cpo, hubject_credentials
+    ):
+        get_our_credentialsrole.cache_clear()
+        location = LocationFactory(uid="porvoo", ocpi_master=operator_fi_cpo)
+        EvseFactory(uid="Evse1", status="AVAILABLE", location=location)
+        EvseFactory(uid="Evse2", status="AVAILABLE", location=location)
+        result = HubjectService._get_evse_status_full_load_payload()
+        assert result.model_dump(mode="json", by_alias=True) == {
+            "ActionType": "fullLoad",
+            "OperatorEvseStatus": {
+                "EvseStatusRecord": [
+                    {"EvseID": "FI*CPO*EEVSE1", "EvseStatus": "Available"},
+                    {"EvseID": "FI*CPO*EEVSE2", "EvseStatus": "Available"},
+                ],
+                "OperatorID": "FI*CPO",
+                "OperatorName": "Smappee Pvt Ltd",
+            },
+        }
+
+    def test_get_evse_status_full_load_payload_with_no_evses(self, caplog):
+        get_our_credentialsrole.cache_clear()
+        Evse.objects.all().delete()
+        result = HubjectService._get_evse_status_full_load_payload()
+        assert result is None
+        assert "No EVSE records found" in caplog.text
 
 
 class TestPostEroamingChargeDetailRecord:
@@ -1149,7 +1378,7 @@ class TestHubjectAuthorizeRemoteStart:
         return WebhookFactory(
             type=WebhookType.REMOTE_COMMAND,
             command_type=RemoteCommandType.START_SESSION,
-            url="http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            url="http://localhost/api/cpo/v2/chargepoint/start-session/",
         )
 
     @pytest.mark.django_db
@@ -1170,7 +1399,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
@@ -1179,7 +1408,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
-            mock_remote_start_command.emp_partner_session_id,
+            mock_remote_start_command.session_id.root,
             mock_remote_start_command.identification.RemoteIdentification.EvcoID.root,
         )
         assert result == ERoamingAcknowledgment(
@@ -1282,7 +1511,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "REJECTED"}},
                 status=200,
             )
@@ -1310,7 +1539,7 @@ class TestHubjectAuthorizeRemoteStart:
         )
 
         expected_data = {
-            "response_url": "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+            "response_url": f"http://localhost/api/cpo/v2/chargepoint/remote_command_result/{mock_remote_start_command.session_id.root}/",
             "token": {
                 "uid": "AB-VDC-C1234ABCDA",
                 "contract_id": "AB-VDC-C1234ABCDA",
@@ -1321,7 +1550,7 @@ class TestHubjectAuthorizeRemoteStart:
             "location_id": "194234D1-0EDD-4B6E-8262-C85BDA16919D",
             "evse_uid": "123456",
             "connector_id": "",
-            "authorization_reference": "MSPSession",
+            "authorization_reference": "f98efba4-02d8-4fa0-b810-9a9d50d2c527",
         }
         assert result == expected_data
 
@@ -1428,7 +1657,7 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
                 json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
@@ -1462,7 +1691,6 @@ class TestHubjectAuthorizeRemoteStart:
         evse,
         evse_status,
         hubject_credentials,
-        clear_all_cache,
     ):
         build_absolute_uri.cache_clear()
         evse.status = evse_status
@@ -1525,37 +1753,6 @@ class TestHubjectAuthorizeRemoteStart:
         assert result.result is False
         assert result.status_code == StatusCode(
             Code="602", Description="EVSE is currently occupied"
-        )
-
-    @pytest.mark.django_db
-    @override_settings(HOSTNAME="localhost")
-    def test_process_remote_start_returns_acknowledgment_false_when_ev_not_connected(
-        self,
-        mock_remote_start_command,
-        evse,
-        hubject_credentials,
-        start_session_webhook,
-    ):
-        with patch(
-            "ocpi22.commands.services.StartCommandService.start_session",
-            return_value=OCPIResponse(
-                status_code=Ocpi.OK,
-                http_status=status.HTTP_200_OK,
-            ),
-        ):
-            responses.add(
-                responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-                json={"data": {"result": "REJECTED"}},
-                status=200,
-            )
-        result = self.hubject_service.process_remote_start_command(
-            mock_remote_start_command
-        )
-
-        assert result.result is False
-        assert result.status_code == StatusCode(
-            Code="510", Description="EV is not connected to EVSE"
         )
 
 

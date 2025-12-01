@@ -24,6 +24,7 @@ from ocpi22.cpo.mqtt.services import (
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
     OCPISessionFactory,
@@ -702,8 +703,9 @@ class TestPublishNotAllowedAuthResponse:
 @pytest.mark.django_db
 class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_token_dict_authorization(
-        self, clear_all_cache
+        self,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory()
         evse = EvseFactory(location=location)
         msp_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="MSP")
@@ -1021,3 +1023,29 @@ class TestCreateAndSaveSession:
         assert saved_session.authorization_reference == "persist-auth-ref"
         assert saved_session.cdr_token.uid == "persist-test-token"
         assert saved_session.status == Session.PENDING
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_passes_location_instead_of_evse_to_authorize_token(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        token = TokenFactory(uid=token_auth_message.token_id)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+            mock_authorize_token.assert_called_once_with(
+                token, evse.location, evse_id=evse.evse_id
+            )

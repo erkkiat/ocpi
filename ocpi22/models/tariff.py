@@ -549,7 +549,7 @@ class SolidTariff(models.Model):
     ocpi_tariff = models.ForeignKey(
         Tariff,
         on_delete=models.PROTECT,
-        related_name="tariff",
+        related_name="solid_tariff",
         verbose_name=_("Tariff"),
         null=True,
     )
