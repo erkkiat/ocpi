@@ -96,7 +96,7 @@ app.autodiscover_tasks()
 
 from rest_framework.generics import get_object_or_404  # noqa
 
-from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum, OcpiModuleEnum  # noqa
+from ocpi22.choices import OcpiModuleEnum  # noqa
 from json_encoders import orjson_serializer  # noqa
 from ocpi22.cpo.session_cache import save_to_session_cache  # noqa
 from ocpi22.cpo.session_service import SessionService  # noqa

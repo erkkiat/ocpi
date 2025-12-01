@@ -163,7 +163,7 @@ def create_charging_periods(session: Session):
     return [process(m) for m in meter_values]
 
 
-def check_meter_values_frequency(session: Session, timestamp: datetime) -> bool:
+def is_meter_value_update_allowed(session: Session, timestamp: datetime) -> bool:
     meter_value_frequency = (
         session.credentials.meter_value_frequency if session else None
     )
@@ -211,7 +211,7 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
-        if not check_meter_values_frequency(session, timestamp):
+        if not is_meter_value_update_allowed(session, timestamp):
             logger.info(
                 f"Meter values for session {session.uid} received too frequently, skipping update"
             )
