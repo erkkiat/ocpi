@@ -66,7 +66,7 @@ def process_meter_values_data(message) -> None:
     }
 
     try:
-        session = Session.objects.find(uid=meter_data["session_id"]).first()
+        session = Session.objects.filter(uid=meter_data["session_id"]).first()
         if not session:
             logger.error(
                 f"Session {meter_values.session_id} not found for meter values update"

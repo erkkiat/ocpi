@@ -280,7 +280,7 @@ class TestProcessMeterValuesData:
 
         with (
             patch(
-                "ocpi22.cpo.mqtt.services.check_meter_values_frequency"
+                "ocpi22.cpo.mqtt.services.is_meter_value_update_allowed"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
@@ -315,7 +315,7 @@ class TestProcessMeterValuesData:
 
         with (
             patch(
-                "ocpi22.cpo.mqtt.services.check_meter_values_frequency"
+                "ocpi22.cpo.mqtt.services.is_meter_value_update_allowed"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
@@ -450,7 +450,7 @@ class TestProcessMeterValuesFrequency:
     ):
         with (
             patch(
-                "ocpi22.cpo.api.check_meter_values_frequency"
+                "ocpi22.cpo.api.is_meter_value_update_allowed"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.session_service.SessionService.update_meter_values"
@@ -468,7 +468,7 @@ class TestProcessMeterValuesFrequency:
         self,
     ):
         with patch(
-            "ocpi22.cpo.api.check_meter_values_frequency"
+            "ocpi22.cpo.api.is_meter_value_update_allowed"
         ) as mock_check_meter_values_frequency:
             mock_check_meter_values_frequency.return_value = False
             result = process_meter_values(
@@ -490,8 +490,15 @@ class TestProcessMeterValuesCalculations:
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
         session = OCPISessionFactory(
-            connector=connector, status=Session.ACTIVE, start_kwh=10.5
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=10.5,
+            credentials=credentials,
         )
         mock_request = MagicMock()
 
@@ -516,8 +523,15 @@ class TestProcessMeterValuesCalculations:
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
         session = OCPISessionFactory(
-            connector=connector, status=Session.ACTIVE, start_kwh=0.0
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=0.0,
+            credentials=credentials,
         )
         mock_request = MagicMock()
 
