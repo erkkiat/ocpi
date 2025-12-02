@@ -113,6 +113,7 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     last_connection = factory.Faker("date_time", tzinfo=pytz.UTC)
     version = "22"
     valid = True
+    meter_value_frequency = 300
 
 
 class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):

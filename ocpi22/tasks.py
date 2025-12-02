@@ -2,6 +2,7 @@ import os
 import random
 import ssl
 from datetime import timedelta, datetime
+from functools import lru_cache
 from logging import getLogger
 from typing import Literal
 from urllib.parse import urlparse
@@ -156,6 +157,7 @@ def get_cert_from_env(var_name: str) -> str | None:
     return val.replace("\\n", "\n").strip()
 
 
+@lru_cache(maxsize=128)
 def get_certificate_loaded_request(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 

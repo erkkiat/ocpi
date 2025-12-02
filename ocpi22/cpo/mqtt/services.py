@@ -1,3 +1,4 @@
+from datetime import datetime
 from logging import getLogger
 
 from kombu.exceptions import OperationalError
@@ -5,9 +6,8 @@ from pydantic import ValidationError
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
-from ocpi22.commands.repository import SessionRepository
+from ocpi22.cpo.api import is_meter_value_frequency_within_limit
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -15,9 +15,11 @@ from ocpi22.cpo.mqtt.schemas import (
     TokenAuthorizationMessageIn,
     TokenAuthorizationResponse,
 )
-from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
+from ocpi22.cpo.mqtt.tasks import (
+    save_and_send_evse_status_updates,
+    update_meter_values_async,
+)
 from ocpi22.cpo.session_cache import save_to_session_cache
-from ocpi22.cpo.session_service import SessionService
 from ocpi22.cpo.util import find_our_evse
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
@@ -44,38 +46,48 @@ def process_meter_values_data(message) -> None:
     decoded_meter_message = _decode_message(message)
     if not decoded_meter_message:
         return
+
     try:
         meter_values = MeterValues.model_validate_json(decoded_meter_message)
     except ValidationError:
         logger.exception(f"Failed to parse message from topic {message.topic}")
         return
 
-    session = SessionRepository().find_session_by_uid(meter_values.session_id)
-    if not session:
-        logger.warning(
-            f"No session found for provided session_id : {meter_values.session_id} "
-        )
+    if not meter_values.session_id:
+        logger.warning("Meter values message missing session_id")
         return
-    if not session.status == Session.ACTIVE:
-        logger.warning(
-            f"Meter values received for non-active session: {session.uid} skpping"
-        )
-        return
+
+    meter_data = {
+        "session_id": meter_values.session_id,
+        "timestamp": meter_values.timestamp.isoformat(),
+        "kwh": meter_values.kwh,
+        "soc": meter_values.soc,
+        "power": meter_values.power,
+    }
+
     try:
-        SessionService().update_meter_values(
-            session=session,
-            timestamp=meter_values.timestamp,
-            kwh=meter_values.kwh,
-            soc=meter_values.soc,
-            power=meter_values.power,
+        session = Session.objects.filter(uid=meter_data["session_id"]).first()
+        if not session:
+            logger.error(
+                f"Session {meter_values.session_id} not found for meter values update"
+            )
+            return
+        if not is_meter_value_frequency_within_limit(
+            session=session, timestamp=datetime.fromisoformat(meter_data["timestamp"])
+        ):
+            logger.info(
+                f"Skipping meter values update for session {meter_values.session_id} due to high frequency"
+            )
+            return
+        update_meter_values_async.apply_async(kwargs=meter_data, expires=60)
+        logger.info(
+            f"Dispatched meter values update task for session {meter_values.session_id}"
         )
-        session.send_updates(
-            method="put", update_type=ChargingNotificationType.Progress
-        )
+    except OperationalError:
+        logger.exception("Celery operational error while dispatching meter values task")
     except Exception:
-        logger.exception(
-            f"Failed to process meter values for session {session.uid}",
-        )
+        logger.exception("Unexpected error dispatching meter values task")
+
     return
 
 
