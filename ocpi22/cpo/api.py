@@ -29,7 +29,7 @@ from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_service import SessionService
-from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.session_cache import save_to_session_cache, get_cached_session
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
@@ -163,6 +163,32 @@ def create_charging_periods(session: Session):
     return [process(m) for m in meter_values]
 
 
+def is_meter_value_frequency_within_limit(
+    session: Session, timestamp: datetime
+) -> bool:
+    meter_value_frequency = (
+        session.credentials.meter_value_frequency if session else None
+    )
+    if not meter_value_frequency:
+        return True
+
+    if timestamp.tzinfo is None:
+        timestamp = pytz.utc.localize(timestamp)
+
+    cached_session = get_cached_session(session.uid)
+    last_update = (
+        cached_session.meter_value_update_date_time if cached_session else None
+    )
+    if not last_update:
+        return True
+
+    elapsed_time = (timestamp - last_update).total_seconds()
+
+    if elapsed_time >= meter_value_frequency:
+        return True
+    return False
+
+
 def process_meter_values(
     request,
     kwh,
@@ -187,11 +213,34 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
+        if not is_meter_value_frequency_within_limit(session, timestamp):
+            logger.info(
+                f"Meter values for session {session.uid} received too frequently, skipping update"
+            )
+            return Response(
+                dict(
+                    status_text="Meter values received too frequently, skipping update",
+                    session_id=session.uid,
+                    start_kwh=session.start_kwh,
+                    now_kwh=kwh,
+                    total_kwh=session.kwh,
+                    power=power,
+                    price=session.cost(),
+                    soc=soc,
+                )
+            )
         SessionService().update_meter_values(
             session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
+        )
+        save_to_session_cache(
+            route=find_route_from_credentials(
+                credentials=session.credentials, ocpi_module=OcpiModuleEnum.SESSIONS
+            ),
+            session=session,
+            meter_value_update_date_time=timestamp,
         )
         messages.success(
             request,

@@ -11,6 +11,7 @@ from kombu import Queue, Exchange
 from kombu.serialization import register
 from base_task_services import RefreshTokenBaseTask
 from json_encoders import orjson_serializer
+from ocpi22.routing import find_route_from_credentials
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ocpiconnector.settings.dev")
 import django
@@ -95,9 +96,9 @@ app.autodiscover_tasks()
 
 from rest_framework.generics import get_object_or_404  # noqa
 
-from ocpi22.choices import OcpiRolesEnum, CdrDimensionEnum  # noqa
+from ocpi22.choices import OcpiModuleEnum  # noqa
 from json_encoders import orjson_serializer  # noqa
-from ocpi22.cpo.session_cache import get_cached_session, store_session_cache  # noqa
+from ocpi22.cpo.session_cache import save_to_session_cache  # noqa
 from ocpi22.cpo.session_service import SessionService  # noqa
 from ocpi22.locations.services import EvseServices  # noqa
 from ocpi22.models.location import Evse  # noqa
@@ -181,6 +182,13 @@ def update_meter_values_async(
 
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
+        )
+        save_to_session_cache(
+            route=find_route_from_credentials(
+                credentials=session.credentials, ocpi_module=OcpiModuleEnum.SESSIONS
+            ),
+            session=session,
+            meter_value_update_date_time=timestamp_dt,
         )
 
         logger.info(f"Successfully processed meter values for session {session_id}")

@@ -18,12 +18,13 @@ def get_cached_session(session_id) -> CachedSession | None:
         return None
 
 
-def save_to_session_cache(route, session):
+def save_to_session_cache(route, session, meter_value_update_date_time=None):
     cached_session = CachedSession(
         session_id=session.uid,
         kwh=session.kwh,
         timestamp=session.last_updated,
         route_to_msp=route,
+        meter_value_update_date_time=meter_value_update_date_time,
     )
     store_session_cache(cached_session)
 

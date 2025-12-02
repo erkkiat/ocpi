@@ -1,17 +1,20 @@
 import logging
+from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 import orjson
 import pytest
+import pytz
 from kombu.exceptions import OperationalError
 
 from ocpi22.choices import AuthorizationEnum
-from ocpi22.cpo.api import process_meter_values
+from ocpi22.cpo.api import process_meter_values, is_meter_value_frequency_within_limit
 from ocpi22.cpo.mqtt.schemas import (
     EvseStatusUpdate,
     TokenAuthorizationMessageIn,
     TokenAuthorizationResponse,
+    CachedSession,
 )
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
@@ -64,6 +67,7 @@ class TestDecodeMessage:
         )
 
 
+@pytest.mark.django_db
 class TestProcessMeterValuesData:
     def test_process_meter_values_data_exits_early_when_decode_message_fails(
         self, smappee_meter_message
@@ -121,6 +125,7 @@ class TestProcessMeterValuesData:
                 for record in caplog.records
             )
 
+    @pytest.mark.django_db
     def test_process_meter_values_data_dispatches_task_with_correct_parameters(
         self, smappee_meter_message
     ):
@@ -178,6 +183,7 @@ class TestProcessMeterValuesData:
     ):
         from paho.mqtt.client import MQTTMessage
 
+        OCPISessionFactory(uid="test-session-123")
         message = MQTTMessage()
         message.topic = smappee_meter_topic.encode("utf-8")
         message.payload = orjson.dumps(
@@ -233,6 +239,7 @@ class TestProcessMeterValuesData:
     ):
         from paho.mqtt.client import MQTTMessage
 
+        OCPISessionFactory(uid="test-session-456")
         message = MQTTMessage()
         message.topic = smappee_meter_topic.encode("utf-8")
         message.payload = orjson.dumps(
@@ -252,6 +259,76 @@ class TestProcessMeterValuesData:
             assert call_kwargs["kwh"] == kwh
             assert call_kwargs["soc"] == soc
             assert call_kwargs["power"] == power
+
+    def test_process_meter_values_data_exits_early_when_meter_value_frequency_returns_false(
+        self, smappee_meter_topic, caplog
+    ):
+        from paho.mqtt.client import MQTTMessage
+
+        OCPISessionFactory(uid="test-session-456")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-456",
+                "kwh": 14,
+                "soc": 29,
+                "power": 17000,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
+        )
+
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
+            ) as mock_task,
+        ):
+            mock_check_meter_values_frequency.return_value = False
+            process_meter_values_data(message)
+
+            mock_task.assert_not_called()
+            assert (
+                "Skipping meter values update for session test-session-456 due to high frequency"
+                in caplog.text
+            )
+
+    def test_process_meter_values_data_does_not_exits_early_when_meter_value_frequency_returns_false(
+        self, smappee_meter_topic, caplog
+    ):
+        from paho.mqtt.client import MQTTMessage
+
+        OCPISessionFactory(uid="test-session-456")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-456",
+                "kwh": 14,
+                "soc": 29,
+                "power": 17000,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
+        )
+
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
+            ) as mock_task,
+        ):
+            mock_check_meter_values_frequency.return_value = True
+            process_meter_values_data(message)
+
+            mock_task.assert_called_once()
+            assert (
+                "Dispatched meter values update task for session test-session-456"
+                in caplog.text
+            )
 
 
 class TestProcessStatusUpdateData:
@@ -366,6 +443,44 @@ class TestProcessStatusUpdateData:
             )
 
 
+class TestProcessMeterValuesFrequency:
+    @pytest.mark.django_db
+    def test_process_meter_values_allows_update_when_meter_values_received_within_accepted_frequency(
+        self,
+    ):
+        with (
+            patch(
+                "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.session_service.SessionService.update_meter_values"
+            ) as mock_update_meter_values,
+        ):
+            mock_check_meter_values_frequency.return_value = True
+            process_meter_values(
+                request=MagicMock(), kwh=12.5, session=OCPISessionFactory()
+            )
+
+            mock_update_meter_values.assert_called_once()
+
+    @pytest.mark.django_db
+    def test_process_meter_values_blocks_update_when_insufficient_time_elapsed(
+        self,
+    ):
+        with patch(
+            "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
+        ) as mock_check_meter_values_frequency:
+            mock_check_meter_values_frequency.return_value = False
+            result = process_meter_values(
+                request=MagicMock(), kwh=12.5, session=OCPISessionFactory()
+            )
+
+            assert (
+                result.data.get("status_text")
+                == "Meter values received too frequently, skipping update"
+            )
+
+
 class TestProcessMeterValuesCalculations:
     @pytest.mark.django_db
     def test_process_meter_values_calculates_kwh_delta_correctly(
@@ -375,8 +490,15 @@ class TestProcessMeterValuesCalculations:
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
         session = OCPISessionFactory(
-            connector=connector, status=Session.ACTIVE, start_kwh=10.5
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=10.5,
+            credentials=credentials,
         )
         mock_request = MagicMock()
 
@@ -401,8 +523,15 @@ class TestProcessMeterValuesCalculations:
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
         session = OCPISessionFactory(
-            connector=connector, status=Session.ACTIVE, start_kwh=0.0
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=0.0,
+            credentials=credentials,
         )
         mock_request = MagicMock()
 
@@ -1045,3 +1174,55 @@ class TestCreateAndSaveSession:
             mock_authorize_token.assert_called_once_with(
                 token, evse.location, evse_id=evse.evse_id
             )
+
+
+@pytest.mark.django_db
+class TestCheckMeterValuesFrequency:
+    @pytest.fixture
+    def session(self):
+        return OCPISessionFactory(
+            uid="meter-value-frequency-test-session",
+            credentials=CredentialsFactory(meter_value_frequency=60),
+        )
+
+    def test_returns_true_when_meter_value_frequency_none(self, session):
+        session.credentials.meter_value_frequency = None
+        session.credentials.save()
+        assert is_meter_value_frequency_within_limit(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_no_cached_session(self, mock_get_cached, session):
+        mock_get_cached.return_value = None
+        assert is_meter_value_frequency_within_limit(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_false_when_elapsed_time_less_than_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=30)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=10)
+        assert is_meter_value_frequency_within_limit(session, now) is False
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_elapsed_time_exceeds_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=120)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=121)
+        assert is_meter_value_frequency_within_limit(session, now) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_naive_datetime_is_localized_to_utc(self, mock_get_cached, session):
+        last_update = datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.utc)
+        cached = Mock()
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = datetime(2024, 1, 1, 12, 0, 30)
+        session.credentials.meter_value_frequency = 60
+        assert is_meter_value_frequency_within_limit(session, now) is False
