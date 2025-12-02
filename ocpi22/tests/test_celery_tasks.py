@@ -263,7 +263,7 @@ class TestSendOCPIRequestErrorLogging:
                 method="post",
             )
 
-            assert result is None
+            assert result.status_code == 200
             assert (
                 f"{url} responded with OCPI error code 1000: Success" not in caplog.text
             )
