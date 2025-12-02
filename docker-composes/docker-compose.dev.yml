@@ -124,7 +124,7 @@ services:
     ports:
       - "1883:1883"  # MQTT port
       - "8083:8083"  # WebSocket port
-      - "18083:18083"  # Dashboard port
+      - "8081:8081"  # Dashboard port
     environment:
       - EMQX_NAME=emqx
       - EMQX_HOST=node1
