@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from ocpi22.choices import AuthorizationEnum, OcpiModuleEnum
-from ocpi22.cpo.api import is_meter_value_update_allowed
+from ocpi22.cpo.api import is_meter_value_frequency_within_limit
 from ocpi22.cpo.mqtt.mqtt_publisher import publish_auth_response
 from ocpi22.cpo.mqtt.schemas import (
     MeterValues,
@@ -72,7 +72,7 @@ def process_meter_values_data(message) -> None:
                 f"Session {meter_values.session_id} not found for meter values update"
             )
             return
-        if not is_meter_value_update_allowed(
+        if not is_meter_value_frequency_within_limit(
             session=session, timestamp=datetime.fromisoformat(meter_data["timestamp"])
         ):
             logger.info(
