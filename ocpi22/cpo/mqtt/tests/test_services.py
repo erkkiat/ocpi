@@ -280,7 +280,7 @@ class TestProcessMeterValuesData:
 
         with (
             patch(
-                "ocpi22.cpo.mqtt.services.is_meter_value_update_allowed"
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
@@ -315,7 +315,7 @@ class TestProcessMeterValuesData:
 
         with (
             patch(
-                "ocpi22.cpo.mqtt.services.is_meter_value_update_allowed"
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
@@ -450,7 +450,7 @@ class TestProcessMeterValuesFrequency:
     ):
         with (
             patch(
-                "ocpi22.cpo.api.is_meter_value_update_allowed"
+                "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
             ) as mock_check_meter_values_frequency,
             patch(
                 "ocpi22.cpo.session_service.SessionService.update_meter_values"
@@ -468,7 +468,7 @@ class TestProcessMeterValuesFrequency:
         self,
     ):
         with patch(
-            "ocpi22.cpo.api.is_meter_value_update_allowed"
+            "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
         ) as mock_check_meter_values_frequency:
             mock_check_meter_values_frequency.return_value = False
             result = process_meter_values(
