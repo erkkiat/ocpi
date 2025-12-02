@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 from unittest.mock import patch, Mock
 
 import pytest
@@ -267,3 +268,43 @@ class TestSendOCPIRequestErrorLogging:
             assert (
                 f"{url} responded with OCPI error code 1000: Success" not in caplog.text
             )
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_malformed_json_response_returns_successful_response(self):
+        data = {"id": "12345", "value": "test_value"}
+        url = "https://somerandomurl.random.com/resource"
+        credentials = CredentialsFactory()
+        responses.add(
+            responses.POST,
+            url,
+            json={
+                "status_code": 1000,
+                "status_message": "Success",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "data": None,
+            },
+            status=200,
+            match=[matchers.json_params_matcher(data)],
+        )
+        with (
+            patch.object(send_ocpi_request, "app") as mock_app,
+            patch(
+                "requests.Response.json",
+                side_effect=JSONDecodeError("Malformed JSON", "", 0),
+            ),
+        ):
+            mock_app.conf.task_always_eager = False
+            result = send_ocpi_request(
+                data=data,
+                url=url,
+                token_base64="dG9rZW4=",
+                to_country_code="NL",
+                to_party_id="ABC",
+                from_country_code="NL",
+                from_party_id="XYZ",
+                credentials_id=credentials.id,
+                method="post",
+            )
+
+            assert result.status_code == 200
