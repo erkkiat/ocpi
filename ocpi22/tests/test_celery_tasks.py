@@ -196,7 +196,7 @@ class TestSendHubjectEvseFullLoad:
 class TestSendOCPIRequestErrorLogging:
     @responses.activate
     @pytest.mark.django_db
-    def test_error_logs_when_status_code_gt_2000_and_lt_3000(self, caplog):
+    def test_error_logs_when_status_code_gte_2000(self, caplog):
         data = {"id": "12345", "value": "test_value"}
         url = "https://somerandomurl.random.com/resource"
         credentials = CredentialsFactory()
