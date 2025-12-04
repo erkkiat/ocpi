@@ -25,8 +25,8 @@ STATUS_TOPIC = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
 AUTH_REQUEST_TOPIC = get_topic("SMAPPEE_AUTH_REQUEST_TOPIC")
 
 
-def _subscribe(client, topic):
-    result, mid = client.subscribe(topic)
+def _subscribe(client, topic, qos=0):
+    result, mid = client.subscribe(topic, qos)
     if result != MQTT_ERR_SUCCESS:
         logger.error(f"Failed to subscribe to {topic} with error code {result}")
     else:
@@ -78,7 +78,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
         logger.info("Connected successfully to the broker.")
         _subscribe(client, METER_TOPIC)
         _subscribe(client, STATUS_TOPIC)
-        _subscribe(client, AUTH_REQUEST_TOPIC)
+        _subscribe(client, AUTH_REQUEST_TOPIC, qos=1)
         logger.info(
             f"Subscribed to [{METER_TOPIC}], [{STATUS_TOPIC}], and [{AUTH_REQUEST_TOPIC}]"
         )
