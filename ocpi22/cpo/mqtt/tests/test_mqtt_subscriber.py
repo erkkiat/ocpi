@@ -81,25 +81,25 @@ class TestGetTopic:
     def test_subscribe_success(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_SUCCESS, 1)
-            _subscribe(mqtt_client, "test/topic")
+            _subscribe(mqtt_client, "test/topic", 0)
 
-            mock_subscribe.assert_called_once_with("test/topic")
+            mock_subscribe.assert_called_once_with("test/topic", 0)
             assert "Successfully subscribed to test/topic" in caplog.text
 
     def test_subscribe_failure(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_NO_CONN, 1)
-            _subscribe(mqtt_client, "test/topic")
+            _subscribe(mqtt_client, "test/topic", 1)
 
-            mock_subscribe.assert_called_once_with("test/topic")
+            mock_subscribe.assert_called_once_with("test/topic", 1)
             assert "Failed to subscribe to test/topic with error code 4" in caplog.text
 
     def test_subscribe_invalid_topic(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_INVAL, 1)
-            _subscribe(mqtt_client, "invalid/topic")
+            _subscribe(mqtt_client, "invalid/topic", 0)
 
-            mock_subscribe.assert_called_once_with("invalid/topic")
+            mock_subscribe.assert_called_once_with("invalid/topic", 0)
             assert (
                 "Failed to subscribe to invalid/topic with error code 3" in caplog.text
             )
@@ -272,7 +272,7 @@ class TestOnConnect:
             assert mock_subscribe.call_count == 3
             mock_subscribe.assert_any_call(client, meter_topic)
             mock_subscribe.assert_any_call(client, status_topic)
-            mock_subscribe.assert_any_call(client, auth_topic)
+            mock_subscribe.assert_any_call(client, auth_topic, qos=1)
 
     def test_on_connect_failure(self, caplog):
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
