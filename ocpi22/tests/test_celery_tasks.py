@@ -331,6 +331,20 @@ class TestSendEvseStatusUpdate:
             mock_send_status_updates.assert_not_called()
 
     @pytest.mark.django_db
+    def test_evse_update_is_rejected_when_credentials_not_found(self):
+        loc = LocationFactory(uid="LOC_1")
+        EvseFactory(uid="EVSE_1", location=loc)
+        ocpi_master = loc.ocpi_master
+        ocpi_master.credentials = None
+        ocpi_master.save()
+
+        with patch(
+            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
+        ) as mock_send_status_updates:
+            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
+            mock_send_status_updates.assert_not_called()
+
+    @pytest.mark.django_db
     def test_evse_update_sent_when_evse_is_in_allowed_locations(self):
         credentials = CredentialsFactory(allowed_locations=["LOC_1"])
         role = CredentialsRoleFactory(credentials=credentials)

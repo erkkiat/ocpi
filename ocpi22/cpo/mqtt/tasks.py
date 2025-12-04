@@ -135,6 +135,11 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
         logger.warning(f"Evse not found for uid:{evse_uid} and evse_id:{evse_id}")
         return
     credentials = evse.location.ocpi_master.credentials
+    if not credentials:
+        logger.warning(
+            f"Credentials not found for evse location {str(evse.location.uid)} ocpi_master id: {str(evse.location.ocpi_master)}"
+        )
+        return
     if (
         credentials.allowed_locations
         and evse.location.uid not in credentials.allowed_locations
