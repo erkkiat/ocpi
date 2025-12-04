@@ -124,15 +124,13 @@ def _format_evse_id(country_code: str, party_id: str, evse_uid: str) -> str:
 
 @shared_task(queue="HIGH")
 def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
-    country, party_id = _get_country_and_party_id()
-    evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = (
         Evse.objects.filter(uid=evse_uid)
         .select_related("location__ocpi_master__credentials")
         .first()
     )
     if not evse:
-        logger.warning(f"Evse not found for uid:{evse_uid} and evse_id:{evse_id}")
+        logger.warning(f"Evse not found for uid:{evse_uid}")
         return
     credentials = evse.location.ocpi_master.credentials
     if not credentials:
