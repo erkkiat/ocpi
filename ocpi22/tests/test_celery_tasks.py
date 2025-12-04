@@ -8,18 +8,12 @@ from celery.exceptions import Retry
 from requests import RequestException
 from responses import matchers
 
-from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.tasks import (
     send_hubject_request,
     send_hubject_evse_full_load,
     send_ocpi_request,
 )
-from ocpi22.tests.factories import (
-    CredentialsFactory,
-    LocationFactory,
-    EvseFactory,
-    CredentialsRoleFactory,
-)
+from ocpi22.tests.factories import CredentialsFactory
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
 
@@ -314,58 +308,3 @@ class TestSendOCPIRequestErrorLogging:
             )
 
             assert result.status_code == 200
-
-
-class TestSendEvseStatusUpdate:
-    @pytest.mark.django_db
-    def test_evse_update_is_rejected_when_evse_is_not_in_allowed_locations(self):
-        credentials = CredentialsFactory(allowed_locations=["LOC_2"])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_not_called()
-
-    @pytest.mark.django_db
-    def test_evse_update_is_rejected_when_credentials_not_found(self):
-        loc = LocationFactory(uid="LOC_1")
-        EvseFactory(uid="EVSE_1", location=loc)
-        ocpi_master = loc.ocpi_master
-        ocpi_master.credentials = None
-        ocpi_master.save()
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_not_called()
-
-    @pytest.mark.django_db
-    def test_evse_update_sent_when_evse_is_in_allowed_locations(self):
-        credentials = CredentialsFactory(allowed_locations=["LOC_1"])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_called_once()
-
-    @pytest.mark.django_db
-    def test_evse_update_sent_when_allowed_locations_is_empty(self):
-        credentials = CredentialsFactory(allowed_locations=[])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_called_once()
