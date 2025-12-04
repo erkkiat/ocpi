@@ -127,7 +127,7 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     country, party_id = _get_country_and_party_id()
     evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = (
-        Evse.objects.filter(uid=evse_uid, evse_id=evse_id)
+        Evse.objects.filter(uid=evse_uid)
         .select_related("location__ocpi_master__credentials")
         .first()
     )
@@ -135,9 +135,12 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
         logger.warning(f"Evse not found for uid:{evse_uid} and evse_id:{evse_id}")
         return
     credentials = evse.location.ocpi_master.credentials
-    if evse.location.uuid not in credentials.allowed_locations:
+    if (
+        credentials.allowed_locations
+        and evse.location.uid not in credentials.allowed_locations
+    ):
         logger.warning(
-            f"Evse location {evse.location.uuid} not allowed for credentials {credentials.uid}, Skipping"
+            f"Evse location {evse.location.uid} not allowed for credentials id: {credentials.id}, {credentials.name()}, Skipping"
         )
         return
     status = EvseServices.ocpp_to_evse_status(status)
