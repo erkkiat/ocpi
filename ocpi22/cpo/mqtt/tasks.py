@@ -140,7 +140,7 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
         and evse.location.uid not in credentials.allowed_locations
     ):
         logger.warning(
-            f"Evse location {evse.location.uid} not allowed for credentials id: {credentials.id}, {credentials.name()}, Skipping"
+            f"Evse location {evse.location.uid} not allowed for credentials id: {credentials.id}, {credentials.name}, Skipping"
         )
         return
     status = EvseServices.ocpp_to_evse_status(status)
