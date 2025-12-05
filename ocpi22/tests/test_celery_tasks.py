@@ -16,9 +16,9 @@ from ocpi22.tasks import (
 )
 from ocpi22.tests.factories import (
     CredentialsFactory,
+    CredentialsRoleFactory,
     LocationFactory,
     EvseFactory,
-    CredentialsRoleFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
@@ -659,7 +659,6 @@ class TestSendOCPIRequest:
                 method="post",
                 **base_request_params,
             )
-
             assert result is None
 
 
