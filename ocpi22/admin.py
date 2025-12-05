@@ -591,14 +591,16 @@ class SessionAdmin(SolidNestedModelAdmin):
     model = Session
     ordering = ["-updated"]
     list_display = [
-        "success",
-        "status",
-        "party_long",
-        "last_update",  # Todo: Show time in local timezone
+        "uid",
         "location",
+        "party_long",
         "kwh",
         "cost",
+        "last_update",
+        "status",
     ]
+
+    list_display_links = ["location"]
 
     formfield_overrides = widgets.formfield_overrides
 
