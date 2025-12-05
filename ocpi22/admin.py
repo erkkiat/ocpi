@@ -600,7 +600,7 @@ class SessionAdmin(SolidNestedModelAdmin):
         "status",
     ]
 
-    list_display_links = ["location"]
+    list_display_links = ["location", "status"]
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -632,7 +632,6 @@ class SessionAdmin(SolidNestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    list_display_links = ["status"]
     search_fields = [
         "location__name",
         "location__address",
