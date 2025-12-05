@@ -195,7 +195,6 @@ def _get_ssl_session_client(
     bind=True,
     retry_backoff=1,
     max_retries=10,
-    ignore_result=True,
 )
 def send_ocpi_request(
     self,
