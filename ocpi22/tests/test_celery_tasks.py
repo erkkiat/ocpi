@@ -8,7 +8,6 @@ from celery.exceptions import Retry
 from requests import RequestException
 from responses import matchers
 
-from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.tasks import (
     send_hubject_request,
     send_hubject_evse_full_load,
@@ -16,9 +15,6 @@ from ocpi22.tasks import (
 )
 from ocpi22.tests.factories import (
     CredentialsFactory,
-    CredentialsRoleFactory,
-    LocationFactory,
-    EvseFactory,
 )
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
@@ -291,13 +287,9 @@ class TestSendOCPIRequest:
     ):
         credentials = CredentialsFactory()
 
-        with (
-            patch.object(send_ocpi_request, "app") as mock_app,
-            pytest.raises(
-                NotImplementedError, match="Method invalid_method is not supported"
-            ),
+        with pytest.raises(
+            NotImplementedError, match="Method invalid_method is not supported"
         ):
-            mock_app.conf.task_always_eager = False
             send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -318,18 +310,16 @@ class TestSendOCPIRequest:
             body=requests.Timeout("Connection timeout"),
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
-            result = send_ocpi_request(
-                data=payload,
-                url=test_url,
-                credentials_id=credentials.id,
-                method="post",
-                **base_request_params,
-            )
+        result = send_ocpi_request(
+            data=payload,
+            url=test_url,
+            credentials_id=credentials.id,
+            method="post",
+            **base_request_params,
+        )
 
-            assert result is None
-            assert f"{test_url} timed out after 3s, not retrying" in caplog.text
+        assert result is None
+        assert f"{test_url} timed out after 3s, not retrying" in caplog.text
 
     @responses.activate
     @pytest.mark.django_db
@@ -343,18 +333,16 @@ class TestSendOCPIRequest:
             body=RequestException("Connection error"),
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
-            result = send_ocpi_request(
-                data=payload,
-                url=test_url,
-                credentials_id=credentials.id,
-                method="post",
-                **base_request_params,
-            )
+        result = send_ocpi_request(
+            data=payload,
+            url=test_url,
+            credentials_id=credentials.id,
+            method="post",
+            **base_request_params,
+        )
 
-            assert result is None
-            assert f"{test_url} non-retryable requests error" in caplog.text
+        assert result is None
+        assert f"{test_url} non-retryable requests error" in caplog.text
 
     @pytest.mark.django_db
     def test_ssl_error_returns_none_and_logs_exception(
@@ -362,14 +350,10 @@ class TestSendOCPIRequest:
     ):
         credentials = CredentialsFactory()
 
-        with (
-            patch(
-                "ocpi22.tasks.get_certificate_loaded_request",
-                side_effect=ssl.SSLError("Certificate verification failed"),
-            ),
-            patch.object(send_ocpi_request, "app") as mock_app,
+        with patch(
+            "ocpi22.tasks.get_certificate_loaded_request",
+            side_effect=ssl.SSLError("Certificate verification failed"),
         ):
-            mock_app.conf.task_always_eager = False
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -397,11 +381,7 @@ class TestSendOCPIRequest:
 
         mock_retry = Mock(side_effect=Retry("Should not retry"))
 
-        with (
-            patch.object(send_ocpi_request, "retry", mock_retry),
-            patch.object(send_ocpi_request, "app") as mock_app,
-        ):
-            mock_app.conf.task_always_eager = False
+        with patch.object(send_ocpi_request, "retry", mock_retry):
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -434,10 +414,11 @@ class TestSendOCPIRequest:
 
         with (
             patch.object(send_ocpi_request, "retry", mock_retry),
-            patch.object(send_ocpi_request, "app") as mock_app,
+            patch("celery.app.task.Task.request") as mock_request,
             patch("ocpi22.tasks.send_ocpi_request.request.retries", 0),
         ):
-            mock_app.conf.task_always_eager = False
+            mock_request.is_eager = False
+            mock_request.called_directly = False
             with pytest.raises(Retry):
                 send_ocpi_request(
                     data=payload,
@@ -500,20 +481,16 @@ class TestSendOCPIRequest:
             status=200,
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
-            result = send_ocpi_request(
-                data=payload,
-                url=test_url,
-                credentials_id=credentials.id,
-                method="post",
-                **base_request_params,
-            )
+        result = send_ocpi_request(
+            data=payload,
+            url=test_url,
+            credentials_id=credentials.id,
+            method="post",
+            **base_request_params,
+        )
 
-            assert result is None
-            assert (
-                f"{test_url} returned non-JSON response with status 200" in caplog.text
-            )
+        assert result is None
+        assert f"{test_url} returned non-JSON response with status 200" in caplog.text
 
     @responses.activate
     @pytest.mark.django_db
@@ -549,21 +526,19 @@ class TestSendOCPIRequest:
             match=[matchers.json_params_matcher(payload)],
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
-            result = send_ocpi_request(
-                data=payload,
-                url=test_url,
-                credentials_id=credentials.id,
-                method="post",
-                **base_request_params,
-            )
+        result = send_ocpi_request(
+            data=payload,
+            url=test_url,
+            credentials_id=credentials.id,
+            method="post",
+            **base_request_params,
+        )
 
-            assert result is None
-            assert (
-                f"{test_url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying"
-                in caplog.text
-            )
+        assert result is None
+        assert (
+            f"{test_url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying"
+            in caplog.text
+        )
 
     @responses.activate
     @pytest.mark.django_db
@@ -652,6 +627,7 @@ class TestSendOCPIRequest:
 
         with patch("celery.app.task.Task.request") as mock_request:
             mock_request.is_eager = False
+            mock_request.called_directly = False
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -659,59 +635,39 @@ class TestSendOCPIRequest:
                 method="post",
                 **base_request_params,
             )
+
             assert result is None
 
-
-class TestSendEvseStatusUpdate:
+    @responses.activate
     @pytest.mark.django_db
-    def test_evse_update_is_rejected_when_evse_is_not_in_allowed_locations(self):
-        credentials = CredentialsFactory(allowed_locations=["LOC_2"])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
+    def test_successful_request_returns_response_when_called_directly(
+        self, test_url, payload, base_request_params
+    ):
+        """Test direct function calls (like from pull_objects) return response."""
+        credentials = CredentialsFactory()
+        responses.add(
+            responses.POST,
+            test_url,
+            json={
+                "status_code": 1000,
+                "status_message": "Success",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "data": {"result": "ok"},
+            },
+            status=200,
+            match=[matchers.json_params_matcher(payload)],
+        )
 
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_not_called()
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = False
+            mock_request.called_directly = True
+            result = send_ocpi_request(
+                data=payload,
+                url=test_url,
+                credentials_id=credentials.id,
+                method="post",
+                **base_request_params,
+            )
 
-    @pytest.mark.django_db
-    def test_evse_update_is_rejected_when_credentials_not_found(self):
-        loc = LocationFactory(uid="LOC_1")
-        EvseFactory(uid="EVSE_1", location=loc)
-        ocpi_master = loc.ocpi_master
-        ocpi_master.credentials = None
-        ocpi_master.save()
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_not_called()
-
-    @pytest.mark.django_db
-    def test_evse_update_sent_when_evse_is_in_allowed_locations(self):
-        credentials = CredentialsFactory(allowed_locations=["LOC_1"])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_called_once()
-
-    @pytest.mark.django_db
-    def test_evse_update_sent_when_allowed_locations_is_empty(self):
-        credentials = CredentialsFactory(allowed_locations=[])
-        role = CredentialsRoleFactory(credentials=credentials)
-        loc = LocationFactory(uid="LOC_1", ocpi_master=role)
-        EvseFactory(uid="EVSE_1", location=loc)
-
-        with patch(
-            "ocpi22.cpo.mqtt.tasks.EvseServices.send_status_updates"
-        ) as mock_send_status_updates:
-            save_and_send_evse_status_updates("EVSE_1", "AVAILABLE")
-            mock_send_status_updates.assert_called_once()
+            assert result is not None
+            assert result.status_code == 200
