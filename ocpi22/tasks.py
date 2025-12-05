@@ -195,6 +195,7 @@ def _get_ssl_session_client(
     bind=True,
     retry_backoff=1,
     max_retries=10,
+    ignore_result=True,
 )
 def send_ocpi_request(
     self,
@@ -223,55 +224,88 @@ def send_ocpi_request(
     try:
         request_session = get_certificate_loaded_request(credentials_id)
     except ssl.SSLError:
-        logger.exception(f"SSL error while connecting to {url}.")
-        # Don't retry on SSL errors as they're likely configuration issues
+        logger.exception(f"SSL error while creating session for {url}.")
         return None
 
-    function = getattr(request_session, method.lower())
-    if not function:
+    function = getattr(request_session, method.lower(), None)
+    if function is None:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
-    response: requests.Response = function(**kwargs)
-    if self.request.is_eager:
-        return response
-    if response.status_code < 300:
-        try:
-            response_json = response.json()
-        except JSONDecodeError:
-            response_json = {}
-        status_code = response_json.get("status_code", 1000)
-        status_message = response_json.get("status_message", "")
-        if status_code < 2000:
-            return response
+    logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
+    timeout = settings.OCPI_REQUEST_TIMEOUT
+
+    try:
+        response: requests.Response = function(
+            timeout=timeout,
+            **kwargs,
+        )
+
+    except requests.Timeout:
         logger.error(
-            f"{url} responded with OCPI error code {status_code}: {status_message}, not retrying",
+            f"{url} timed out after {timeout}s, not retrying",
+            extra={"path": url, "method": method},
+        )
+        return None
+
+    except requests.RequestException as exc:
+        logger.warning(f"{url} non-retryable requests error", exc_info=exc)
+        return None
+
+    status = response.status_code
+
+    if 300 <= status < 500:
+        logger.error(
+            f"{url} responded with {status}, not retrying",
             extra={
                 "path": url,
                 "method": response.request.method,
-                "response_data": response_json or response.text,
-                "status_code": response.status_code,
+                "response_data": response.content,
+                "status_code": status,
             },
         )
         return None
-    if 300 <= response.status_code < 500:
+
+    if status >= 500:
+        if self.request.is_eager:
+            logger.warning(f"{url} responded with {status}, not retrying")
+            return None
+
+        logger.warning(f"{url} responded with {status}: Retrying")
+        raise self.retry(exc=Exception(f"Server Error for {response.url}: {status}"))
+
+    try:
+        response_json = response.json()
+    except JSONDecodeError:
         logger.error(
-            f"{url} responded with {response.status_code}, not retrying",
+            f"{url} returned non-JSON response with status {status}",
             extra={
                 "path": url,
                 "method": response.request.method,
                 "response_data": response.text,
-                "status_code": response.status_code,
+                "status_code": status,
             },
         )
         return None
-    if response.status_code >= 500:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
-        )
+
+    ocpi_status_code = response_json.get("status_code", 1000)
+    if ocpi_status_code < 2000:
+        if self.request.is_eager or self.request.called_directly:
+            return response
+        return None
+
+    status_message = response_json.get("status_message", "")
+    logger.error(
+        f"{url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
+        extra={
+            "path": url,
+            "method": response.request.method,
+            "response_data": response_json,
+            "status_code": status,
+        },
+    )
+    return None
 
 
 @shared_task(
