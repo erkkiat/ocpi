@@ -290,8 +290,9 @@ def send_ocpi_request(
 
     ocpi_status_code = response_json.get("status_code", 1000)
     if ocpi_status_code < 2000:
-        # Only return response in eager mode or direct calls
-        if self.request.is_eager:
+        # Only return response in eager mode or direct function calls
+        # For async execution via .delay()/.apply_async(), return None (ignored due to ignore_result=True)
+        if self.request.is_eager or self.request.called_directly:
             return response
         return None
 
