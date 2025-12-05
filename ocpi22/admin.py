@@ -591,14 +591,16 @@ class SessionAdmin(SolidNestedModelAdmin):
     model = Session
     ordering = ["-updated"]
     list_display = [
-        "success",
-        "status",
-        "party_long",
-        "last_update",  # Todo: Show time in local timezone
+        "uid",
         "location",
+        "party_long",
         "kwh",
         "cost",
+        "last_update",
+        "status",
     ]
+
+    list_display_links = ["location", "status"]
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -630,7 +632,6 @@ class SessionAdmin(SolidNestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    list_display_links = ["status"]
     search_fields = [
         "location__name",
         "location__address",
