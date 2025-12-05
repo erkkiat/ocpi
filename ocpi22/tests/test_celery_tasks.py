@@ -240,8 +240,8 @@ class TestSendOCPIRequest:
             match=[matchers.json_params_matcher(payload)],
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = True
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -272,8 +272,8 @@ class TestSendOCPIRequest:
             status=200,
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = True
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -585,8 +585,8 @@ class TestSendOCPIRequest:
             match=[matchers.json_params_matcher(payload)],
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = True
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -618,8 +618,8 @@ class TestSendOCPIRequest:
             match=[matchers.json_params_matcher(payload)],
         )
 
-        with patch.object(send_ocpi_request, "app") as mock_app:
-            mock_app.conf.task_always_eager = False
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = True
             result = send_ocpi_request(
                 data=payload,
                 url=test_url,
@@ -630,6 +630,37 @@ class TestSendOCPIRequest:
 
             assert result is not None
             assert result.status_code == 200
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_successful_request_returns_none_in_non_eager_mode(
+        self, test_url, payload, base_request_params
+    ):
+        credentials = CredentialsFactory()
+        responses.add(
+            responses.POST,
+            test_url,
+            json={
+                "status_code": 1000,
+                "status_message": "Success",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "data": {"result": "ok"},
+            },
+            status=200,
+            match=[matchers.json_params_matcher(payload)],
+        )
+
+        with patch("celery.app.task.Task.request") as mock_request:
+            mock_request.is_eager = False
+            result = send_ocpi_request(
+                data=payload,
+                url=test_url,
+                credentials_id=credentials.id,
+                method="post",
+                **base_request_params,
+            )
+
+            assert result is None
 
 
 class TestSendEvseStatusUpdate:

@@ -195,6 +195,7 @@ def _get_ssl_session_client(
     bind=True,
     retry_backoff=1,
     max_retries=10,
+    ignore_result=True,
 )
 def send_ocpi_request(
     self,
@@ -289,7 +290,10 @@ def send_ocpi_request(
 
     ocpi_status_code = response_json.get("status_code", 1000)
     if ocpi_status_code < 2000:
-        return response
+        # Only return response in eager mode or direct calls
+        if self.request.is_eager:
+            return response
+        return None
 
     status_message = response_json.get("status_message", "")
     logger.error(
