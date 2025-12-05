@@ -234,16 +234,17 @@ def send_ocpi_request(
         )
 
     logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
+    timeout = settings.OCPI_REQUEST_TIMEOUT
 
     try:
         response: requests.Response = function(
-            timeout=3,
+            timeout=timeout,
             **kwargs,
         )
 
     except requests.Timeout:
         logger.error(
-            f"{url} timed out after {3}s, not retrying",
+            f"{url} timed out after {timeout}s, not retrying",
             extra={"path": url, "method": method},
         )
         return None
