@@ -173,6 +173,17 @@ class OcpiModule:
         if isinstance(send_updates_to, (list, tuple)):
             endpoints = find_endpoints_by_roles(send_updates_to, ocpi_module_name)
             for url, token_base64, country_code, party_id, credentials in endpoints:
+                from ocpi22.models.location import Location
+                from ocpi22.locations.services import EvseServices
+
+                if isinstance(self, Location):
+                    if not EvseServices.is_evse_belongs_to_an_allowed_location(
+                        credentials, self.evses.first()
+                    ):
+                        logger.info(
+                            f"Skipping sending update for {self} to {country_code}*{party_id} as it's not in allowed locations of credentials {credentials.id}"
+                        )
+                        continue
                 try:
                     if path_components:
                         url = urljoin(

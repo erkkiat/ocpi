@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
-from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
@@ -63,7 +63,23 @@ class EvseServices:
         )
 
         if settings.ENABLE_HUBJECT:
-            HubjectService.post_eroaming_push_evse_status(evse)
+            role = CredentialsRepository.find_hubject_credentials_role()
+            credentials = role.credentials if role else None
+            if EvseServices.is_evse_belongs_to_an_allowed_location(credentials, evse):
+                HubjectService.post_eroaming_push_evse_status(evse)
+
+    @staticmethod
+    def is_evse_belongs_to_an_allowed_location(
+        credentials: Credentials, evse: Evse
+    ) -> bool:
+        if not credentials:
+            return True
+
+        allowed_locations = credentials.allowed_locations
+        if not allowed_locations:
+            return True
+
+        return evse.location.uid in allowed_locations
 
 
 class LocationService:
