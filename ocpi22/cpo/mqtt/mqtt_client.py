@@ -104,7 +104,9 @@ class MQTTClientSingleton:
     def _configure_client(self, client_id):
         username, password = get_broker_username_password()
         client = mqtt.Client(
-            client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
+            client_id=client_id,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            clean_session=False,  # Reuse session to save memory
         )
         client.username_pw_set(username, password)
         if strtobool(os.getenv("MQTT_USE_SSL", "False")):
