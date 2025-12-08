@@ -16,7 +16,6 @@ from django.utils.safestring import mark_safe
 from ninja.errors import HttpError
 from rest_framework.fields import DateTimeField
 from rest_framework.permissions import IsAdminUser
-from ocpi22 import ocpi_logging
 
 from typing import Union, Optional
 
@@ -30,7 +29,7 @@ from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
 from ocpi22.cpo.schemas import LocationIn, Error
 from ocpi22.cpo.session_service import SessionService
-from ocpi22.cpo.session_cache import save_to_session_cache
+from ocpi22.cpo.session_cache import save_to_session_cache, get_cached_session
 from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
@@ -87,9 +86,6 @@ from ocpi22.tokens.auth import (
     authorize_token,
     TokenAuthorization,
     get_session_by_token_uid,
-    get_session_by_token_uid_and_evse_uid,
-    get_token_authorization_from_session,
-    _authorize_token,
 )
 from ocpi22.tokens.util import get_token_id
 from ocpi22.util import MyMetadata
@@ -167,6 +163,32 @@ def create_charging_periods(session: Session):
     return [process(m) for m in meter_values]
 
 
+def is_meter_value_frequency_within_limit(
+    session: Session, timestamp: datetime
+) -> bool:
+    meter_value_frequency = (
+        session.credentials.meter_value_frequency if session else None
+    )
+    if not meter_value_frequency:
+        return True
+
+    if timestamp.tzinfo is None:
+        timestamp = pytz.utc.localize(timestamp)
+
+    cached_session = get_cached_session(session.uid)
+    last_update = (
+        cached_session.meter_value_update_date_time if cached_session else None
+    )
+    if not last_update:
+        return True
+
+    elapsed_time = (timestamp - last_update).total_seconds()
+
+    if elapsed_time >= meter_value_frequency:
+        return True
+    return False
+
+
 def process_meter_values(
     request,
     kwh,
@@ -191,11 +213,34 @@ def process_meter_values(
             raise RuntimeError(
                 f"EVSE {session.evse} connector {session.connector} has no tariffs"
             )
+        if not is_meter_value_frequency_within_limit(session, timestamp):
+            logger.info(
+                f"Meter values for session {session.uid} received too frequently, skipping update"
+            )
+            return Response(
+                dict(
+                    status_text="Meter values received too frequently, skipping update",
+                    session_id=session.uid,
+                    start_kwh=session.start_kwh,
+                    now_kwh=kwh,
+                    total_kwh=session.kwh,
+                    power=power,
+                    price=session.cost(),
+                    soc=soc,
+                )
+            )
         SessionService().update_meter_values(
             session, timestamp=timestamp, kwh=kwh, soc=soc, power=power
         )
         session.send_updates(
             method="put", update_type=ChargingNotificationType.Progress
+        )
+        save_to_session_cache(
+            route=find_route_from_credentials(
+                credentials=session.credentials, ocpi_module=OcpiModuleEnum.SESSIONS
+            ),
+            session=session,
+            meter_value_update_date_time=timestamp,
         )
         messages.success(
             request,
@@ -472,31 +517,10 @@ class ChargePointViewSet(FlowchartViewSet):
                     token: Union[Token, AdhocToken, str] = (
                         serializer.validated_data.get("token")
                     )
-                    token_uid = get_token_id(token)
-                    data["token"] = token_uid
-                    session = get_session_by_token_uid_and_evse_uid(
-                        token_uid, evse.uid, max_age_minutes=15
+                    data["token"] = get_token_id(token)
+                    authorization: TokenAuthorization = authorize_token(
+                        token, evse.location, request=request, evse_id=evse.evse_id
                     )
-                    if session:
-                        ocpi_logging.info(
-                            f"Pre-existing Session **{markdown_escape(session.uid)}** "
-                            f"with authorization **{markdown_escape(session.authorization_reference)}**",
-                            request=request,
-                        )
-                        messages.success(
-                            request,
-                            f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
-                            f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
-                            f"authorization was cached in the system.",
-                        )
-                        authorization = get_token_authorization_from_session(session)
-                    else:
-                        _authorize_token.clear_cache_item(
-                            token, evse.location, request=request, evse_id=evse.evse_id
-                        )
-                        authorization: TokenAuthorization = authorize_token(
-                            token, evse.location, request=request, evse_id=evse.evse_id
-                        )
 
                     if (
                         not authorization
@@ -530,33 +554,32 @@ class ChargePointViewSet(FlowchartViewSet):
                             raise ValueError(
                                 f"CredentialsRole for {authorization.responding_party} not found in the database."
                             )
-                        if not session:
-                            session = create_session(
-                                credentials=route_through.credentials,
-                                authorization_reference=authorization.authorization_reference,
-                                authorization_method=authorization.auth_method,
-                                billed_to=authorization.msp,
-                                ad_hoc_token=ad_hoc_token,
-                                evse_uid=evse.uid,
-                                connector_id=None,
-                                location_id=evse.location.uid,
-                                hub_session_id=authorization.hub_session_id,
-                            )
-                            save_to_session_cache(
-                                route=find_route_from_credentials(
-                                    route_through.credentials, OcpiModuleEnum.SESSIONS
-                                ),
-                                session=session,
-                            )
-                            messages.success(
-                                request,
-                                "A new OCPI Session has been started in `PENDING` status. "
-                                f"Store the Session ID, **{markdown_escape(session.uid)}**. "
-                                "You will need it for `meter_values` and `stop_session`. Next, you can "
-                                f'<a href="{next_url}">start the charging session</a>. '
-                                f"Make sure to use the Token **{get_token_id(token)}**, "
-                                f"which has been authorized. The authorization expires in 15 minutes.",
-                            )
+                        session = create_session(
+                            credentials=route_through.credentials,
+                            authorization_reference=authorization.authorization_reference,
+                            authorization_method=authorization.auth_method,
+                            billed_to=authorization.msp,
+                            ad_hoc_token=ad_hoc_token,
+                            evse_uid=evse.uid,
+                            connector_id=None,
+                            location_id=evse.location.uid,
+                            hub_session_id=authorization.hub_session_id,
+                        )
+                        save_to_session_cache(
+                            route=find_route_from_credentials(
+                                route_through.credentials, OcpiModuleEnum.SESSIONS
+                            ),
+                            session=session,
+                        )
+                        messages.success(
+                            request,
+                            "A new OCPI Session has been started in `PENDING` status. "
+                            f"Store the Session ID, **{markdown_escape(session.uid)}**. "
+                            "You will need it for `meter_values` and `stop_session`. Next, you can "
+                            f'<a href="{next_url}">start the charging session</a>. '
+                            f"Make sure to use the Token **{get_token_id(token)}**, "
+                            f"which has been authorized. The authorization expires in 15 minutes.",
+                        )
 
                     if authorization:
                         data = dict(
@@ -651,9 +674,9 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(session_serializer.data)
 
                     # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
-                    # TODO Reject authorization for stale authorizations
-                    authorization: TokenAuthorization = (
-                        get_token_authorization_from_session(session)
+                    authorization: TokenAuthorization = authorize_token(
+                        session.cdr_token.uid,
+                        evse_id=session.evse.evse_id if session.evse else None,
                     )
 
                     if not authorization:
@@ -951,7 +974,7 @@ class ChargePointViewSet(FlowchartViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except KeyError:
-            logger.exception()
+            logger.exception("Unable to find eMSP remote command from cache")
             return Response(
                 dict(
                     status_text=f"Unable to find eMSP remote command from cache, "

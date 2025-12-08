@@ -266,7 +266,11 @@ class TestStartSessionAPI:
         )
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         connector = ConnectorFactory(
             uid=valid_start_session_data["connector_id"], evse=evse
         )
@@ -317,7 +321,11 @@ class TestStartSessionAPI:
         )
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         response = client.post(
@@ -449,7 +457,11 @@ class TestStartSessionAPI:
         client.credentials = nl_tst_credentials_role.credentials
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         responses.add(
@@ -504,7 +516,11 @@ class TestStartSessionAPI:
     ):
         client.credentials = nl_tst_credentials_role.credentials
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         responses.add(
@@ -562,7 +578,11 @@ class TestStartSessionAPI:
         )
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         _ = ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         response = client.post(
@@ -663,7 +683,11 @@ class TestStartSessionAPI:
         )
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
-        evse = EvseFactory(uid=valid_start_session_data["evse_uid"], location=location)
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
         connector = ConnectorFactory(
             uid=valid_start_session_data["connector_id"], evse=evse
         )

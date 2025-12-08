@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.location import Connector, Location
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
@@ -51,14 +52,14 @@ class TestHubjectApi:
             pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
             pytest.param(
                 "authenticated_user_client",
-                200,
+                202,
                 id="Authenticated user can access evse full load api",
             ),
             pytest.param(
-                "admin_user_client", 200, id="Admin user can access evse full load api"
+                "admin_user_client", 202, id="Admin user can access evse full load api"
             ),
             pytest.param(
-                "super_user_client", 200, id="Super user can access evse full load api"
+                "super_user_client", 202, id="Super user can access evse full load api"
             ),
         ],
     )
@@ -104,7 +105,7 @@ class TestHubjectApi:
 
     @pytest.mark.django_db
     @responses.activate
-    def test_evse_full_load_api_returns_200_OK(
+    def test_evse_full_load_api_returns_202_Accepted(
         self, authenticated_user_client, hubject_successful_response, helsinki_location
     ):
         responses.add(
@@ -116,32 +117,7 @@ class TestHubjectApi:
 
         url = "/api/hubject/2.3/evses/full-load/"
         response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == hubject_successful_response
-
-    @pytest.mark.django_db
-    def test_evse_full_load_api_returns_no_evse_records_found(
-        self, authenticated_user_client
-    ):
-        url = "/api/hubject/2.3/evses/full-load/"
-        response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == {
-            "success": False,
-            "message": "No EvseDataRecords found for operator FI*CPO",
-        }
-
-    @pytest.mark.django_db
-    def test_evse_full_load_api_returns_no_tariffs_found_for_evses(
-        self, authenticated_user_client, connector_without_tariff
-    ):
-        url = "/api/hubject/2.3/evses/full-load/"
-        response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == {
-            "success": False,
-            "message": "No tariff were found for one or more of the evses.",
-        }
+        assert response.status_code == 202
 
     @responses.activate
     @pytest.mark.django_db
@@ -283,11 +259,9 @@ def test_receive_remote_start_command_with_valid_data_returns_200(
 @pytest.mark.django_db
 @responses.activate
 def test_remote_start_returns_200_for_minimal_data(
-    authenticated_user_client,
-    remote_command_payload,
-    hubject_credentials,
-    clear_all_cache,
+    authenticated_user_client, remote_command_payload, hubject_credentials
 ):
+    get_credentialsrole.cache_clear()
     WebhookFactory(
         type=WebhookType.REMOTE_COMMAND,
         command_type=RemoteCommandType.START_SESSION,

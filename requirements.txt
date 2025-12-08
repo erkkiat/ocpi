@@ -58,7 +58,6 @@ django-ninja~=1.3.0
 responses~=0.25.3
 boto3==1.35.76
 python-json-logger==3.2.1
-newrelic==10.4.0
 locust==2.33.2
 deepdiff==8.4.2
 django-axes==7.0.2

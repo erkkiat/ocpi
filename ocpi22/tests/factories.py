@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import factory
@@ -33,6 +34,8 @@ from integrations.hubject.schemas import (
     ERoamingPushPricingProductData,
     PricingProductData,
     PricingProductDataRecord,
+    ERoamingPushEVSEPricing,
+    EVSEPricingItem,
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
@@ -110,6 +113,7 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     last_connection = factory.Faker("date_time", tzinfo=pytz.UTC)
     version = "22"
     valid = True
+    meter_value_frequency = 300
 
 
 class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):
@@ -419,6 +423,25 @@ class ERoamingPushEvseDataFactory(factory.Factory):
     )
 
 
+class EvsePricingItemFactory(factory.Factory):
+    class Meta:
+        model = EVSEPricingItem
+
+    EvseID = "BE*SMP*ESDEVSEID"
+    ProviderID = "DE*SMP"
+    EvseIDProductList = ["SMP1"]
+
+
+class ERoamingPushEVSEPricingFactory(factory.Factory):
+    class Meta:
+        model = ERoamingPushEVSEPricing
+
+    ActionType = ActionType.fullLoad
+    EVSEPricing = factory.List(
+        [factory.SubFactory("ocpi22.tests.factories.EvsePricingItemFactory")]
+    )
+
+
 class PricingProductDataRecordFactory(factory.Factory):
     class Meta:
         model = PricingProductDataRecord
@@ -464,12 +487,12 @@ class SolidTariffFactory(factory.django.DjangoModelFactory):
 
     external_id = f"SD{int(time.time())}"
     currency = "EUR"
-    price_per_kwh = 0.2
-    price_per_min = 0.3
-    price_per_hr = 0.3
-    parking_price_per_min = 0.1
-    parking_price_per_hr = 0.2
-    price_flat = 0.3
+    price_per_kwh = Decimal("0.2")
+    price_per_min = Decimal("0.3")
+    price_per_hr = Decimal("0.3")
+    parking_price_per_min = Decimal("0.1")
+    parking_price_per_hr = Decimal("0.2")
+    price_flat = Decimal("0.3")
     vat_percentage = 0.2
     msp = factory.SubFactory(
         CredentialsRoleFactory, role="EMSP", country_code="DE", party_id="ICE"

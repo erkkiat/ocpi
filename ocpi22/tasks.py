@@ -2,6 +2,7 @@ import os
 import random
 import ssl
 from datetime import timedelta, datetime
+from functools import lru_cache
 from logging import getLogger
 from typing import Literal
 from urllib.parse import urlparse
@@ -9,6 +10,7 @@ from urllib.parse import urlparse
 import celery
 import pytz
 import requests
+from json import JSONDecodeError
 
 from celery import shared_task
 from celery.schedules import crontab
@@ -21,8 +23,11 @@ from rest_framework import status
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from ocpiconnector.settings import setup_sentry
 from util import unwrap
@@ -65,6 +70,12 @@ app.conf.beat_schedule = {
         "task": "ocpi22.tasks.pull_all_objects",
         # 'schedule': 120  # For testing
         "schedule": crontab(hour=str(pull_hour), minute=str(pull_minute)),
+    },
+    "weekly-hubject-evse-full-load": {
+        "task": "ocpi22.tasks.send_hubject_evse_full_load",
+        "schedule": crontab(
+            hour="2", minute="0", day_of_week="0"
+        ),  # Every Sunday at 02:00AM
     },
 }
 
@@ -145,6 +156,7 @@ def get_cert_from_env(var_name: str) -> str | None:
     return val.replace("\\n", "\n").strip()
 
 
+@lru_cache(maxsize=128)
 def get_certificate_loaded_request(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
@@ -182,6 +194,7 @@ def _get_ssl_session_client(
     bind=True,
     retry_backoff=1,
     max_retries=10,
+    ignore_result=True,
 )
 def send_ocpi_request(
     self,
@@ -210,31 +223,88 @@ def send_ocpi_request(
     try:
         request_session = get_certificate_loaded_request(credentials_id)
     except ssl.SSLError:
-        logger.exception(f"SSL error while connecting to {url}.")
-        # Don't retry on SSL errors as they're likely configuration issues
+        logger.exception(f"SSL error while creating session for {url}.")
         return None
 
-    function = getattr(request_session, method.lower())
-    if not function:
+    function = getattr(request_session, method.lower(), None)
+    if function is None:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
-    response: requests.Response = function(**kwargs)
-    if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+    logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
+    timeout = settings.OCPI_REQUEST_TIMEOUT
+
+    try:
+        response: requests.Response = function(
+            timeout=timeout,
+            **kwargs,
         )
-    if response.status_code >= 500 and env == "production":
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+
+    except requests.Timeout:
+        logger.error(
+            f"{url} timed out after {timeout}s, not retrying",
+            extra={"path": url, "method": method},
         )
+        return None
+
+    except requests.RequestException as exc:
+        logger.warning(f"{url} non-retryable requests error", exc_info=exc)
+        return None
+
+    status = response.status_code
+
+    if 300 <= status < 500:
+        logger.error(
+            f"{url} responded with {status}, not retrying",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.content,
+                "status_code": status,
+            },
+        )
+        return None
+
+    if status >= 500:
+        if self.request.is_eager:
+            logger.warning(f"{url} responded with {status}, not retrying")
+            return None
+
+        logger.warning(f"{url} responded with {status}: Retrying")
+        raise self.retry(exc=Exception(f"Server Error for {response.url}: {status}"))
+
+    try:
+        response_json = response.json()
+    except JSONDecodeError:
+        logger.error(
+            f"{url} returned non-JSON response with status {status}",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.text,
+                "status_code": status,
+            },
+        )
+        return None
+
+    ocpi_status_code = response_json.get("status_code", 1000)
+    if ocpi_status_code < 2000:
+        if self.request.is_eager or self.request.called_directly:
+            return response
+        return None
+
+    status_message = response_json.get("status_message", "")
+    logger.error(
+        f"{url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
+        extra={
+            "path": url,
+            "method": response.request.method,
+            "response_data": response_json,
+            "status_code": status,
+        },
+    )
+    return None
 
 
 @shared_task(
@@ -279,6 +349,31 @@ def send_hubject_request(
         logger.warning(f"Request failed for {url}")
         if retry_count < self.max_retries:
             raise self.retry(exc=e)
+
+
+@shared_task(bind=True, max_retries=3, retry_backoff=60)
+def send_hubject_evse_full_load(self) -> None:
+    from integrations.hubject.services import HubjectService
+
+    try:
+        our_party = get_our_party(OcpiRolesEnum.CPO)
+        service = HubjectService()
+        try:
+            payload = service.get_evse_full_load_payload(our_party)
+
+            if payload is None:
+                logger.warning(
+                    f"Failed to create payload for {str(our_party)} during Hubject EVSE FullLoad. No EVSE/location data available",
+                )
+                return
+        except ConnectorTariffNotFoundError:
+            return
+
+        HubjectService.post_evse_full_load(str(our_party), payload)
+
+    except Exception as exc:
+        logger.exception(f"Error updating OICP EVSEs for {str(our_party)}")
+        raise self.retry(exc=exc, countdown=60)
 
 
 @shared_task(max_retries=2, retry_backoff=2)

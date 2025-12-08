@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 from rest_framework import status
 
+from ocpi22.commands.models import CallBacks
 from ocpi22.commands.serializers import CommandResponseType
 from ocpi22.commands.services import (
     StartCommandService,
@@ -571,8 +572,6 @@ class TestStopCommandServices:
         service.webhook_repo = MagicMock()
         service.webhook_repo.get_remote_command_webhook = mock_get_webhook
 
-        from ocpi22.commands.services import StopCommandServices
-
         result = StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
         assert result == mock_webhook
 
@@ -581,9 +580,6 @@ class TestStopCommandServices:
         self, mock_get_webhook
     ):
         mock_get_webhook.return_value = None
-
-        from ocpi22.commands.services import StopCommandServices
-        from django.core.exceptions import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
             StopCommandServices().get_valid_webhook(RemoteCommandType.STOP_SESSION)
@@ -657,8 +653,6 @@ class TestStopCommandServices:
             "response_url": "https://example.com/callback",
         }
 
-        from ocpi22.commands.services import StopCommandServices
-
         StopCommandServices().stop_session(validated_data=validated_data)
 
         mock_send_callback.assert_not_called()
@@ -686,14 +680,41 @@ class TestStopCommandServices:
             "response_url": "https://example.com/callback",
         }
 
-        from ocpi22.commands.services import StopCommandServices
-        from ocpi22.commands.models import CallBacks
-
         StopCommandServices().stop_session(validated_data=validated_data)
 
         callback = CallBacks.objects.filter(session=session).first()
         assert callback is not None
         assert callback.callback_url == validated_data["response_url"]
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StopCommandServices.send_stop_command_webhook")
+    def test_stop_session_does_not_create_callback_record_when_route_through_oicp(
+        self, mock_send_webhook, hubject_credentials
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+        credentials_role = hubject_credentials.roles.first()
+        session = OCPISessionFactory(
+            uid="SESSION_789",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+        )
+
+        validated_data = {
+            "session_id": session.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        StopCommandServices().stop_session(validated_data=validated_data)
+
+        callback = CallBacks.objects.filter(session=session).first()
+        assert callback is None
 
 
 class TestStartCommandServiceHelpers:
@@ -869,12 +890,12 @@ class TestStartCommandServiceStartSession:
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
     def test_start_session_creates_new_session_when_no_existing_session_found(
-        self, mock_send_webhook, clear_all_cache
+        self, mock_send_webhook
     ):
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC123")
-        evse = EvseFactory(uid="EVSE123", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE123", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN123", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -916,7 +937,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC456")
-        evse = EvseFactory(uid="EVSE456", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE456", location=location, status=Evse.AVAILABLE)
         connector1 = ConnectorFactory(uid="CONN_FIRST", evse=evse)
         _ = ConnectorFactory(uid="CONN_SECOND", evse=evse)
         credentials_role = CredentialsRoleFactory()
@@ -1013,7 +1034,8 @@ class TestStartCommandServiceStartSession:
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
     def test_start_session_raises_evse_occupied_error_when_evse_is_not_available(
-        self, mock_send_webhook, clear_all_cache
+        self,
+        mock_send_webhook,
     ):
         location = LocationFactory(uid="LOC222")
         evse = EvseFactory(uid="EVSE222", location=location, status=Evse.BLOCKED)
@@ -1048,7 +1070,7 @@ class TestStartCommandServiceStartSession:
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
     def test_start_session_raises_evse_occupied_error_when_evse_is_charging(
-        self, mock_send_webhook, clear_all_cache
+        self, mock_send_webhook
     ):
         location = LocationFactory(uid="LOC333")
         evse = EvseFactory(uid="EVSE333", location=location, status=Evse.CHARGING)
@@ -1085,7 +1107,7 @@ class TestStartCommandServiceStartSession:
         self,
     ):
         location = LocationFactory(uid="LOC444")
-        evse = EvseFactory(uid="EVSE444", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE444", location=location, status=Evse.AVAILABLE)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1121,7 +1143,7 @@ class TestStartCommandServiceStartSession:
         self,
     ):
         location = LocationFactory(uid="LOC555")
-        evse = EvseFactory(uid="EVSE555", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE555", location=location, status=Evse.AVAILABLE)
         credentials_role = CredentialsRoleFactory()
 
         validated_data = {
@@ -1156,7 +1178,7 @@ class TestStartCommandServiceStartSession:
     ):
         get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC666")
-        evse = EvseFactory(uid="EVSE666", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE666", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN666", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -1401,7 +1423,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC102")
-        evse = EvseFactory(uid="EVSE102", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE102", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN102", evse=evse)
         credentials_role = CredentialsRoleFactory()
 
@@ -1516,7 +1538,7 @@ class TestStartCommandServiceStartSession:
         mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
 
         location = LocationFactory(uid="LOC105")
-        evse = EvseFactory(uid="EVSE105", location=location, status=Evse.BLOCKED)
+        evse = EvseFactory(uid="EVSE105", location=location, status=Evse.AVAILABLE)
         connector = ConnectorFactory(uid="CONN105", evse=evse)
         credentials_role = CredentialsRoleFactory()
 

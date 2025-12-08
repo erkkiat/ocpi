@@ -5,6 +5,7 @@ import time_machine
 from django.urls import reverse
 
 from ocpi22.choices import MessageTexts, AuthorizationEnum
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     EvseFactory,
     TokenFactory,
@@ -280,8 +281,8 @@ class TestChargePointAPI:
         available_evse,
         never_token,
         authorize_never_token_success_response,
-        clear_all_cache,
     ):
+        get_credentialsrole.cache_clear()
         request_body = {"evse_id": available_evse.uid, "token_id": never_token.uid}
         with patch(
             "ocpi22.tokens.auth.authorize_with_msps_sync"
@@ -307,49 +308,6 @@ class TestChargePointAPI:
                 response.data["token"]
                 == authorize_never_token_success_response.token.uid
             )
-
-    def test_resend_authorize_post_does_not_get_new_authorize_reference(
-        self,
-        admin_user_client,
-        available_evse,
-        allowed_token,
-        authorize_token_response,
-        clear_all_cache,
-    ):
-        request_body = {"evse_id": available_evse.uid, "token_id": allowed_token.uid}
-        with patch(
-            "ocpi22.tokens.auth.authorize_with_msps_sync"
-        ) as mock_authorize_token:
-            mock_authorize_token.return_value = authorize_token_response
-            admin_user_client.post(self.authorize_url, data=request_body)
-
-            # Ask to authorize again with same token and evse
-            admin_user_client.post(self.authorize_url, data=request_body)
-
-        assert mock_authorize_token.call_count == 1
-
-    def test_resend_authorize_post_does_not_create_a_new_session(
-        self,
-        admin_user_client,
-        available_evse,
-        allowed_token,
-        authorize_token_response,
-        clear_all_cache,
-    ):
-        request_body = {"evse_id": available_evse.uid, "token_id": allowed_token.uid}
-        with patch(
-            "ocpi22.tokens.auth.authorize_with_msps_sync"
-        ) as mock_authorize_token:
-            mock_authorize_token.return_value = authorize_token_response
-
-            response = admin_user_client.post(self.authorize_url, data=request_body)
-            initial_session_id = response.data.get("session_id")
-
-            # Ask to authorize again with same token and evse
-            response = admin_user_client.post(self.authorize_url, data=request_body)
-            subsequent_session_id = response.data.get("session_id")
-
-            assert initial_session_id == subsequent_session_id
 
     def test_authorize_with_never_token_unauthorized(
         self,

@@ -18,7 +18,7 @@ from django.urls import reverse
 from ninja.errors import HttpError
 from rest_framework.test import APIClient
 
-from ocpi22.ocpi.auth import CertificateAuth, HubjectCertAuth
+from ocpi22.ocpi.auth import CertificateAuth, HubjectCertAuth, get_credentialsrole
 from webhooks.choices import WebhookType, RemoteCommandType
 from webhooks.factories import WebhookFactory
 
@@ -377,8 +377,9 @@ class TestHubjectCertificateAuthIntegration:
     @pytest.mark.django_db
     @responses.activate
     def test_hubject_auth_processes_real_https_request_return_200(
-        self, remote_command_payload, clear_all_cache
+        self, remote_command_payload
     ):
+        get_credentialsrole.cache_clear()
         hubject_client = APIClient()
 
         cert_header = urllib.parse.quote(self.cert)

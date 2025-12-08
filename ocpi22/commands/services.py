@@ -466,6 +466,7 @@ class StartCommandService(RemoteCommandServices):
         if not session:
             location = self._get_location(location_uid=validated_data["location_id"])
             evse = self._get_evse(evse_uid=validated_data["evse_uid"])
+            self._is_evse_available(evse)
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
@@ -508,12 +509,6 @@ class StartCommandService(RemoteCommandServices):
                     f"Invalid result type: {result_str}, defaulting to REJECTED"
                 )
                 result = CommandResponseType.REJECTED
-
-            if result != CommandResponseType.ACCEPTED:
-                self._is_evse_available(evse)
-                return self.create_ocpi_response(
-                    result, message=MessageTexts.get("EV_IS_NOT_CONNECTED")[0]["text"]
-                )
 
             return self.create_ocpi_response(result, message=None)
 
@@ -617,11 +612,12 @@ class StopCommandServices(RemoteCommandServices):
                 CommandResponseType.UNKNOWN_SESSION, "Could not find the session"
             )
 
-        CallBackService.create_callback(
-            session=session,
-            callback_url=validated_data["response_url"],
-            authorization_reference=session.authorization_reference,
-        )
+        if not session.route_through_oicp:
+            CallBackService.create_callback(
+                session=session,
+                callback_url=validated_data["response_url"],
+                authorization_reference=session.authorization_reference,
+            )
         response = self.send_stop_command_webhook(
             payload=validated_data, command_type=RemoteCommandType.STOP_SESSION
         )
