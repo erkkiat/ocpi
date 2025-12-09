@@ -818,13 +818,13 @@ class ApiPutTests(TestCase):
                 "tariff_2_alt_text",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
                 Decimal("4.75"),
-                Decimal("5"),
+                Decimal("4.997"),
             ),
             (
                 "tariff_3_alt_url",
                 dict(stop_kwh=Decimal(20.45)),
-                Decimal("5.63"),
-                Decimal("6.24"),
+                Decimal("5.625"),
+                Decimal("6.238"),
             ),
             # Parking, weekdays, times
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
