@@ -234,6 +234,7 @@ def send_ocpi_request(
 
     logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
     timeout = settings.OCPI_REQUEST_TIMEOUT
+    host = urlparse(url).hostname or url
 
     try:
         response: requests.Response = function(
@@ -243,20 +244,20 @@ def send_ocpi_request(
 
     except requests.Timeout:
         logger.error(
-            f"{url} timed out after {timeout}s, not retrying",
+            f"{host} timed out after {timeout}s, not retrying",
             extra={"path": url, "method": method},
         )
         return None
 
     except requests.RequestException as exc:
-        logger.warning(f"{url} non-retryable requests error", exc_info=exc)
+        logger.warning(f"{host} non-retryable requests error", exc_info=exc)
         return None
 
     status = response.status_code
 
     if 300 <= status < 500:
         logger.error(
-            f"{url} responded with {status}, not retrying",
+            f"{host} responded with {status}, not retrying",
             extra={
                 "path": url,
                 "method": response.request.method,
@@ -268,17 +269,20 @@ def send_ocpi_request(
 
     if status >= 500:
         if self.request.is_eager:
-            logger.warning(f"{url} responded with {status}, not retrying")
+            logger.warning(f"{host} responded with {status}, not retrying")
             return None
 
-        logger.warning(f"{url} responded with {status}: Retrying")
+        logger.warning(
+            f"{host} responded with {status}: Retrying",
+            extra={"path": url, "method": method},
+        )
         raise self.retry(exc=Exception(f"Server Error for {response.url}: {status}"))
 
     try:
         response_json = response.json()
     except JSONDecodeError:
         logger.error(
-            f"{url} returned non-JSON response with status {status}",
+            f"{host} returned non-JSON response with status {status}",
             extra={
                 "path": url,
                 "method": response.request.method,
@@ -296,7 +300,7 @@ def send_ocpi_request(
 
     status_message = response_json.get("status_message", "")
     logger.error(
-        f"{url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
+        f"{host} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
         extra={
             "path": url,
             "method": response.request.method,
