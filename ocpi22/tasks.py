@@ -243,7 +243,7 @@ def send_ocpi_request(
 
     except requests.Timeout:
         logger.error(
-            f"{url} timed out after {timeout}s, not retrying",
+            f"Timed out after {timeout}s, not retrying",
             extra={"path": url, "method": method},
         )
         return None
@@ -253,10 +253,11 @@ def send_ocpi_request(
         return None
 
     status = response.status_code
+    host = urlparse(url).hostname
 
     if 300 <= status < 500:
         logger.error(
-            f"{url} responded with {status}, not retrying",
+            f"{host} responded with {status}, not retrying",
             extra={
                 "path": url,
                 "method": response.request.method,
@@ -278,7 +279,7 @@ def send_ocpi_request(
         response_json = response.json()
     except JSONDecodeError:
         logger.error(
-            f"{url} returned non-JSON response with status {status}",
+            f"{host} returned non-JSON response with status {status}",
             extra={
                 "path": url,
                 "method": response.request.method,
@@ -296,7 +297,7 @@ def send_ocpi_request(
 
     status_message = response_json.get("status_message", "")
     logger.error(
-        f"{url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
+        f"{host} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
         extra={
             "path": url,
             "method": response.request.method,

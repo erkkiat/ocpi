@@ -1,5 +1,6 @@
 import ssl
 from unittest.mock import patch, Mock
+from urllib.parse import urlparse
 
 import pytest
 import requests
@@ -319,7 +320,7 @@ class TestSendOCPIRequest:
         )
 
         assert result is None
-        assert f"{test_url} timed out after 3s, not retrying" in caplog.text
+        assert "Timed out after 3s, not retrying" in caplog.text
 
     @responses.activate
     @pytest.mark.django_db
@@ -392,7 +393,8 @@ class TestSendOCPIRequest:
 
             assert result is None
             assert (
-                f"{test_url} responded with {status_code}, not retrying" in caplog.text
+                f"{urlparse(test_url).hostname} responded with {status_code}, not retrying"
+                in caplog.text
             )
             mock_retry.assert_not_called()
 
@@ -490,7 +492,10 @@ class TestSendOCPIRequest:
         )
 
         assert result is None
-        assert f"{test_url} returned non-JSON response with status 200" in caplog.text
+        assert (
+            f"{urlparse(test_url).hostname} returned non-JSON response with status 200"
+            in caplog.text
+        )
 
     @responses.activate
     @pytest.mark.django_db
@@ -536,7 +541,7 @@ class TestSendOCPIRequest:
 
         assert result is None
         assert (
-            f"{test_url} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying"
+            f"{urlparse(test_url).hostname} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying"
             in caplog.text
         )
 
