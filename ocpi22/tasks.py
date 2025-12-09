@@ -234,7 +234,7 @@ def send_ocpi_request(
 
     logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
     timeout = settings.OCPI_REQUEST_TIMEOUT
-    host = urlparse(url).hostname
+    host = urlparse(url).hostname or url
 
     try:
         response: requests.Response = function(
