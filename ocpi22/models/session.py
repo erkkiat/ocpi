@@ -434,13 +434,6 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         )  # Try round(5.625, 2) without the + 0.001
         self.total_cost_excl_vat = round(result_excl_vat + Decimal(0.0001), 3)
         # If we could figure out a price, it's a success, even if the price is 0.0
-        print(
-            result_incl_vat,
-            self.total_cost_incl_vat,
-            result_excl_vat,
-            self.total_cost_excl_vat,
-        )
-
         return True
 
     def __str__(self):
