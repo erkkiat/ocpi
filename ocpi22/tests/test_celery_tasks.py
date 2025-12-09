@@ -320,7 +320,10 @@ class TestSendOCPIRequest:
         )
 
         assert result is None
-        assert "Timed out after 3s, not retrying" in caplog.text
+        assert (
+            f"{urlparse(test_url).hostname} timed out after 3s, not retrying"
+            in caplog.text
+        )
 
     @responses.activate
     @pytest.mark.django_db
@@ -343,7 +346,9 @@ class TestSendOCPIRequest:
         )
 
         assert result is None
-        assert f"{test_url} non-retryable requests error" in caplog.text
+        assert (
+            f"{urlparse(test_url).hostname} non-retryable requests error" in caplog.text
+        )
 
     @pytest.mark.django_db
     def test_ssl_error_returns_none_and_logs_exception(
@@ -466,7 +471,8 @@ class TestSendOCPIRequest:
 
             assert result is None
             assert (
-                f"{test_url} responded with {status_code}, not retrying" in caplog.text
+                f"{urlparse(test_url).hostname} responded with {status_code}, not retrying"
+                in caplog.text
             )
             mock_retry.assert_not_called()
 

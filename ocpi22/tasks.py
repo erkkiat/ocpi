@@ -234,6 +234,7 @@ def send_ocpi_request(
 
     logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
     timeout = settings.OCPI_REQUEST_TIMEOUT
+    host = urlparse(url).hostname
 
     try:
         response: requests.Response = function(
@@ -243,17 +244,16 @@ def send_ocpi_request(
 
     except requests.Timeout:
         logger.error(
-            f"Timed out after {timeout}s, not retrying",
+            f"{host} timed out after {timeout}s, not retrying",
             extra={"path": url, "method": method},
         )
         return None
 
     except requests.RequestException as exc:
-        logger.warning(f"{url} non-retryable requests error", exc_info=exc)
+        logger.warning(f"{host} non-retryable requests error", exc_info=exc)
         return None
 
     status = response.status_code
-    host = urlparse(url).hostname
 
     if 300 <= status < 500:
         logger.error(
@@ -269,10 +269,13 @@ def send_ocpi_request(
 
     if status >= 500:
         if self.request.is_eager:
-            logger.warning(f"{url} responded with {status}, not retrying")
+            logger.warning(f"{host} responded with {status}, not retrying")
             return None
 
-        logger.warning(f"{url} responded with {status}: Retrying")
+        logger.warning(
+            f"{host} responded with {status}: Retrying",
+            extra={"path": url, "method": method},
+        )
         raise self.retry(exc=Exception(f"Server Error for {response.url}: {status}"))
 
     try:
