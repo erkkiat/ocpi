@@ -64,6 +64,9 @@ class EvseServices:
 
         if settings.ENABLE_HUBJECT:
             role = CredentialsRepository.find_hubject_credentials_role()
+            if not role:
+                logger.error("Hubject credentials role not found")
+                return
             credentials = role.credentials if role else None
             if EvseServices.is_evse_belongs_to_an_allowed_location(credentials, evse):
                 HubjectService.post_eroaming_push_evse_status(evse)
@@ -72,9 +75,6 @@ class EvseServices:
     def is_evse_belongs_to_an_allowed_location(
         credentials: Credentials, evse: Evse
     ) -> bool:
-        if not credentials:
-            return True
-
         allowed_locations = credentials.allowed_locations
         if not allowed_locations:
             return True
