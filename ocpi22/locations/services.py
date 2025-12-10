@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
@@ -68,18 +69,8 @@ class EvseServices:
                 logger.error("Hubject credentials role not found")
                 return
             credentials = role.credentials if role else None
-            if EvseServices.is_evse_belongs_to_an_allowed_location(credentials, evse):
+            if CredentialsService.is_evse_allowed(credentials, evse):
                 HubjectService.post_eroaming_push_evse_status(evse)
-
-    @staticmethod
-    def is_evse_belongs_to_an_allowed_location(
-        credentials: Credentials, evse: Evse
-    ) -> bool:
-        allowed_locations = credentials.allowed_locations
-        if not allowed_locations:
-            return True
-
-        return evse.location.uid in allowed_locations
 
 
 class LocationService:
