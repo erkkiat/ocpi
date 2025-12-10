@@ -409,12 +409,6 @@ class TestHubjectCertificateAuthIntegration:
                 ),
                 patch("ocpi22.ocpi.auth.get_cert_from_env", return_value=self.ca),
             ):
-                from integrations.hubject import api, urls
-                from importlib import reload
-
-                reload(urls)
-                reload(api)
-
                 url = reverse("hubject-api:hubject-remote-start", args=["DE-DCB"])
                 response = hubject_client.post(
                     url, data=remote_command_payload, format="json"
