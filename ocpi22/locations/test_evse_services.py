@@ -59,7 +59,9 @@ class TestEvseServices:
     @pytest.mark.django_db
     @responses.activate
     @override_settings(ENABLE_HUBJECT=True)
-    def test_send_status_updates_successfully(self, evse_patch_payload, evse):
+    def test_send_status_updates_successfully(
+        self, evse_patch_payload, evse, hubject_credentials
+    ):
         with (
             patch(
                 "ocpi22.ocpi.util.OcpiModule.send_all_updates"
