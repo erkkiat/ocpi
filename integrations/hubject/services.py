@@ -91,14 +91,13 @@ class HubjectService:
 
     @staticmethod
     @lru_cache(maxsize=1)
-    def _get_hubject_credentials_id() -> int:
+    def _get_hubject_credentials_id() -> int | None:
         role = CredentialsRepository.find_hubject_credentials_role()
         if settings.ENABLE_HUBJECT:
             if not role or not role.credentials:
                 raise ValueError("Hubject credentials not found.")
-        if role and role.credentials:
             return role.credentials.id
-        raise ValueError("No Hubject credentials available")
+        return None
 
     # This init is used to fail fast execution if the credentials are not present
     def __init__(self):
