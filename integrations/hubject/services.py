@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from typing import Any
 from collections import defaultdict
 from urllib.error import HTTPError
+from functools import lru_cache
 
 import pytz
 import requests
@@ -15,7 +16,6 @@ from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
 
-from integrations.hubject.client import HubjectClient
 from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.ocpi_to_oicp_converter import (
     convert_to_charging_notification_progress,
@@ -72,7 +72,7 @@ from ocpiconnector.ocpi_identities import (
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 from typing import TYPE_CHECKING, Optional
-from ocpi22.tasks import send_hubject_request
+from ocpi22.tasks import send_hubject_request, get_certificate_loaded_request
 
 if TYPE_CHECKING:
     from ocpi22.models.session import Session
@@ -83,8 +83,32 @@ logger = logging.getLogger(__name__)
 
 
 class HubjectService:
-    client = HubjectClient()
+    REQUEST_TIMEOUT = 20
+    CHARGING_NOTIFICATION_TIMEOUT = 40
+    FULL_LOAD_TIMEOUT = 600
+
     converter = SolidToHubjectConverter()
+
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _get_hubject_credentials_id() -> int:
+        role = CredentialsRepository.find_hubject_credentials_role()
+        if settings.ENABLE_HUBJECT:
+            if not role or not role.credentials:
+                raise ValueError("Hubject credentials not found.")
+        if role and role.credentials:
+            return role.credentials.id
+        raise ValueError("No Hubject credentials available")
+
+    # This init is used to fail fast execution if the credentials are not present
+    def __init__(self):
+        if settings.ENABLE_HUBJECT:
+            HubjectService._get_hubject_credentials_id()
+
+    @staticmethod
+    def _get_request() -> requests.Session:
+        cred_id = HubjectService._get_hubject_credentials_id()
+        return get_certificate_loaded_request(cred_id)
 
     @staticmethod
     def get_operator_evse_data(party: Party) -> OperatorEvseData | None:
@@ -259,7 +283,11 @@ class HubjectService:
         try:
             payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, json=payload_json)
+            response = HubjectService._get_request().post(
+                full_load_url,
+                json=payload_json,
+                timeout=HubjectService.FULL_LOAD_TIMEOUT,
+            )
             if response.status_code == 200:
                 return response.json()
             else:
@@ -330,8 +358,11 @@ class HubjectService:
                 CredentialsRole.objects.none(),
             )
         try:
-            response = HubjectService.client.post(
-                url, json=payload_dict, headers={"accept": "application/json"}
+            response = HubjectService._get_request().post(
+                url,
+                json=payload_dict,
+                headers={"accept": "application/json"},
+                timeout=HubjectService.REQUEST_TIMEOUT,
             )
         except requests.exceptions.RequestException:
             logger.exception("Requests exception during authorization with Hubject")
@@ -455,7 +486,11 @@ class HubjectService:
         try:
             payload_json = payload.model_dump(mode="json")
 
-            response = HubjectService.client.post(full_load_url, json=payload_json)
+            response = HubjectService._get_request().post(
+                full_load_url,
+                json=payload_json,
+                timeout=HubjectService.FULL_LOAD_TIMEOUT,
+            )
             if response.status_code == 200:
                 return response.json()
             else:
@@ -557,7 +592,11 @@ class HubjectService:
             }
 
         try:
-            response = HubjectService.client.post(full_load_url, json=payload_json)
+            response = HubjectService._get_request().post(
+                full_load_url,
+                json=payload_json,
+                timeout=HubjectService.FULL_LOAD_TIMEOUT,
+            )
             return response.json()
         except HTTPError as exc:
             logging.error(exc)
@@ -621,8 +660,10 @@ class HubjectService:
         payload,
     ) -> Response:
         url = f"{settings.HUBJECT_URL}notificationmgmt/v11/charging-notifications"
-        response = HubjectService.client.post(
-            url, json=payload.model_dump(mode="json", by_alias=True)
+        response = HubjectService._get_request().post(
+            url,
+            json=payload.model_dump(mode="json", by_alias=True),
+            timeout=HubjectService.CHARGING_NOTIFICATION_TIMEOUT,
         )
         response.raise_for_status()
         return response
@@ -688,11 +729,12 @@ class HubjectService:
             logger.warning("No EVSE provided for hubject status update")
             return
         try:
-            payload = (
-                cls._get_evse_status_full_load_payload()
-                if full_load
-                else cls._get_evse_status_update_payload(evse)
-            )
+            if full_load:
+                payload = cls._get_evse_status_full_load_payload()
+                timeout = cls.FULL_LOAD_TIMEOUT
+            else:
+                payload = cls._get_evse_status_update_payload(evse)
+                timeout = cls.REQUEST_TIMEOUT
         except (ValidationError, ValueError):
             logger.error(
                 "Failed to create payload for EVSE status update", exc_info=True
@@ -711,7 +753,8 @@ class HubjectService:
             f"{settings.HUBJECT_URL}evsepush/v21/operators/{operator_id}/status-records"
         )
 
-        send_hubject_request.delay(payload_json, url, "post")
+        cred_id = HubjectService._get_hubject_credentials_id()
+        send_hubject_request.delay(payload_json, url, timeout, cred_id, method="post")
 
     @staticmethod
     def post_eroaming_charge_detail_record(
@@ -768,8 +811,11 @@ class HubjectService:
             }
 
         retry_policy = dict(max_retries=retries, interval_start=5)
+        cred_id = HubjectService._get_hubject_credentials_id()
         send_hubject_request.apply_async(
-            args=(payload_json, url, "post"), retry=True, retry_policy=retry_policy
+            args=(payload_json, url, HubjectService.REQUEST_TIMEOUT, cred_id, "post"),
+            retry=True,
+            retry_policy=retry_policy,
         )
         logger.info("Hubject CDR post task queued")
         return {
