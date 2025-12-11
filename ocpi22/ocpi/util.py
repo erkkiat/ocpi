@@ -173,6 +173,20 @@ class OcpiModule:
         if isinstance(send_updates_to, (list, tuple)):
             endpoints = find_endpoints_by_roles(send_updates_to, ocpi_module_name)
             for url, token_base64, country_code, party_id, credentials in endpoints:
+                from ocpi22.models.location import Location
+                from ocpi22.credentials.services import CredentialsService
+
+                if isinstance(self, Location):
+                    if not credentials:
+                        logger.error(f"Credentials missing for endpoint {url}")
+                        continue
+                    if not CredentialsService.is_location_allowed(
+                        credentials, self.uid
+                    ):
+                        logger.info(
+                            f"Skipping sending update for {self} to {country_code}*{party_id} as it's not in allowed locations of credentials {credentials.id}"
+                        )
+                        continue
                 try:
                     if path_components:
                         url = urljoin(
