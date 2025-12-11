@@ -1114,7 +1114,8 @@ class TestPushEvseStatus:
             HubjectService._get_evse_status_update_payload(evse)
 
     @responses.activate
-    def test_post_evse_status_success(self):
+    @pytest.mark.django_db
+    def test_post_evse_status_success(self, hubject_credentials):
         evse = EvseFactory(status="AVAILABLE")
 
         responses.add(
