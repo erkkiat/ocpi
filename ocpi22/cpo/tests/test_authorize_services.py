@@ -96,6 +96,7 @@ class TestHubjectFeatureFlag:
             mock_post.assert_not_called()
 
     @override_settings(ENABLE_HUBJECT=True)
+    @pytest.mark.django_db
     def test_post_eroaming_push_evse_status_execute_once_when_enabled(
         self, hubject_credentials
     ):
