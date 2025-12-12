@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from ocpi22.choices import MessageTexts, AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
+from ocpi22.routing import find_route
 from ocpi22.tests.factories import (
     EvseFactory,
     TokenFactory,
@@ -15,7 +16,7 @@ from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     TariffFactory,
 )
-from ocpi22.tokens.auth import TokenAuthorization
+from ocpi22.tokens.auth import TokenAuthorization, _authorize_token
 
 
 @pytest.fixture
@@ -30,6 +31,13 @@ def charging_request_body(available_evse):
         "status": "CHARGING",
         "timestamp": "2021-01-01T00:00:00Z",
     }
+
+
+@pytest.fixture(autouse=True)
+def clear_authorize_token_cache():
+    get_credentialsrole.cache_clear()
+    _authorize_token.cache_clear()
+    find_route.cache_clear()
 
 
 @pytest.fixture
