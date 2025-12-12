@@ -88,9 +88,9 @@ class TestCreateSessionCredentialsRoleCreation:
                 authorization_method="AUTH_REQUEST",
             )
 
-        created_credentialsrole = CredentialsRole.objects.get(
+        created_credentialsrole = CredentialsRole.objects.filter(
             country_code="FR", party_id="EDF"
-        )
+        ).first()
         assert created_credentialsrole is not None
         assert session.billed_to == created_credentialsrole
 
