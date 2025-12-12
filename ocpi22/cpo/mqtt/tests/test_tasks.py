@@ -110,6 +110,39 @@ class TestSaveAndSendEvseStatusUpdates:
             assert evse.status == "AVAILABLE"
             mock_send_status_updates.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "initial_status",
+        [
+            ("AVAILABLE"),
+            ("BLOCKED"),
+            ("CHARGING"),
+            ("INOPERATIVE"),
+            ("PLANNED"),
+            ("REMOVED"),
+            ("RESERVED"),
+            ("OUTOFORDER"),
+            ("UNKNOWN"),
+        ],
+    )
+    def test_save_and_send_evse_status_updates_are_ignored_when_status_does_not_change(
+        self, monkeypatch, db, create_evse, initial_status, caplog
+    ):
+        evse = create_evse(uid="100000004", status=initial_status)
+        monkeypatch.setenv("CPO", "FI*CPO")
+        new_status = initial_status
+
+        with patch(
+            "ocpi22.locations.services.EvseServices.send_status_updates"
+        ) as mock_send_status_updates:
+            save_and_send_evse_status_updates.run("100000004", new_status)
+
+            evse.refresh_from_db()
+            mock_send_status_updates.assert_not_called()
+            assert (
+                f"Evse status for evse_uid:{evse.uid} and evse_id:{evse.evse_id} is already {initial_status}, skipping update"
+                in caplog.text
+            )
+
 
 class TestUpdateMeterValuesAsync:
     @pytest.fixture
