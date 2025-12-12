@@ -130,12 +130,12 @@ def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
     if not evse:
         logger.warning(f"Evse not found for uid:{evse_uid} and evse_id:{evse_id}")
         return
+    status = EvseServices.ocpp_to_evse_status(status)
     if evse.status == status:
         logger.info(
             f"Evse status for evse_uid:{evse_uid} and evse_id:{evse_id} is already {status}, skipping update"
         )
         return
-    status = EvseServices.ocpp_to_evse_status(status)
     evse.status = status
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])
