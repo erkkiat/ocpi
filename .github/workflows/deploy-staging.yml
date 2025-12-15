@@ -8,6 +8,10 @@ on:
     branches:
       - develop
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   lint:
     name: Lint Code
@@ -93,15 +97,20 @@ jobs:
           path: htmlcov/
 
   build-and-push-staging:
-    name: Build and Push Docker Image to Staging ECR
+    name: Build and Push Docker Image to Staging ECR + Deploy via SSM
     environment: staging
     runs-on: linux-arm64
     needs: test
     if: github.event_name == 'push'
 
     env:
+      AWS_REGION: ${{ secrets.SMP_AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.SMP_AWS_ACCOUNT_ID }}
       ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
       FARMS: "f3"
+      SSM_DOCUMENT_NAME: SolidRoam-Deploy
+      TARGET_TAG_COMPONENT: solidroam
+      TARGET_TAG_STAGE: farm3
 
     steps:
       - name: Checkout code
@@ -113,27 +122,35 @@ jobs:
       - name: Enable BuildKit
         run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.SMP_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.SMP_STAGING_DEPLOY_ROLE_ARN }}
           aws-region: ${{ secrets.SMP_AWS_REGION }}
 
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set Docker Image Tag
+      - name: Set Docker Image Tag + Deploy ID
         id: set_tag
+        shell: bash
         run: |
+          set -euo pipefail
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"   # develop-<shortsha>
+          DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "DEPLOYID=${DEPLOYID}" >> $GITHUB_ENV
+
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "DEPLOYID=${DEPLOYID}"
 
       - name: Build Base Image Once
         run: |
+          set -euo pipefail
           echo "Building base image once with tag: $IMAGE_TAG"
           docker buildx build \
             --platform linux/arm64 \
@@ -145,6 +162,7 @@ jobs:
 
       - name: Tag and Push Base Image to Each Farm
         run: |
+          set -euo pipefail
           for farm in $FARMS; do
               repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
@@ -169,3 +187,68 @@ jobs:
           version: ${{ env.IMAGE_TAG }}
           set_commits: auto
           finalize: true
+
+      - name: Deploy to farm3 via SSM
+        id: ssm_deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Sending SSM deploy: IMAGETAG=${IMAGE_TAG}, DEPLOYID=${DEPLOYID}"
+          echo "Target tags: component=${TARGET_TAG_COMPONENT}, stage=${TARGET_TAG_STAGE}"
+          echo "Document: ${SSM_DOCUMENT_NAME}"
+          echo "Region: ${AWS_REGION}"
+
+          COMMAND_ID=$(
+            aws ssm send-command \
+              --document-name "${SSM_DOCUMENT_NAME}" \
+              --targets "Key=tag:component,Values=${TARGET_TAG_COMPONENT}" "Key=tag:stage,Values=${TARGET_TAG_STAGE}" \
+              --max-concurrency "1" \
+              --max-errors "0" \
+              --comment "staging deploy ${IMAGE_TAG} (${DEPLOYID})" \
+              --parameters "{\"IMAGETAG\":[\"${IMAGE_TAG}\"],\"DEPLOYID\":[\"${DEPLOYID}\"]}" \
+              --region "${AWS_REGION}" \
+              --query "Command.CommandId" \
+              --output text
+          )
+
+          echo "SSM CommandId=${COMMAND_ID}"
+          echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
+
+          aws ssm wait command-executed \
+            --command-id "${COMMAND_ID}" \
+            --region "${AWS_REGION}" || true
+
+          STATUS=$(
+            aws ssm list-command-invocations \
+              --command-id "${COMMAND_ID}" \
+              --details \
+              --region "${AWS_REGION}" \
+              --query "CommandInvocations[0].Status" \
+              --output text
+          )
+
+          echo "SSM status: ${STATUS}"
+          if [[ "${STATUS}" != "Success" ]]; then
+            exit 1
+          fi
+
+      - name: Show Deployment Logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND_ID="${{ steps.ssm_deploy.outputs.command_id }}"
+
+          if [[ -z "${COMMAND_ID}" ]]; then
+            echo "No COMMAND_ID captured (send-command likely failed)."
+            exit 0
+          fi
+
+          echo "=== Deployment Logs (CommandId=${COMMAND_ID}) ==="
+          aws ssm list-command-invocations \
+            --command-id "${COMMAND_ID}" \
+            --details \
+            --region "${AWS_REGION}" \
+            --query "CommandInvocations[*].[InstanceId,Status,CommandPlugins[0].Output]" \
+            --output text || true
