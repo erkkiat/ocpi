@@ -122,6 +122,19 @@ jobs:
       - name: Enable BuildKit
         run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
+      - name: Debug GitHub OIDC context
+        run: |
+          echo "GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}"
+          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "GITHUB_REF=${GITHUB_REF}"
+          echo "GITHUB_REF_NAME=${GITHUB_REF_NAME}"
+          echo "GITHUB_SHA=${GITHUB_SHA}"
+          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}"
+          echo "GITHUB_RUN_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
+          echo "SMAPPEE_DEPLOY_ROLE_ARN=${{ secrets.SMAPPEE_DEPLOY_ROLE_ARN }}"
+          echo "SMAPPEE_AWS_REGION=${{ secrets.SMAPPEE_AWS_REGION }}"
+          echo "ECR_REPO_URL=${ECR_REPO_URL}"
+          echo "SMAPPEE_AWS_ACCOUNT_ID=${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}"
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
