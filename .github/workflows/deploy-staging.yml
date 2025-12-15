@@ -215,23 +215,45 @@ jobs:
           echo "SSM CommandId=${COMMAND_ID}"
           echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
 
-          aws ssm wait command-executed \
-            --command-id "${COMMAND_ID}" \
-            --region "${AWS_REGION}" || true
+          # ---- 5-minute bounded wait for terminal state ----
+          TIMEOUT_SECONDS=300
+          POLL_INTERVAL=10
+          DEADLINE=$((SECONDS + TIMEOUT_SECONDS))
 
-          STATUS=$(
-            aws ssm list-command-invocations \
-              --command-id "${COMMAND_ID}" \
-              --details \
-              --region "${AWS_REGION}" \
-              --query "CommandInvocations[0].Status" \
-              --output text
-          )
+          while true; do
+            STATUS=$(
+              aws ssm list-command-invocations \
+                --command-id "${COMMAND_ID}" \
+                --details \
+                --region "${AWS_REGION}" \
+                --query "CommandInvocations[0].Status" \
+                --output text
+            )
 
-          echo "SSM status: ${STATUS}"
-          if [[ "${STATUS}" != "Success" ]]; then
-            exit 1
-          fi
+            echo "SSM status: ${STATUS}"
+
+            case "${STATUS}" in
+              Success)
+                echo "Deployment completed successfully."
+                break
+                ;;
+              Failed|Cancelled|TimedOut)
+                echo "Deployment reached terminal failure state: ${STATUS}"
+                exit 1
+                ;;
+              Pending|InProgress|Delayed|Cancelling)
+                if (( SECONDS >= DEADLINE )); then
+                  echo "Deployment did not finish within ${TIMEOUT_SECONDS}s (5 minutes)."
+                  exit 1
+                fi
+                sleep "${POLL_INTERVAL}"
+                ;;
+              *)
+                echo "Unexpected SSM status: ${STATUS}"
+                exit 1
+                ;;
+            esac
+          done
 
       - name: Show Deployment Logs
         if: always()
