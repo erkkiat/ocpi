@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.template.defaultfilters import truncatechars
 from django.utils.html import format_html, escape
 from django.urls import reverse
 from django.utils import timezone
@@ -80,7 +81,8 @@ class WebhookEventInline(admin.TabularInline):
 @admin.register(Webhook)
 class WebhookAdmin(admin.ModelAdmin):
     list_display = [
-        "url",
+        "id",
+        "short_url",
         "type",
         "command_type",
         "active",
@@ -119,6 +121,14 @@ class WebhookAdmin(admin.ModelAdmin):
         "test_webhooks",
         "retry_failed_events",
     ]
+
+    @admin.display(description="URL")
+    def short_url(self, obj):
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>',
+            obj.url,
+            truncatechars(obj.url, 13),
+        )
 
     def get_queryset(self, request):
         return (
