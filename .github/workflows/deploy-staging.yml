@@ -123,19 +123,6 @@ jobs:
       - name: Enable BuildKit
         run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
-      - name: Debug GitHub OIDC context
-        run: |
-          echo "GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}"
-          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
-          echo "GITHUB_REF=${GITHUB_REF}"
-          echo "GITHUB_REF_NAME=${GITHUB_REF_NAME}"
-          echo "GITHUB_SHA=${GITHUB_SHA}"
-          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}"
-          echo "GITHUB_RUN_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
-          echo "SMAPPEE_DEPLOY_ROLE_ARN=${{ secrets.SMAPPEE_DEPLOY_ROLE_ARN }}"
-          echo "SMAPPEE_AWS_REGION=${{ secrets.SMAPPEE_AWS_REGION }}"
-          echo "ECR_REPO_URL=${ECR_REPO_URL}"
-          echo "SMAPPEE_AWS_ACCOUNT_ID=${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}"
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -189,18 +176,6 @@ jobs:
 
               echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
-
-      - name: Create Sentry Release (staging)
-        uses: getsentry/action-release@v3
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-        with:
-          environment: staging
-          version: ${{ env.IMAGE_TAG }}
-          set_commits: auto
-          finalize: true
 
       - name: Deploy to farm3 via SSM
         id: ssm_deploy
@@ -313,3 +288,15 @@ jobs:
               end)
             '
           done
+
+      - name: Create Sentry Release (staging)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: staging
+          release: ${{ env.IMAGE_TAG }}
+          set_commits: auto
+          finalize: true
