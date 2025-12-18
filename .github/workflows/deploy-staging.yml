@@ -279,7 +279,7 @@ jobs:
             echo "----- ${iid} -----"
             echo "$data" | jq -r '
               "Status: \(.Status) (\(.StatusDetails // "n/a")), RC: \(.ResponseCode // "n/a")",
-              "STDOUT:\n\(.Stdout // \"\")\n\nSTDERR:\n\(.Stderr // \"\")"
+              "STDOUT:\n\(.Stdout // "")\n\nSTDERR:\n\(.Stderr // "")"
             '
           done
 
