@@ -96,21 +96,21 @@ jobs:
           name: HTML Coverage Report
           path: htmlcov/
 
-  build-and-push-staging:
-    name: Build and Push Docker Image to Staging ECR + Deploy via SSM
+  build-staging:
+    name: Build and Push Docker Image to Staging ECR
     environment: staging
     runs-on: linux-arm64
     needs: test
     if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
+      deploy_id: ${{ steps.set_tag.outputs.deploy_id }}
 
     env:
       AWS_REGION: ${{ secrets.SMAPPEE_AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}
       ECR_REPO_URL: ${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMAPPEE_AWS_REGION }}.amazonaws.com
       FARMS: "f3"
-      SSM_DOCUMENT_NAME: Solidroam-GHA-Deployment
-      TARGET_TAG_COMPONENT: solidroam
-      TARGET_TAG_STAGE: farm3
       AWS_PAGER: ""
 
     steps:
@@ -143,8 +143,8 @@ jobs:
           IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"   # develop-<shortsha>
           DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-          echo "DEPLOYID=${DEPLOYID}" >> $GITHUB_ENV
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
 
           echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "DEPLOYID=${DEPLOYID}"
@@ -152,10 +152,10 @@ jobs:
       - name: Build Base Image Once
         run: |
           set -euo pipefail
-          echo "Building base image once with tag: $IMAGE_TAG"
+          echo "Building base image once with tag: ${{ steps.set_tag.outputs.image_tag }}"
           docker buildx build \
             --platform linux/arm64 \
-            -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" \
+            -t "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" \
             -f ./Dockerfile \
             --cache-from=type=gha,scope=staging-build \
             --cache-to=type=gha,mode=max,scope=staging-build \
@@ -166,16 +166,39 @@ jobs:
           set -euo pipefail
           for farm in $FARMS; do
               repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
+              full_image_url_with_tag="$repo_url:${{ steps.set_tag.outputs.image_tag }}"
 
               echo "Tagging base image for farm $farm..."
-              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$full_image_url_with_tag"
+              docker tag "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" "$full_image_url_with_tag"
 
               echo "Pushing image to ECR: $full_image_url_with_tag"
               docker push "$full_image_url_with_tag"
 
               echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
+
+  deploy-staging:
+    name: Deploy to Staging via SSM
+    environment: staging
+    runs-on: linux-arm64
+    needs: build-staging
+    if: github.event_name == 'push'
+
+    env:
+      AWS_REGION: ${{ secrets.SMAPPEE_AWS_REGION }}
+      SSM_DOCUMENT_NAME: Solidroam-GHA-Deployment
+      TARGET_TAG_COMPONENT: solidroam
+      TARGET_TAG_STAGE: farm3
+      AWS_PAGER: ""
+      IMAGE_TAG: ${{ needs.build-staging.outputs.image_tag }}
+      DEPLOYID: ${{ needs.build-staging.outputs.deploy_id }}
+
+    steps:
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SMAPPEE_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
 
       - name: Deploy to farm3 via SSM
         id: ssm_deploy
