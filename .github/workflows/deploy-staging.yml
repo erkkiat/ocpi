@@ -194,6 +194,9 @@ jobs:
       DEPLOYID: ${{ needs.build-staging.outputs.deploy_id }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
