@@ -31,7 +31,6 @@ categories:
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 exclude-labels:
   - 'skip-changelog'
-exclude-title: '(?i)production update'
 version-resolver:
   major:
     labels: [ 'major', 'breaking-change' ]  # If PR has 'major', bump major (e.g., v1.0.0 → v2.0.0)
