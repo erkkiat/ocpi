@@ -142,6 +142,7 @@ jobs:
       ECR_REPO_URL: ${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMAPPEE_AWS_REGION }}.amazonaws.com
       FARMS: "f1"
       AWS_PAGER: ""
+      IMAGE_TAG: ${{ needs.tag-and-release-draft.outputs.release_tag }}
 
     steps:
       - name: Checkout code
@@ -168,7 +169,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          IMAGE_TAG="${{ needs.tag-and-release-draft.outputs.release_tag }}"
           DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
@@ -179,7 +179,6 @@ jobs:
       - name: Build Base Image Once
         run: |
           set -euo pipefail
-          IMAGE_TAG="${{ needs.tag-and-release-draft.outputs.release_tag }}"
           echo "Building base image once with tag: $IMAGE_TAG"
           docker buildx build \
             --platform linux/arm64 \
@@ -192,7 +191,6 @@ jobs:
       - name: Tag and Push Base Image to Each Farm
         run: |
           set -euo pipefail
-          IMAGE_TAG="${{ needs.tag-and-release-draft.outputs.release_tag }}"
           for farm in $FARMS; do
               repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
               full_image_url_with_tag="$repo_url:$IMAGE_TAG"
