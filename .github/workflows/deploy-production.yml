@@ -346,7 +346,7 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
         with:
           environment: production
-          version: ${{ env.IMAGE_TAG }}
+          release: ${{ env.IMAGE_TAG }}
           set_commits: auto
           finalize: true
 
