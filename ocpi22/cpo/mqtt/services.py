@@ -106,7 +106,9 @@ def process_status_update_data(message) -> None:
 
     evse_data = evse_schema.model_dump(mode="json")
     try:
-        save_and_send_evse_status_updates.apply_async(kwargs=evse_data, expires=35)
+        save_and_send_evse_status_updates.apply_async(
+            args=[evse_data["evse_uid"], evse_data["status"]], expires=35
+        )
     except OperationalError:
         logger.exception("Celery operational error")
     except Exception:

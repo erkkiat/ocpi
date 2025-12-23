@@ -439,7 +439,7 @@ class TestProcessStatusUpdateData:
             process_status_update_data(smappee_status_update_message)
 
             mock_save_and_send_evse_status_updates_task.assert_called_once_with(
-                kwargs=message_dict, expires=35
+                args=[message_dict["evse_uid"], message_dict["status"]], expires=35
             )
 
 
