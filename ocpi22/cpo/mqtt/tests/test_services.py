@@ -374,7 +374,11 @@ class TestProcessStatusUpdateData:
         self, smappee_status_update_message, caplog
     ):
         evse_status = MagicMock(spec=EvseStatusUpdate)
-        evse_status.model_dump.return_value = '{"unknown_field" "d80b60c1-751e-43b5-868b-9a60a41c5456", "status" "AVAILABLE"}'
+        evse_status.model_dump.return_value = {
+            "invalid_field": "invalid",
+            "status": "AVAILABLE",
+            "evse_uid": "d80b60c1-751e-43b5-868b-9a60a41c5456",
+        }
 
         with (
             patch.object(
@@ -398,9 +402,11 @@ class TestProcessStatusUpdateData:
         self, smappee_status_update_message, caplog, db
     ):
         evse_status = MagicMock(spec=EvseStatusUpdate)
-        evse_status.model_dump.return_value = (
-            '{"invalid": "d80b60c1-751e-43b5-868b-9a60a41c5456", "status": "AVAILABLE"}'
-        )
+        evse_status.model_dump.return_value = {
+            "evse_uid": "d80b60c1-751e-43b5-868b-9a60a41c5456",
+            "status": "AVAILABLE",
+            "invalid_field": "invalid",
+        }
 
         with (
             patch.object(
