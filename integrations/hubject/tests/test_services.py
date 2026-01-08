@@ -1921,7 +1921,7 @@ class TestHubjectAuthorizeRemoteStop:
     ):
         response_data = {"data": {"result": "UNKNOWN_SESSION"}}
         with pytest.raises(HubjectRemoteCommandError) as exc_info:
-            self.hubject_service._validate_command_response(response_data)
+            self.hubject_service._validate_command_response(response_data, None)
 
         assert exc_info.value.args[0] == "Session not found"
         assert exc_info.value.error_code == "400"
