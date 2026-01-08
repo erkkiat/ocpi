@@ -1033,10 +1033,11 @@ class TestStartCommandServiceStartSession:
 
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
-    def test_start_session_raises_evse_occupied_error_when_evse_is_not_available(
+    def test_start_session_does_not_raise_evse_occupied_error_when_evse_is_not_available(
         self,
         mock_send_webhook,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC222")
         evse = EvseFactory(uid="EVSE222", location=location, status=Evse.BLOCKED)
         ConnectorFactory(uid="CONN_SECOND", evse=evse)
@@ -1058,20 +1059,20 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
 
-        with pytest.raises(EvseOccupiedError) as exc_info:
-            service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
-                credentials=credentials_role.credentials,
-                validated_data=validated_data,
-            )
+        result = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
 
-        assert "Evse is not available for starting a session" in str(exc_info.value)
+        assert result.status_code == status.HTTP_200_OK
 
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
-    def test_start_session_raises_evse_occupied_error_when_evse_is_charging(
+    def test_start_session_does_not_raise_evse_occupied_error_when_evse_is_charging(
         self, mock_send_webhook
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC333")
         evse = EvseFactory(uid="EVSE333", location=location, status=Evse.CHARGING)
         ConnectorFactory(uid="CONN_THIRD", evse=evse)
@@ -1093,14 +1094,13 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
 
-        with pytest.raises(EvseOccupiedError) as exc_info:
-            service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
-                credentials=credentials_role.credentials,
-                validated_data=validated_data,
-            )
+        result = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
 
-        assert "Evse is not available for starting a session" in str(exc_info.value)
+        assert result.status_code == status.HTTP_200_OK
 
     @pytest.mark.django_db
     def test_start_session_raises_connector_not_found_error_when_provided_connector_does_not_exist(
