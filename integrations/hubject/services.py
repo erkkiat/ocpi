@@ -978,7 +978,9 @@ class HubjectService:
             validated_data=validated_data,
             hub_session_id=remote_start_command.session_id.root,
         )
-        self._validate_command_response(response.data)
+        self._validate_command_response(
+            response.data, validated_data.get("evse_uid", None)
+        )
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
             validated_data.get("authorization_reference"),
@@ -1019,7 +1021,9 @@ class HubjectService:
         }
         return data
 
-    def _validate_command_response(self, response_data: dict) -> None:
+    def _validate_command_response(
+        self, response_data: dict, evse_uid: str | None
+    ) -> None:
         from ocpi22.commands.serializers import CommandResponseType
 
         data = response_data["data"]
@@ -1038,8 +1042,18 @@ class HubjectService:
             logger.error(
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
+            if evse_uid:
+                evse = Evse.objects.filter(uid=evse_uid).first()
+                if evse and evse.status != Evse.AVAILABLE:
+                    raise HubjectRemoteCommandError(
+                        "602",
+                        "Evse is already Occupied",
+                        data={"accepted_status": False},
+                    )
             raise HubjectRemoteCommandError(
-                "021", "Remote command was rejected", data={"accepted_status": False}
+                "021",
+                "Remote command was rejected",
+                data={"accepted_status": False},
             )
         logger.info(f"Hubject remote command was accepted. {data}")
         return
@@ -1080,7 +1094,7 @@ class HubjectService:
                 validated_data=validated_data,
             )
 
-            self._validate_command_response(response.data)
+            self._validate_command_response(response.data, None)
 
             return ERoamingAcknowledgment(
                 result=True,
