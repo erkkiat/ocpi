@@ -1512,7 +1512,7 @@ class TestHubjectAuthorizeRemoteStart:
             responses.add(
                 responses.POST,
                 "http://localhost/api/cpo/v2/chargepoint/start-session/",
-                json={"data": {"result": "REJECTED"}},
+                json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
         evse.status = "OUTOFORDER"
@@ -1521,10 +1521,8 @@ class TestHubjectAuthorizeRemoteStart:
             mock_remote_start_command
         )
 
-        assert result.result is False
-        assert result.status_code == StatusCode(
-            Code="602", Description="EVSE is currently occupied"
-        )
+        assert result.result
+        assert result.status_code == StatusCode(Code="000")
 
     @pytest.mark.django_db
     @override_settings(HOSTNAME="localhost")
@@ -1710,19 +1708,19 @@ class TestHubjectAuthorizeRemoteStart:
             ),
         ):
             responses.add(
-                responses.POST, url, json={"data": {"result": "REJECTED"}}, status=200
+                responses.POST, url, json={"data": {"result": "ACCEPTED"}}, status=200
             )
         result = self.hubject_service.process_remote_start_command(
             mock_remote_start_command
         )
 
-        assert result.result is False
-        assert result.status_code.Code == "602"
+        assert result.result
+        assert result.status_code.Code == "000"
 
     @pytest.mark.django_db
     @responses.activate
     @override_settings(HOSTNAME="localhost")
-    def test_process_remote_start_for_occupied_evse_returns_acknowledgment_false(
+    def test_process_remote_start_for_occupied_evse_returns_acknowledgment_true(
         self,
         mock_remote_start_command,
         evse,
@@ -1738,8 +1736,8 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-                json={"data": {"result": "REJECTED"}},
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
+                json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
         evse.status = "CHARGING"
@@ -1750,10 +1748,8 @@ class TestHubjectAuthorizeRemoteStart:
             mock_remote_start_command
         )
 
-        assert result.result is False
-        assert result.status_code == StatusCode(
-            Code="602", Description="EVSE is currently occupied"
-        )
+        assert result.result
+        assert result.status_code == StatusCode(Code="000")
 
 
 class TestHubjectAuthorizeRemoteStop:
