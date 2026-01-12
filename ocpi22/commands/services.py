@@ -458,6 +458,19 @@ class StartCommandService(RemoteCommandServices):
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
     ) -> OCPIResponse:
+        active_session = self.session_repo.find_active_session_by_evse_uid(
+            evse_uid=validated_data.get("evse_uid"),
+        )
+        if active_session:
+            logger.warning(
+                f"Found existing active session for remote start for evse: {validated_data.get('evse_uid')}"
+            )
+            return OCPIResponse(
+                errors={"evse_status": "Occupied"},
+                status_message="Cannot start - ACTIVE session",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],
