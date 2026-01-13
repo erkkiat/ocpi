@@ -1720,7 +1720,7 @@ class TestHubjectAuthorizeRemoteStart:
     @pytest.mark.django_db
     @responses.activate
     @override_settings(HOSTNAME="localhost")
-    def test_process_remote_start_for_occupied_evse_returns_acknowledgment_true(
+    def test_process_remote_start_for_occupied_evse_returns_acknowledgment_false(
         self,
         mock_remote_start_command,
         evse,
@@ -1748,8 +1748,10 @@ class TestHubjectAuthorizeRemoteStart:
             mock_remote_start_command
         )
 
-        assert result.result
-        assert result.status_code == StatusCode(Code="000")
+        assert not result.result
+        assert result.status_code == StatusCode(
+            Code="602", Description="EVSE is occupied"
+        )
 
 
 class TestHubjectAuthorizeRemoteStop:
@@ -1919,9 +1921,14 @@ class TestHubjectAuthorizeRemoteStop:
     def test_validate_command_response_raises_hubject_error_when_session_not_found(
         self,
     ):
-        response_data = {"data": {"result": "UNKNOWN_SESSION"}}
+        response_data = {"result": "UNKNOWN_SESSION"}
+        response = OCPIResponse(
+            status_code=Ocpi.OK,
+            http_status=status.HTTP_200_OK,
+            data=response_data,
+        )
         with pytest.raises(HubjectRemoteCommandError) as exc_info:
-            self.hubject_service._validate_command_response(response_data, None)
+            self.hubject_service._validate_command_response(response, None)
 
         assert exc_info.value.args[0] == "Session not found"
         assert exc_info.value.error_code == "400"

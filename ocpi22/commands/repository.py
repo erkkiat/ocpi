@@ -63,6 +63,17 @@ class SessionRepository:
             .first()
         )
 
+    @staticmethod
+    def find_active_session_by_evse_uid(evse_uid: str) -> Optional[Session]:
+        return (
+            Session.objects.select_related("evse")
+            .filter(
+                evse__uid=evse_uid,
+                status=Session.ACTIVE,
+            )
+            .first()
+        )
+
 
 class CommandRepository:
     def store_command_data(self, command_id: str, command_data: dict):
