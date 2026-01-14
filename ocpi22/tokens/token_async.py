@@ -237,7 +237,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
 
 def authorize_with_msps_sync(
-    token: str, location: Location = None, parties: list[tuple] = None
+    token: str, location: Location, parties: list[tuple] = None
 ):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
@@ -267,6 +267,7 @@ def authorize_with_msps_sync(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
             OcpiModuleEnum.TOKENS,
             endpoint_role=EndpointRoleEnum.SENDER.value,
+            location_uid=location.uid,
         )
 
     data = (
