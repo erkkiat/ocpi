@@ -55,6 +55,9 @@ ruff format
 # Lint check
 ruff check
 
+# Type check
+mypy --config-file=mypy.ini <file_or_directory>
+
 # Run tests
 pytest
 
@@ -67,6 +70,12 @@ pytest
 - Use double quotes for strings
 - Line length: 88 characters max
 - Target Python 3.10 compatibility
+
+**Type Checking (Required for all new code):**
+- All new functions, methods, and classes MUST have explicit type hints
+- Use MyPy with django-stubs for type checking
+- Pre-commit hooks automatically check types for changed files
+- See [CLAUDE.md](CLAUDE.md) for detailed typing examples and patterns
 
 ---
 
