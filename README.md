@@ -75,6 +75,7 @@ pytest
 - All new functions, methods, and classes MUST have explicit type hints
 - Use MyPy with django-stubs for type checking
 - Pre-commit hooks automatically check types for changed files
+- See [TYPING_GUIDE.md](TYPING_GUIDE.md) for comprehensive documentation and examples
 - See [CLAUDE.md](CLAUDE.md) for detailed typing examples and patterns
 
 ---
