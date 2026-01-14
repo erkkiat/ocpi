@@ -91,12 +91,6 @@ jobs:
       - name: Run Pytest in Parallel
         run: pytest -n auto
 
-      - name: Upload HTML Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: HTML Coverage Report
-          path: htmlcov/
-
   tag-and-release-draft:
     name: Create Draft Release
     environment: production
