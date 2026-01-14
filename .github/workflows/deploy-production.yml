@@ -37,7 +37,6 @@ jobs:
     name: Run Tests
     environment: production
     runs-on: linux-arm64
-    needs: lint
     services:
       redis:
         image: redis:latest
@@ -95,7 +94,7 @@ jobs:
     name: Create Draft Release
     environment: production
     runs-on: linux-arm64
-    needs: test
+    needs: [lint, test]
     outputs:
       release_tag: ${{ steps.draft_release.outputs.tag_name }}
 
