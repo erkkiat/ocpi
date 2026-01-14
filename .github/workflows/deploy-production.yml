@@ -111,6 +111,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify Release Tag
+        if: github.event_name == 'push'
         run: |
           RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
           if [ -z "$RELEASE_TAG" ]; then
