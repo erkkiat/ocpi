@@ -36,7 +36,6 @@ jobs:
     name: Run Tests
     environment: staging
     runs-on: linux-arm64
-    needs: lint
     services:
       redis:
         image: redis:latest
@@ -100,7 +99,7 @@ jobs:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
     runs-on: linux-arm64
-    needs: test
+    needs: [lint, test]
     if: github.event_name == 'push'
     outputs:
       image_tag: ${{ steps.set_tag.outputs.image_tag }}
