@@ -283,6 +283,14 @@ jobs:
                 fi
                 sleep "${POLL_INTERVAL}"
                 ;;
+              ""|None)
+                echo "Waiting for command invocation to appear (AWS eventual consistency)..."
+                if (( SECONDS >= DEADLINE )); then
+                  echo "Command invocation never appeared within ${TIMEOUT_SECONDS}s."
+                  exit 1
+                fi
+                sleep "${POLL_INTERVAL}"
+                ;;
               *)
                 echo "Unexpected SSM status: ${STATUS}"
                 exit 1
