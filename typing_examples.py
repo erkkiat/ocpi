@@ -6,7 +6,6 @@ All new services, repositories, and utility functions must follow these typing p
 """
 
 from typing import Optional, List, Dict, Any, Union
-from datetime import datetime
 from django.http import HttpRequest, JsonResponse
 from django.db.models import QuerySet
 
