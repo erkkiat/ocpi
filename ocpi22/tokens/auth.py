@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.tokens.token_async import authorize_with_msps_sync
@@ -267,6 +268,14 @@ def _authorize_token(
     if not token.valid:
         logging.warning(
             f"According to the current information we have locally, the Token {token_uid} is not valid."
+        )
+        return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
+    if location and not CredentialsService.is_location_allowed(
+        token.ocpi_master.credentials, location.uid
+    ):
+        logging.warning(
+            f"Token {token} is not allowed at Location {location} according to Credentials {token.ocpi_master.credentials}",
+            request=request,
         )
         return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
     if token.whitelist == Token.ALWAYS:

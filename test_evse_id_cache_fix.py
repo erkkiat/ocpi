@@ -3,11 +3,11 @@ from unittest.mock import Mock, patch
 import pytest
 from django.core.cache import cache
 
+from ocpi22.tests.factories import LocationFactory, TokenFactory, CredentialsRoleFactory
 from ocpi22.tokens.auth import _authorize_token, authorize_token, TokenAuthorization
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum
-from ocpiconnector.party import Party
 
 
 class TestEvseIdAuthorizationCacheFix:
@@ -17,19 +17,19 @@ class TestEvseIdAuthorizationCacheFix:
 
     @patch("ocpi22.tokens.auth.authorize_with_msps_sync")
     @patch("ocpi22.tokens.auth.find_route")
-    @patch("ocpi22.tokens.auth.Token.get_if_exists")
     @patch("util.redis_store")
+    @pytest.mark.django_db
     def test_authorize_token_different_evse_ids_create_separate_msp_calls(
-        self, mock_redis, mock_token_get, mock_find_route, mock_authorize_with_msps
+        self, mock_redis, mock_find_route, mock_authorize_with_msps
     ):
         mock_redis.get.side_effect = KeyError("Cache miss")
 
-        mock_token = Mock(spec=Token)
-        mock_token.uid = "TOKEN123"
-        mock_token.valid = True
-        mock_token.whitelist = Token.NEVER
-        mock_token.get_party.return_value = Party("DE", "ABC")
-        mock_token_get.return_value = mock_token
+        token = TokenFactory(
+            uid="TOKEN123",
+            ocpi_master=CredentialsRoleFactory(country_code="DE", party_id="ABC"),
+            valid=True,
+            whitelist=Token.NEVER,
+        )
 
         mock_route = Mock()
         mock_route.url = "https://msp.example.com/api"
@@ -57,14 +57,14 @@ class TestEvseIdAuthorizationCacheFix:
         ]
         mock_authorize_with_msps.side_effect = authorization_responses
 
-        mock_location = Mock(spec=Location)
+        mock_location = LocationFactory()
 
         first_evse_auth_result = _authorize_token(
-            mock_token, mock_location, evse_id="DE*ABC*E001"
+            token, mock_location, evse_id="DE*ABC*E001"
         )
 
         second_evse_auth_result = _authorize_token(
-            mock_token, mock_location, evse_id="DE*ABC*E002"
+            token, mock_location, evse_id="DE*ABC*E002"
         )
 
         assert mock_authorize_with_msps.call_count == 2
@@ -79,17 +79,17 @@ class TestEvseIdAuthorizationCacheFix:
 
     @patch("ocpi22.tokens.auth.authorize_with_msps_sync")
     @patch("ocpi22.tokens.auth.find_route")
-    @patch("ocpi22.tokens.auth.Token.get_if_exists")
     @patch("util.redis_store")
+    @pytest.mark.django_db
     def test_authorize_token_same_evse_id_uses_cache(
-        self, mock_redis, mock_token_get, mock_find_route, mock_authorize_with_msps
+        self, mock_redis, mock_find_route, mock_authorize_with_msps
     ):
-        mock_token = Mock(spec=Token)
-        mock_token.uid = "TOKEN123"
-        mock_token.valid = True
-        mock_token.whitelist = Token.NEVER
-        mock_token.get_party.return_value = Party("DE", "ABC")
-        mock_token_get.return_value = mock_token
+        token = TokenFactory(
+            uid="TOKEN123",
+            ocpi_master=CredentialsRoleFactory(country_code="DE", party_id="ABC"),
+            valid=True,
+            whitelist=Token.NEVER,
+        )
 
         mock_route = Mock()
         mock_route.url = "https://msp.example.com/api"
@@ -125,11 +125,11 @@ class TestEvseIdAuthorizationCacheFix:
         mock_redis.get.side_effect = redis_get_side_effect
 
         first_auth_attempt = _authorize_token(
-            mock_token, mock_location, evse_id="DE*ABC*E001"
+            token, mock_location, evse_id="DE*ABC*E001"
         )
 
         cached_auth_attempt = _authorize_token(
-            mock_token, mock_location, evse_id="DE*ABC*E001"
+            token, mock_location, evse_id="DE*ABC*E001"
         )
 
         assert mock_authorize_with_msps.call_count == 1
