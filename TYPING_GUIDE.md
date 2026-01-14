@@ -121,7 +121,7 @@ def get_session_endpoint(request: HttpRequest, session_id: str) -> JsonResponse:
 
 The configuration file is located at the project root. Key settings:
 
-- **Python Version**: 3.12
+- **Python Version**: 3.11
 - **Strict Mode**: Disabled for gradual adoption
 - **Ignore Missing Imports**: Enabled for third-party libraries
 - **Django Plugins**: Commented out (requires full environment)

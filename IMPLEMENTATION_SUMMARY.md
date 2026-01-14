@@ -31,7 +31,7 @@ celery-types==0.22.0
 ### 3. Configuration Files Created
 
 #### mypy.ini
-- Configured for Python 3.12
+- Configured for Python 3.11
 - Sensible defaults for gradual adoption
 - Django plugins commented out (to avoid initialization issues)
 - Excludes migrations, venv, build directories
