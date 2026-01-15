@@ -95,6 +95,7 @@ jobs:
     environment: production
     runs-on: linux-arm64
     needs: [lint, test]
+    if: github.event_name == 'push'
     outputs:
       release_tag: ${{ steps.draft_release.outputs.tag_name }}
 
