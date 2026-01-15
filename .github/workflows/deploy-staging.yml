@@ -36,7 +36,6 @@ jobs:
     name: Run Tests
     environment: staging
     runs-on: linux-arm64
-    needs: lint
     services:
       redis:
         image: redis:latest
@@ -100,7 +99,7 @@ jobs:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
     runs-on: linux-arm64
-    needs: test
+    needs: [lint, test]
     if: github.event_name == 'push'
     outputs:
       image_tag: ${{ steps.set_tag.outputs.image_tag }}
@@ -259,6 +258,14 @@ jobs:
               Pending|InProgress|Delayed|Cancelling)
                 if (( SECONDS >= DEADLINE )); then
                   echo "Deployment did not finish within ${TIMEOUT_SECONDS}s (5 minutes)."
+                  exit 1
+                fi
+                sleep "${POLL_INTERVAL}"
+                ;;
+              ""|None)
+                echo "Waiting for command invocation to appear (AWS eventual consistency)..."
+                if (( SECONDS >= DEADLINE )); then
+                  echo "Command invocation never appeared within ${TIMEOUT_SECONDS}s."
                   exit 1
                 fi
                 sleep "${POLL_INTERVAL}"
