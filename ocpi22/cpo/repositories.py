@@ -88,6 +88,12 @@ class CredentialsRepository:
             country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
         ).first()
 
+    @staticmethod
+    def get_roles_by_party(party: Party) -> list[CredentialsRole]:
+        return CredentialsRole.objects.filter(
+            country_code=party.country_code.upper(), party_id=party.party_id.upper()
+        ).select_related("credentials")
+
 
 class EvseRepository:
     @staticmethod
