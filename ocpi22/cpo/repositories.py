@@ -84,9 +84,13 @@ class CredentialsRepository:
     @staticmethod
     def find_hubject_credentials_role() -> Optional[CredentialsRole]:
         country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
-        return CredentialsRole.objects.filter(
-            country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
-        ).first()
+        return (
+            CredentialsRole.objects.filter(
+                country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
+            )
+            .select_related("credentials")
+            .first()
+        )
 
     @staticmethod
     def get_roles_by_party(party: Party) -> list[CredentialsRole]:

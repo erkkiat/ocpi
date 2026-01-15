@@ -19,6 +19,8 @@ from ocpi22.choices import (
     AuthorizationEnum,
     EndpointRoleEnum,
 )
+from ocpi22.cpo.repositories import CredentialsRepository
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
@@ -192,15 +194,22 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
 
         # Add Hubject task if enabled
         if settings.ENABLE_HUBJECT:
-            tasks.append(
-                asyncio.create_task(
-                    HubjectService.post_authorize_request(
-                        operator_id=str(sender),
-                        token_id=token_id,
-                    ),
-                    name=settings.HUBJECT_OPERATOR_ID,
+            role = await sync_to_async(
+                CredentialsRepository.find_hubject_credentials_role,
+                thread_sensitive=True,
+            )()
+            if role and CredentialsService.is_location_allowed(
+                role.credentials, data.get("location_id", "")
+            ):
+                tasks.append(
+                    asyncio.create_task(
+                        HubjectService.post_authorize_request(
+                            operator_id=str(sender),
+                            token_id=token_id,
+                        ),
+                        name=settings.HUBJECT_OPERATOR_ID,
+                    )
                 )
-            )
 
         remaining_tasks = set(tasks)
 
