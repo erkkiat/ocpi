@@ -162,13 +162,14 @@ async def authorize_with_msps(
 
     first_denial_response = None
     allowed_response = None
-    party_details = TokenAuthorizationService.get_party_details(
-        parties, ssl_contexts, prefetched_roles
-    )
-    service = TokenAuthorizationService()
 
     async with aiohttp.ClientSession() as session:
         if isinstance(token, Token):
+            service = TokenAuthorizationService()
+
+            party_details = service.get_party_details(
+                parties, ssl_contexts, prefetched_roles, token.uid, sender
+            )
             party_details_for_ocpi_master = [
                 p for p in party_details if p["ocpi_master"] == token.ocpi_master
             ]
