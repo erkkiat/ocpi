@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import TYPE_CHECKING
+from urllib.parse import urljoin
 
 from aiohttp import ClientSession
 from django.conf import settings
@@ -9,6 +10,8 @@ from integrations.hubject.services import HubjectService
 from ocpi22.choices import TokenType, MessageTexts
 from ocpi22.models.session import Session
 from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpiconnector.party import Party
+from util import with_trailing_slash
 
 if TYPE_CHECKING:
     from ocpi22.tokens.auth import TokenAuthorization
@@ -57,6 +60,41 @@ class TokenAuthorizationService:
         except Exception as e:
             logger.error(f"Error authorizing known token with owner: {e}")
             return None
+
+    @staticmethod
+    def make_url(base_url, token_id_param):
+        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
+
+    def get_party_details(
+        self,
+        parties: list[tuple],
+        ssl_contexts: tuple[list],
+        prefetched_roles: list,
+        token_uid: str,
+        sender: Party,
+    ) -> list[dict]:
+        from ocpi22.ocpi.headers import make_headers
+
+        party_details = []
+
+        for (url, token_b64, cc, pid, creds), ssl, role in zip(
+            parties, ssl_contexts, prefetched_roles
+        ):
+            party_details.append(
+                {
+                    "url": self.make_url(url, token_uid),
+                    "headers": make_headers(
+                        token_b64, to=Party(cc, pid), sender=sender
+                    ),
+                    "ssl": ssl,
+                    "ocpi_master": role,
+                    "party_id": pid,
+                    "country_code": cc,
+                    "credentials": creds,
+                    "task_name": f"{cc}*{pid}",
+                    "rank": creds.rank,
+                }
+            )
 
     @staticmethod
     def get_default_allowed_authorization(

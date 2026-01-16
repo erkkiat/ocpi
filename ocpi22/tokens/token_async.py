@@ -2,7 +2,6 @@ import json
 import time
 from logging import getLogger
 from typing import Union
-from urllib.parse import urljoin
 
 import aiohttp
 import asyncio
@@ -28,10 +27,10 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
-from util import with_trailing_slash
 
 from typing import TYPE_CHECKING
 
@@ -125,7 +124,9 @@ async def create_ssl_context(credential_id):
     )
 
 
-async def authorize_with_msps(token: Union[str, Token], data, parties):
+async def authorize_with_msps(
+    token: Union[str, Token], data: dict, parties: list[tuple]
+):
     """
     Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
     If no MSP allows the token, returns the first denial response with specific reason.
@@ -136,9 +137,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @return: dict with authorization response or None if all tasks fail
     """
     from integrations.hubject.services import HubjectService
-
-    def make_url(base_url, token_id_param):
-        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
     async def prefetch_roles():
         """Prefetch credential roles before async operations."""
@@ -162,17 +160,28 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     )
     prefetched_roles = await prefetch_roles()
 
-    allowed_response = None
     first_denial_response = None
+    allowed_response = None
+    party_details = TokenAuthorizationService.get_party_details(
+        parties, ssl_contexts, prefetched_roles
+    )
+    service = TokenAuthorizationService()
 
     async with aiohttp.ClientSession() as session:
+        if isinstance(token, Token):
+            party_details_for_ocpi_master = [
+                p for p in party_details if p["ocpi_master"] == token.ocpi_master
+            ]
+            return await service.authorize_known_token(
+                party_details_for_ocpi_master, session, data, token.uid
+            )
         # Create authorization tasks for all MSPs
         tasks = [
             asyncio.create_task(
                 post_request(
                     session=session,
                     ssl_context=ssl_context,
-                    url=make_url(url, token_id),
+                    url=TokenAuthorizationService.make_url(url, token_id),
                     data=data,
                     ocpi_master=role,
                     headers=make_headers(
