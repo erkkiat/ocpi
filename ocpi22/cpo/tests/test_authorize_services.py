@@ -83,7 +83,9 @@ class TestHubjectFeatureFlag:
                     ):
                         mock_hubject_service.post_authorize_request = AsyncMock()
 
-                        await authorize_with_msps(mock_token, sample_auth_data, [])
+                        await authorize_with_msps(
+                            "TEST_TOKEN_123", sample_auth_data, []
+                        )
 
                         mock_hubject_service.post_authorize_request.assert_not_called()
 
