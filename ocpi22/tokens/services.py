@@ -48,11 +48,11 @@ class TokenAuthorizationService:
             return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
         return None
 
-    def start_all_tasks(
+    async def start_all_tasks(
         self, party_details, session, data, token_id
     ) -> dict[asyncio.Task, int]:
         tasks_map: dict[asyncio.Task, int] = {}
-        hubject_rank = CredentialsService.get_hubject_prioriry_rank()
+        hubject_rank = CredentialsService.get_hubject_priority_rank()
 
         lower_ranked_parties = []
         for p in party_details:
