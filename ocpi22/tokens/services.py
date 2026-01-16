@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from urllib.parse import urljoin
 
 from aiohttp import ClientSession
 from django.conf import settings
@@ -8,6 +9,8 @@ from django.conf import settings
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import AuthorizationEnum
 from ocpi22.credentials.services import CredentialsService
+from ocpiconnector.party import Party
+from util import with_trailing_slash
 
 logger = logging.getLogger(__name__)
 
@@ -167,3 +170,45 @@ class TokenAuthorizationService:
             return candidates[min(candidates.keys())]
 
         return first_denial
+
+    @staticmethod
+    def make_url(base_url, token_id_param):
+        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
+
+    def get_party_details(
+        self,
+        parties: list[tuple],
+        ssl_contexts: list,
+        prefetched_roles: list,
+        token_uid: str,
+        sender: Party,
+    ) -> list[dict]:
+        from ocpi22.ocpi.headers import make_headers
+
+        party_details = []
+
+        for (url, token_b64, cc, pid, creds), ssl, role in zip(
+            parties, ssl_contexts, prefetched_roles
+        ):
+            party_details.append(
+                {
+                    "url": self.make_url(url, token_uid),
+                    "headers": make_headers(
+                        token_b64, to=Party(cc, pid), sender=sender
+                    ),
+                    "ssl": ssl,
+                    "ocpi_master": role,
+                    "party_id": pid,
+                    "country_code": cc,
+                    "credentials": creds,
+                    "task_name": f"{cc}*{pid}",
+                    "rank": creds.rank,
+                }
+            )
+
+        return party_details
+
+    async def authorize_known_token(
+        self, party_details, session, data, token_id
+    ) -> dict | None:
+        raise NotImplementedError("Known token authorization not implemented yet")

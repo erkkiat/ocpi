@@ -18,7 +18,7 @@ class CredentialsService:
         return CredentialsService.is_location_allowed(credentials, location_uid)
 
     @staticmethod
-    def get_hubject_prioriry_rank(evse: Evse) -> bool:
+    def get_hubject_prioriry_rank() -> int:
         role = CredentialsRepository.find_hubject_credentials_role()
 
         if not role:

@@ -9,7 +9,6 @@ import asyncio
 
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
@@ -25,9 +24,9 @@ from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
-from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
@@ -135,7 +134,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return: dict with authorization response or None if all tasks fail
     """
-    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
@@ -162,78 +160,23 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     )
     prefetched_roles = await prefetch_roles()
 
-    allowed_response = None
-    first_denial_response = None
-
     async with aiohttp.ClientSession() as session:
-        # Create authorization tasks for all MSPs
-        tasks = [
-            asyncio.create_task(
-                post_request(
-                    session=session,
-                    ssl_context=ssl_context,
-                    url=make_url(url, token_id),
-                    data=data,
-                    ocpi_master=role,
-                    headers=make_headers(
-                        token_base64, to=Party(country_code, party_id), sender=sender
-                    ),
-                ),
-                name=f"{country_code}*{party_id}",
-            )
-            for (
-                url,
-                token_base64,
-                country_code,
-                party_id,
-                _,
-            ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
-        ]
-
-        # Add Hubject task if enabled
-        if settings.ENABLE_HUBJECT:
-            tasks.append(
-                asyncio.create_task(
-                    HubjectService.post_authorize_request(
-                        operator_id=str(sender),
-                        token_id=token_id,
-                    ),
-                    name=settings.HUBJECT_OPERATOR_ID,
-                )
+        service = TokenAuthorizationService()
+        party_details = service.get_party_details(
+            parties, ssl_contexts, prefetched_roles, token_id, sender
+        )
+        if isinstance(token, str):
+            return await service.authorize_adhoc_token(
+                party_details, session, data, token
             )
 
-        remaining_tasks = set(tasks)
-
-        while remaining_tasks:
-            done_tasks, pending_tasks = await asyncio.wait(
-                remaining_tasks, return_when=asyncio.FIRST_COMPLETED
+        elif isinstance(token, Token):
+            party_details = [
+                p for p in party_details if p["ocpi_master"] == token.ocpi_master
+            ]
+            return await service.authorize_known_token(
+                party_details, session, data, token.uid
             )
-
-            for task in done_tasks:
-                try:
-                    response_data = process_task_result(task)
-                    if not response_data:
-                        continue
-
-                    if response_data.get("allowed") == AuthorizationEnum.ALLOWED:
-                        allowed_response = response_data
-                        break
-                    elif first_denial_response is None:
-                        first_denial_response = response_data
-                except Exception:
-                    logger.exception(f"Task {task.get_name()} failed")
-
-            if allowed_response:
-                break
-
-            remaining_tasks = pending_tasks
-
-        for task in remaining_tasks:
-            if not task.done():
-                logger.debug(f"Cancelling task {task.get_name()}")
-                task.cancel()
-
-    return allowed_response or first_denial_response
 
 
 def authorize_with_msps_sync(
