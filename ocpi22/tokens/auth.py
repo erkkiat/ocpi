@@ -15,12 +15,12 @@ from django.dispatch import receiver
 
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import authorize_with_msps_sync
 from ocpi22.choices import (
     OcpiModuleEnum,
     MessageTexts,
     AuthorizationEnum,
-    TokenType,
     get_language,
     EndpointRoleEnum,
 )
@@ -198,20 +198,8 @@ def authorize_token(
                     raise ValueError(
                         f"Session {session.uid} is missing authorization_reference"
                     )
-                return TokenAuthorization(
-                    allowed="ALLOWED",
-                    info=MessageTexts.get("TOKEN_ACCEPTED"),
-                    token=AdhocToken(
-                        billed_to=session.billed_to.get_party(),
-                        uid=token_uid,
-                        type=TokenType.AD_HOC_USER.value,
-                        ocpi_master=session.billed_to,
-                    ),
-                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
-                    authorization_reference=session.authorization_reference,
-                    auth_method=session.auth_method,
-                    billed_to=session.billed_to.party_str(),
-                    msp=session.billed_to,
+                return TokenAuthorizationService.get_default_allowed_authorization(
+                    session, token_uid
                 )
 
         # Not AD HOC, so Token should be found from database

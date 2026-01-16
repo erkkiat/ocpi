@@ -36,7 +36,6 @@ def token_service():
     return TokenAuthorizationService()
 
 
-@pytest.mark.asyncio
 class TestAdhocTokenAuthorization:
     async def test_ranking_priority_when_more_than_one_party_returns_allowed(
         self, mock_session, mock_party_details, token_service
@@ -275,3 +274,56 @@ class TestTokenAuthorizationServiceHelperMethods:
         assert res == mock_process.return_value
         assert 2 in candidates
         other_task.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+class TestKnownTokenAuthorization:
+    async def test_return_allowed_response(
+        self, mock_session, mock_party_details, token_service
+    ):
+        party = mock_party_details(rank=0, pid="OWN", allowed=True)
+        unified_token_id = "TOKEN1"
+        data = {"test": "data"}
+
+        with patch(
+            "ocpi22.tokens.token_async.post_request", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = (
+                200,
+                {"data": {"allowed": AuthorizationEnum.ALLOWED, "token": {"uid": "t"}}},
+                party["ocpi_master"],
+            )
+
+            result = await token_service.authorize_known_token(
+                [party], mock_session, data, unified_token_id
+            )
+
+            assert result is not None
+            assert result["allowed"] == AuthorizationEnum.ALLOWED
+            mock_post.assert_called_once()
+            assert mock_post.call_args[1]["url"] == party["url"]
+
+    async def test_return_not_allowed_response(
+        self, mock_session, mock_party_details, token_service
+    ):
+        party = mock_party_details(rank=0, pid="OWN", allowed=False)
+
+        with patch(
+            "ocpi22.tokens.token_async.post_request", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = (
+                200,
+                {
+                    "data": {
+                        "allowed": AuthorizationEnum.NOT_ALLOWED,
+                        "token": {"uid": "t"},
+                    }
+                },
+                party["ocpi_master"],
+            )
+
+            result = await token_service.authorize_known_token(
+                [party], mock_session, {}, "T1"
+            )
+            assert result is not None
+            assert result["allowed"] == AuthorizationEnum.NOT_ALLOWED

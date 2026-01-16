@@ -2,7 +2,6 @@ import json
 import time
 from logging import getLogger
 from typing import Union
-from urllib.parse import urljoin
 
 import aiohttp
 import asyncio
@@ -30,7 +29,6 @@ from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
-from util import with_trailing_slash
 
 from typing import TYPE_CHECKING
 
@@ -124,7 +122,9 @@ async def create_ssl_context(credential_id):
     )
 
 
-async def authorize_with_msps(token: Union[str, Token], data, parties):
+async def authorize_with_msps(
+    token: Union[str, Token], data: dict, parties: list[tuple]
+):
     """
     Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
     If no MSP allows the token, returns the first denial response with specific reason.
@@ -134,9 +134,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return: dict with authorization response or None if all tasks fail
     """
-
-    def make_url(base_url, token_id_param):
-        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
     async def prefetch_roles():
         """Prefetch credential roles before async operations."""
