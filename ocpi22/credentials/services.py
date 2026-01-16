@@ -1,3 +1,4 @@
+from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 
@@ -15,3 +16,12 @@ class CredentialsService:
     def is_evse_allowed(credentials: Credentials, evse: Evse) -> bool:
         location_uid = evse.location.uid
         return CredentialsService.is_location_allowed(credentials, location_uid)
+
+    @staticmethod
+    def get_hubject_prioriry_rank(evse: Evse) -> bool:
+        role = CredentialsRepository.find_hubject_credentials_role()
+
+        if not role:
+            raise ValueError("Hubject Credentials Role not found")
+
+        return role.credentials.priority_rank
