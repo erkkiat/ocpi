@@ -56,7 +56,7 @@ class TestHubjectFeatureFlag:
                                 )
 
                                 await authorize_with_msps(
-                                    mock_token, sample_auth_data, []
+                                    "TEST_TOKEN_123", sample_auth_data, []
                                 )
 
                                 mock_hubject_service.post_authorize_request.assert_called_once_with(

@@ -68,7 +68,7 @@ class TokenAuthorizationService:
     def get_party_details(
         self,
         parties: list[tuple],
-        ssl_contexts: tuple[list],
+        ssl_contexts: list,
         prefetched_roles: list,
         token_uid: str,
         sender: Party,
@@ -95,6 +95,7 @@ class TokenAuthorizationService:
                     "rank": creds.rank,
                 }
             )
+        return party_details
 
     @staticmethod
     def get_default_allowed_authorization(
