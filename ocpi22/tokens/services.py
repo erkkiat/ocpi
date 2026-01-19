@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from aiohttp import ClientSession
+from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from integrations.hubject.services import HubjectService
@@ -52,7 +53,9 @@ class TokenAuthorizationService:
         self, party_details, session, data, token_id
     ) -> dict[asyncio.Task, int]:
         tasks_map: dict[asyncio.Task, int] = {}
-        hubject_rank = CredentialsService.get_hubject_priority_rank()
+        hubject_rank = await sync_to_async(
+            CredentialsService.get_hubject_priority_rank, thread_sensitive=True
+        )()
 
         lower_ranked_parties = []
         for p in party_details:
@@ -136,7 +139,7 @@ class TokenAuthorizationService:
         start_time = time.time()
 
         # task -> rank
-        tasks_map = self.start_all_tasks(party_details, session, data, token_id)
+        tasks_map = await self.start_all_tasks(party_details, session, data, token_id)
 
         if not tasks_map:
             return None
