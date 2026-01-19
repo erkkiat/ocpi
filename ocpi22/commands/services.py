@@ -569,6 +569,7 @@ class StartCommandService(RemoteCommandServices):
             validated_data.get("authorization_reference") or generate_random_token()
         )
         validated_data["token"]["type"] = str(validated_data["token"]["type"])
+        validated_data["token"].pop("last_updated", None)
         payload = {
             "response_url": build_absolute_uri(
                 reverse(
