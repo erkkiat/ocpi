@@ -57,7 +57,9 @@ class TestBeatScheduleConfiguration:
             == "ocpi22.tasks.send_hubject_evse_full_load"
         )
 
-    def test_celery_heartbeat_schedule_is_hourly(self, beat_schedule):
+    def test_celery_heartbeat_task_schedule_is_3600_seconds(
+        self, beat_schedule
+    ):
         assert beat_schedule["run-me-every-minute"]["schedule"] == 3600
 
     def test_hubject_evse_full_load_runs_on_sunday(self, beat_schedule):
