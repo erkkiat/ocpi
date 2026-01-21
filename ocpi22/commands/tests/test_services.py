@@ -284,6 +284,29 @@ class TestCommandServices:
         assert payload["connector_id"] == connector_id
 
     @patch("ocpi22.commands.services.build_absolute_uri")
+    def test_prepare_start_session_remove_last_updated_field(self, mock_build_uri):
+        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
+
+        session = MagicMock()
+        session.uid = "UNIQUE_SESSION_ID_456"
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN123",
+                "type": "RFID",
+                "last_updated": "2024-01-01T00:00:00Z",
+            },
+            "authorization_reference": "AUTH123",
+        }
+
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
+
+        assert payload.get("last_updated") is None
+
+    @patch("ocpi22.commands.services.build_absolute_uri")
     @pytest.mark.django_db
     def test_start_session_creates_non_existing_msp_credentials_role(
         self, mock_build_uri

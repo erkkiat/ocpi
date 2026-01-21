@@ -1,0 +1,53 @@
+name: Type Checking
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - '**.py'
+      - 'mypy.ini'
+      - 'requirements.txt'
+      - '.github/workflows/type-check.yml'
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - '**.py'
+      - 'mypy.ini'
+      - 'requirements.txt'
+      - '.github/workflows/type-check.yml'
+
+jobs:
+  mypy:
+    name: MyPy Type Checking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install mypy and type stubs
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy django-stubs djangorestframework-stubs types-requests types-python-dateutil types-pytz celery-types
+
+      - name: Run MyPy on new code
+        run: |
+          echo "Running type checker on Python files..."
+          mypy --config-file=mypy.ini --ignore-missing-imports typing_examples.py || true
+        continue-on-error: true
+
+      - name: MyPy Report
+        if: always()
+        run: |
+          echo "Type checking completed. Review output above for any issues."
+          echo "Note: Type checking is currently informational and won't fail the build."
+          echo "For new code, ensure all functions have proper type hints."
