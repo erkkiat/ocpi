@@ -26,8 +26,6 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
 from ocpi22.tokens.services import TokenAuthorizationService
-from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 
 from typing import TYPE_CHECKING
@@ -147,7 +145,6 @@ async def authorize_with_msps(
             )(credentials, country_code, party_id)
             roles.append(role)
         return roles
-
 
     # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(

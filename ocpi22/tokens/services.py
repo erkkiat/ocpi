@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 class TokenAuthorizationService:
     TIMEOUT = 5.0
 
-    def _start_task(self, session: ClientSession, party_details:PartyDetails, data) -> asyncio.Task:
+    def _start_task(
+        self, session: ClientSession, party_details: PartyDetails, data
+    ) -> asyncio.Task:
         from ocpi22.tokens.token_async import post_request
 
         coroutine = post_request(
@@ -198,9 +200,7 @@ class TokenAuthorizationService:
         ):
             details = PartyDetails(
                 url=self.make_url(url, token_id),
-                headers=make_headers(
-                    token_b64, to=Party(cc, pid), sender=sender
-                ),
+                headers=make_headers(token_b64, to=Party(cc, pid), sender=sender),
                 ssl=ssl,
                 ocpi_master=role,
                 party_id=pid,
