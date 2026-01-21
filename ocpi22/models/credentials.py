@@ -156,6 +156,11 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
             "How often meter values should be reported to this partner. Leave empty for default."
         ),
     )
+    auth_priority = models.PositiveIntegerField(
+        default=100,
+        verbose_name=_("Priority rank"),
+        help_text=_("Lower numbers indicate higher priority"),
+    )
 
     def soft_delete(self):
         self.valid = False
