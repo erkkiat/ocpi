@@ -23,4 +23,4 @@ class CredentialsService:
         if not role:
             raise ValueError("Hubject Credentials Role not found")
 
-        return role.credentials.rank
+        return role.credentials.auth_priority
