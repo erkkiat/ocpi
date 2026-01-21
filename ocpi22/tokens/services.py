@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 from urllib.parse import urljoin
 
 from aiohttp import ClientSession
@@ -9,11 +9,15 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from integrations.hubject.services import HubjectService
-from ocpi22.choices import AuthorizationEnum
+from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
 from ocpi22.credentials.services import CredentialsService
 from ocpi22.choices import TokenType, MessageTexts
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.tokens.dataclasses import PartyDetails
+from ocpi22.tokens.util import get_token_id
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from util import with_trailing_slash
 
@@ -26,52 +30,42 @@ logger = logging.getLogger(__name__)
 class TokenAuthorizationService:
     TIMEOUT = 5.0
 
-    def _start_task(self, session: ClientSession, party_details, data) -> asyncio.Task:
+    def _start_task(self, session: ClientSession, party_details:PartyDetails, data) -> asyncio.Task:
         from ocpi22.tokens.token_async import post_request
 
         coroutine = post_request(
             session=session,
-            ssl_context=party_details["ssl"],
-            url=party_details["url"],
+            ssl_context=party_details.ssl,
+            url=party_details.url,
             data=data,
-            ocpi_master=party_details["ocpi_master"],
-            headers=party_details["headers"],
+            ocpi_master=party_details.ocpi_master,
+            headers=party_details.headers,
         )
 
-        return asyncio.create_task(coroutine, name=party_details["task_name"])
+        return asyncio.create_task(coroutine, name=party_details.task_name)
 
     def _start_hubject_task(self, token_uid: str) -> asyncio.Task | None:
-        if settings.ENABLE_HUBJECT:
-            coroutine = HubjectService.post_authorize_request(
-                operator_id=str(settings.HUBJECT_OPERATOR_ID),
-                token_id=token_uid,
-            )
-            return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
-        return None
+        coroutine = HubjectService.post_authorize_request(
+            operator_id=str(settings.HUBJECT_OPERATOR_ID),
+            token_id=token_uid,
+        )
+        return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
     async def start_all_tasks(
         self, party_details, session, data, token_id
     ) -> dict[asyncio.Task, int]:
         tasks_map: dict[asyncio.Task, int] = {}
-        hubject_rank = await sync_to_async(
-            CredentialsService.get_hubject_priority_rank, thread_sensitive=True
-        )()
 
-        lower_ranked_parties = []
         for p in party_details:
-            if p["rank"] < hubject_rank:
-                t = self._start_task(session, p, data)
-                tasks_map[t] = p["rank"]
-            else:
-                lower_ranked_parties.append(p)
-
-        t = self._start_hubject_task(token_id)
-        if t:
-            tasks_map[t] = hubject_rank
-
-        for p in lower_ranked_parties:
             t = self._start_task(session, p, data)
             tasks_map[t] = p["rank"]
+
+        if settings.ENABLE_HUBJECT:
+            hubject_rank = await sync_to_async(
+                CredentialsService.get_hubject_priority_rank
+            )()
+            t = self._start_hubject_task(token_id)
+            tasks_map[t] = hubject_rank
 
         return tasks_map
 
@@ -190,31 +184,32 @@ class TokenAuthorizationService:
         parties: list[tuple],
         ssl_contexts: list,
         prefetched_roles: list,
-        token_uid: str,
-        sender: Party,
-    ) -> list[dict]:
+        token: Union[str, Token],
+    ) -> list[PartyDetails]:
         from ocpi22.ocpi.headers import make_headers
+
+        sender = get_our_party(OcpiRolesEnum.CPO)
+        token_id = get_token_id(token)
 
         party_details = []
 
         for (url, token_b64, cc, pid, creds), ssl, role in zip(
             parties, ssl_contexts, prefetched_roles
         ):
-            party_details.append(
-                {
-                    "url": self.make_url(url, token_uid),
-                    "headers": make_headers(
-                        token_b64, to=Party(cc, pid), sender=sender
-                    ),
-                    "ssl": ssl,
-                    "ocpi_master": role,
-                    "party_id": pid,
-                    "country_code": cc,
-                    "credentials": creds,
-                    "task_name": f"{cc}*{pid}",
-                    "rank": creds.rank,
-                }
+            details = PartyDetails(
+                url=self.make_url(url, token_id),
+                headers=make_headers(
+                    token_b64, to=Party(cc, pid), sender=sender
+                ),
+                ssl=ssl,
+                ocpi_master=role,
+                party_id=pid,
+                country_code=cc,
+                credentials=creds,
+                task_name=f"{cc}*{pid}",
+                auth_priority=creds.rank,
             )
+            party_details.append(details)
 
         return party_details
 

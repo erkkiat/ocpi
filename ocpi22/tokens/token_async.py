@@ -148,8 +148,6 @@ async def authorize_with_msps(
             roles.append(role)
         return roles
 
-    sender = get_our_party(OcpiRolesEnum.CPO)
-    token_id = get_token_id(token)
 
     # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
@@ -160,7 +158,7 @@ async def authorize_with_msps(
     async with aiohttp.ClientSession() as session:
         service = TokenAuthorizationService()
         party_details = service.get_party_details(
-            parties, ssl_contexts, prefetched_roles, token_id, sender
+            parties, ssl_contexts, prefetched_roles, token
         )
         if isinstance(token, str):
             return await service.authorize_adhoc_token(
