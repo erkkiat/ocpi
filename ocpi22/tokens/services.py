@@ -26,11 +26,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+TIMEOUT = 5.0
+
 
 class TokenAuthorizationService:
-    TIMEOUT = 5.0
+    def __init__(self, timeout: float = TIMEOUT):
+        self._timeout = timeout
 
-    def _start_task(
+    def _create_ocpi_task(
         self, session: ClientSession, party_details: PartyDetails, data
     ) -> asyncio.Task:
         from ocpi22.tokens.token_async import post_request
@@ -59,7 +62,7 @@ class TokenAuthorizationService:
         tasks_map: dict[asyncio.Task, int] = {}
 
         for p in party_details:
-            t = self._start_task(session, p, data)
+            t = self._create_ocpi_task(session, p, data)
             tasks_map[t] = p["rank"]
 
         if settings.ENABLE_HUBJECT:
@@ -219,7 +222,7 @@ class TokenAuthorizationService:
         from ocpi22.tokens.token_async import process_task_result
 
         party_details = party_details[0]
-        task = self._start_task(session, party_details, data)
+        task = self._create_ocpi_task(session, party_details, data)
 
         try:
             await task
