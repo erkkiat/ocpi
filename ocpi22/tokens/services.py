@@ -59,20 +59,20 @@ class TokenAuthorizationService:
     async def start_all_tasks(
         self, party_details, session, data, token_id
     ) -> dict[asyncio.Task, int]:
-        tasks_map: dict[asyncio.Task, int] = {}
+        tasks: dict[asyncio.Task, int] = {}
 
         for p in party_details:
             t = self._create_ocpi_task(session, p, data)
-            tasks_map[t] = p["rank"]
+            tasks[t] = p["rank"]
 
         if settings.ENABLE_HUBJECT:
             hubject_rank = await sync_to_async(
                 CredentialsService.get_hubject_priority_rank
             )()
             t = self._start_hubject_task(token_id)
-            tasks_map[t] = hubject_rank
+            tasks[t] = hubject_rank
 
-        return tasks_map
+        return tasks
 
     def _process_completed_task(
         self,
@@ -85,22 +85,25 @@ class TokenAuthorizationService:
         from ocpi22.tokens.token_async import process_task_result
 
         rank = tasks_map[task]
-        res = process_task_result(task)
+        response = process_task_result(task)
 
-        if res and res.get("allowed") == AuthorizationEnum.ALLOWED:
-            candidates[rank] = res
+        if not response:
+            return None, first_denial
+
+        if response.get("allowed") == AuthorizationEnum.ALLOWED:
+            candidates[rank] = response
 
             # Best possible response
             if rank == 0:
                 self._cancel_pending_tasks(pending)
-                return res, first_denial
+                return response, first_denial
 
             if not self._has_better_ranks_pending(rank, tasks_map, pending):
                 self._cancel_pending_tasks(pending)
-                return res, first_denial
+                return response, first_denial
         else:
-            if not first_denial and res:
-                first_denial = res
+            if not first_denial:
+                first_denial = response
 
         return None, first_denial
 
@@ -135,48 +138,54 @@ class TokenAuthorizationService:
     async def authorize_adhoc_token(
         self, party_details, session, data, token_id
     ) -> dict | None:
-        start_time = time.time()
+        tasks_by_rank: dict[asyncio.Task, int] = await self.start_all_tasks(
+            party_details, session, data, token_id
+        )
 
-        # task -> rank
-        tasks_map = await self.start_all_tasks(party_details, session, data, token_id)
-
-        if not tasks_map:
+        if not tasks_by_rank:
             return None
 
-        pending = set(tasks_map.keys())
+        pending_tasks = set(tasks_by_rank.keys())
 
-        candidates = {}  # rank -> response
+        allowed_responses_by_rank = {}  # rank -> response
         first_denial = None
 
-        while pending:
+        start_time = time.time()
+        while pending_tasks:
             elapsed = time.time() - start_time
-            remaining = self.TIMEOUT - elapsed
+            remaining = self._timeout - elapsed
 
             if remaining <= 0:
                 break
 
-            done, pending = await asyncio.wait(
-                pending, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+            done_tasks, pending_tasks = await asyncio.wait(
+                pending_tasks, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
             )
 
-            if not done:
+            if not done_tasks:
                 break
 
-            for task in done:
+            for task in done_tasks:
                 early_return, first_denial = self._process_completed_task(
-                    task, tasks_map, candidates, first_denial, pending
+                    task,
+                    tasks_by_rank,
+                    allowed_responses_by_rank,
+                    first_denial,
+                    pending_tasks,
                 )
                 if early_return:
                     return early_return
 
-            winner = self._check_winner_among_candidates(candidates, tasks_map, pending)
+            winner = self._check_winner_among_candidates(
+                allowed_responses_by_rank, tasks_by_rank, pending_tasks
+            )
             if winner:
                 return winner
 
-        self._cancel_pending_tasks(pending)
+        self._cancel_pending_tasks(pending_tasks)
 
-        if candidates:
-            return candidates[min(candidates.keys())]
+        if allowed_responses_by_rank:
+            return allowed_responses_by_rank[min(allowed_responses_by_rank.keys())]
 
         return first_denial
 
