@@ -102,6 +102,51 @@ logger.info(f"Processing session {session.uid}")  # ✅
 logger.info(f'Processing session {session.uid}')  # ❌
 ```
 
+### Type Hints (REQUIRED for all new code)
+**Strict typing is mandatory for all new functions, classes, and methods:**
+```python
+from typing import Optional, List, Dict
+from django.http import HttpRequest, JsonResponse
+
+# ✅ Good - Full type annotations
+def get_session_by_uid(session_uid: str) -> Optional[Session]:
+    try:
+        return Session.objects.get(uid=session_uid)
+    except Session.DoesNotExist:
+        return None
+
+# ✅ Good - Typed service method
+class SessionService:
+    def create_session(
+        self, 
+        token: str, 
+        location_id: str,
+        evse_id: str
+    ) -> Session:
+        # Implementation
+        pass
+
+# ❌ Bad - Missing type hints
+def process_data(data):
+    return transform(data)
+```
+
+**Type checking:**
+- Run `mypy --config-file=mypy.ini <file>` before committing
+- Pre-commit hooks enforce type checking
+- CI provides type checking reports
+
+**Django-specific types:**
+```python
+from typing import QuerySet
+from django.db.models import Q
+
+def get_active_sessions(country: str) -> QuerySet[Session]:
+    return Session.objects.filter(status="ACTIVE", country=country)
+```
+
+See [mypy.ini](mypy.ini) for complete configuration.
+
 ### API Development
 **Prefer django-ninja** for new APIs (see [custom_ninja_api.py](custom_ninja_api.py)):
 ```python
