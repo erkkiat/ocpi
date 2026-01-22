@@ -195,7 +195,7 @@ class TokenAuthorizationService:
                 country_code=cc,
                 credentials=creds,
                 task_name=f"{cc}*{pid}",
-                auth_priority=creds.rank,
+                auth_priority=creds.auth_priority,
             )
             party_details.append(details)
 
