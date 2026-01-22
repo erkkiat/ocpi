@@ -15,13 +15,10 @@ from rest_framework import status
 
 from ocpi22.choices import (
     OcpiRolesEnum,
-    OcpiModuleEnum,
     AuthorizationEnum,
-    EndpointRoleEnum,
 )
 from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.credentials.services import CredentialsService
-from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
@@ -245,9 +242,7 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     return allowed_response or first_denial_response
 
 
-def authorize_with_msps_sync(
-    token: str, location: Location, parties: list[tuple] = None
-):
+def authorize_with_msps_sync(token: str, location: Location, parties: list[tuple]):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
     This sync function calls an async function to process authorizations in parallel.
@@ -270,14 +265,6 @@ def authorize_with_msps_sync(
     )
 
     # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
-
-    if not parties:
-        parties = find_endpoints_by_roles(
-            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
-            OcpiModuleEnum.TOKENS,
-            endpoint_role=EndpointRoleEnum.SENDER.value,
-            location_uid=location.uid,
-        )
 
     data = (
         {

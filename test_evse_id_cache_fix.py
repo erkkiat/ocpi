@@ -3,11 +3,13 @@ from unittest.mock import Mock, patch
 import pytest
 from django.core.cache import cache
 
+from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import LocationFactory, TokenFactory, CredentialsRoleFactory
 from ocpi22.tokens.auth import _authorize_token, authorize_token, TokenAuthorization
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
-from ocpi22.choices import AuthorizationEnum
+from ocpi22.choices import AuthorizationEnum, TokenType
+from ocpiconnector.party import Party
 
 
 class TestEvseIdAuthorizationCacheFix:
@@ -175,6 +177,7 @@ class TestEvseIdAuthorizationCacheFix:
     @patch("ocpi22.tokens.auth.authorize_with_msps_sync")
     @patch("ocpi22.tokens.auth.Token.get_if_exists")
     @patch("util.redis_store")
+    @pytest.mark.django_db
     def test_authorize_token_passes_through_evse_id_for_unknown_tokens(
         self, mock_redis, mock_token_get, mock_authorize_with_msps
     ):
@@ -185,7 +188,9 @@ class TestEvseIdAuthorizationCacheFix:
 
         unknown_token_mock_response = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token={"uid": "UNKNOWN_TOKEN"},
+            token=AdhocToken(
+                Party(), "UNKNOWN_TOKEN", TokenType.AD_HOC_USER.value, None
+            ),
             authorization_reference="AUTH_REF_UNKNOWN_123",
             auth_method="AUTH_REQUEST",
             billed_to="DE*ABC",
@@ -196,7 +201,9 @@ class TestEvseIdAuthorizationCacheFix:
             "UNKNOWN_TOKEN", mock_location, evse_id="DE*ABC*E001"
         )
 
-        mock_authorize_with_msps.assert_called_once_with("UNKNOWN_TOKEN", mock_location)
+        mock_authorize_with_msps.assert_called_once_with(
+            "UNKNOWN_TOKEN", mock_location, []
+        )
         assert (
             unknown_token_auth_result.authorization_reference == "AUTH_REF_UNKNOWN_123"
         )

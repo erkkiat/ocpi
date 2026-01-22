@@ -14,6 +14,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from ocpi22.credentials.services import CredentialsService
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.tokens.token_async import authorize_with_msps_sync
@@ -24,6 +25,7 @@ from ocpi22.choices import (
     TokenType,
     get_language,
     EndpointRoleEnum,
+    OcpiRolesEnum,
 )
 from ocpi22.messages import messages
 from ocpi22.models.session import Session
@@ -256,6 +258,11 @@ def _authorize_token(
     token_uid = token.uid if isinstance(token, Token) else token
     if isinstance(token, str):
         token: Token = Token.get_if_exists(uid__iexact=token)
+
+    adhoc_token = True if token is None else False
+    parties = find_authorize_party_details(
+        request, token, location.uid if location else "", adhoc=adhoc_token
+    )
     if not token:
         # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
         messages.info(
@@ -263,7 +270,7 @@ def _authorize_token(
             "This Token is not in our database, "
             "so an authorization request was sent to all MSPs connected to us.",
         )
-        return authorize_with_msps_sync(token_uid, location)
+        return authorize_with_msps_sync(token_uid, location, parties)
     assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
@@ -292,6 +299,19 @@ def _authorize_token(
             msp=token.ocpi_master,
         )
 
+    return authorize_with_msps_sync(token.uid, location, parties)
+
+
+def find_authorize_party_details(
+    request, token: Union[Token, AdhocToken], location_uid: str, adhoc: bool
+):
+    if adhoc:
+        return find_endpoints_by_roles(
+            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
+            OcpiModuleEnum.TOKENS,
+            endpoint_role=EndpointRoleEnum.SENDER.value,
+            location_uid=location_uid,
+        )
     route: Route = find_route(
         token.get_party(), OcpiModuleEnum.TOKENS, role=EndpointRoleEnum.SENDER
     )
@@ -302,9 +322,7 @@ def _authorize_token(
         )
         return None
 
-    # Let's send the authorization request using the same code as when sending request to multiple MSPs
-    # to keep things DRY
-    parties = [
+    return [
         (
             route.url,
             route.token_base64,
@@ -313,4 +331,3 @@ def _authorize_token(
             route.credentials,
         )
     ]
-    return authorize_with_msps_sync(token.uid, location, parties)
