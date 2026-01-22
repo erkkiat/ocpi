@@ -40,6 +40,7 @@ from django.test import TestCase, Client
 from rest_framework import status
 
 from ocpi22.cpo.services import CdrService
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
@@ -3705,9 +3706,12 @@ class TestOCPIAuthentication(TestCase):
     @staticmethod
     def _make_test_request(sender: Party, to: Party, hub: Optional[Party] = None):
         request = api_factory.post("http://localhost:8101/anyurl/")
-        from ocpi22.routing import find_credentials
 
-        credentials = find_credentials(hub) if hub else find_credentials(sender)
+        credentials = (
+            CredentialsService.find_credentials(hub)
+            if hub
+            else CredentialsService.find_credentials(sender)
+        )
         request.headers = make_headers(credentials.ours_base64(), to=to, sender=sender)
         return request, credentials.ours_base64()
 
