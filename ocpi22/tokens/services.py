@@ -63,7 +63,7 @@ class TokenAuthorizationService:
 
         for p in party_details:
             t = self._create_ocpi_task(session, p, data)
-            tasks[t] = p["rank"]
+            tasks[t] = p.auth_priority
 
         if settings.ENABLE_HUBJECT:
             hubject_rank = await sync_to_async(
@@ -73,39 +73,6 @@ class TokenAuthorizationService:
             tasks[t] = hubject_rank
 
         return tasks
-
-    def _process_completed_task(
-        self,
-        task: asyncio.Task,
-        tasks_map: dict[asyncio.Task, int],
-        candidates: dict[int, dict],
-        first_denial: dict | None,
-        pending: set[asyncio.Task],
-    ) -> tuple[dict | None, dict | None]:
-        from ocpi22.tokens.token_async import process_task_result
-
-        rank = tasks_map[task]
-        response = process_task_result(task)
-
-        if not response:
-            return None, first_denial
-
-        if response.get("allowed") == AuthorizationEnum.ALLOWED:
-            candidates[rank] = response
-
-            # Best possible response
-            if rank == 0:
-                self._cancel_pending_tasks(pending)
-                return response, first_denial
-
-            if not self._has_better_ranks_pending(rank, tasks_map, pending):
-                self._cancel_pending_tasks(pending)
-                return response, first_denial
-        else:
-            if not first_denial:
-                first_denial = response
-
-        return None, first_denial
 
     def _has_better_ranks_pending(
         self,
@@ -138,17 +105,19 @@ class TokenAuthorizationService:
     async def authorize_adhoc_token(
         self, party_details, session, data, token_id
     ) -> dict | None:
-        tasks_by_rank: dict[asyncio.Task, int] = await self.start_all_tasks(
+        from ocpi22.tokens.token_async import process_task_result
+
+        priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
             party_details, session, data, token_id
         )
 
-        if not tasks_by_rank:
+        if not priority_by_task:
             return None
 
-        pending_tasks = set(tasks_by_rank.keys())
+        pending_tasks = set(priority_by_task.keys())
 
-        allowed_responses_by_rank = {}  # rank -> response
-        first_denial = None
+        allowed_responses_by_priority: dict[int, dict] = {}
+        first_denial: dict | None = None
 
         start_time = time.time()
         while pending_tasks:
@@ -166,34 +135,41 @@ class TokenAuthorizationService:
                 break
 
             for task in done_tasks:
-                early_return, first_denial = self._process_completed_task(
-                    task,
-                    tasks_by_rank,
-                    allowed_responses_by_rank,
-                    first_denial,
-                    pending_tasks,
-                )
-                if early_return:
-                    return early_return
+                response = process_task_result(task)
+                if not response:
+                    continue
 
-            winner = self._check_winner_among_candidates(
-                allowed_responses_by_rank, tasks_by_rank, pending_tasks
-            )
-            if winner:
-                return winner
+                is_allowed = response.get("allowed") == AuthorizationEnum.ALLOWED
+
+                if is_allowed:
+                    priority = priority_by_task[task]
+                    allowed_responses_by_priority[priority] = response
+
+                elif not first_denial:
+                    first_denial = response
+
+            if allowed_responses_by_priority:
+                best_rank = min(allowed_responses_by_priority.keys())
+                if not self._has_better_ranks_pending(
+                    best_rank, priority_by_task, pending_tasks
+                ):
+                    self._cancel_pending_tasks(pending_tasks)
+                    return allowed_responses_by_priority[best_rank]
 
         self._cancel_pending_tasks(pending_tasks)
 
-        if allowed_responses_by_rank:
-            return allowed_responses_by_rank[min(allowed_responses_by_rank.keys())]
+        if allowed_responses_by_priority:
+            return allowed_responses_by_priority[
+                min(allowed_responses_by_priority.keys())
+            ]
 
         return first_denial
 
     @staticmethod
-    def make_url(base_url, token_id_param):
+    def build_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
-    def get_party_details(
+    def build_party_details(
         self,
         parties: list[tuple],
         ssl_contexts: list,
@@ -211,7 +187,7 @@ class TokenAuthorizationService:
             parties, ssl_contexts, prefetched_roles
         ):
             details = PartyDetails(
-                url=self.make_url(url, token_id),
+                url=self.build_url(url, token_id),
                 headers=make_headers(token_b64, to=Party(cc, pid), sender=sender),
                 ssl=ssl,
                 ocpi_master=role,
@@ -242,7 +218,7 @@ class TokenAuthorizationService:
             return None
 
     @staticmethod
-    def get_default_allowed_authorization(
+    def build_default_allowed_authorization(
         session: Session, token_uid: str
     ) -> "TokenAuthorization":
         from ocpi22.tokens.auth import TokenAuthorization

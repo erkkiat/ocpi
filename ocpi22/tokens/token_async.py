@@ -154,7 +154,7 @@ async def authorize_with_msps(
 
     async with aiohttp.ClientSession() as session:
         service = TokenAuthorizationService()
-        party_details = service.get_party_details(
+        party_details = service.build_party_details(
             parties, ssl_contexts, prefetched_roles, token
         )
         if isinstance(token, str):

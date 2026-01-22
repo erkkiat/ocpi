@@ -198,7 +198,7 @@ def authorize_token(
                     raise ValueError(
                         f"Session {session.uid} is missing authorization_reference"
                     )
-                return TokenAuthorizationService.get_default_allowed_authorization(
+                return TokenAuthorizationService.build_default_allowed_authorization(
                     session, token_uid
                 )
 

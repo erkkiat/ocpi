@@ -40,11 +40,11 @@ class TestHubjectFeatureFlag:
                 None,
             )
             with patch(
-                "ocpi22.tokens.token_async.get_our_party",
+                "ocpi22.tokens.services.get_our_party",
                 return_value=Party("DE", "CPO"),
             ):
                 with patch(
-                    "ocpi22.tokens.token_async.get_token_id",
+                    "ocpi22.tokens.services.get_token_id",
                     return_value="TEST_TOKEN_123",
                 ):
                     with patch(

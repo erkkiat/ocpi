@@ -14,19 +14,19 @@ def mock_session():
 @pytest.fixture
 def mock_party_details():
     def _create_party(rank, pid, delay=0, allowed=True):
-        return {
-            "url": f"http://{pid}.com",
-            "headers": {},
-            "ssl": None,
-            "ocpi_master": MagicMock(),
-            "party_id": pid,
-            "country_code": "DE",
-            "credentials": MagicMock(spec=Credentials),
-            "task_name": f"DE*{pid}",
-            "rank": rank,
-            "_delay": delay,
-            "_allowed": allowed,
-        }
+        p = MagicMock()
+        p.url = f"http://{pid}.com"
+        p.headers = {}
+        p.ssl = None
+        p.ocpi_master = MagicMock()
+        p.party_id = pid
+        p.country_code = "DE"
+        p.credentials = MagicMock(spec=Credentials)
+        p.task_name = f"DE*{pid}"
+        p.auth_priority = rank
+        p._delay = delay
+        p._allowed = allowed
+        return p
 
     return _create_party
 
@@ -47,17 +47,17 @@ class TestAdhocTokenAuthorization:
         parties = [p2, p0]
 
         async def side_effect(session, url, **kwargs):
-            p = next(p for p in parties if p["url"] == url)
-            await asyncio.sleep(p["_delay"])
+            p = next(p for p in parties if p.url == url)
+            await asyncio.sleep(p._delay)
             allowed_enum = (
                 AuthorizationEnum.ALLOWED
-                if p["_allowed"]
+                if p._allowed
                 else AuthorizationEnum.NOT_ALLOWED
             )
             return (
                 200,
                 {"data": {"allowed": allowed_enum, "token": {"uid": "t"}}},
-                p["ocpi_master"],
+                p.ocpi_master,
             )
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=side_effect):
@@ -83,17 +83,17 @@ class TestAdhocTokenAuthorization:
         parties = [p2, p0]
 
         async def side_effect(session, url, **kwargs):
-            p = next(p for p in parties if p["url"] == url)
-            await asyncio.sleep(p["_delay"])
+            p = next(p for p in parties if p.url == url)
+            await asyncio.sleep(p._delay)
             allowed_enum = (
                 AuthorizationEnum.ALLOWED
-                if p["_allowed"]
+                if p._allowed
                 else AuthorizationEnum.NOT_ALLOWED
             )
             return (
                 200,
                 {"data": {"allowed": allowed_enum, "token": {"uid": "t"}}},
-                p["ocpi_master"],
+                p.ocpi_master,
             )
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=side_effect):
@@ -119,22 +119,22 @@ class TestAdhocTokenAuthorization:
         task_states = {}
 
         async def side_effect(session, url, **kwargs):
-            p = next(p for p in parties if p["url"] == url)
+            p = next(p for p in parties if p.url == url)
             try:
-                await asyncio.sleep(p["_delay"])
-                task_states[p["party_id"]] = "completed"
+                await asyncio.sleep(p._delay)
+                task_states[p.party_id] = "completed"
                 allowed_enum = (
                     AuthorizationEnum.ALLOWED
-                    if p["_allowed"]
+                    if p._allowed
                     else AuthorizationEnum.NOT_ALLOWED
                 )
                 return (
                     200,
                     {"data": {"allowed": allowed_enum, "token": {"uid": "t"}}},
-                    p["ocpi_master"],
+                    p.ocpi_master,
                 )
             except asyncio.CancelledError:
-                task_states[p["party_id"]] = "cancelled"
+                task_states[p.party_id] = "cancelled"
                 raise
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=side_effect):
@@ -163,18 +163,16 @@ class TestAdhocTokenAuthorization:
             await asyncio.sleep(0.3)
             return (200, {"data": {"allowed": "ALLOWED", "token": {"uid": "t"}}}, None)
 
-        with patch.object(TokenAuthorizationService, "TIMEOUT", 0.1):
+        token_service._timeout = 0.1
+        with patch("ocpi22.tokens.token_async.post_request", side_effect=side_effect):
             with patch(
-                "ocpi22.tokens.token_async.post_request", side_effect=side_effect
+                "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
+                return_value=2,
             ):
-                with patch(
-                    "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
-                    return_value=2,
-                ):
-                    result = await token_service.authorize_adhoc_token(
-                        parties, mock_session, {}, "ADHOC"
-                    )
-                    assert result is None
+                result = await token_service.authorize_adhoc_token(
+                    parties, mock_session, {}, "ADHOC"
+                )
+                assert result is None
 
     @pytest.mark.django_db
     async def test_authorize_adhoc_token_executes_hubject_task(
@@ -278,28 +276,6 @@ class TestTokenAuthorizationServiceHelperMethods:
         assert result == candidates[2]
         task_pending.cancel.assert_called_once()
 
-    @patch("ocpi22.tokens.token_async.process_task_result")
-    def test_process_completed_task_returns_successful_response(
-        self, mock_process, token_service
-    ):
-        candidates = {}
-        first_denial = None
-
-        mock_process.return_value = {"allowed": AuthorizationEnum.ALLOWED}
-
-        task = MagicMock(spec=asyncio.Task)
-        other_task = MagicMock(spec=asyncio.Task)
-        pending = {other_task}
-        tasks_map = {task: 2, other_task: 5}
-
-        res, denial = token_service._process_completed_task(
-            task, tasks_map, candidates, first_denial, pending
-        )
-
-        assert res == mock_process.return_value
-        assert 2 in candidates
-        other_task.cancel.assert_called_once()
-
 
 @pytest.mark.asyncio
 class TestKnownTokenAuthorization:
@@ -316,7 +292,7 @@ class TestKnownTokenAuthorization:
             mock_post.return_value = (
                 200,
                 {"data": {"allowed": AuthorizationEnum.ALLOWED, "token": {"uid": "t"}}},
-                party["ocpi_master"],
+                party.ocpi_master,
             )
 
             result = await token_service.authorize_known_token(
@@ -326,7 +302,7 @@ class TestKnownTokenAuthorization:
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.ALLOWED
             mock_post.assert_called_once()
-            assert mock_post.call_args[1]["url"] == party["url"]
+            assert mock_post.call_args[1]["url"] == party.url
 
     async def test_return_not_allowed_response(
         self, mock_session, mock_party_details, token_service
@@ -344,7 +320,7 @@ class TestKnownTokenAuthorization:
                         "token": {"uid": "t"},
                     }
                 },
-                party["ocpi_master"],
+                party.ocpi_master,
             )
 
             result = await token_service.authorize_known_token(
