@@ -1,81 +1,73 @@
-
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
+
+from ocpi22.ocpi.dataclasses import AdhocToken
+from ocpi22.tests.factories import LocationFactory, TokenFactory, CredentialsRoleFactory
 from ocpi22.tokens.auth import find_authorize_party_details
 from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, EndpointRoleEnum
+from ocpiconnector.party import Party
+from ocpi22.routing import find_route
+
 
 class TestFindAuthorizePartyDetails:
-    
-    @patch('ocpi22.tokens.auth.find_endpoints_by_roles')
-    def test_adhoc_true_calls_find_endpoints_by_roles(self, mock_find_endpoints):
-        # Arrange
-        request = MagicMock()
-        token = MagicMock()
-        location_uid = "loc123"
+    @patch("ocpi22.tokens.auth.find_endpoints_by_roles")
+    @pytest.mark.django_db
+    def test_adhoc_token_triggers_find_endpoints_by_roles(self, mock_find_endpoints):
+        location = LocationFactory()
+        token = AdhocToken(Party(), "AdhocToken", "ADHOC", None)
         expected_result = [("url", "token", "CC", "PID", "creds")]
         mock_find_endpoints.return_value = expected_result
 
-        # Act
-        result = find_authorize_party_details(request, token, location_uid, adhoc=True)
+        result = find_authorize_party_details(Mock(), token, location.uid, adhoc=True)
 
-        # Assert
         mock_find_endpoints.assert_called_once_with(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
             OcpiModuleEnum.TOKENS,
             endpoint_role=EndpointRoleEnum.SENDER.value,
-            location_uid=location_uid
+            location_uid=location.uid,
         )
         assert result == expected_result
 
-    @patch('ocpi22.tokens.auth.find_route')
-    def test_adhoc_false_returns_route_details(self, mock_find_route):
-        # Arrange
+    @pytest.mark.django_db
+    def test_known_token_returns_route_successfully(self):
         request = MagicMock()
-        token = MagicMock()
-        token.get_party.return_value = "PARTY"
-        location_uid = "loc123"
-        
-        mock_route = MagicMock()
-        mock_route.url = "http://example.com"
-        mock_route.token_base64 = "token_b64"
-        mock_route.to.country_code = "DE"
-        mock_route.to.party_id = "TEST"
-        mock_route.credentials = "credentials"
-        
-        mock_find_route.return_value = mock_route
+        token = TokenFactory(
+            uid="KNOWN_TOKEN",
+            ocpi_master=CredentialsRoleFactory(
+                country_code="US", party_id="XYZ", role=OcpiRolesEnum.EMSP.value
+            ),
+        )
+        location = LocationFactory()
 
-        expected_result = [
+        find_route.cache_clear()
+        result = find_authorize_party_details(request, token, location.uid, adhoc=False)
+        assert result == [
             (
-                mock_route.url,
-                mock_route.token_base64,
-                mock_route.to.country_code,
-                mock_route.to.party_id,
-                mock_route.credentials,
+                "https://localhost/ocpi/tokens",
+                token.ocpi_master.credentials.theirs_base64(),
+                token.ocpi_master.country_code,
+                token.ocpi_master.party_id,
+                token.ocpi_master.credentials,
             )
         ]
 
-        # Act
-        result = find_authorize_party_details(request, token, location_uid, adhoc=False)
-
-        # Assert
-        mock_find_route.assert_called_once_with(
-            "PARTY", OcpiModuleEnum.TOKENS, role=EndpointRoleEnum.SENDER
-        )
-        assert result == expected_result
-
-    @patch('ocpi22.tokens.auth.find_route')
-    @patch('ocpi22.tokens.auth.logging')
-    def test_adhoc_false_no_route_returns_none(self, mock_logging, mock_find_route):
-        # Arrange
+    @patch("ocpi22.tokens.auth.find_route")
+    @pytest.mark.django_db
+    def test_known_token_with_no_route_returns_none(self, mock_find_route, caplog):
         request = MagicMock()
-        token = MagicMock()
-        token.get_party.return_value = "PARTY"
+        token = TokenFactory(
+            uid="KNOWN_TOKEN_WITH_NO_ROUTE",
+            ocpi_master=CredentialsRoleFactory(
+                country_code="US", party_id="XYZ", role=OcpiRolesEnum.EMSP.value
+            ),
+        )
         location_uid = "loc123"
         mock_find_route.return_value = None
 
-        # Act
         result = find_authorize_party_details(request, token, location_uid, adhoc=False)
+        assert (
+            "Route (None) or Token (US*XYZ: RFID KNOWN_TOKEN_WITH_NO_ROUTE) missing, cannot authorize Token"
+            in caplog.text
+        )
 
-        # Assert
         assert result is None
-        mock_logging.warning.assert_called_once()
