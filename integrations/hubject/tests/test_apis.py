@@ -35,7 +35,7 @@ def connector_without_tariff():
     return connector
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def hubject_credentials():
     return CredentialsRoleFactory(
         country_code="DE",
@@ -298,6 +298,7 @@ def test_remote_start_returns_200_for_minimal_data(
         }
 
 
+@pytest.mark.django_db
 def test_remote_start_returns_400_for_invalid_data(
     authenticated_user_client, remote_command_payload
 ):
@@ -322,6 +323,7 @@ def test_remote_start_returns_400_for_invalid_data(
         }
 
 
+@pytest.mark.django_db
 def test_remote_start_returns_503_for_failure_in_executing_command(
     authenticated_user_client, remote_command_payload
 ):
@@ -349,6 +351,7 @@ def test_remote_start_returns_503_for_failure_in_executing_command(
             }
 
 
+@pytest.mark.django_db
 def test_remote_start_returns_400_for_mismatching_provider_id(
     authenticated_user_client, remote_command_payload
 ):
@@ -417,6 +420,7 @@ class TestHubjectRemoteStopAPI:
                 "Result": True,
             }
 
+    @pytest.mark.django_db
     def test_remote_stop_returns_400_for_invalid_data(
         self, authenticated_user_client, remote_stop_command_payload
     ):
@@ -440,6 +444,7 @@ class TestHubjectRemoteStopAPI:
                 "Result": False,
             }
 
+    @pytest.mark.django_db
     def test_remote_stop_returns_503_for_failure_in_executing_command(
         self, authenticated_user_client, remote_stop_command_payload
     ):
@@ -466,6 +471,7 @@ class TestHubjectRemoteStopAPI:
                     "Result": False,
                 }
 
+    @pytest.mark.django_db
     def test_remote_stop_returns_400_for_mismatching_provider_id(
         self, authenticated_user_client, remote_stop_command_payload
     ):

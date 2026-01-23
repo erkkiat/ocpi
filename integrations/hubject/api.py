@@ -1,10 +1,8 @@
 import logging
 from typing import Dict
 
-from ninja import Router
 from pydantic_core import ValidationError
 
-from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import (
     PricingProductData,
     ActionType,
@@ -21,16 +19,12 @@ from integrations.hubject.schemas import (
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.tariff import SolidTariff
-from ocpi22.ocpi.auth import NinjaBasicAuth, HubjectCertAuth
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
+from integrations.hubject.urls import api, remote_command_router
 from ocpi22.tasks import send_hubject_evse_full_load
 
 logger = logging.getLogger(__name__)
 
-api = CustomNinjaAPI(
-    auth=NinjaBasicAuth(),
-    urls_namespace="hubject-api",
-)
 hubject_service = HubjectService()
 
 
@@ -120,14 +114,9 @@ def send_charge_detail_record(request, session_id: str):
         return 200, result
 
 
-remote_command_router = Router()
-hubject_auth = HubjectCertAuth()
-
-
 @remote_command_router.post(
     "providers/{provider_id}/authorize-remote/start",
     url_name="hubject-remote-start",
-    auth=hubject_auth,
     response={
         (200, 400, 503): dict,
     },
@@ -189,7 +178,6 @@ def receive_remote_start_command(
 @remote_command_router.post(
     "providers/{provider_id}/authorize-remote/stop",
     url_name="hubject-remote-stop",
-    auth=hubject_auth,
     response={(200, 400, 503): dict},
 )
 def receive_remote_stop_command(
@@ -232,13 +220,6 @@ def receive_remote_stop_command(
             cpo_partner_session_id=remote_stop_command.cpo_partner_session_id,
             emp_partner_session_id=remote_stop_command.emp_partner_session_id,
         ).model_dump(mode="json", by_alias=True)
-
-
-api.add_router(
-    "api/oicp/charging/v21/",
-    remote_command_router,
-    tags=["Hubject Remote Commands"],
-)
 
 
 @api.post(

@@ -411,3 +411,17 @@ class HubjectCertAuth(CertificateAuth):
         )
 
         return builder.build_client_verifier()
+
+
+class HubjectDynamicAuth(HttpAuthBase):
+    def __init__(self):
+        super().__init__()
+        self._hubject_auth = None
+        self._basic_auth = NinjaBasicAuth()
+
+    def __call__(self, request):
+        if settings.ENABLE_HUBJECT:
+            if not self._hubject_auth:
+                self._hubject_auth = HubjectCertAuth()
+            return self._hubject_auth(request)
+        return self._basic_auth(request)
