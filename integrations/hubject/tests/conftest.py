@@ -59,17 +59,6 @@ from ocpi22.tests.factories import (
 )
 
 
-@pytest.fixture
-def hubject_credentials():
-    from integrations.hubject.services import HubjectService
-
-    HubjectService._get_hubject_credentials_id.cache_clear()
-    return CredentialsRoleFactory(
-        country_code="DE",
-        party_id="ICE",
-        role=OcpiRolesEnum.HUB,
-    )
-
 
 @pytest.fixture
 def smappee_business_details():
