@@ -66,11 +66,14 @@ class TokenAuthorizationService:
             tasks[t] = p.auth_priority
 
         if settings.ENABLE_HUBJECT:
-            hubject_rank = await sync_to_async(
-                CredentialsService.get_hubject_priority_rank
-            )()
-            t = self._start_hubject_task(token_id)
-            tasks[t] = hubject_rank
+            try:
+                hubject_rank = await sync_to_async(
+                    CredentialsService.get_hubject_auth_priority_rank
+                )()
+                t = self._start_hubject_task(token_id)
+                tasks[t] = hubject_rank
+            except ValueError:
+                logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
 
         return tasks
 
