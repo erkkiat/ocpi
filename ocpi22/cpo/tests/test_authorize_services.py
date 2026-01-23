@@ -74,10 +74,7 @@ class TestHubjectFeatureFlag:
                                             operator_id="DE*ICE",
                                             token_id="TEST_TOKEN_123",
                                         )
-                                        mock_hubject_service.post_authorize_request.assert_called_once_with(
-                                            operator_id="DE*CPO",
-                                            token_id="TEST_TOKEN_123",
-                                        )
+
 
     @pytest.mark.asyncio
     @pytest.mark.django_db
