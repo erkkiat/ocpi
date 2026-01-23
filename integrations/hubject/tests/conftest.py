@@ -35,6 +35,7 @@ from integrations.hubject.schemas import (
     EvseDataRecord,
     CalibrationLawDataAvailability,
 )
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.tests.factories import (
     LocationFactory,
     ConnectorFactory,
@@ -56,6 +57,18 @@ from ocpi22.tests.factories import (
     CdrLocationFactory,
     ERoamingPushEVSEPricingFactory,
 )
+
+
+@pytest.fixture
+def hubject_credentials():
+    from integrations.hubject.services import HubjectService
+
+    HubjectService._get_hubject_credentials_id.cache_clear()
+    return CredentialsRoleFactory(
+        country_code="DE",
+        party_id="ICE",
+        role=OcpiRolesEnum.HUB,
+    )
 
 
 @pytest.fixture

@@ -57,7 +57,6 @@ from integrations.hubject.schemas import HubjectDefaultTariff
 from ocpi22.choices import OcpiRolesEnum, TokenType
 from ocpi22.cpo.repositories import CredentialsRepository, EvseRepository
 from ocpi22.exceptions import EvseOccupiedError, EvseNotFoundError
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
@@ -354,10 +353,13 @@ class HubjectService:
                         settings.OCPI_DATE_FORMAT
                     ),
                 },
-                CredentialsRole.objects.none(),
+                None,
             )
         try:
-            response = HubjectService._get_request().post(
+            request_session = await sync_to_async(
+                HubjectService._get_request, thread_sensitive=False
+            )()
+            response = request_session.post(
                 url,
                 json=payload_dict,
                 headers={"accept": "application/json"},
@@ -375,7 +377,7 @@ class HubjectService:
                         settings.OCPI_DATE_FORMAT
                     ),
                 },
-                CredentialsRole.objects.none(),
+                None,
             )
 
         try:
@@ -407,7 +409,7 @@ class HubjectService:
             return (
                 response.status_code,
                 mapped_response,
-                ocpi_master,  # Todo: Rename ocpi_master, since it is used for OICP MSP identification also
+                ocpi_master,
             )
         except Exception:
             logger.exception("Exception during authorization with Hubject")
@@ -421,7 +423,7 @@ class HubjectService:
                         settings.OCPI_DATE_FORMAT
                     ),
                 },
-                CredentialsRole.objects.none(),
+                None,
             )
 
     def get_default_tariffs(self):
