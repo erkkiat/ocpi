@@ -61,17 +61,17 @@ class TokenAuthorizationService:
     ) -> dict[asyncio.Task, int]:
         tasks: dict[asyncio.Task, int] = {}
 
-        for p in party_details:
-            t = self._create_ocpi_task(session, p, data)
-            tasks[t] = p.auth_priority
+        for party in party_details:
+            task = self._create_ocpi_task(session, party, data)
+            tasks[task] = party.auth_priority
 
         if settings.ENABLE_HUBJECT:
             try:
                 hubject_rank = await sync_to_async(
                     CredentialsService.get_hubject_auth_priority_rank
                 )()
-                t = self._start_hubject_task(token_id)
-                tasks[t] = hubject_rank
+                task = self._start_hubject_task(token_id)
+                tasks[task] = hubject_rank
             except ValueError:
                 logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
 
@@ -81,9 +81,9 @@ class TokenAuthorizationService:
         self,
         current_rank: int,
         tasks_map: dict[asyncio.Task, int],
-        pending: set[asyncio.Task],
+        pending_tasks: set[asyncio.Task],
     ) -> bool:
-        return any(tasks_map[pt] < current_rank for pt in pending)
+        return any(tasks_map[pending_task] < current_rank for pending_task in pending_tasks)
 
     def _cancel_pending_tasks(self, pending: set[asyncio.Task]) -> None:
         for task in pending:
@@ -214,8 +214,8 @@ class TokenAuthorizationService:
 
         try:
             await task
-            res = process_task_result(task)
-            return res
+            response = process_task_result(task)
+            return response
         except Exception as e:
             logger.error(f"Error authorizing known token with owner: {e}")
             return None
