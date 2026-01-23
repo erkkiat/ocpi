@@ -376,9 +376,6 @@ class TestHubjectCertificateAuthIntegration:
 
     @pytest.mark.django_db
     @responses.activate
-    @override_settings(
-        HUBJECT_CA_CERTIFICATE="-----BEGIN CERTIFICATE-----hubject-ca-cert-----END CERTIFICATE-----"
-    )
     def test_hubject_auth_processes_real_https_request_return_200(
         self, remote_command_payload
     ):
@@ -402,11 +399,16 @@ class TestHubjectCertificateAuthIntegration:
             status=200,
         )
 
-        with patch(
-            "ocpi22.ocpi.auth.CertificateAuth._get_ip_address",
-            return_value="192.168.1.100",
+        with override_settings(
+            ENABLE_HUBJECT=True,
         ):
-            with patch("integrations.hubject.api.hubject_auth.ca_certificate", self.ca):
+            with (
+                patch(
+                    "ocpi22.ocpi.auth.CertificateAuth._get_ip_address",
+                    return_value="192.168.1.100",
+                ),
+                patch("ocpi22.ocpi.auth.get_cert_from_env", return_value=self.ca),
+            ):
                 url = reverse("hubject-api:hubject-remote-start", args=["DE-DCB"])
                 response = hubject_client.post(
                     url, data=remote_command_payload, format="json"
