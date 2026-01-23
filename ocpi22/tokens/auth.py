@@ -258,7 +258,7 @@ def _authorize_token(
             "This Token is not in our database, "
             "so an authorization request was sent to all MSPs connected to us.",
         )
-        return authorize_with_msps_sync(token_uid, location, parties)
+        return authorize_with_msps_sync(token_uid, parties, location)
     assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
@@ -287,7 +287,7 @@ def _authorize_token(
             msp=token.ocpi_master,
         )
 
-    return authorize_with_msps_sync(token.uid, location, parties)
+    return authorize_with_msps_sync(token.uid, parties, location)
 
 
 def find_authorize_party_details(
