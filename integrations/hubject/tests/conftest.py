@@ -35,7 +35,6 @@ from integrations.hubject.schemas import (
     EvseDataRecord,
     CalibrationLawDataAvailability,
 )
-from ocpi22.choices import OcpiRolesEnum
 from ocpi22.tests.factories import (
     LocationFactory,
     ConnectorFactory,
