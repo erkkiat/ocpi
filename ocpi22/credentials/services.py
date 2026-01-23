@@ -42,11 +42,3 @@ class CredentialsService:
             return None
 
         return credentials
-
-    @staticmethod
-    def get_hubject_auth_priority_rank() -> int:
-        role = CredentialsRepository.find_hubject_credentials_role()
-        if not role:
-            raise ValueError("Hubject Credentials Role not found")
-
-        return role.credentials.auth_priority

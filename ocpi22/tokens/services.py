@@ -10,6 +10,7 @@ from django.conf import settings
 
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import AuthorizationEnum, OcpiRolesEnum
+from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.credentials.services import CredentialsService
 from ocpi22.choices import TokenType, MessageTexts
 from ocpi22.models.session import Session
@@ -66,14 +67,19 @@ class TokenAuthorizationService:
             tasks[task] = party.auth_priority
 
         if settings.ENABLE_HUBJECT:
-            try:
-                hubject_rank = await sync_to_async(
-                    CredentialsService.get_hubject_auth_priority_rank
-                )()
+            role = await sync_to_async(
+                CredentialsRepository.find_hubject_credentials_role,
+                thread_sensitive=True,
+            )()
+            if not role:
+                logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
+                return tasks
+            if CredentialsService.is_location_allowed(
+                    role.credentials, data.get("location_id", "")
+            ):
+                hubject_rank = role.credentials.auth_priority
                 task = self._start_hubject_task(token_id)
                 tasks[task] = hubject_rank
-            except ValueError:
-                logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
 
         return tasks
 
