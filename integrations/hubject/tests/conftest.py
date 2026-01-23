@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 import factory
 import pytest
@@ -25,6 +26,14 @@ from integrations.hubject.schemas import (
     ProviderIDAsterisk,
     CurrencyID,
     ProductID,
+    ChargingFacility,
+    Accessibility,
+    DynamicInfoAvailable,
+    GeoCoordinates,
+    Address,
+    EvseID,
+    EvseDataRecord,
+    CalibrationLawDataAvailability,
 )
 from ocpi22.tests.factories import (
     LocationFactory,
@@ -41,6 +50,11 @@ from ocpi22.tests.factories import (
     OCPIImageFactory,
     SolidTariffFactory,
     ERoamingPushPricingProductDataFactory,
+    CdrTokenFactory,
+    OCPISessionFactory,
+    CdrFactory,
+    CdrLocationFactory,
+    ERoamingPushEVSEPricingFactory,
 )
 
 
@@ -467,6 +481,11 @@ def hubject_unsuccessful_response():
 
 
 @pytest.fixture
+def smp1_ocpi_tariff():
+    return TariffFactory(uid="SMP1")
+
+
+@pytest.fixture
 def operator_fi_cpo():
     return CredentialsRoleFactory(
         country_code="FI",
@@ -481,16 +500,27 @@ def msp_de_ice():
 
 
 @pytest.fixture
+def msp_de_icd():
+    return CredentialsRoleFactory(country_code="DE", party_id="ICD")
+
+
+@pytest.fixture
 def smp1_solid_tariff(operator_fi_cpo, msp_de_ice):
     return SolidTariffFactory(
-        external_id="SMP1", operator=operator_fi_cpo, msp=msp_de_ice
+        external_id="SMP1",
+        operator=operator_fi_cpo,
+        msp=msp_de_ice,
+        ocpi_tariff=TariffFactory(uid="OCPITARIFF1"),
     )
 
 
 @pytest.fixture
 def smp2_solid_tariff(operator_fi_cpo, msp_de_ice):
     return SolidTariffFactory(
-        external_id="SMP2", operator=operator_fi_cpo, msp=msp_de_ice
+        external_id="SMP2",
+        operator=operator_fi_cpo,
+        msp=msp_de_ice,
+        ocpi_tariff=TariffFactory(uid="OCPITARIFF2"),
     )
 
 
@@ -521,14 +551,21 @@ def connector_max_electric_power_none():
 
 @pytest.fixture
 def smp1_solid_tariff_with_all_records():
-    return SolidTariffFactory(external_id="SMP1")
+    return SolidTariffFactory(
+        external_id="SMP1", ocpi_tariff=TariffFactory(uid="TARIFFNONE")
+    )
 
 
 @pytest.fixture
 def smp1_solid_tariff_with_none_prices():
     return SolidTariffFactory(
-        external_id="SMP1", price_per_kwh=None, price_per_min=None
+        external_id="SMP1", price_per_kwh=None, price_per_min=None, price_per_hr=None
     )
+
+
+@pytest.fixture
+def evse_pricing_full_load_payload():
+    return ERoamingPushEVSEPricingFactory()
 
 
 @pytest.fixture
@@ -538,44 +575,31 @@ def smp1_solid_tariff_without_msp():
 
 @pytest.fixture
 def pricing_product_data_record_successful_result():
-    return [
-        PricingProductDataRecord(
-            AdditionalReferences=[
-                AdditionalReference(
-                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                    AdditionalReferenceUnit=ReferenceUnit(
-                        root=HubjectPriceComponent.HOUR.value
-                    ),
-                    PricePerAdditionalReferenceUnit=0.3,
+    return PricingProductDataRecord(
+        AdditionalReferences=[
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
                 ),
-            ],
-            IsValid24hours=True,
-            MaximumProductChargingPower=0,
-            PricePerReferenceUnit=0.2,
-            ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE",
-            ProductPriceCurrency="EUR",
-            ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
-        ),
-        PricingProductDataRecord(
-            AdditionalReferences=[
-                AdditionalReference(
-                    AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                    AdditionalReferenceUnit=ReferenceUnit(
-                        root=HubjectPriceComponent.HOUR.value
-                    ),
-                    PricePerAdditionalReferenceUnit=0.3,
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
                 ),
-            ],
-            IsValid24hours=True,
-            MaximumProductChargingPower=0,
-            PricePerReferenceUnit=0.3,
-            ProductAvailabilityTimes=[],
-            ProductID="FI*CPO*SMP1*MINUTE*DE*ICE",
-            ProductPriceCurrency="EUR",
-            ReferenceUnit=ReferenceUnit(root="MINUTE"),
-        ),
-    ]
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+        ],
+        IsValid24hours=True,
+        MaximumProductChargingPower=0,
+        PricePerReferenceUnit=Decimal("0.200"),
+        ProductAvailabilityTimes=[],
+        ProductID=ProductID(root="TARIFFNONE*SMP1"),
+        ProductPriceCurrency=CurrencyID(root="EUR"),
+        ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
+    )
 
 
 @pytest.fixture
@@ -583,16 +607,16 @@ def pricing_product_data_successful_result():
     return PricingProductData(
         OperatorID=OperatorID(root="FI*CPO"),
         OperatorName="Smappee eRoam CPO",
-        ProviderID=ProviderIDAsterisk(root="DE*ICE"),
+        ProviderID=ProviderIDAsterisk(root="*"),
         PricingDefaultPrice=0.3,
         PricingDefaultPriceCurrency=CurrencyID(root="EUR"),
         PricingDefaultReferenceUnit=ReferenceUnit(root="HOUR"),
         PricingProductDataRecords=[
             PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*KILOWATT_HOUR*DE*ICE"),
+                ProductID=ProductID(root="TARIFFNONE*SMP1"),
                 ReferenceUnit=ReferenceUnit(root="KILOWATT_HOUR"),
                 ProductPriceCurrency=CurrencyID(root="EUR"),
-                PricePerReferenceUnit=0.2,
+                PricePerReferenceUnit=Decimal("0.200"),
                 MaximumProductChargingPower=0.0,
                 IsValid24hours=True,
                 ProductAvailabilityTimes=[],
@@ -600,25 +624,196 @@ def pricing_product_data_successful_result():
                     AdditionalReference(
                         AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
-                    )
-                ],
-            ),
-            PricingProductDataRecord(
-                ProductID=ProductID(root="FI*CPO*SMP1*MINUTE*DE*ICE"),
-                ReferenceUnit=ReferenceUnit(root="MINUTE"),
-                ProductPriceCurrency=CurrencyID(root="EUR"),
-                PricePerReferenceUnit=0.3,
-                MaximumProductChargingPower=0.0,
-                IsValid24hours=True,
-                ProductAvailabilityTimes=[],
-                AdditionalReferences=[
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                    ),
                     AdditionalReference(
-                        AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                        AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
                         AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
-                        PricePerAdditionalReferenceUnit=0.3,
-                    )
+                        PricePerAdditionalReferenceUnit=Decimal("0.300"),
+                    ),
                 ],
             ),
         ],
+    )
+
+
+@pytest.fixture
+def session_for_cdr():
+    cdr_token = CdrTokenFactory(uid="BAADF00D")
+
+    return OCPISessionFactory(
+        uid="SESSION123",
+        cdr_token=cdr_token,
+    )
+
+
+@pytest.fixture
+def ocpi_cdr(session_for_cdr):
+    cdr_location = CdrLocationFactory(
+        evse_uid="EVSECONVERT", evse_id="FI*CPO*EEVSECONVERT"
+    )
+    cdr = CdrFactory(session_id=session_for_cdr.uid, cdr_location=cdr_location)
+
+    return cdr
+
+
+@pytest.fixture
+def expected_eroaming_cdr():
+    return {
+        "CPOPartnerSessionID": "SESSION123",
+        "CalibrationLawVerificationInfo": None,
+        "ChargingEnd": "2022-02-22T23:22:22Z",
+        "ChargingStart": "2022-02-22T22:22:22Z",
+        "ConsumedEnergy": 120.0,
+        "EMPPartnerSessionID": "EMSPSESSION1",
+        "EvseID": "FI*CPO*EEVSECONVERT",
+        "HubOperatorID": "FI*CPO",
+        "HubProviderID": "FI*MSP",
+        "Identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "BAADF00D"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
+        "MeterValueEnd": 120.0,
+        "MeterValueInBetween": None,
+        "MeterValueStart": 0.0,
+        "PartnerProductID": None,
+        "SessionEnd": "2022-02-22T23:22:22Z",
+        "SessionID": "b2688855-7f00-0002-6d8e-48d883f6abb6",
+        "SessionStart": "2022-02-22T22:22:22Z",
+        "SignedMeteringValues": None,
+    }
+
+
+@pytest.fixture
+def remote_command_payload():
+    evse = EvseFactory(status="AVAILABLE")
+    ConnectorFactory(evse=evse)
+
+    return {
+        "Identification": {"RemoteIdentification": {"EvcoID": "DE-DCB-C12345678-X"}},
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "PartnerProductID": "AC1",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_command_payload():
+    evse = EvseFactory(status="CHARGING")
+
+    return {
+        "CPOPartnerSessionID": "",
+        "EMPPartnerSessionID": "2345ABC",
+        "ProviderID": "DE-DCB",
+        "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+        "EvseID": f"{evse.location.ocpi_master.country_code}*{evse.location.ocpi_master.party_id}*E{evse.uid}",
+    }
+
+
+@pytest.fixture
+def remote_stop_session():
+    evse = EvseFactory(status="CHARGING")
+
+    return OCPISessionFactory(
+        uid="OURSESSIONID", evse=evse, authorization_reference="2345ABC"
+    )
+
+
+@pytest.fixture
+def sample_evse_data_payload():
+    return ERoamingPushEvseData(
+        ActionType=ActionType.fullLoad,
+        OperatorEvseData=OperatorEvseData(
+            OperatorID=OperatorID(root="DE*BER"),
+            OperatorName="MNO Company Pvt Ltd",
+            EvseDataRecord=[
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*EMNOEVSEUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 1")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Test Street",
+                        PostalCode="10115",
+                        HouseNum="1",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.AC_3_PHASE,
+                            Voltage=230,
+                            Amperage=16,
+                            Power=11,
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.None_],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+                EvseDataRecord(
+                    EvseID=EvseID(root="DE*BER*ESECONDUID"),
+                    ChargingStationNames=[
+                        InfoTextType(lang="en", value="Test Station 2")
+                    ],
+                    Address=Address(
+                        Country="DEU",
+                        City="Berlin",
+                        Street="Another Street",
+                        PostalCode="10115",
+                        HouseNum="2",
+                        TimeZone="UTC+01:00",
+                    ),
+                    GeoCoordinates=GeoCoordinates(
+                        DecimalDegree=DecimalDegree(
+                            Longitude="13.404954", Latitude="52.520008"
+                        ),
+                        Google=None,
+                        DegreeMinuteSeconds=None,
+                    ),
+                    Plugs=[Plug.Type_2_Outlet],
+                    ChargingFacilities=[
+                        ChargingFacility(
+                            PowerType=PowerType.DC, Voltage=400, Amperage=125, Power=50
+                        )
+                    ],
+                    AuthenticationModes=[AuthenticationMode.NFC_RFID_Classic],
+                    PaymentOptions=[PaymentOption.Contract],
+                    ValueAddedServices=[ValueAddedService.Reservation],
+                    Accessibility=Accessibility.Free_publicly_accessible,
+                    HotlinePhoneNumber="+491234567890",
+                    IsOpen24Hours=True,
+                    IsHubjectCompatible=True,
+                    DynamicInfoAvailable=DynamicInfoAvailable.false,
+                    RenewableEnergy=False,
+                    CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+                    AccessibilityLocation=None,
+                    OpeningTimes=None,
+                ),
+            ],
+        ),
     )

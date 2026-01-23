@@ -1,4 +1,5 @@
 import json
+import time
 from logging import getLogger
 from typing import Union
 from urllib.parse import urljoin
@@ -6,16 +7,18 @@ from urllib.parse import urljoin
 import aiohttp
 import asyncio
 
+from aiohttp import ClientError
 from asgiref.sync import sync_to_async
+from django.conf import settings
 from django.db import close_old_connections
+from rest_framework import status
 
 from ocpi22.choices import (
     OcpiRolesEnum,
-    OcpiModuleEnum,
     AuthorizationEnum,
-    EndpointRoleEnum,
 )
-from ocpi22.credentials.util import find_endpoints_by_roles
+from ocpi22.cpo.repositories import CredentialsRepository
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
@@ -41,40 +44,56 @@ async def post_request(
     session, url, data, ocpi_master, headers=None, ssl_context=None
 ) -> (int, dict):
     headers = headers or {}
+    response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
     headers.update({"Content-Type": "application/json", "Accept": "application/json"})
-    async with session.post(
-        url, json=data, headers=headers, ssl=ssl_context
-    ) as response:
-        status = response.status
-        try:
-            json_data = await response.json()
-        except (aiohttp.ContentTypeError, json.JSONDecodeError):
-            logger.error(f"Cannot decode JSON response from url {url}")
-            json_data = None
 
-        logger.info("Response from %s status: %s", url, status, extra=json_data)
-        return status, json_data, ocpi_master
-
-
-def process_task_result(successful_task):
-    # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
+    start_time = time.time()
     try:
-        status_code, json_data, ocpi_master = successful_task.result()
-        if status_code != 200:
-            return None
-        if isinstance(json_data, dict):
-            json_data = json_data.get("data")
-            # If content is a Token authorize response, then break, otherwise continue
-            if isinstance(json_data, dict) and json_data.get("allowed"):
-                logger.info(f"Received authorization from {successful_task.get_name()}")
-                json_data["responding_party"] = successful_task.get_name()
-                json_data["ocpi_master"] = ocpi_master
-                return json_data
-    except (aiohttp.ContentTypeError, json.JSONDecodeError):
-        # Handle the case where response is not JSON or cannot be decoded
-        logger.error(
-            f"Cannot decode JSON response from party {successful_task.get_name()}"
+        response = await session.post(
+            url, json=data, headers=headers, ssl=ssl_context, timeout=8
         )
+        duration = time.time() - start_time
+        response_status = response.status
+        json_data = await response.json()
+    except (aiohttp.ContentTypeError, json.JSONDecodeError):
+        duration = time.time() - start_time
+        logger.exception(
+            f"Cannot decode JSON response from url {url}",
+            extra={"response_duration": duration, "status_code": response_status},
+        )
+        json_data = None
+    except ClientError:
+        duration = time.time() - start_time
+        logger.exception(
+            f"Cannot connect to {url} for token authorization",
+            extra={"response_duration": duration},
+        )
+        return 0, None, None
+
+    logger.info(
+        "Received authorization from %s with status : %s",
+        url,
+        response_status,
+        extra={**json_data, "response_duration": duration}
+        if json_data
+        else {"response_duration": duration},
+    )
+    return response_status, json_data, ocpi_master
+
+
+def process_task_result(successful_task) -> dict | None:
+    status_code, json_data, ocpi_master = successful_task.result()
+    if status_code != 200:
+        return None
+    if isinstance(json_data, dict):
+        json_data = json_data.get("data")
+        if isinstance(json_data, dict) and json_data.get("allowed"):
+            json_data["responding_party"] = successful_task.get_name()
+            token = json_data.get("token", {})
+            json_data["msp"] = (
+                f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+            )
+            return json_data
         pass
     return None
 
@@ -107,22 +126,23 @@ async def create_ssl_context(credential_id):
 
 async def authorize_with_msps(token: Union[str, Token], data, parties):
     """
-    Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
+    Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
+    If no MSP allows the token, returns the first denial response with specific reason.
 
     @param token: token_id as str or Token object
     @param data: the data to be sent in the Token authorization request
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
-    @return:
+    @return: dict with authorization response or None if all tasks fail
     """
+    from integrations.hubject.services import HubjectService
 
     def make_url(base_url, token_id_param):
         return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
-    # Prefetch credential roles before async operations
     async def prefetch_roles():
+        """Prefetch credential roles before async operations."""
         roles = []
         for _, _, country_code, party_id, credentials in parties:
-            # Prefetch the role in a synchronous context
             role = await sync_to_async(
                 lambda creds, cc, pid: creds.roles.filter(
                     country_code__iexact=cc, party_id__iexact=pid
@@ -132,18 +152,20 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             roles.append(role)
         return roles
 
-    result = None
-    pending_tasks = []
     sender = get_our_party(OcpiRolesEnum.CPO)
     token_id = get_token_id(token)
-    # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+
+    # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
-    # Get all roles up front
     prefetched_roles = await prefetch_roles()
 
+    allowed_response = None
+    first_denial_response = None
+
     async with aiohttp.ClientSession() as session:
+        # Create authorization tasks for all MSPs
         tasks = [
             asyncio.create_task(
                 post_request(
@@ -151,52 +173,76 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
                     ssl_context=ssl_context,
                     url=make_url(url, token_id),
                     data=data,
-                    ocpi_master=role,  # Use prefetched role instead of async lookup
+                    ocpi_master=role,
                     headers=make_headers(
                         token_base64, to=Party(country_code, party_id), sender=sender
                     ),
                 ),
-                name=str(Party(country_code, party_id)),
+                name=f"{country_code}*{party_id}",
             )
             for (
                 url,
                 token_base64,
                 country_code,
                 party_id,
-                _,  # credentials not needed anymore
+                _,
             ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
         ]
 
-        while tasks:
+        # Add Hubject task if enabled
+        if settings.ENABLE_HUBJECT:
+            role = await sync_to_async(
+                CredentialsRepository.find_hubject_credentials_role,
+                thread_sensitive=True,
+            )()
+            if role and CredentialsService.is_location_allowed(
+                role.credentials, data.get("location_id", "")
+            ):
+                tasks.append(
+                    asyncio.create_task(
+                        HubjectService.post_authorize_request(
+                            operator_id=str(sender),
+                            token_id=token_id,
+                        ),
+                        name=settings.HUBJECT_OPERATOR_ID,
+                    )
+                )
+
+        remaining_tasks = set(tasks)
+
+        while remaining_tasks:
             done_tasks, pending_tasks = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_COMPLETED
+                remaining_tasks, return_when=asyncio.FIRST_COMPLETED
             )
-            # print(f'Processing {len(done_tasks)} done_tasks tasks ({len(pending_tasks)} still pending_tasks)...')
 
             for task in done_tasks:
                 try:
-                    result = process_task_result(task)
-                    if result:
+                    response_data = process_task_result(task)
+                    if not response_data:
+                        continue
+
+                    if response_data.get("allowed") == AuthorizationEnum.ALLOWED:
+                        allowed_response = response_data
                         break
+                    elif first_denial_response is None:
+                        first_denial_response = response_data
                 except Exception:
                     logger.exception(f"Task {task.get_name()} failed")
 
-            if not pending_tasks:
-                # No more tasks pending_tasks, break the loop
-                return result
+            if allowed_response:
+                break
 
-            tasks = set(pending_tasks)
+            remaining_tasks = pending_tasks
 
-        # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
-        for task in pending_tasks:
-            logger.info(f"Cancelling task {task.get_name()}", task.cancel())
+        for task in remaining_tasks:
+            if not task.done():
+                logger.debug(f"Cancelling task {task.get_name()}")
+                task.cancel()
 
-        return result
+    return allowed_response or first_denial_response
 
 
-def authorize_with_msps_sync(
-    token: str, location: Location = None, parties: list[tuple] = None
-):
+def authorize_with_msps_sync(token: str, location: Location, parties: list[tuple]):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
     This sync function calls an async function to process authorizations in parallel.
@@ -219,13 +265,6 @@ def authorize_with_msps_sync(
     )
 
     # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
-
-    if not parties:
-        parties = find_endpoints_by_roles(
-            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
-            OcpiModuleEnum.TOKENS,
-            endpoint_role=EndpointRoleEnum.SENDER.value,
-        )
 
     data = (
         {
@@ -253,16 +292,16 @@ def authorize_with_msps_sync(
             serializer = AuthorizationInfoSerializer(data=response)
             if serializer.is_valid():
                 token = serializer.validated_data.pop("token", {})
-                ocpi_master = response.get("ocpi_master")
-                token["ocpi_master"] = ocpi_master
-                token["billed_to"] = ocpi_master
+                msp = response.get("msp")
+                token["billed_to"] = msp
+                token["ocpi_master"] = msp
                 return TokenAuthorization(
                     **serializer.validated_data,
                     token=AdhocToken(**token),
                     responding_party=responding_party,
                     auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=ocpi_master.get_party(),
-                    ocpi_master=ocpi_master,
+                    billed_to=Party.from_str(msp),
+                    msp=msp,
                 )
             else:
                 logger.error(

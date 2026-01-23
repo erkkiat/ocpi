@@ -5,7 +5,13 @@ from ninja import Schema, Field
 from typing import List, Optional
 from datetime import datetime, timezone
 
-from pydantic import ConfigDict, NonNegativeInt, StringConstraints, AfterValidator
+from pydantic import (
+    ConfigDict,
+    NonNegativeInt,
+    StringConstraints,
+    AfterValidator,
+    model_validator,
+)
 from pydantic_extra_types.coordinate import Latitude, Longitude
 from typing_extensions import Annotated
 
@@ -103,10 +109,17 @@ class ExceptionalPeriod(BaseSchema):
 
 
 class OpeningTimes(BaseSchema):
-    regular_hours: Optional[List[RegularHours]]
+    regular_hours: Optional[List[RegularHours]] = None
     twentyfourseven: bool
     exceptional_openings: Optional[List[ExceptionalPeriod]] = None
     exceptional_closings: Optional[List[ExceptionalPeriod]] = None
+
+    @model_validator(mode="after")
+    def validate_hours(self):
+        if not self.twentyfourseven and not self.regular_hours:
+            raise ValueError("regular_hours is required when twentyfourseven is False")
+
+        return self
 
 
 class GeoLocation(BaseSchema):

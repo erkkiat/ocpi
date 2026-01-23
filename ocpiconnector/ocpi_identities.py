@@ -236,5 +236,5 @@ def get_our_credentialsrole(
         )
     except CredentialsRole.DoesNotExist:
         business_name = os.environ.get("BUSINESS_NAME", "N/A")
-        website = os.environ.get("BUSINESS_WEBSITE", "")
+        website = os.environ.get("BUSINESS_WEBSITE", None)
         return create_credentialsrole(our_party, business_name, website, role)

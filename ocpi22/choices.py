@@ -74,7 +74,7 @@ class SessionStatus:
     RESERVATION = "RESERVATION"
 
 
-class TokenType:
+class TokenType(str, Enum):
     AD_HOC_USER = "AD_HOC_USER"
     RFID = "RFID"
     APP_USER = "APP_USER"
@@ -82,18 +82,11 @@ class TokenType:
 
 
 TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
+    (TokenType.AD_HOC_USER.value, "Ad-hoc user"),
+    (TokenType.RFID.value, "RFID"),
+    (TokenType.APP_USER.value, "Application user"),
+    (TokenType.OTHER.value, "Other"),
 ]
-
-
-class TokenType(Enum):
-    AD_HOC_USER = "AD_HOC_USER"
-    RFID = "RFID"
-    APP_USER = "APP_USER"
-    OTHER = "OTHER"
 
 
 class OcpiModuleEnum(Enum):
@@ -533,3 +526,13 @@ class EnergySourceCategory(Enum):
     SOLAR = "SOLAR"
     WIND = "WIND"
     WATER = "WATER"
+
+
+class RoamingProtocol(Enum):
+    OCPI = "Open Charge Point Interface"
+    OICP = "Open InterCharge Protocol"
+
+
+ROAMING_PROTOCOL_CHOICES = [
+    (protocol.name, protocol.value) for protocol in RoamingProtocol
+]

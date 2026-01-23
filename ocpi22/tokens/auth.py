@@ -1,4 +1,5 @@
 import pytz
+from django.conf import settings
 from django.utils.datetime_safe import datetime
 from rest_framework import status
 from rest_framework.utils.serializer_helpers import ReturnDict
@@ -12,6 +13,8 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+from ocpi22.credentials.services import CredentialsService
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.tokens.token_async import authorize_with_msps_sync
@@ -22,6 +25,7 @@ from ocpi22.choices import (
     TokenType,
     get_language,
     EndpointRoleEnum,
+    OcpiRolesEnum,
 )
 from ocpi22.messages import messages
 from ocpi22.models.session import Session
@@ -91,8 +95,13 @@ class TokenAuthorization:
     location: dict = field(default_factory=dict)
     info: list = field(default_factory=list)
     billed_to: str = ""
-    ocpi_master: CredentialsRole = None
+    msp: CredentialsRole = None
     status_text: str = ""
+    hub_session_id: str = ""
+
+    @property
+    def route_via_hubject(self) -> bool:
+        return self.responding_party == settings.HUBJECT_OPERATOR_ID
 
     @staticmethod
     def get_token_owner(token) -> Party:
@@ -164,11 +173,17 @@ class TokenAuthorization:
 
 
 def authorize_token(
-    token: Union[str, Token], location=None, request=None, max_age=15, rfid=False
+    token: Union[str, Token],
+    location=None,
+    request=None,
+    max_age=15,
+    rfid=False,
+    evse_id=None,
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
         if not rfid and not isinstance(token, Token):
-            session = get_session_by_token_uid(token, max_age_minutes=max_age)
+            token_uid = token
+            session = get_session_by_token_uid(token_uid, max_age_minutes=max_age)
             if session:
                 # Token is AD HOC
                 logging.info(
@@ -178,7 +193,7 @@ def authorize_token(
                 )
                 messages.success(
                     request,
-                    f"This Token, **{markdown_escape(str(token))}** has been authorized "
+                    f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
                     f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
                     f"authorization was cached in the system.",
                 )
@@ -190,23 +205,27 @@ def authorize_token(
                     allowed="ALLOWED",
                     info=MessageTexts.get("TOKEN_ACCEPTED"),
                     token=AdhocToken(
-                        session.billed_to,
-                        token,
-                        TokenType.AD_HOC_USER,
-                        session.billed_to,
+                        billed_to=session.billed_to.get_party(),
+                        uid=token_uid,
+                        type=TokenType.AD_HOC_USER.value,
+                        ocpi_master=session.billed_to,
                     ),
-                    responding_party=session.billed_to.party_str(),
+                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
                     authorization_reference=session.authorization_reference,
                     auth_method=session.auth_method,
                     billed_to=session.billed_to.party_str(),
-                    ocpi_master=session.billed_to,
+                    msp=session.billed_to,
                 )
 
         # Not AD HOC, so Token should be found from database
         authorization: TokenAuthorization = _authorize_token(
-            token, location, request=request
+            token, location, request=request, evse_id=evse_id
         )
-        if authorization.is_positive and authorization.authorization_reference:
+        if (
+            authorization
+            and authorization.is_positive
+            and authorization.authorization_reference
+        ):
             messages.info(
                 request,
                 f'**{markdown_escape(str(authorization.billed_to))}** responded **"{authorization.allowed}"** and '
@@ -230,7 +249,7 @@ def authorize_token(
     else True,
 )
 def _authorize_token(
-    token: Union[Token, str], location=None, request=None
+    token: Union[Token, str], location=None, request=None, evse_id=None
 ) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
@@ -239,6 +258,11 @@ def _authorize_token(
     token_uid = token.uid if isinstance(token, Token) else token
     if isinstance(token, str):
         token: Token = Token.get_if_exists(uid__iexact=token)
+
+    adhoc_token = True if token is None else False
+    parties = find_authorize_party_details(
+        request, token, location.uid if location else "", adhoc=adhoc_token
+    )
     if not token:
         # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
         messages.info(
@@ -246,11 +270,19 @@ def _authorize_token(
             "This Token is not in our database, "
             "so an authorization request was sent to all MSPs connected to us.",
         )
-        return authorize_with_msps_sync(token_uid, location)
+        return authorize_with_msps_sync(token_uid, location, parties)
     assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
             f"According to the current information we have locally, the Token {token_uid} is not valid."
+        )
+        return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
+    if location and not CredentialsService.is_location_allowed(
+        token.ocpi_master.credentials, location.uid
+    ):
+        logging.warning(
+            f"Token {token} is not allowed at Location {location} according to Credentials {token.ocpi_master.credentials}",
+            request=request,
         )
         return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
     if token.whitelist == Token.ALWAYS:
@@ -264,9 +296,22 @@ def _authorize_token(
             info=MessageTexts.get("TOKEN_ACCEPTED"),
             auth_method=enum.AuthMethodChoices.WHITELIST,
             billed_to=str(token.get_party()),
-            ocpi_master=token.ocpi_master,
+            msp=token.ocpi_master,
         )
 
+    return authorize_with_msps_sync(token.uid, location, parties)
+
+
+def find_authorize_party_details(
+    request, token: Union[Token, AdhocToken], location_uid: str, adhoc: bool
+):
+    if adhoc:
+        return find_endpoints_by_roles(
+            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
+            OcpiModuleEnum.TOKENS,
+            endpoint_role=EndpointRoleEnum.SENDER.value,
+            location_uid=location_uid,
+        )
     route: Route = find_route(
         token.get_party(), OcpiModuleEnum.TOKENS, role=EndpointRoleEnum.SENDER
     )
@@ -277,9 +322,7 @@ def _authorize_token(
         )
         return None
 
-    # Let's send the authorization request using the same code as when sending request to multiple MSPs
-    # to keep things DRY
-    parties = [
+    return [
         (
             route.url,
             route.token_base64,
@@ -288,4 +331,3 @@ def _authorize_token(
             route.credentials,
         )
     ]
-    return authorize_with_msps_sync(token.uid, location, parties)

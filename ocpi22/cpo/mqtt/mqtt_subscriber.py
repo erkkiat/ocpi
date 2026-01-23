@@ -1,17 +1,11 @@
 import os
-import ssl
 import sys
-import time
-import uuid
 from logging import getLogger
 
 import django
-import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
-from distutils.util import strtobool
 
-
-logger = getLogger("__name__")
+logger = getLogger(__name__)
 
 
 def _load_envs():
@@ -36,144 +30,26 @@ def setup_django():
     django.setup()
 
 
-setup_django()
+def main():
+    setup_django()
 
-from ocpi22.cpo.mqtt.services import (  # noqa
-    process_meter_values_data,  # noqa
-    process_status_update_data,  # noqa
-)  # noqa
+    from ocpi22.cpo.mqtt.mqtt_client import MQTTClientSingleton
+    from ocpiconnector.settings.base import env_bool
 
+    logger = getLogger(__name__)
+    loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
+    mqtt_singleton = MQTTClientSingleton()
 
-def _subscribe(client, topic):
-    result, mid = client.subscribe(topic)
-    if result != mqtt.MQTT_ERR_SUCCESS:
-        logger.error(f"Failed to subscribe to {topic} with error code {result}")
-    else:
-        logger.info(f"Successfully subscribed to {topic}")
-
-
-def get_topic(topic_env_var):
-    topic = os.getenv(topic_env_var)
-    if not topic:
-        raise ValueError(f"{topic_env_var} is not set in the environment variables")
-    return topic
-
-
-meter_topic = get_topic("SMAPPEE_METER_VALUES_TOPIC")
-status_topic = get_topic("SMAPPEE_STATUS_UPDATE_TOPIC")
-
-
-def on_message(client, userdata, message):
-    if meter_topic.split("/")[-1] in message.topic:
-        logger.info("Received meter value message")
-        process_meter_values_data(message)
-        logger.info(
-            f"Processed meter value message {message.payload} on topic {message.topic}"
-        )
-    elif status_topic.split("/")[-1] in message.topic:
-        logger.info("Received status update message")
-        process_status_update_data(message)
-        logger.info(
-            f"Processed status update message {message.payload} on topic {message.topic}"
-        )
-    else:
-        logger.error(f"Unknown topic {message.topic}")
-        return
-
-
-def on_connect(client, userdata, flags, rc, properties=None):
-    if rc == 0:
-        logger.info("Connected successfully to the broker.")
-        _subscribe(client, meter_topic)
-        _subscribe(client, status_topic)
-        logger.info(f"Subscribed to [{meter_topic}] and [{status_topic}]")
-    else:
-        logger.error(f"Failed to connect, return code {rc}")
-
-
-def get_broker_username_password():
-    username = os.getenv("MQTT_USERNAME")
-    password = os.getenv("MQTT_PASSWORD")
-    if not username or not password:
-        raise ValueError(
-            "MQTT username or password is missing please check the environment variables, MQTT_USERNAME and MQTT_PASSWORD"
-        )
-    return username, password
-
-
-def get_broker_and_port():
-    broker = os.getenv("MQTT_BROKER")
-    port = os.getenv("MQTT_PORT")
-    if not broker or not port:
-        raise ValueError(
-            "MQTTT Broker or port are missing please check the environment variables, MQTT_BROKER and MQTT_PORT"
-        )
-    return broker, int(port)
-
-
-def _configure_ssl(client) -> mqtt.Client:
-    client.tls_set(cert_reqs=ssl.CERT_NONE)
-    client.tls_insecure_set(True)
-    return client
-
-
-def configure_client(client_id):
-    username, password = get_broker_username_password()
-    client = mqtt.Client(
-        client_id=client_id, callback_api_version=mqtt.CallbackAPIVersion.VERSION2
-    )
-    client.username_pw_set(username, password)
-    if strtobool(os.getenv("MQTT_USE_SSL", "False")):
-        client = _configure_ssl(client)
-    client.on_connect = on_connect
-    client.on_message = on_message
-    return client
-
-
-def connect_client(retries=5, delay=5):
-    client_id = f"ROAMING_{uuid.uuid4()}"
-    client = configure_client(client_id)
-    broker_url, port = get_broker_and_port()
-
-    for attempt in range(retries):
-        try:
-            logger.info(
-                f"Attempting to connect to MQTT broker {broker_url}:{port} (attempt {attempt + 1}/{retries})..."
-            )
-            client.connect(broker_url, port)
-            logger.info(
-                f"Connected successfully to the MQTT broker {broker_url}:{port}"
-            )
-            return client
-        except Exception as e:
-            logger.error(f"Connection attempt {attempt + 1} failed: {e}")
-            if attempt < retries - 1:
-                logger.info(f"Retrying in {delay} seconds...")
-                time.sleep(delay)
-            else:
-                logger.error("Max retries reached. Giving up.")
-                raise ConnectionError(
-                    "Failed to connect to MQTT broker after retries."
-                ) from e
-
-
-def start_client(client, loop_forever=True):
-    if loop_forever:
-        logger.info("Starting mqtt subscriber in the loop")
-        client.loop_forever()
-    else:
-        client.loop_start()
-
-
-def stop_and_disconnect(client):
-    client.loop_stop()
-    client.disconnect()
+    try:
+        mqtt_singleton.start_client(loop_forever)
+    except KeyboardInterrupt:
+        logger.info("Shutting down MQTT client...")
+        mqtt_singleton.reset_client()
+    except Exception as e:
+        logger.error(f"Error running MQTT client: {e}")
+        mqtt_singleton.reset_client()
+        raise
 
 
 if __name__ == "__main__":
-    logger = getLogger(__name__)
-    from ocpiconnector.settings.base import env_bool  # noqa
-
-    loop_forever = env_bool("MQTT_LOOP_FOREVER", True)
-    mqtt_client = connect_client()
-    start_client(mqtt_client, loop_forever)
+    main()

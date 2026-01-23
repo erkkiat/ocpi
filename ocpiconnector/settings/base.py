@@ -8,6 +8,7 @@ from django.conf.locale.en import formats as locale_formats
 from django.utils.translation import gettext_lazy as _
 
 from ocpiconnector.settings.configure_sentry import setup_sentry
+from ocpiconnector.settings.infra_services import CustomJsonFormatter
 
 setup_sentry()
 
@@ -69,6 +70,7 @@ USE_ACCOUNTS = env_bool("USE_ACCOUNTS", False)
 REQUIRE_WALLET_BALANCE = bool(env_bool("REQUIRE_WALLET_BALANCE", True) and USE_ACCOUNTS)
 
 OCPI_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+OICP_DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 OCPI_22_URL = "/ocpi/2.2/"
 OCPI_221_URL = "/ocpi/2.2.1/"
 VERSION_URLS = {OCPI_22_URL, OCPI_221_URL}
@@ -171,6 +173,8 @@ def hostname_variants(hostname):
         ]
     ]
 
+
+HUBJECT_HOSTS = []
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -368,41 +372,55 @@ TEMPLATES = [
 MESSAGE_STORAGE = "ocpiconnector.util.SessionDedupStorage"  # Removes duplicate messages, like the OCPI 2.2 explanations
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "json": {
-            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+            "()": CustomJsonFormatter,
+            "format": "%(asctime)s %(levelname)s %(name)s %(funcName)s %(message)s",
         },
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
             "class": "logging.StreamHandler",
-            "formatter": "json",  # Logs in JSON format
+            "formatter": "json",
+            "level": "INFO",
+        },
+        "sentry": {
+            "class": "sentry_sdk.integrations.logging.EventHandler",
+            "level": "ERROR",
         },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", "sentry"],
         "level": "INFO",
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
             "level": "INFO",
             "propagate": True,
         },
         "django.request": {
-            "handlers": ["console"],
             "level": "INFO",
-            "propagate": False,
+            "propagate": True,
         },
-        "__main__": {  # Main module logger
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
+        "django.db.backends": {
+            "level": "WARNING",
+            "propagate": True,
+        },
+        "django.core.management": {
+            "level": "INFO",
+            "propagate": True,
+        },
+        "gunicorn.error": {
+            "level": "INFO",
+            "propagate": True,
+        },
+        "ocpi22.cpo.mqtt.mqtt_subscriber": {
+            "level": "INFO",
+            "propagate": True,
         },
     },
 }
@@ -443,13 +461,48 @@ if not RENDER_ONLY_JSON:
 # Celery Configuration Options
 # CELERY_TIMEZONE = "Finland/Helsinki"
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = TIMEOUT_FOR_COMMANDS - 1
+CELERY_TASK_TIME_LIMIT = 300
+CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_WORKER_CANCEL_LONG_RUNNING_TASKS_ON_CONNECTION_LOSS = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_TASK_DEFAULT_QUEUE = os.environ.get("CELERY_QUEUE_NAME", "celery-django-mid")
 CELERY_TASK_ALWAYS_EAGER = strtobool(os.getenv("CELERY_TASK_ALWAYS_EAGER", "False"))
 CELERY_TASK_IGNORE_RESULTS = True
+CELERY_TASK_PUBLISH_RETRY = True
+CELERY_TASK_PUBLISH_RETRY_POLICY = {
+    "max_retries": 5,
+    "interval_start": 0,
+    "interval_step": 1,
+    "interval_max": 5,
+}
+
+CELERY_BROKER_CONNECTION_RETRY = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = None
+
+BROKER_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+    "max_connections": 50,
+}
+
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    "socket_timeout": 30,
+    "socket_connect_timeout": 30,
+    "socket_keepalive": True,
+    "retry_on_timeout": True,
+    "health_check_interval": 30,
+    "max_connections": 20,
+}
+
+CELERY_BROKER_POOL_LIMIT = 20
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
 
 # JWT authentication
 SIMPLE_JWT = {
@@ -490,13 +543,20 @@ MOESIF_MIDDLEWARE = {
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
+HUBJECT_URL = os.environ.get("HUBJECT_URL", "https://service.hubject.com/api/oicp/")
 HUBJECT_CLIENT_CERTIFICATE = os.environ.get("HUBJECT_CLIENT_CERTIFICATE")
 HUBJECT_PRIVATE_KEY = os.environ.get("HUBJECT_PRIVATE_KEY")
 HUBJECT_CA_CERTIFICATE = os.environ.get("HUBJECT_CA_CERTIFICATE")
+HUBJECT_OPERATOR_ID = os.environ.get("HUBJECT_OPERATOR_ID", "DE*ICE")
+HUB_ID_MAX_LENGTH = 36
+ENABLE_HUBJECT = env_bool("ENABLE_HUBJECT", False)
+HUBJECT_TIMEOUT_SECONDS = os.environ.get("HUBJECT_TIMEOUT_SECONDS", 10)
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID")
+
+FIXIE_URL = os.environ.get("FIXIE_URL", "")
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
 SMAPPEE_METER_VALUES_TOPIC = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
-
 
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = os.getenv("MQTT_PORT", 1883)
@@ -513,3 +573,23 @@ AXES_LOCKOUT_PARAMETERS = [
 AXES_ENABLE_ADMIN = True
 
 NINJA_DOCS_UI = os.environ.get("NINJA_DOCS_UI", "swagger")
+LOGGING_MIDDLEWARE_SENSITIVE_URLS = [
+    "/api-auth/login/",
+    "/accounts/login/",
+    "/accounts/logout/",
+    "/accounts/password_change/",
+    "/accounts/password_reset/",
+    "/admin/login/",
+    "/admin/logout/",
+    "/api/token/",
+    "/api/token/refresh/",
+    "/api/token/verify/",
+    "/portal/login/",
+    "/api-auth/login/",
+    "/portal/admin/",
+]
+
+
+MAX_ACTIVE_WEBHOOKS_PER_TYPE = os.getenv("MAX_ACTIVE_WEBHOOKS_PER_TYPE", 5)
+
+OCPI_REQUEST_TIMEOUT = int(os.getenv("OCPI_REQUEST_TIMEOUT", 3))

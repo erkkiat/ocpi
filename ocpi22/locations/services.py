@@ -1,17 +1,22 @@
 # TODO refactor this to have ddomain speicific services
+import zoneinfo
+
+from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
-from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
 from ocpiconnector.party import Party
+from integrations.hubject.services import HubjectService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,33 @@ class EvseServices:
                 return Evse.CHARGING
             case _:
                 raise ValueError(f"Invalid OCPP status [{status}] found")
+
+    @staticmethod
+    def send_status_updates(evse: Evse) -> None:
+        last_updated_serialized = evse.last_updated.replace(
+            tzinfo=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        data = {"status": evse.status, "last_updated": last_updated_serialized}
+        location = evse.location
+        location.send_all_updates(
+            data=data,
+            method="patch",
+            path_components=[
+                location.ocpi_master.country_code,
+                location.ocpi_master.party_id,
+                location.uid,
+                evse.uid,
+            ],
+        )
+
+        if settings.ENABLE_HUBJECT:
+            role = CredentialsRepository.find_hubject_credentials_role()
+            if not role:
+                logger.error("Hubject credentials role not found")
+                return
+            credentials = role.credentials if role else None
+            if CredentialsService.is_evse_allowed(credentials, evse):
+                HubjectService.post_eroaming_push_evse_status(evse)
 
 
 class LocationService:
