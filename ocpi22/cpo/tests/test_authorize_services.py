@@ -55,21 +55,29 @@ class TestHubjectFeatureFlag:
                             return_value=AsyncMock(),
                         ):
                             with patch(
-                                "ocpi22.tokens.token_async.sync_to_async",
-                                return_value=AsyncMock(return_value=MagicMock()),
+                                "ocpi22.cpo.repositories.CredentialsRepository.find_hubject_credentials_role",
+                                return_value=MagicMock(),
                             ):
                                 with patch(
-                                    "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
-                                    return_value=2,
+                                    "ocpi22.tokens.token_async.CredentialsService.is_location_allowed",
+                                    return_value=True,
                                 ):
-                                    await authorize_with_msps(
-                                        "TEST_TOKEN_123", sample_auth_data, []
-                                    )
+                                    with patch(
+                                        "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
+                                        return_value=2,
+                                    ):
+                                        await authorize_with_msps(
+                                            "TEST_TOKEN_123", sample_auth_data, []
+                                        )
 
-                                    mock_post_authorize.assert_called_once_with(
-                                        operator_id="DE*ICE",
-                                        token_id="TEST_TOKEN_123",
-                                    )
+                                        mock_post_authorize.assert_called_once_with(
+                                            operator_id="DE*ICE",
+                                            token_id="TEST_TOKEN_123",
+                                        )
+                                        mock_hubject_service.post_authorize_request.assert_called_once_with(
+                                            operator_id="DE*CPO",
+                                            token_id="TEST_TOKEN_123",
+                                        )
 
     @pytest.mark.asyncio
     @pytest.mark.django_db
@@ -87,8 +95,8 @@ class TestHubjectFeatureFlag:
                     return_value=AsyncMock(),
                 ):
                     with patch(
-                        "ocpi22.tokens.token_async.sync_to_async",
-                        return_value=AsyncMock(return_value=MagicMock()),
+                        "ocpi22.tokens.token_async.CredentialsService.is_location_allowed",
+                        return_value=True,
                     ):
                         with patch(
                             "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
