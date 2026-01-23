@@ -92,7 +92,7 @@ class TestHubjectFeatureFlag:
                     return_value=AsyncMock(),
                 ):
                     with patch(
-                        "ocpi22.tokens.token_async.CredentialsService.is_location_allowed",
+                        "ocpi22.tokens.services.CredentialsService.is_location_allowed",
                         return_value=True,
                     ):
                         with patch(
