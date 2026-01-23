@@ -324,17 +324,27 @@ def send_hubject_request(
     self,
     payload_json,
     url: str,
+    timeout: int,
+    credentials_id: int,
     method: Literal["get", "post", "put", "patch", "delete"] = "put",
 ) -> dict | None:
     try:
-        from integrations.hubject.services import HubjectService
-
         logger.info(f"Sending hubject {method} request to {url}")
-        response = HubjectService.client.session.request(
-            method=method,
+        try:
+            request_session = get_certificate_loaded_request(credentials_id)
+        except ssl.SSLError:
+            logger.exception(f"SSL error while creating session for {url}.")
+            return None
+
+        function = getattr(request_session, method.lower(), None)
+        if function is None:
+            raise NotImplementedError(
+                f"Method {method} is not supported for send_hubject_request"
+            )
+        response: requests.Response = function(
+            timeout=timeout,
             url=url,
             json=payload_json,
-            timeout=settings.HUBJECT_TIMEOUT_SECONDS,
         )
         if self.app.conf.task_always_eager:
             return response.json() if response.text else None

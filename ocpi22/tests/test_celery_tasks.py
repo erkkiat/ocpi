@@ -22,6 +22,7 @@ from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 
 class TestSendHubjectRequest:
     HUBJECT_URL = "https://hubject-api.com/endpoint"
+    TIMEOUT = 30
 
     @pytest.fixture
     def payload_json(self):
@@ -37,7 +38,7 @@ class TestSendHubjectRequest:
 
     @responses.activate
     @pytest.mark.django_db
-    def test_send_hubject_request_successfully(self, payload_json):
+    def test_send_hubject_request_successfully(self, payload_json, hubject_credentials):
         responses.add(
             responses.PUT,
             TestSendHubjectRequest.HUBJECT_URL,
@@ -48,12 +49,19 @@ class TestSendHubjectRequest:
         with patch.object(send_hubject_request, "app") as mock_app:
             mock_app.conf.task_always_eager = False
             result = send_hubject_request(
-                payload_json, TestSendHubjectRequest.HUBJECT_URL
+                payload_json,
+                TestSendHubjectRequest.HUBJECT_URL,
+                TestSendHubjectRequest.TIMEOUT,
+                hubject_credentials.id,
+                "put",
             )
             assert result is None
 
     @responses.activate
-    def test_send_hubject_request_unsupported_method(self, payload_json, caplog):
+    @pytest.mark.django_db
+    def test_send_hubject_request_unsupported_method(
+        self, payload_json, caplog, hubject_credentials
+    ):
         responses.add(
             url=TestSendHubjectRequest.HUBJECT_URL,
             method="INVALID_METHOD",
@@ -64,19 +72,22 @@ class TestSendHubjectRequest:
 
         with patch.object(send_hubject_request, "app") as mock_app:
             mock_app.conf.task_always_eager = False
-            result = send_hubject_request(
-                payload_json, TestSendHubjectRequest.HUBJECT_URL, "invalid_method"
-            )
-            assert result is None
-            assert (
-                caplog.records[1].message
-                == "Got 405 for https://hubject-api.com/endpoint: {'success': False, 'error': 'hubject error'}"
-            )
+            with pytest.raises(
+                NotImplementedError,
+                match="Method invalid_method is not supported for send_hubject_request",
+            ):
+                send_hubject_request(
+                    payload_json,
+                    TestSendHubjectRequest.HUBJECT_URL,
+                    TestSendHubjectRequest.TIMEOUT,
+                    hubject_credentials.id,
+                    "invalid_method",
+                )
 
     @responses.activate
     @pytest.mark.django_db
     def test_send_hubject_request_eager_mode_does_not_retry(
-        self, payload_json, monkeypatch
+        self, payload_json, monkeypatch, hubject_credentials
     ):
         responses.add(
             responses.POST,
@@ -92,7 +103,11 @@ class TestSendHubjectRequest:
         ):
             mock_app.conf.task_always_eager = True
             send_hubject_request(
-                payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                payload_json,
+                TestSendHubjectRequest.HUBJECT_URL,
+                TestSendHubjectRequest.TIMEOUT,
+                hubject_credentials.id,
+                "post",
             )
 
             mock_request.retry.assert_not_called()
@@ -101,7 +116,7 @@ class TestSendHubjectRequest:
     @pytest.mark.django_db
     @pytest.mark.parametrize("status_code", [500, 502, 503])
     def test_send_hubject_request_when_status_code_gte_500_retry_sending_request(
-        self, payload_json, status_code
+        self, payload_json, status_code, hubject_credentials
     ):
         responses.add(
             responses.POST,
@@ -121,7 +136,11 @@ class TestSendHubjectRequest:
             mock_app.conf.task_always_eager = False
             with pytest.raises(Retry):
                 send_hubject_request(
-                    payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                    payload_json,
+                    TestSendHubjectRequest.HUBJECT_URL,
+                    TestSendHubjectRequest.TIMEOUT,
+                    hubject_credentials.id,
+                    "post",
                 )
             mock_retry.assert_called_once()
             call_args = mock_retry.call_args
@@ -131,7 +150,7 @@ class TestSendHubjectRequest:
     @pytest.mark.django_db
     @pytest.mark.parametrize("status_code", [300, 400])
     def test_send_hubject_request_when_status_code_lt_500_does_not_retry_sending_request(
-        self, payload_json, status_code
+        self, payload_json, status_code, hubject_credentials
     ):
         responses.add(
             responses.POST,
@@ -150,20 +169,24 @@ class TestSendHubjectRequest:
         ):
             mock_app.conf.task_always_eager = False
             send_hubject_request(
-                payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                payload_json,
+                TestSendHubjectRequest.HUBJECT_URL,
+                TestSendHubjectRequest.TIMEOUT,
+                hubject_credentials.id,
+                "post",
             )
 
             mock_retry.assert_not_called()
 
     @pytest.mark.django_db
     def test_send_hubject_request_when_raised_request_exception_retry_sending_request(
-        self, payload_json
+        self, payload_json, hubject_credentials
     ):
         mock_retry = Mock(side_effect=Retry("Server error retry"))
 
         with (
             patch(
-                "integrations.hubject.services.HubjectService.client.session.request",
+                "integrations.hubject.services.HubjectService._get_request",
                 side_effect=RequestException("Request failed"),
             ),
             patch.object(send_hubject_request, "retry", mock_retry),
@@ -171,7 +194,11 @@ class TestSendHubjectRequest:
         ):
             with pytest.raises(Retry):
                 send_hubject_request(
-                    payload_json, TestSendHubjectRequest.HUBJECT_URL, "post"
+                    payload_json,
+                    TestSendHubjectRequest.HUBJECT_URL,
+                    TestSendHubjectRequest.TIMEOUT,
+                    hubject_credentials.id,
+                    "post",
                 )
 
                 mock_retry.assert_called()
