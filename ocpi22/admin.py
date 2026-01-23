@@ -828,6 +828,7 @@ class CredentialsAdmin(SolidModelAdmin):
         "last_update",
         "allowed_locations",
         "meter_value_frequency",
+        "auth_priority",
     ]
     readonly_fields = [
         "theirs_base64",

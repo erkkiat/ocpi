@@ -20,7 +20,7 @@ from rest_framework import status
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum
 from rest_framework.response import Response
 
 from ocpi22.ocpi.headers import make_headers
@@ -148,6 +148,15 @@ class OcpiModule:
 
                 setattr(self, "updates_sent", True)
 
+    def get_location_uid(self):
+        if self.ocpi_module_name == OcpiModuleEnum.LOCATIONS:
+            return self.uid
+        elif hasattr(self, "location") and hasattr(self.location, "uid"):
+            return self.location.uid
+        elif hasattr(self, "cdr_location_uid"):
+            return self.cdr_location_uid
+        return None
+
     def send_all_updates(
         self,
         data=None,
@@ -171,7 +180,11 @@ class OcpiModule:
 
         ocpi_module_name = ocpi_module_name or self.ocpi_module_name
         if isinstance(send_updates_to, (list, tuple)):
-            endpoints = find_endpoints_by_roles(send_updates_to, ocpi_module_name)
+            location_uid = self.get_location_uid()
+
+            endpoints = find_endpoints_by_roles(
+                send_updates_to, ocpi_module_name, location_uid=location_uid
+            )
             for url, token_base64, country_code, party_id, credentials in endpoints:
                 try:
                     if path_components:

@@ -22,8 +22,11 @@ class TestEvseServices:
         }
 
     @pytest.fixture
+    def amsterdam_role(self):
+        return CredentialsRoleFactory(country_code="NL", party_id="TST", role="EMSP")
+
+    @pytest.fixture
     def evse(self):
-        CredentialsRoleFactory(country_code="NL", party_id="TST", role="EMSP")
         location = LocationFactory(
             ocpi_master__country_code="DE",
             ocpi_master__party_id="TST",
@@ -39,7 +42,7 @@ class TestEvseServices:
         "status,expected_status",
         [
             ("AVAILABLE", Evse.AVAILABLE),
-            ("PREPARING", Evse.AVAILABLE),
+            ("PREPARING", Evse.CHARGING),
             ("CHARGING", Evse.CHARGING),
             ("SUSPENDEDEV", Evse.CHARGING),
             ("SUSPENDEDEVSE", Evse.CHARGING),
@@ -59,7 +62,9 @@ class TestEvseServices:
     @pytest.mark.django_db
     @responses.activate
     @override_settings(ENABLE_HUBJECT=True)
-    def test_send_status_updates_successfully(self, evse_patch_payload, evse):
+    def test_send_status_updates_successfully(
+        self, evse_patch_payload, amsterdam_role, evse, hubject_credentials
+    ):
         with (
             patch(
                 "ocpi22.ocpi.util.OcpiModule.send_all_updates"
@@ -131,3 +136,121 @@ class TestEvseServices:
                 method="patch",
                 path_components=["DE", "TST", evse.location.uid, evse.uid],
             )
+
+    @pytest.mark.django_db
+    @override_settings(ENABLE_HUBJECT=True)
+    def test_send_status_for_not_allowed_location_does_not_call_background_update(
+        self, evse_patch_payload, evse, hubject_credentials
+    ):
+        role = CredentialsRoleFactory(country_code="DE", party_id="TST", role="EMSP")
+        role.credentials.allowed_locations = ["some_other_location_uid"]
+        role.credentials.save()
+
+        hubject_credentials.allowed_locations = ["some_other_location_uid"]
+        hubject_credentials.save()
+
+        with (
+            patch(
+                "ocpi22.ocpi.util.OcpiModule.send_background_update"
+            ) as mock_send_background_update,
+            patch(
+                "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+            ) as mock_post_eroaming_push_evse_status,
+        ):
+            EvseServices.send_status_updates(evse)
+
+            assert evse.status == evse_patch_payload["status"]
+            assert (
+                evse.last_updated.replace(tzinfo=zoneinfo.ZoneInfo("UTC")).isoformat()
+                == evse_patch_payload["last_updated"]
+            )
+
+            mock_send_background_update.assert_not_called()
+            mock_post_eroaming_push_evse_status.assert_not_called()
+
+    @pytest.mark.django_db
+    @override_settings(ENABLE_HUBJECT=True)
+    def test_send_status_for_allowed_location_call_background_update(
+        self, evse_patch_payload, amsterdam_role, evse, hubject_credentials
+    ):
+        role = CredentialsRoleFactory(country_code="DE", party_id="TST", role="EMSP")
+        role.credentials.allowed_locations = [
+            "some_other_location_uid",
+            evse.location.uid,
+        ]
+        role.credentials.save()
+
+        hubject_credentials.allowed_locations = [
+            "some_other_location_uid",
+            evse.location.uid,
+        ]
+        hubject_credentials.save()
+
+        with (
+            patch(
+                "ocpi22.ocpi.util.OcpiModule.send_background_update"
+            ) as mock_send_background_update,
+            patch(
+                "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+            ) as mock_post_eroaming_push_evse_status,
+            patch(
+                "ocpi22.credentials.util.find_endpoints_by_roles"
+            ) as mock_find_endpoints,
+        ):
+            mock_find_endpoints.return_value = [
+                (
+                    "https://example.com/ocpi/emsp",
+                    "dGVzdF9iYXNlNjQ=",
+                    "DE",
+                    "TST",
+                    role.credentials,
+                )
+            ]
+            EvseServices.send_status_updates(evse)
+
+            assert evse.status == evse_patch_payload["status"]
+            assert (
+                evse.last_updated.replace(tzinfo=zoneinfo.ZoneInfo("UTC")).isoformat()
+                == evse_patch_payload["last_updated"]
+            )
+
+            mock_send_background_update.assert_called_once()
+            mock_post_eroaming_push_evse_status.assert_called_once()
+
+    @pytest.mark.django_db
+    @override_settings(ENABLE_HUBJECT=True)
+    def test_send_status_for_empty_allowed_location_list_call_background_update(
+        self, evse_patch_payload, amsterdam_role, evse, hubject_credentials
+    ):
+        role = CredentialsRoleFactory(country_code="DE", party_id="TST", role="EMSP")
+
+        with (
+            patch(
+                "ocpi22.ocpi.util.OcpiModule.send_background_update"
+            ) as mock_send_background_update,
+            patch(
+                "integrations.hubject.services.HubjectService.post_eroaming_push_evse_status"
+            ) as mock_post_eroaming_push_evse_status,
+            patch(
+                "ocpi22.credentials.util.find_endpoints_by_roles"
+            ) as mock_find_endpoints,
+        ):
+            mock_find_endpoints.return_value = [
+                (
+                    "https://example.com/ocpi/emsp",
+                    "dGVzdF9iYXNlNjQ=",
+                    "DE",
+                    "TST",
+                    role.credentials,
+                )
+            ]
+            EvseServices.send_status_updates(evse)
+
+            assert evse.status == evse_patch_payload["status"]
+            assert (
+                evse.last_updated.replace(tzinfo=zoneinfo.ZoneInfo("UTC")).isoformat()
+                == evse_patch_payload["last_updated"]
+            )
+
+            mock_send_background_update.assert_called_once()
+            mock_post_eroaming_push_evse_status.assert_called_once()

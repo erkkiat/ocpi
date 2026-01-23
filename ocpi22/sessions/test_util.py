@@ -2,6 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from ocpi22.tests.factories import LocationFactory
 from ocpi22.tokens.token_async import process_task_result
 from unittest.mock import patch
 from ocpi22.tokens.token_async import authorize_with_msps_sync
@@ -61,7 +62,7 @@ def test_authorize_with_msps_sync_returns_correct_token_authorization_succeeds(
     mock_response["responding_party"] = "FR*007"
     mock_asyncio_run.return_value = mock_response
 
-    result = authorize_with_msps_sync(token)
+    result = authorize_with_msps_sync(token, LocationFactory(), [])
 
     mock_asyncio_run.assert_called_once()
     assert isinstance(result, TokenAuthorization)

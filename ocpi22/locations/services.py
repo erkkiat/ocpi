@@ -5,10 +5,11 @@ from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
-from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
 from ocpi22.cpo.schemas import LocationIn
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
@@ -26,7 +27,7 @@ class EvseServices:
             case "AVAILABLE":
                 return Evse.AVAILABLE
             case "PREPARING":
-                return Evse.AVAILABLE
+                return Evse.CHARGING
             case "CHARGING":
                 return Evse.CHARGING
             case "SUSPENDEDEV":
@@ -63,7 +64,13 @@ class EvseServices:
         )
 
         if settings.ENABLE_HUBJECT:
-            HubjectService.post_eroaming_push_evse_status(evse)
+            role = CredentialsRepository.find_hubject_credentials_role()
+            if not role:
+                logger.error("Hubject credentials role not found")
+                return
+            credentials = role.credentials if role else None
+            if CredentialsService.is_evse_allowed(credentials, evse):
+                HubjectService.post_eroaming_push_evse_status(evse)
 
 
 class LocationService:

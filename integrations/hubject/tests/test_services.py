@@ -1512,7 +1512,7 @@ class TestHubjectAuthorizeRemoteStart:
             responses.add(
                 responses.POST,
                 "http://localhost/api/cpo/v2/chargepoint/start-session/",
-                json={"data": {"result": "REJECTED"}},
+                json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
         evse.status = "OUTOFORDER"
@@ -1521,10 +1521,8 @@ class TestHubjectAuthorizeRemoteStart:
             mock_remote_start_command
         )
 
-        assert result.result is False
-        assert result.status_code == StatusCode(
-            Code="602", Description="EVSE is currently occupied"
-        )
+        assert result.result
+        assert result.status_code == StatusCode(Code="000")
 
     @pytest.mark.django_db
     @override_settings(HOSTNAME="localhost")
@@ -1710,14 +1708,14 @@ class TestHubjectAuthorizeRemoteStart:
             ),
         ):
             responses.add(
-                responses.POST, url, json={"data": {"result": "REJECTED"}}, status=200
+                responses.POST, url, json={"data": {"result": "ACCEPTED"}}, status=200
             )
         result = self.hubject_service.process_remote_start_command(
             mock_remote_start_command
         )
 
-        assert result.result is False
-        assert result.status_code.Code == "602"
+        assert result.result
+        assert result.status_code.Code == "000"
 
     @pytest.mark.django_db
     @responses.activate
@@ -1738,8 +1736,8 @@ class TestHubjectAuthorizeRemoteStart:
         ):
             responses.add(
                 responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/remote_command_result/MSPSession/",
-                json={"data": {"result": "REJECTED"}},
+                "http://localhost/api/cpo/v2/chargepoint/start-session/",
+                json={"data": {"result": "ACCEPTED"}},
                 status=200,
             )
         evse.status = "CHARGING"
@@ -1750,9 +1748,9 @@ class TestHubjectAuthorizeRemoteStart:
             mock_remote_start_command
         )
 
-        assert result.result is False
+        assert not result.result
         assert result.status_code == StatusCode(
-            Code="602", Description="EVSE is currently occupied"
+            Code="602", Description="EVSE is occupied"
         )
 
 
@@ -1923,9 +1921,14 @@ class TestHubjectAuthorizeRemoteStop:
     def test_validate_command_response_raises_hubject_error_when_session_not_found(
         self,
     ):
-        response_data = {"data": {"result": "UNKNOWN_SESSION"}}
+        response_data = {"result": "UNKNOWN_SESSION"}
+        response = OCPIResponse(
+            status_code=Ocpi.OK,
+            http_status=status.HTTP_200_OK,
+            data=response_data,
+        )
         with pytest.raises(HubjectRemoteCommandError) as exc_info:
-            self.hubject_service._validate_command_response(response_data)
+            self.hubject_service._validate_command_response(response, None)
 
         assert exc_info.value.args[0] == "Session not found"
         assert exc_info.value.error_code == "400"

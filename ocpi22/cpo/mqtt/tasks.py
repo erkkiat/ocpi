@@ -123,14 +123,19 @@ def _format_evse_id(country_code: str, party_id: str, evse_uid: str) -> str:
 
 
 @shared_task(queue="HIGH")
-def save_and_send_evse_status_updates(evse_uid: str, status: str) -> None:
+def save_and_send_evse_status_updates(evse_uid: str, ocpp_status: str) -> None:
     country, party_id = _get_country_and_party_id()
     evse_id = _format_evse_id(country, party_id, evse_uid)
     evse = Evse.objects.filter(uid=evse_uid, evse_id=evse_id).first()
     if not evse:
         logger.warning(f"Evse not found for uid:{evse_uid} and evse_id:{evse_id}")
         return
-    status = EvseServices.ocpp_to_evse_status(status)
+    status = EvseServices.ocpp_to_evse_status(ocpp_status)
+    if evse.status == status:
+        logger.info(
+            f"Evse status for evse_uid:{evse_uid} and evse_id:{evse_id} is already {status}, skipping update"
+        )
+        return
     evse.status = status
     evse.last_updated = datetime.now(ZoneInfo("UTC"))
     evse.save(update_fields=["status", "last_updated"])

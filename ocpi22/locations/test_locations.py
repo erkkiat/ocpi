@@ -261,9 +261,10 @@ class TestEvseMove:
     def test_adding_a_connector_to_an_existing_location_and_evse_succeeds(
         self, super_user_client
     ):
+        role = CredentialsRoleFactory(country_code="FI", party_id="CPO")
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
-            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            role,
             "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
@@ -271,12 +272,12 @@ class TestEvseMove:
 
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
-            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            role,
             "ocpi22/data/examples/location_example_added_connector.json",
         )
         assert result.response.status_code == 200
         connectors = result.location.evses.get(uid="3257").connectors.all()
-        assert list(connectors.values_list("uid", flat=True)) == ["1", "2"]
+        assert set(connectors.values_list("uid", flat=True)) == {"1", "2"}
 
     @pytest.mark.django_db
     def test_moving_an_evse_to_an_existing_location_succeeds(self, super_user_client):

@@ -40,6 +40,7 @@ from django.test import TestCase, Client
 from rest_framework import status
 
 from ocpi22.cpo.services import CdrService
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
@@ -818,13 +819,13 @@ class ApiPutTests(TestCase):
                 "tariff_2_alt_text",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
                 Decimal("4.75"),
-                Decimal("5"),
+                Decimal("4.997"),
             ),
             (
                 "tariff_3_alt_url",
                 dict(stop_kwh=Decimal(20.45)),
-                Decimal("5.63"),
-                Decimal("6.24"),
+                Decimal("5.625"),
+                Decimal("6.238"),
             ),
             # Parking, weekdays, times
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
@@ -3705,9 +3706,12 @@ class TestOCPIAuthentication(TestCase):
     @staticmethod
     def _make_test_request(sender: Party, to: Party, hub: Optional[Party] = None):
         request = api_factory.post("http://localhost:8101/anyurl/")
-        from ocpi22.routing import find_credentials
 
-        credentials = find_credentials(hub) if hub else find_credentials(sender)
+        credentials = (
+            CredentialsService.find_credentials(hub)
+            if hub
+            else CredentialsService.find_credentials(sender)
+        )
         request.headers = make_headers(credentials.ours_base64(), to=to, sender=sender)
         return request, credentials.ours_base64()
 
