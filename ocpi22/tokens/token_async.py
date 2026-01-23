@@ -12,11 +12,8 @@ from django.db import close_old_connections
 from rest_framework import status
 
 from ocpi22.choices import (
-    OcpiRolesEnum,
     AuthorizationEnum,
 )
-from ocpi22.cpo.repositories import CredentialsRepository
-from ocpi22.credentials.services import CredentialsService
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
