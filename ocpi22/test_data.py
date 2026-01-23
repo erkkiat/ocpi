@@ -48,6 +48,7 @@ class CredentialsData:
         "client_certificate_name": "",
         "private_key_name": "",
         "ca_certificate_name": "",
+        "auth_priority": 100,
     }
 
     expected_versions_response = {

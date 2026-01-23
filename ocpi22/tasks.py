@@ -108,6 +108,10 @@ if REDIS_URL:
     app.conf.update(broker_url=REDIS_URL, result_backend=REDIS_URL)
 
     app.conf.update(
+        beat_scheduler="redbeat.RedBeatScheduler",
+        redbeat_redis_url=REDIS_URL,
+        redbeat_lock_timeout=30,  # Lock expires after 30s if beat process dies
+        redbeat_key_prefix="redbeat:",
         broker_connection_retry=True,
         broker_connection_retry_on_startup=True,
         broker_connection_max_retries=None,

@@ -284,6 +284,29 @@ class TestCommandServices:
         assert payload["connector_id"] == connector_id
 
     @patch("ocpi22.commands.services.build_absolute_uri")
+    def test_prepare_start_session_remove_last_updated_field(self, mock_build_uri):
+        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
+
+        session = MagicMock()
+        session.uid = "UNIQUE_SESSION_ID_456"
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN123",
+                "type": "RFID",
+                "last_updated": "2024-01-01T00:00:00Z",
+            },
+            "authorization_reference": "AUTH123",
+        }
+
+        payload = StartCommandService._prepare_start_session_payload(
+            validated_data=validated_data,
+            session=session,
+        )
+
+        assert payload.get("last_updated") is None
+
+    @patch("ocpi22.commands.services.build_absolute_uri")
     @pytest.mark.django_db
     def test_start_session_creates_non_existing_msp_credentials_role(
         self, mock_build_uri
@@ -889,6 +912,55 @@ class TestStartCommandServiceHelpers:
 class TestStartCommandServiceStartSession:
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
+    def test_start_session_does_not_create_new_session_when_active_existing_session_found(
+        self, mock_send_webhook
+    ):
+        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
+
+        location = LocationFactory(uid="LOC123")
+        evse = EvseFactory(uid="EVSE123", location=location, status=Evse.AVAILABLE)
+        connector = ConnectorFactory(uid="CONN123", evse=evse)
+        credentials_role = CredentialsRoleFactory()
+        OCPISessionFactory(
+            uid="SESSION_123",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            credentials=credentials_role.credentials,
+            authorization_reference="AUTH123",
+        )
+
+        validated_data = {
+            "token": {
+                "uid": "TOKEN123",
+                "type": "RFID",
+                "country_code": "FI",
+                "party_id": "CPO",
+                "contract_id": "CONTRACT123",
+            },
+            "authorization_reference": "AUTH123",
+            "evse_uid": evse.uid,
+            "connector_id": connector.uid,
+            "location_id": location.uid,
+            "response_url": "https://example.com/callback",
+        }
+
+        with patch("ocpi22.sessions.util.create_session") as mock_create_session:
+            service = StartCommandService()
+            response = service.start_session(
+                sender_party=Party(country_code="FI", party_id="MSP"),
+                credentials=credentials_role.credentials,
+                validated_data=validated_data,
+            )
+
+            mock_create_session.assert_not_called()
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["data"]["evse_status"] == "Occupied"
+
+    @pytest.mark.django_db
+    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
     def test_start_session_creates_new_session_when_no_existing_session_found(
         self, mock_send_webhook
     ):
@@ -1033,10 +1105,11 @@ class TestStartCommandServiceStartSession:
 
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
-    def test_start_session_raises_evse_occupied_error_when_evse_is_not_available(
+    def test_start_session_does_not_raise_evse_occupied_error_when_evse_is_not_available(
         self,
         mock_send_webhook,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC222")
         evse = EvseFactory(uid="EVSE222", location=location, status=Evse.BLOCKED)
         ConnectorFactory(uid="CONN_SECOND", evse=evse)
@@ -1058,20 +1131,20 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
 
-        with pytest.raises(EvseOccupiedError) as exc_info:
-            service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
-                credentials=credentials_role.credentials,
-                validated_data=validated_data,
-            )
+        result = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
 
-        assert "Evse is not available for starting a session" in str(exc_info.value)
+        assert result.status_code == status.HTTP_200_OK
 
     @pytest.mark.django_db
     @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
-    def test_start_session_raises_evse_occupied_error_when_evse_is_charging(
+    def test_start_session_does_not_raise_evse_occupied_error_when_evse_is_charging(
         self, mock_send_webhook
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC333")
         evse = EvseFactory(uid="EVSE333", location=location, status=Evse.CHARGING)
         ConnectorFactory(uid="CONN_THIRD", evse=evse)
@@ -1093,14 +1166,13 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
 
-        with pytest.raises(EvseOccupiedError) as exc_info:
-            service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
-                credentials=credentials_role.credentials,
-                validated_data=validated_data,
-            )
+        result = service.start_session(
+            sender_party=Party(country_code="FI", party_id="MSP"),
+            credentials=credentials_role.credentials,
+            validated_data=validated_data,
+        )
 
-        assert "Evse is not available for starting a session" in str(exc_info.value)
+        assert result.status_code == status.HTTP_200_OK
 
     @pytest.mark.django_db
     def test_start_session_raises_connector_not_found_error_when_provided_connector_does_not_exist(
@@ -1215,7 +1287,7 @@ class TestStartCommandServiceStartSession:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Cannot start - ACTIVE session" in response.data["status_message"]
+        assert response.data["data"]["evse_status"] == "Occupied"
         mock_send_webhook.assert_not_called()
 
     @pytest.mark.django_db

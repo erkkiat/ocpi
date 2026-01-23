@@ -12,7 +12,7 @@ case "$1" in
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        exec celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME --beat
         ;;
     mqtt-subscriber)
         echo "Starting MQTT subscriber..."

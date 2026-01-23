@@ -458,6 +458,19 @@ class StartCommandService(RemoteCommandServices):
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
     ) -> OCPIResponse:
+        active_session = self.session_repo.find_active_session_by_evse_uid(
+            evse_uid=validated_data.get("evse_uid"),
+        )
+        if active_session:
+            logger.warning(
+                f"Found existing active session for remote start for evse: {validated_data.get('evse_uid')}"
+            )
+            return OCPIResponse(
+                errors={"evse_status": "Occupied"},
+                status_message="Cannot start - ACTIVE session",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+
         session = self.session_repo.find_session_by_auth_ref_and_token_uid(
             auth_reference=validated_data["authorization_reference"],
             token_uid=validated_data["token"]["uid"],
@@ -466,7 +479,6 @@ class StartCommandService(RemoteCommandServices):
         if not session:
             location = self._get_location(location_uid=validated_data["location_id"])
             evse = self._get_evse(evse_uid=validated_data["evse_uid"])
-            self._is_evse_available(evse)
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
@@ -557,6 +569,7 @@ class StartCommandService(RemoteCommandServices):
             validated_data.get("authorization_reference") or generate_random_token()
         )
         validated_data["token"]["type"] = str(validated_data["token"]["type"])
+        validated_data["token"].pop("last_updated", None)
         payload = {
             "response_url": build_absolute_uri(
                 reverse(

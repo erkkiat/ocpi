@@ -61,7 +61,7 @@ from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Connector, Evse
 from ocpi22.models.tariff import SolidTariff
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpi22.ocpi.util import Ocpi
+from ocpi22.ocpi.util import Ocpi, OCPIResponse
 from ocpi22.util import build_absolute_uri
 from ocpiconnector.exceptions import ConnectorTariffNotFoundError
 from ocpiconnector.ocpi_identities import (
@@ -1023,7 +1023,7 @@ class HubjectService:
             validated_data=validated_data,
             hub_session_id=remote_start_command.session_id.root,
         )
-        self._validate_command_response(response.data)
+        self._validate_command_response(response, validated_data.get("evse_uid", None))
 
         session = SessionRepository.find_session_by_auth_ref_and_token_uid(
             validated_data.get("authorization_reference"),
@@ -1064,14 +1064,36 @@ class HubjectService:
         }
         return data
 
-    def _validate_command_response(self, response_data: dict) -> None:
+    def _validate_command_response(
+        self, response: OCPIResponse, evse_uid: str | None
+    ) -> None:
         from ocpi22.commands.serializers import CommandResponseType
+
+        response_data = response.data
 
         data = response_data["data"]
         if not data:
             raise HubjectRemoteCommandError(
                 "021", "Remote command failed", data={"accepted_status": False}
             )
+
+        if response.status_code == 400:
+            logger.warning(
+                "Hubject remote command failed: HTTP error 400",
+                extra={"response": response.data},
+            )
+            if data.get("evse_status") == "Occupied":
+                raise HubjectRemoteCommandError(
+                    "602",
+                    "EVSE is occupied",
+                    data={"accepted_status": False},
+                )
+            raise HubjectRemoteCommandError(
+                "021",
+                "Remote command failed due to HTTP error",
+                data={"accepted_status": False},
+            )
+
         result = data["result"]
         if result == CommandResponseType.UNKNOWN_SESSION:
             logger.error(
@@ -1084,7 +1106,9 @@ class HubjectService:
                 "Hubject remote command was rejected", extra={"response": response_data}
             )
             raise HubjectRemoteCommandError(
-                "021", "Remote command was rejected", data={"accepted_status": False}
+                "021",
+                "Remote command was rejected",
+                data={"accepted_status": False},
             )
         logger.info(f"Hubject remote command was accepted. {data}")
         return
@@ -1125,7 +1149,7 @@ class HubjectService:
                 validated_data=validated_data,
             )
 
-            self._validate_command_response(response.data)
+            self._validate_command_response(response, None)
 
             return ERoamingAcknowledgment(
                 result=True,

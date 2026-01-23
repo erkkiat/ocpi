@@ -79,6 +79,79 @@ make list-flows                       # List available flows
 - Indent with 4 spaces
 - Target Python 3.10 compatibility
 
+### Typing Requirements (NEW - Required for all new code)
+
+**All new code MUST include explicit type hints:**
+- Function/method signatures with parameter types and return types
+- Class attributes and instance variables
+- Module-level variables
+
+**Type checking tool: MyPy with django-stubs**
+```bash
+mypy --config-file=mypy.ini <file_or_directory>
+```
+
+**Examples of proper typing:**
+```python
+from typing import Optional, List, Dict, Any
+from django.http import HttpRequest, HttpResponse
+from ocpi22.models import Session, Location
+
+# ✅ Good - All parameters and return types annotated
+def get_session_by_uid(session_uid: str) -> Optional[Session]:
+    """Retrieve a session by its UID."""
+    try:
+        return Session.objects.get(uid=session_uid)
+    except Session.DoesNotExist:
+        return None
+
+# ✅ Good - Service class with typed methods
+class LocationService:
+    def __init__(self, repository: LocationRepository) -> None:
+        self.repository = repository
+    
+    def create_location(
+        self, 
+        name: str, 
+        address: str, 
+        coordinates: Dict[str, float]
+    ) -> Location:
+        """Create a new location with validation."""
+        location = self.repository.create(
+            name=name,
+            address=address,
+            latitude=coordinates["latitude"],
+            longitude=coordinates["longitude"]
+        )
+        return location
+
+# ❌ Bad - No type hints
+def process_data(data):
+    result = transform(data)
+    return result
+```
+
+**Django-specific typing patterns:**
+```python
+from typing import Optional, List, QuerySet
+from django.db.models import Q
+from django.http import HttpRequest, JsonResponse
+
+# QuerySet typing
+def get_active_locations(country: str) -> QuerySet[Location]:
+    return Location.objects.filter(country=country, publish=True)
+
+# Request/Response typing
+def location_list_view(request: HttpRequest) -> JsonResponse:
+    locations = get_active_locations(request.GET.get("country", "BE"))
+    return JsonResponse({"locations": list(locations.values())})
+```
+
+**Pre-commit and CI:**
+- Pre-commit hook runs mypy on changed files
+- CI workflow provides type checking report (informational only)
+- Fix type errors in new code before merging
+
 ---
 
 ## Project Structure

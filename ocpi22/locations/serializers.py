@@ -39,7 +39,7 @@ class BusinessDetailsSerializer(HyperlinkedModelSerializerCleanedUp):
         model = BusinessDetails
         fields = ["name", "website", "logo"]
 
-    logo = OCPIImageSerializer(required=False)
+    logo = OCPIImageSerializer(required=False, allow_null=True)
 
     def create(self, data):
         if isinstance(data, BusinessDetails) or not data:

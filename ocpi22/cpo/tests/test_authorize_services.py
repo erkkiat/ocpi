@@ -25,9 +25,10 @@ def sample_auth_data():
 
 class TestHubjectFeatureFlag:
     @pytest.mark.asyncio
+    @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True, HUBJECT_OPERATOR_ID="DE*ICE")
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
-        self, mock_token, sample_auth_data
+        self, mock_token, sample_auth_data, hubject_credentials
     ):
         with patch(
             "integrations.hubject.services.HubjectService"
@@ -48,21 +49,25 @@ class TestHubjectFeatureFlag:
                             return_value=AsyncMock(),
                         ):
                             with patch(
-                                "ocpi22.tokens.token_async.sync_to_async",
-                                return_value=AsyncMock(return_value=MagicMock()),
+                                "ocpi22.cpo.repositories.CredentialsRepository.find_hubject_credentials_role",
+                                return_value=MagicMock(),
                             ):
-                                mock_hubject_service.post_authorize_request = (
-                                    AsyncMock()
-                                )
+                                with patch(
+                                    "ocpi22.tokens.token_async.CredentialsService.is_location_allowed",
+                                    return_value=True,
+                                ):
+                                    mock_hubject_service.post_authorize_request = (
+                                        AsyncMock()
+                                    )
 
-                                await authorize_with_msps(
-                                    mock_token, sample_auth_data, []
-                                )
+                                    await authorize_with_msps(
+                                        mock_token, sample_auth_data, []
+                                    )
 
-                                mock_hubject_service.post_authorize_request.assert_called_once_with(
-                                    operator_id="DE*CPO",
-                                    token_id="TEST_TOKEN_123",
-                                )
+                                    mock_hubject_service.post_authorize_request.assert_called_once_with(
+                                        operator_id="DE*CPO",
+                                        token_id="TEST_TOKEN_123",
+                                    )
 
     @pytest.mark.asyncio
     @override_settings(ENABLE_HUBJECT=False)
@@ -78,8 +83,8 @@ class TestHubjectFeatureFlag:
                     return_value=AsyncMock(),
                 ):
                     with patch(
-                        "ocpi22.tokens.token_async.sync_to_async",
-                        return_value=AsyncMock(return_value=MagicMock()),
+                        "ocpi22.tokens.token_async.CredentialsService.is_location_allowed",
+                        return_value=True,
                     ):
                         mock_hubject_service.post_authorize_request = AsyncMock()
 
