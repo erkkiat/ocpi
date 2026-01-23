@@ -357,7 +357,7 @@ class HubjectService:
             )
         try:
             request_session = await sync_to_async(
-                HubjectService._get_request, thread_sensitive=False
+                HubjectService._get_request, thread_sensitive=True
             )()
             response = request_session.post(
                 url,
