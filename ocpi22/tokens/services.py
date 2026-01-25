@@ -95,22 +95,6 @@ class TokenAuthorizationService:
         for task in pending:
             task.cancel()
 
-    def _check_winner_among_candidates(
-        self,
-        candidates: dict[int, dict],
-        tasks_map: dict[asyncio.Task, int],
-        pending: set[asyncio.Task],
-    ) -> dict | None:
-        if not candidates:
-            return None
-
-        best_rank = min(candidates.keys())
-        if not self._has_better_ranks_pending(best_rank, tasks_map, pending):
-            self._cancel_pending_tasks(pending)
-            return candidates[best_rank]
-
-        return None
-
     async def authorize_adhoc_token(
         self, party_details, session, data, token_id
     ) -> dict | None:

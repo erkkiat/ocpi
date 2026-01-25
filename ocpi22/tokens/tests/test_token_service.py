@@ -236,47 +236,6 @@ class TestTokenAuthorizationServiceHelperMethods:
         task1.cancel.assert_called_once()
         task2.cancel.assert_called_once()
 
-    def test_check_winner_among_candidates_returns_none_when_candidates_is_empty(
-        self, token_service
-    ):
-        task_pending = MagicMock(spec=asyncio.Task)
-
-        tasks_map = {task_pending: 0}
-        pending = {task_pending}
-
-        result = token_service._check_winner_among_candidates({}, tasks_map, pending)
-        assert result is None
-
-    def test_check_winner_among_candidates_returns_none_when_tasks_with_better_ranks_pending(
-        self, token_service
-    ):
-        task_pending = MagicMock(spec=asyncio.Task)
-
-        tasks_map = {task_pending: 0}
-        pending = {task_pending}
-
-        candidates = {2: {"allowed": AuthorizationEnum.ALLOWED}}
-
-        result = token_service._check_winner_among_candidates(
-            candidates, tasks_map, pending
-        )
-        assert result is None
-
-    def test_check_winner_among_candidates_returns_winner_when_no_tasks_with_better_ranks_pending(
-        self, token_service
-    ):
-        task_pending = MagicMock(spec=asyncio.Task)
-        tasks_map = {task_pending: 5}
-        pending = {task_pending}
-
-        candidates = {2: {"allowed": AuthorizationEnum.ALLOWED}}
-
-        result = token_service._check_winner_among_candidates(
-            candidates, tasks_map, pending
-        )
-        assert result == candidates[2]
-        task_pending.cancel.assert_called_once()
-
 
 @pytest.mark.asyncio
 class TestKnownTokenAuthorization:
