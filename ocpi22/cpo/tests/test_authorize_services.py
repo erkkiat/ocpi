@@ -2,10 +2,13 @@ from unittest.mock import patch, AsyncMock, MagicMock
 
 import pytest
 from django.test import override_settings
+from asgiref.sync import sync_to_async
 
 from ocpi22.locations.services import EvseServices
 from ocpi22.tokens.token_async import authorize_with_msps
 from ocpiconnector.party import Party
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.tests.factories import CredentialsRoleFactory
 
 
 from ocpi22.models.token import Token
@@ -28,8 +31,16 @@ class TestHubjectFeatureFlag:
     @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True, HUBJECT_OPERATOR_ID="DE*ICE")
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
-        self, sample_auth_data, hubject_credentials
+        self, sample_auth_data
     ):
+        await sync_to_async(CredentialsRoleFactory)(
+            country_code="DE",
+            party_id="ICE",
+            role=OcpiRolesEnum.HUB.value,
+            business_details__name="Hubject",
+            credentials__auth_priority=2
+        )
+
         with patch(
             "integrations.hubject.services.HubjectService.post_authorize_request",
             new_callable=AsyncMock,
@@ -55,25 +66,17 @@ class TestHubjectFeatureFlag:
                             return_value=AsyncMock(),
                         ):
                             with patch(
-                                "ocpi22.cpo.repositories.CredentialsRepository.find_hubject_credentials_role",
-                                return_value=MagicMock(),
+                                "ocpi22.tokens.services.CredentialsService.is_location_allowed",
+                                return_value=True,
                             ):
-                                with patch(
-                                    "ocpi22.tokens.services.CredentialsService.is_location_allowed",
-                                    return_value=True,
-                                ):
-                                    with patch(
-                                        "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
-                                        return_value=2,
-                                    ):
-                                        await authorize_with_msps(
-                                            "TEST_TOKEN_123", sample_auth_data, []
-                                        )
+                                await authorize_with_msps(
+                                    "TEST_TOKEN_123", sample_auth_data, []
+                                )
 
-                                        mock_post_authorize.assert_called_once_with(
-                                            operator_id="DE*ICE",
-                                            token_id="TEST_TOKEN_123",
-                                        )
+                                mock_post_authorize.assert_called_once_with(
+                                    operator_id="DE*ICE",
+                                    token_id="TEST_TOKEN_123",
+                                )
 
 
     @pytest.mark.asyncio
@@ -95,15 +98,11 @@ class TestHubjectFeatureFlag:
                         "ocpi22.tokens.services.CredentialsService.is_location_allowed",
                         return_value=True,
                     ):
-                        with patch(
-                            "ocpi22.credentials.services.CredentialsService.get_hubject_priority_rank",
-                            return_value=2,
-                        ):
-                            await authorize_with_msps(
-                                "SOME_TOKEN", sample_auth_data, []
-                            )
+                        await authorize_with_msps(
+                            "SOME_TOKEN", sample_auth_data, []
+                        )
 
-                            mock_post_authorize.assert_not_called()
+                        mock_post_authorize.assert_not_called()
 
     @override_settings(ENABLE_HUBJECT=False)
     def test_post_eroaming_push_evse_status_does_not_execute_when_disabled(self):
