@@ -115,6 +115,7 @@ class CredentialsFactory(factory.django.DjangoModelFactory):
     valid = True
     meter_value_frequency = 300
     allowed_locations = []
+    auth_priority = 0
 
 
 class CredentialsRoleFactoryWithoutCredentials(factory.django.DjangoModelFactory):

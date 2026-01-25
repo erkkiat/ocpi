@@ -135,9 +135,14 @@ def hubject_credentials() -> Credentials:
     get_credentialsrole.cache_clear()
     party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
 
+    credentials = CredentialsFactory(
+        auth_priority=2,
+    )
+
     return CredentialsRoleFactory(
         country_code=party.country_code,
         party_id=party.party_id,
         role="HUB",
         business_details__name="Hubject",
+        credentials=credentials,
     ).credentials
