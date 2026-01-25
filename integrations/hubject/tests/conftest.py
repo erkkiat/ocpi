@@ -58,6 +58,7 @@ from ocpi22.tests.factories import (
 )
 
 
+
 @pytest.fixture
 def smappee_business_details():
     return BusinessDetailsFactory(
