@@ -137,6 +137,7 @@ def hubject_credentials() -> Credentials:
 
     credentials = CredentialsFactory(
         auth_priority=2,
+        url="https://hubjectfixture.com/ocpi/hubject",
     )
 
     return CredentialsRoleFactory(
