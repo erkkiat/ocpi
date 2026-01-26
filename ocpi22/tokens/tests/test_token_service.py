@@ -2,6 +2,8 @@ import pytest
 import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 from django.test import override_settings
+
+from ocpi22.tokens.dataclasses import PartyDetails
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import AuthorizationEnum
 from ocpi22.models.credentials import Credentials
@@ -11,23 +13,23 @@ from asgiref.sync import sync_to_async
 
 
 @pytest.fixture
-def mock_party_details():
-    def _create_party(rank, pid, delay=0, allowed=True):
-        p = MagicMock()
-        p.url = f"http://{pid}.com"
-        p.headers = {}
-        p.ssl = None
-        p.ocpi_master = MagicMock()
-        p.party_id = pid
-        p.country_code = "DE"
-        p.credentials = MagicMock(spec=Credentials)
-        p.task_name = f"DE*{pid}"
-        p.auth_priority = rank
-        p._delay = delay
-        p._allowed = allowed
-        return p
+def party_details():
+    def _create_party_details(priority, pid, delay=0, allowed=True):
+        return PartyDetails(
+            url=f"http://{pid}.com",
+            headers={},
+            ssl=None,
+            ocpi_master=MagicMock(),
+            party_id=pid,
+            country_code="DE",
+            credentials=MagicMock(spec=Credentials),
+            task_name=f"DE*{pid}",
+            auth_priority=priority,
+            _delay=delay,
+            _allowed=allowed,
+        )
 
-    return _create_party
+    return _create_party_details
 
 
 @pytest.fixture
@@ -62,13 +64,13 @@ class TestAdhocTokenAuthorization:
 
     @pytest.mark.django_db
     async def test_ranking_priority_when_more_than_one_party_returns_allowed(
-        self, mock_party_details, token_service, hubject_credentials
+        self, party_details, token_service, hubject_credentials
     ):
         mock_session = AsyncMock()
         await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
-        p2 = mock_party_details(rank=2, pid="HUB", delay=0.01, allowed=True)
-        p0 = mock_party_details(rank=0, pid="OWN", delay=0.05, allowed=True)
+        p2 = party_details()
+        p0 = party_details()
         parties = [p2, p0]
 
         side_effect = self._create_side_effect(parties)
@@ -93,8 +95,8 @@ class TestAdhocTokenAuthorization:
         mock_session = AsyncMock()
         await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
-        p2 = mock_party_details(rank=2, pid="HUB", delay=0.01, allowed=True)
-        p0 = mock_party_details(rank=0, pid="OWN", delay=0.05, allowed=False)
+        p2 = party_details()
+        p0 = party_details()
         parties = [p2, p0]
 
         side_effect = self._create_side_effect(parties)
@@ -118,8 +120,8 @@ class TestAdhocTokenAuthorization:
         mock_session = AsyncMock()
         await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
-        p2 = mock_party_details(rank=2, pid="HUB", delay=0.01, allowed=True)
-        p0 = mock_party_details(rank=0, pid="OWN", delay=0.05, allowed=False)
+        p2 = party_details()
+        p0 = party_details()
         parties = [p2, p0]
         task_states = {}
 
@@ -147,7 +149,7 @@ class TestAdhocTokenAuthorization:
         mock_session = AsyncMock()
         await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
-        p0 = mock_party_details(rank=0, pid="SLO", delay=0.3, allowed=True)
+        p0 = party_details()
         parties = [p0]
 
         async def side_effect(session, url, **kwargs):
@@ -180,7 +182,7 @@ class TestAdhocTokenAuthorization:
             credentials__auth_priority=2
         )
 
-        p9 = mock_party_details(rank=9, pid="OTH", delay=0.1, allowed=False)
+        p9 = party_details()
         parties = [p9]
 
         with patch(
@@ -243,7 +245,7 @@ class TestKnownTokenAuthorization:
         self, mock_party_details, token_service
     ):
         mock_session = AsyncMock()
-        party = mock_party_details(rank=0, pid="OWN", allowed=True)
+        party = party_details()
         unified_token_id = "TOKEN1"
         data = {"test": "data"}
 
@@ -269,7 +271,7 @@ class TestKnownTokenAuthorization:
         self, mock_party_details, token_service
     ):
         mock_session = AsyncMock()
-        party = mock_party_details(rank=0, pid="OWN", allowed=False)
+        party = party_details()
 
         with patch(
             "ocpi22.tokens.token_async.post_request", new_callable=AsyncMock

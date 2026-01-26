@@ -27,7 +27,7 @@ def sample_auth_data():
 
 
 @pytest.fixture
-async def created_hubject_credentials():
+async def hubject_credentials_async():
     creds_role = await sync_to_async(CredentialsRoleFactory)(
         country_code="DE",
         party_id="ICE",
