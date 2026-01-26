@@ -26,20 +26,26 @@ def sample_auth_data():
     return {"location_id": "LOC123", "evse_uids": ["EVSE001"]}
 
 
+@pytest.fixture
+async def created_hubject_credentials():
+    creds_role = await sync_to_async(CredentialsRoleFactory)(
+        country_code="DE",
+        party_id="ICE",
+        role=OcpiRolesEnum.HUB.value,
+        business_details__name="Hubject",
+        credentials__auth_priority=2
+    )
+    yield creds_role
+    await sync_to_async(creds_role.credentials.delete)()
+
+
 class TestHubjectFeatureFlag:
     @pytest.mark.asyncio
     @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True, HUBJECT_OPERATOR_ID="DE*ICE")
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
-        self, sample_auth_data
+        self, sample_auth_data, created_hubject_credentials
     ):
-        await sync_to_async(CredentialsRoleFactory)(
-            country_code="DE",
-            party_id="ICE",
-            role=OcpiRolesEnum.HUB.value,
-            business_details__name="Hubject",
-            credentials__auth_priority=2
-        )
 
         with patch(
             "integrations.hubject.services.HubjectService.post_authorize_request",
