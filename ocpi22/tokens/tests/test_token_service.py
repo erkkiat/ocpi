@@ -181,25 +181,18 @@ class TestAdhocTokenAuthorization:
             )
             assert result is None
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     @override_settings(ENABLE_HUBJECT=True)
     async def test_authorize_adhoc_token_executes_hubject_task(
-        self, party_details, token_service, location
+        self, party_details, token_service, location, session, hubject_credentials
     ):
-        mock_session = AsyncMock()
-        await sync_to_async(CredentialsRoleFactory)(
-            country_code="DE",
-            party_id="ICE",
-            role=OcpiRolesEnum.HUB.value,
-            business_details__name="Hubject",
-            credentials__auth_priority=2
-        )
 
         msp_fr_111 = await sync_to_async(party_details)(
             priority=9, country_code="FR", party_id="111", allowed=False
         )
         parties = [msp_fr_111]
         parties_details = [party["party_details"] for party in parties]
+        delayed_post_request = self._create_delayed_post_request(parties)
 
         with patch(
             "integrations.hubject.services.HubjectService.post_authorize_request",
@@ -212,25 +205,15 @@ class TestAdhocTokenAuthorization:
             )
 
             with patch(
-                "ocpi22.tokens.token_async.post_request", new_callable=AsyncMock
-            ) as mock_post:
-                mock_post.return_value = (
-                    200,
-                    {"data": {"allowed": "NOT_ALLOWED", "token": {"uid": "t"}}},
-                    None,
+                "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+            ):
+                result = await token_service.authorize_adhoc_token(
+                    parties_details, session, {"location_id": location.uid}, "ADHOC"
                 )
 
-                with patch(
-                    "ocpi22.tokens.services.CredentialsService.is_location_allowed",
-                    return_value=True,
-                ):
-                    result = await token_service.authorize_adhoc_token(
-                        parties_details, mock_session, {}, "ADHOC"
-                    )
-
-                    assert result is not None
-                    assert result["allowed"] == AuthorizationEnum.ALLOWED
-                    mock_hubject.assert_called_once()
+                assert result is not None
+                assert result["allowed"] == AuthorizationEnum.ALLOWED
+                mock_hubject.assert_called_once()
 
 
 class TestTokenAuthorizationServiceHelperMethods:
