@@ -2,35 +2,27 @@ import json
 import time
 from logging import getLogger
 from typing import Union
-from urllib.parse import urljoin
 
 import aiohttp
 import asyncio
 
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
 from ocpi22.choices import (
-    OcpiRolesEnum,
     AuthorizationEnum,
 )
-from ocpi22.cpo.repositories import CredentialsRepository
-from ocpi22.credentials.services import CredentialsService
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
-from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
-from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import get_our_party
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpiconnector.party import Party
-from util import with_trailing_slash
 
 from typing import TYPE_CHECKING
 
@@ -124,7 +116,9 @@ async def create_ssl_context(credential_id):
     )
 
 
-async def authorize_with_msps(token: Union[str, Token], data, parties):
+async def authorize_with_msps(
+    token: Union[str, Token], data: dict, parties: list[tuple]
+):
     """
     Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
     If no MSP allows the token, returns the first denial response with specific reason.
@@ -134,10 +128,6 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return: dict with authorization response or None if all tasks fail
     """
-    from integrations.hubject.services import HubjectService
-
-    def make_url(base_url, token_id_param):
-        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
 
     async def prefetch_roles():
         """Prefetch credential roles before async operations."""
@@ -152,97 +142,36 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             roles.append(role)
         return roles
 
-    sender = get_our_party(OcpiRolesEnum.CPO)
-    token_id = get_token_id(token)
-
     # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
     prefetched_roles = await prefetch_roles()
 
-    allowed_response = None
-    first_denial_response = None
-
     async with aiohttp.ClientSession() as session:
-        # Create authorization tasks for all MSPs
-        tasks = [
-            asyncio.create_task(
-                post_request(
-                    session=session,
-                    ssl_context=ssl_context,
-                    url=make_url(url, token_id),
-                    data=data,
-                    ocpi_master=role,
-                    headers=make_headers(
-                        token_base64, to=Party(country_code, party_id), sender=sender
-                    ),
-                ),
-                name=f"{country_code}*{party_id}",
-            )
-            for (
-                url,
-                token_base64,
-                country_code,
-                party_id,
-                _,
-            ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
-        ]
-
-        # Add Hubject task if enabled
-        if settings.ENABLE_HUBJECT:
-            role = await sync_to_async(
-                CredentialsRepository.find_hubject_credentials_role,
-                thread_sensitive=True,
-            )()
-            if role and CredentialsService.is_location_allowed(
-                role.credentials, data.get("location_id", "")
-            ):
-                tasks.append(
-                    asyncio.create_task(
-                        HubjectService.post_authorize_request(
-                            operator_id=str(sender),
-                            token_id=token_id,
-                        ),
-                        name=settings.HUBJECT_OPERATOR_ID,
-                    )
-                )
-
-        remaining_tasks = set(tasks)
-
-        while remaining_tasks:
-            done_tasks, pending_tasks = await asyncio.wait(
-                remaining_tasks, return_when=asyncio.FIRST_COMPLETED
+        service = TokenAuthorizationService()
+        party_details = service.build_party_details(
+            parties, ssl_contexts, prefetched_roles, token
+        )
+        if isinstance(token, str):
+            return await service.authorize_adhoc_token(
+                party_details, session, data, token
             )
 
-            for task in done_tasks:
-                try:
-                    response_data = process_task_result(task)
-                    if not response_data:
-                        continue
+        elif isinstance(token, Token):
+            party_details = [
+                p for p in party_details if p.ocpi_master == token.ocpi_master
+            ]
+            return await service.authorize_known_token(
+                party_details, session, data, token.uid
+            )
 
-                    if response_data.get("allowed") == AuthorizationEnum.ALLOWED:
-                        allowed_response = response_data
-                        break
-                    elif first_denial_response is None:
-                        first_denial_response = response_data
-                except Exception:
-                    logger.exception(f"Task {task.get_name()} failed")
-
-            if allowed_response:
-                break
-
-            remaining_tasks = pending_tasks
-
-        for task in remaining_tasks:
-            if not task.done():
-                logger.debug(f"Cancelling task {task.get_name()}")
-                task.cancel()
-
-    return allowed_response or first_denial_response
+        return None
 
 
-def authorize_with_msps_sync(token: str, location: Location, parties: list[tuple]):
+def authorize_with_msps_sync(
+    token: str, parties: list[tuple], location: Location = None
+):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
     This sync function calls an async function to process authorizations in parallel.

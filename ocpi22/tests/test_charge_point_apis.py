@@ -246,7 +246,6 @@ class TestChargePointAPI:
             assert response.status_code == 200
             mock_authorize_token.assert_called_once_with(
                 allowed_token.uid,
-                available_evse.location,
                 [
                     (
                         "https://localhost/ocpi/tokens",
@@ -256,6 +255,7 @@ class TestChargePointAPI:
                         allowed_token.ocpi_master.credentials,
                     )
                 ],
+                available_evse.location
             )
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert response.data["token"] == authorize_token_response.token.uid
@@ -300,7 +300,6 @@ class TestChargePointAPI:
             assert response.status_code == 200
             mock_authorize_token.assert_called_once_with(
                 never_token.uid,
-                available_evse.location,
                 [
                     (
                         "https://localhost/ocpi/tokens",
@@ -310,6 +309,7 @@ class TestChargePointAPI:
                         never_token.ocpi_master.credentials,
                     )
                 ],
+                available_evse.location
             )
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert (
@@ -335,7 +335,6 @@ class TestChargePointAPI:
             assert response.status_code == 401
             mock_authorize_token.assert_called_once_with(
                 never_token.uid,
-                available_evse.location,
                 [
                     (
                         "https://localhost/ocpi/tokens",
@@ -345,6 +344,7 @@ class TestChargePointAPI:
                         never_token.ocpi_master.credentials,
                     )
                 ],
+                available_evse.location
             )
             assert response.data["allowed"] == AuthorizationEnum.NOT_ALLOWED
             assert (

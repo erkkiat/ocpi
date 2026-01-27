@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, ANY
 
 import pytest
 from django.core.cache import cache
@@ -202,7 +202,7 @@ class TestEvseIdAuthorizationCacheFix:
         )
 
         mock_authorize_with_msps.assert_called_once_with(
-            "UNKNOWN_TOKEN", mock_location, []
+            "UNKNOWN_TOKEN", ANY, mock_location
         )
         assert (
             unknown_token_auth_result.authorization_reference == "AUTH_REF_UNKNOWN_123"

@@ -62,7 +62,7 @@ def test_authorize_with_msps_sync_returns_correct_token_authorization_succeeds(
     mock_response["responding_party"] = "FR*007"
     mock_asyncio_run.return_value = mock_response
 
-    result = authorize_with_msps_sync(token, LocationFactory(), [])
+    result = authorize_with_msps_sync(token, [], LocationFactory())
 
     mock_asyncio_run.assert_called_once()
     assert isinstance(result, TokenAuthorization)

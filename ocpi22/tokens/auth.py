@@ -17,12 +17,12 @@ from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import authorize_with_msps_sync
 from ocpi22.choices import (
     OcpiModuleEnum,
     MessageTexts,
     AuthorizationEnum,
-    TokenType,
     get_language,
     EndpointRoleEnum,
     OcpiRolesEnum,
@@ -201,20 +201,8 @@ def authorize_token(
                     raise ValueError(
                         f"Session {session.uid} is missing authorization_reference"
                     )
-                return TokenAuthorization(
-                    allowed="ALLOWED",
-                    info=MessageTexts.get("TOKEN_ACCEPTED"),
-                    token=AdhocToken(
-                        billed_to=session.billed_to.get_party(),
-                        uid=token_uid,
-                        type=TokenType.AD_HOC_USER.value,
-                        ocpi_master=session.billed_to,
-                    ),
-                    responding_party=session.credentials.roles.first().party_str(),  # This leads to the Credentials
-                    authorization_reference=session.authorization_reference,
-                    auth_method=session.auth_method,
-                    billed_to=session.billed_to.party_str(),
-                    msp=session.billed_to,
+                return TokenAuthorizationService.build_default_allowed_authorization(
+                    session, token_uid
                 )
 
         # Not AD HOC, so Token should be found from database
@@ -270,7 +258,7 @@ def _authorize_token(
             "This Token is not in our database, "
             "so an authorization request was sent to all MSPs connected to us.",
         )
-        return authorize_with_msps_sync(token_uid, location, parties)
+        return authorize_with_msps_sync(token_uid, parties, location)
     assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
@@ -299,7 +287,7 @@ def _authorize_token(
             msp=token.ocpi_master,
         )
 
-    return authorize_with_msps_sync(token.uid, location, parties)
+    return authorize_with_msps_sync(token.uid, parties, location)
 
 
 def find_authorize_party_details(
