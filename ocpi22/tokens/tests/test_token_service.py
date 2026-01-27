@@ -242,14 +242,11 @@ class TestTokenAuthorizationServiceHelperMethods:
 class TestKnownTokenAuthorization:
     @pytest.mark.django_db
     async def test_return_allowed_response(
-        self, party_details, token_service, location
+        self, party_details, token_service, location, session
     ):
-        mock_session = AsyncMock()
-        party = await sync_to_async(party_details)(
+        msp_fr_111 = await sync_to_async(party_details)(
             priority=2, country_code="FR", party_id="111", allowed=True
         )
-        unified_token_id = "TOKEN1"
-        data = {"test": "data"}
 
         with patch(
             "ocpi22.tokens.token_async.post_request", new_callable=AsyncMock
@@ -257,24 +254,24 @@ class TestKnownTokenAuthorization:
             mock_post.return_value = (
                 200,
                 {"data": {"allowed": AuthorizationEnum.ALLOWED, "token": {"uid": "t"}}},
-                party["party_details"].ocpi_master,
+                msp_fr_111["party_details"].ocpi_master,
             )
 
             result = await token_service.authorize_known_token(
-                [party["party_details"]], mock_session, data, unified_token_id
+                [msp_fr_111["party_details"]], session,
+                {"location_id": location.uid}, "TOKEN1"
             )
 
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.ALLOWED
             mock_post.assert_called_once()
-            assert mock_post.call_args[1]["url"] == party["party_details"].url
+            assert mock_post.call_args[1]["url"] == msp_fr_111["party_details"].url
 
     @pytest.mark.django_db
     async def test_return_not_allowed_response(
-        self, party_details, token_service, location
+        self, party_details, token_service, location, session
     ):
-        mock_session = AsyncMock()
-        party = await sync_to_async(party_details)(
+        msp_fr_111 = await sync_to_async(party_details)(
             priority=2, country_code="FR", party_id="111", allowed=False
         )
 
@@ -289,11 +286,11 @@ class TestKnownTokenAuthorization:
                         "token": {"uid": "t"},
                     }
                 },
-                party["party_details"].ocpi_master,
+                msp_fr_111["party_details"].ocpi_master,
             )
 
             result = await token_service.authorize_known_token(
-                [party["party_details"]], mock_session, {}, "T1"
+                [msp_fr_111["party_details"]], session, {}, "T1"
             )
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.NOT_ALLOWED
