@@ -50,7 +50,7 @@ class TokenAuthorizationService:
 
         return asyncio.create_task(coroutine, name=party_details.task_name)
 
-    def _start_hubject_task(self, token_uid: str) -> asyncio.Task | None:
+    def _create_hubject_task(self, token_uid: str) -> asyncio.Task | None:
         coroutine = HubjectService.post_authorize_request(
             operator_id=str(settings.HUBJECT_OPERATOR_ID),
             token_id=token_uid,
@@ -78,7 +78,7 @@ class TokenAuthorizationService:
                     role.credentials, data.get("location_id", "")
             ):
                 hubject_rank = role.credentials.auth_priority
-                task = self._start_hubject_task(token_id)
+                task = self._create_hubject_task(token_id)
                 tasks[task] = hubject_rank
 
         return tasks

@@ -44,18 +44,20 @@ class TestHubjectFeatureFlag:
     @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True, HUBJECT_OPERATOR_ID="DE*ICE")
     async def test_authorize_with_msps_creates_hubject_authorize_task_when_enabled(
-        self, sample_auth_data, created_hubject_credentials
+        self, sample_auth_data
     ):
+        await sync_to_async(CredentialsRoleFactory)(
+            country_code="DE",
+            party_id="ICE",
+            role=OcpiRolesEnum.HUB.value,
+            business_details__name="Hubject",
+            credentials__auth_priority=2
+        )
 
         with patch(
-            "integrations.hubject.services.HubjectService.post_authorize_request",
+            "ocpi22.tokens.services.TokenAuthorizationService._create_hubject_task",
             new_callable=AsyncMock,
-        ) as mock_post_authorize:
-            mock_post_authorize.return_value = (
-                200,
-                {"data": {"allowed": "NOT_ALLOWED", "token": {"uid": "t"}}},
-                None,
-            )
+        ) as mock_create_hubject_task:
             with patch(
                 "ocpi22.tokens.services.get_our_party",
                 return_value=Party("DE", "CPO"),
@@ -79,10 +81,7 @@ class TestHubjectFeatureFlag:
                                     "TEST_TOKEN_123", sample_auth_data, []
                                 )
 
-                                mock_post_authorize.assert_called_once_with(
-                                    operator_id="DE*ICE",
-                                    token_id="TEST_TOKEN_123",
-                                )
+                                mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123")
 
 
     @pytest.mark.asyncio
