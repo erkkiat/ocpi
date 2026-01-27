@@ -165,32 +165,21 @@ class TestAdhocTokenAuthorization:
         self, party_details, token_service, hubject_credentials, location, session
     ):
 
-        # Timeout logic: Set delay=0.3, timeout=0.1
-        p0 = await sync_to_async(party_details)(
+        msp_fr_111 = await sync_to_async(party_details)(
             priority=2, country_code="FR", party_id="111", delay=0.3, allowed=True
         )
-        parties = [p0]
-
-        async def side_effect(session, url, **kwargs):
-            await asyncio.sleep(0.3)
-            return (200, {"data": {"allowed": "ALLOWED", "token": {"uid": "t"}}}, None)
+        parties = [msp_fr_111]
 
         token_service._timeout = 0.1
         
-        # We can use _create_delayed_post_request or just the side_effect logic.
-        # But _create_delayed_post_request supports delay from party config.
         delayed_post_request = self._create_delayed_post_request(parties)
         parties_details = [party["party_details"] for party in parties]
 
-        with patch(
-            "ocpi22.tokens.services.CredentialsService.is_location_allowed",
-            return_value=True,
-        ):
-            with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
-                result = await token_service.authorize_adhoc_token(
-                    parties_details, session, {}, "ADHOC"
-                )
-                assert result is None
+        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+            result = await token_service.authorize_adhoc_token(
+                parties_details, session, {}, "ADHOC"
+            )
+            assert result is None
 
     @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True)
@@ -206,10 +195,10 @@ class TestAdhocTokenAuthorization:
             credentials__auth_priority=2
         )
 
-        p9 = await sync_to_async(party_details)(
+        msp_fr_111 = await sync_to_async(party_details)(
             priority=9, country_code="FR", party_id="111", allowed=False
         )
-        parties = [p9]
+        parties = [msp_fr_111]
         parties_details = [party["party_details"] for party in parties]
 
         with patch(
