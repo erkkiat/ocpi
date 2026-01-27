@@ -6,28 +6,52 @@ from django.test import override_settings
 from ocpi22.tokens.dataclasses import PartyDetails
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import AuthorizationEnum
-from ocpi22.models.credentials import Credentials
-from ocpi22.tests.factories import CredentialsRoleFactory
+from ocpi22.tests.factories import CredentialsRoleFactory, CredentialsFactory, OCPISessionFactory, LocationFactory, \
+    EvseFactory
 from ocpi22.choices import OcpiRolesEnum
 from asgiref.sync import sync_to_async
 
+@pytest.fixture
+def location():
+    location =  LocationFactory(
+        uid="LOC1",
+    )
+    EvseFactory(
+        location=location,
+        uid="EVSE1",
+    )
+    return location
+
 
 @pytest.fixture
-def party_details():
-    def _create_party_details(priority, pid, delay=0, allowed=True):
-        return PartyDetails(
-            url=f"http://{pid}.com",
+def party_details(location):
+    def _create_party_details(priority, country_code, party_id, delay=0, allowed=True, hub=False):
+        credentials = CredentialsFactory(
+            auth_priority=priority,
+            allowed_locations=[location.uid]
+        )
+        role = CredentialsRoleFactory(
+            country_code=country_code,
+            party_id=party_id,
+            role=OcpiRolesEnum.HUB.value if hub else OcpiRolesEnum.EMSP.value,
+            credentials=credentials,
+        )
+        party_details = PartyDetails(
+            url=f"http://{country_code}-{party_id}-{credentials.theirs}.com",
             headers={},
             ssl=None,
-            ocpi_master=MagicMock(),
-            party_id=pid,
-            country_code="DE",
-            credentials=MagicMock(spec=Credentials),
-            task_name=f"DE*{pid}",
+            ocpi_master=role,
+            party_id=party_id,
+            country_code=country_code,
+            credentials=credentials,
+            task_name=f"{country_code}*{party_id}",
             auth_priority=priority,
-            _delay=delay,
-            _allowed=allowed,
         )
+        return {
+            "party_details": party_details,
+            "_delay": delay,
+            "_allowed": allowed,
+        }
 
     return _create_party_details
 
@@ -38,62 +62,52 @@ def token_service():
 
 
 class TestAdhocTokenAuthorization:
-    def _create_side_effect(self, parties, task_states=None):
-        async def side_effect(session, url, **kwargs):
-            p = next(p for p in parties if p.url == url)
-            try:
-                await asyncio.sleep(p._delay)
-                if task_states is not None:
-                    task_states[p.party_id] = "completed"
+    def _create_delayed_post_request(self, parties):
+        async def delayed_post_request(session, url, data, ocpi_master, **kwargs):
+            party = next(party for party in parties if party["party_details"].url == url)
+            await asyncio.sleep(party["_delay"])
 
-                allowed_enum = (
-                    AuthorizationEnum.ALLOWED
-                    if p._allowed
-                    else AuthorizationEnum.NOT_ALLOWED
-                )
-                return (
-                    200,
-                    {"data": {"allowed": allowed_enum, "token": {"uid": "t"}}},
-                    p.ocpi_master,
-                )
-            except asyncio.CancelledError:
-                if task_states is not None:
-                    task_states[p.party_id] = "cancelled"
-                raise
-        return side_effect
+            party_details = party["party_details"]
+            allowed = (
+                AuthorizationEnum.ALLOWED
+                if party["_allowed"]
+                else AuthorizationEnum.NOT_ALLOWED
+            )
+            return (
+                200,
+                {"data": {"allowed": allowed, "token": {"uid": "t"}}},
+                party_details.ocpi_master,
+            )
+        return delayed_post_request
 
     @pytest.mark.django_db
     async def test_ranking_priority_when_more_than_one_party_returns_allowed(
-        self, party_details, token_service, hubject_credentials
+        self, party_details, token_service, hubject_credentials, location
     ):
-        mock_session = AsyncMock()
-        await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
+        session = await sync_to_async(OCPISessionFactory)()
 
-        p2 = party_details()
-        p0 = party_details()
-        parties = [p2, p0]
+        msp_fr_111 = await sync_to_async(party_details)(priority=2, country_code="FR", party_id="111", allowed=True)
+        msp_fi_msp = await sync_to_async(party_details)(priority=3, country_code="FI", party_id="MSP", allowed=True)
+        parties = [msp_fr_111, msp_fi_msp]
 
-        side_effect = self._create_side_effect(parties)
+        delayed_post_request = self._create_delayed_post_request(parties)
 
-        with patch(
-            "ocpi22.tokens.services.CredentialsService.is_location_allowed",
-            return_value=True,
-        ):
-            with patch("ocpi22.tokens.token_async.post_request", side_effect=side_effect):
-                result = await token_service.authorize_adhoc_token(
-                    parties, mock_session, {}, "ADHOC"
-                )
+        parties_details = [party["party_details"] for party in parties]
 
-                assert result is not None
-                assert result["allowed"] == AuthorizationEnum.ALLOWED
-                assert result["responding_party"] == "DE*OWN"
+        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+            result = await token_service.authorize_adhoc_token(
+                parties_details, session, {"location_id": location.uid}, "ADHOC"
+            )
+
+            assert result is not None
+            assert result["allowed"] == AuthorizationEnum.ALLOWED
+            assert result["responding_party"] == "FR*111"
 
     @pytest.mark.django_db
     async def test_ranking_priority_when_party_returns_allowed_and_other_party_returns_not_allowed(
-        self, mock_party_details, token_service, hubject_credentials
+        self, mock_party_details, token_service, hubject_credentials_async
     ):
         mock_session = AsyncMock()
-        await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
         p2 = party_details()
         p0 = party_details()
@@ -115,10 +129,9 @@ class TestAdhocTokenAuthorization:
 
     @pytest.mark.django_db
     async def test_waiting_for_higher_ranked_party_when_lower_ranked_party_returns_allowed_fast(
-        self, mock_party_details, token_service, hubject_credentials
+        self, mock_party_details, token_service, hubject_credentials_async
     ):
         mock_session = AsyncMock()
-        await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
         p2 = party_details()
         p0 = party_details()
@@ -144,10 +157,9 @@ class TestAdhocTokenAuthorization:
 
     @pytest.mark.django_db
     async def test_authorize_adhoc_token_returns_none_when_timeout_occurs(
-        self, mock_party_details, token_service, hubject_credentials
+        self, mock_party_details, token_service, hubject_credentials_async
     ):
         mock_session = AsyncMock()
-        await sync_to_async(Credentials.objects.filter(pk=hubject_credentials.pk).update)(auth_priority=2)
 
         p0 = party_details()
         parties = [p0]
