@@ -51,8 +51,9 @@ class TokenAuthorizationService:
         return asyncio.create_task(coroutine, name=party_details.task_name)
 
     def _create_hubject_task(self, token_uid: str) -> asyncio.Task | None:
+        operator_id = get_our_party(OcpiRolesEnum.CPO)
         coroutine = HubjectService.post_authorize_request(
-            operator_id=str(settings.HUBJECT_OPERATOR_ID),
+            operator_id=str(operator_id),
             token_id=token_uid,
         )
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
