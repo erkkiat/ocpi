@@ -74,7 +74,12 @@ async def post_request(
 
 
 def process_task_result(successful_task) -> dict | None:
-    status_code, json_data, ocpi_master = successful_task.result()
+    try:
+        status_code, json_data, ocpi_master = successful_task.result()
+    except (TimeoutError, asyncio.TimeoutError) as e:
+        logger.warning(f"Authorization task failed with exception: {e}")
+        return None
+
     if status_code != 200:
         return None
     if isinstance(json_data, dict):
