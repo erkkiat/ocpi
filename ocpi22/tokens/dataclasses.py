@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from ocpi22.models.credentials import CredentialsRole, Credentials
+from ocpi22.models.token import Token
 
 
 @dataclass
@@ -14,3 +15,9 @@ class PartyDetails:
     credentials: Credentials
     task_name: str
     auth_priority: int
+
+@dataclass
+class TokenReference:
+    uid: str
+    adhoc: bool
+    token: Token | None
