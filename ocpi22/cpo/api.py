@@ -34,6 +34,7 @@ from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.routing import find_route_from_credentials
+from ocpi22.tokens.dataclasses import TokenReference
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -518,6 +519,11 @@ class ChargePointViewSet(FlowchartViewSet):
                         serializer.validated_data.get("token")
                     )
                     data["token"] = get_token_id(token)
+                    token_reference = TokenReference(
+                        uid=data["token"],
+                        adhoc=isinstance(token, str),
+                        token=token if isinstance(token, Token) else None,
+                    )
                     authorization: TokenAuthorization = authorize_token(
                         token, evse.location, request=request, evse_id=evse.evse_id
                     )
@@ -674,6 +680,12 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(session_serializer.data)
 
                     # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
+                    token = Token.get_if_exists(uid__iexact=session.cdr_token.uid) or session.cdr_token.uid
+                    token_reference = TokenReference(
+                        uid=token.uid if isinstance(token, Token) else token,
+                        adhoc=isinstance(token, str),
+                        token=token if isinstance(token, Token) else None,
+                    )
                     authorization: TokenAuthorization = authorize_token(
                         session.cdr_token.uid,
                         evse_id=session.evse.evse_id if session.evse else None,
