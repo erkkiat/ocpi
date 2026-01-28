@@ -166,7 +166,7 @@ async def authorize_with_msps(
                 p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
             ]
             return await service.authorize_known_token(
-                party_details, session, data
+                party_details, session, data, token_uid
             )
 
 
