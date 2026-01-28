@@ -514,7 +514,7 @@ class ChargePointViewSet(FlowchartViewSet):
                     next_url = reverse("chargepoint-start-transaction")
 
                     evse: Evse = serializer.validated_data.get("evse")
-                    token: Union[Token, AdhocToken, str] = (
+                    token: Union[Token, str] = (
                         serializer.validated_data.get("token")
                     )
                     data["token"] = get_token_id(token)
