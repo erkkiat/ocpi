@@ -166,7 +166,7 @@ class TokenAuthorizationService:
         parties: list[tuple],
         ssl_contexts: list,
         prefetched_roles: list,
-        token_id:str,
+        token_id: str,
     ) -> list[PartyDetails]:
         from ocpi22.ocpi.headers import make_headers
 
