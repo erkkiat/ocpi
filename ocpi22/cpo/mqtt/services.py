@@ -29,7 +29,7 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.routing import find_route_from_credentials
 from ocpi22.sessions.util import create_session
 from ocpi22.tokens.auth import TokenAuthorization, authorize_token
-from ocpi22.tokens.dataclasses import TokenReference
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpiconnector.party import Party
 
 logger = getLogger(__name__)
@@ -171,15 +171,13 @@ def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topi
     token: str | Token = (
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )
-    token_reference = TokenReference(
+    token_dto = TokenDto(
         uid=token.uid if isinstance(token, Token) else token,
         adhoc=isinstance(token, str),
         token=token if isinstance(token, Token) else None,
     )
     try:
-        authorization: TokenAuthorization = authorize_token(
-            token_reference, evse.location, evse_id=evse.evse_id
-        )
+        authorization: TokenAuthorization = authorize_token(token_dto, evse.location, evse_id=evse.evse_id)
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"

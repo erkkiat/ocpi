@@ -19,7 +19,7 @@ from ocpi22.models.location import Location
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
-from ocpi22.tokens.dataclasses import TokenReference
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpiconnector.party import Party
 
@@ -116,7 +116,7 @@ async def create_ssl_context(credential_id):
 
 
 async def authorize_with_msps(
-    token_reference: TokenReference, data: dict, parties: list[tuple]
+    token_dto: TokenDto, data: dict, parties: list[tuple]
 ):
     """
     Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
@@ -148,28 +148,28 @@ async def authorize_with_msps(
     prefetched_roles = await prefetch_roles()
 
     async with aiohttp.ClientSession() as session:
-        token_uid = token_reference.uid
+        token_uid = token_dto.uid
         service = TokenAuthorizationService()
         party_details = service.build_party_details(
             parties, ssl_contexts, prefetched_roles, token_uid
         )
-        if token_reference.adhoc:
+        if token_dto.adhoc:
             return await service.authorize_adhoc_token(
                 party_details, session, data, token_uid
             )
 
         else:
             party_details = [
-                p for p in party_details if p.ocpi_master == token_reference.token.ocpi_master
+                p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
             ]
             return await service.authorize_known_token(
-                party_details, session, data, token_reference.uid
+                party_details, session, data, token_dto.uid
             )
 
 
 
 def authorize_with_msps_sync(
-    token_reference: TokenReference, parties: list[tuple], location: Location = None
+    token_dto: TokenDto, parties: list[tuple], location: Location = None
 ):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
@@ -184,7 +184,7 @@ def authorize_with_msps_sync(
     from ocpi22.tokens.auth import TokenAuthorization
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
 
-    token_uid = token_reference.uid
+    token_uid = token_dto.uid
 
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
@@ -208,7 +208,7 @@ def authorize_with_msps_sync(
     ]
     logger.info(f"Authorizing token {token_uid} with MSPs {', '.join(formatted_parties)}")
 
-    response = asyncio.run(authorize_with_msps(token_reference, data, parties))
+    response = asyncio.run(authorize_with_msps(token_dto, data, parties))
     if response:
         responding_party = response.get(
             "responding_party", ""

@@ -17,7 +17,7 @@ class PartyDetails:
     auth_priority: int
 
 @dataclass
-class TokenReference:
+class TokenDto:
     uid: str
     adhoc: bool
     token: Token | None

@@ -9,7 +9,7 @@ from ocpi22.tokens.auth import _authorize_token, authorize_token, TokenAuthoriza
 from ocpi22.models.location import Location
 from ocpi22.models.token import Token
 from ocpi22.choices import AuthorizationEnum, TokenType
-from ocpi22.tokens.dataclasses import TokenReference
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpiconnector.party import Party
 
 
@@ -62,16 +62,12 @@ class TestEvseIdAuthorizationCacheFix:
 
         mock_location = LocationFactory()
 
-        token_reference = TokenReference(
+        token_dto = TokenDto(
             uid=token.uid, adhoc=False, token=token
         )
-        first_evse_auth_result = _authorize_token(
-            token_reference, mock_location, evse_id="DE*ABC*E001"
-        )
+        first_evse_auth_result = _authorize_token(token_dto, mock_location, evse_id="DE*ABC*E001")
 
-        second_evse_auth_result = _authorize_token(
-            token_reference, mock_location, evse_id="DE*ABC*E002"
-        )
+        second_evse_auth_result = _authorize_token(token_dto, mock_location, evse_id="DE*ABC*E002")
 
         assert mock_authorize_with_msps.call_count == 2
         assert first_evse_auth_result.authorization_reference == "AUTH_REF_EVSE_001_123"
@@ -130,16 +126,12 @@ class TestEvseIdAuthorizationCacheFix:
 
         mock_redis.get.side_effect = redis_get_side_effect
 
-        token_reference = TokenReference(
+        token_dto = TokenDto(
             uid=token.uid, adhoc=False, token=token
         )
-        first_auth_attempt = _authorize_token(
-            token_reference, mock_location, evse_id="DE*ABC*E001"
-        )
+        first_auth_attempt = _authorize_token(token_dto, mock_location, evse_id="DE*ABC*E001")
 
-        cached_auth_attempt = _authorize_token(
-            token_reference, mock_location, evse_id="DE*ABC*E001"
-        )
+        cached_auth_attempt = _authorize_token(token_dto, mock_location, evse_id="DE*ABC*E001")
 
         assert mock_authorize_with_msps.call_count == 1
         assert first_auth_attempt.authorization_reference == "AUTH_REF_CACHED_123"
@@ -204,12 +196,10 @@ class TestEvseIdAuthorizationCacheFix:
         )
         mock_authorize_with_msps.return_value = unknown_token_mock_response
 
-        unknown_token = TokenReference(
+        unknown_token = TokenDto(
             uid="UNKNOWN_TOKEN", adhoc=True, token=None
         )
-        unknown_token_auth_result = _authorize_token(
-            unknown_token, mock_location, evse_id="DE*ABC*E001"
-        )
+        unknown_token_auth_result = _authorize_token(unknown_token, mock_location, evse_id="DE*ABC*E001")
 
         mock_authorize_with_msps.assert_called_once_with(
             unknown_token, ANY, mock_location
