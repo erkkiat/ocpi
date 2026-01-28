@@ -333,7 +333,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
             token=token if isinstance(token, Token) else None,
         )
         authorization: TokenAuthorization = authorize_token(
-            token, location, request=request
+            token_reference, location, request=request
         )
         return make_ocpi_response(authorization)
 

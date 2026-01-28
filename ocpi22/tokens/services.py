@@ -168,12 +168,11 @@ class TokenAuthorizationService:
         parties: list[tuple],
         ssl_contexts: list,
         prefetched_roles: list,
-        token: Union[str, Token],
+        token_id:str,
     ) -> list[PartyDetails]:
         from ocpi22.ocpi.headers import make_headers
 
         sender = get_our_party(OcpiRolesEnum.CPO)
-        token_id = get_token_id(token)
 
         party_details = []
 
@@ -196,7 +195,7 @@ class TokenAuthorizationService:
         return party_details
 
     async def authorize_known_token(
-        self, party_details, session, data, token_id
+        self, party_details, session, data
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 

@@ -17,6 +17,7 @@ from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.tokens.dataclasses import TokenReference
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import authorize_with_msps_sync
 from ocpi22.choices import (
@@ -173,7 +174,7 @@ class TokenAuthorization:
 
 
 def authorize_token(
-    token: Union[str, Token],
+    token: TokenReference,
     location=None,
     request=None,
     max_age=15,
@@ -181,9 +182,8 @@ def authorize_token(
     evse_id=None,
 ) -> Optional[TokenAuthorization]:
     with Timer() as t:
-        if not rfid and not isinstance(token, Token):
-            token_uid = token
-            session = get_session_by_token_uid(token_uid, max_age_minutes=max_age)
+        if not rfid and token.adhoc:
+            session = get_session_by_token_uid(token.uid, max_age_minutes=max_age)
             if session:
                 # Token is AD HOC
                 logging.info(
@@ -193,7 +193,7 @@ def authorize_token(
                 )
                 messages.success(
                     request,
-                    f"This Token, **{markdown_escape(str(token_uid))}** has been authorized "
+                    f"This Token, **{markdown_escape(str(token.uid))}** has been authorized "
                     f"earlier by **{markdown_escape(str(session.billed_to))}** and the "
                     f"authorization was cached in the system.",
                 )
@@ -202,7 +202,7 @@ def authorize_token(
                         f"Session {session.uid} is missing authorization_reference"
                     )
                 return TokenAuthorizationService.build_default_allowed_authorization(
-                    session, token_uid
+                    session, token.uid
                 )
 
         # Not AD HOC, so Token should be found from database
@@ -237,32 +237,28 @@ def authorize_token(
     else True,
 )
 def _authorize_token(
-    token: Union[Token, str], location=None, request=None, evse_id=None
+    token_reference: TokenReference, location=None, request=None, evse_id=None
 ) -> Optional[TokenAuthorization]:
     """
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
     """
-    token_uid = token.uid if isinstance(token, Token) else token
-    if isinstance(token, str):
-        token: Token = Token.get_if_exists(uid__iexact=token)
-
-    adhoc_token = True if token is None else False
     parties = find_authorize_party_details(
-        request, token, location.uid if location else "", adhoc=adhoc_token
+        request, token_reference, location.uid if location else ""
     )
-    if not token:
+    if token_reference.adhoc:
         # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
         messages.info(
             request,
             "This Token is not in our database, "
             "so an authorization request was sent to all MSPs connected to us.",
         )
-        return authorize_with_msps_sync(token_uid, parties, location)
+        return authorize_with_msps_sync(token_reference, parties, location)
+    token = token_reference.token
     assert isinstance(token, (Token, AdhocToken))
     if not token.valid:
         logging.warning(
-            f"According to the current information we have locally, the Token {token_uid} is not valid."
+            f"According to the current information we have locally, the Token {token.uid} is not valid."
         )
         return TokenAuthorization(allowed=AuthorizationEnum.NOT_ALLOWED, token=token)
     if location and not CredentialsService.is_location_allowed(
@@ -287,19 +283,20 @@ def _authorize_token(
             msp=token.ocpi_master,
         )
 
-    return authorize_with_msps_sync(token.uid, parties, location)
+    return authorize_with_msps_sync(token_reference, parties, location)
 
 
 def find_authorize_party_details(
-    request, token: Union[Token, AdhocToken], location_uid: str, adhoc: bool
+    request, token_reference: TokenReference, location_uid: str
 ):
-    if adhoc:
+    if token_reference.adhoc:
         return find_endpoints_by_roles(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
             OcpiModuleEnum.TOKENS,
             endpoint_role=EndpointRoleEnum.SENDER.value,
             location_uid=location_uid,
         )
+    token: Token = token_reference.token
     route: Route = find_route(
         token.get_party(), OcpiModuleEnum.TOKENS, role=EndpointRoleEnum.SENDER
     )

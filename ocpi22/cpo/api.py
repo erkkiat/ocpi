@@ -525,7 +525,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         token=token if isinstance(token, Token) else None,
                     )
                     authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request, evse_id=evse.evse_id
+                        token_reference, evse.location, request=request, evse_id=evse.evse_id
                     )
 
                     if (
@@ -687,7 +687,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         token=token if isinstance(token, Token) else None,
                     )
                     authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid,
+                        token_reference,
                         evse_id=session.evse.evse_id if session.evse else None,
                     )
 
@@ -695,7 +695,7 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(
                             dict(
                                 status_text="Token is (no longer) valid",
-                                token_id=session.cdr_token.uid,
+                                token_id=token_reference.uid,
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )

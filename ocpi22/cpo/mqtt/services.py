@@ -178,7 +178,7 @@ def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topi
     )
     try:
         authorization: TokenAuthorization = authorize_token(
-            token, evse.location, evse_id=evse.evse_id
+            token_reference, evse.location, evse_id=evse.evse_id
         )
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
