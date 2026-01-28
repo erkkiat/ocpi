@@ -1,7 +1,6 @@
 import json
 import time
 from logging import getLogger
-from typing import Union
 
 import aiohttp
 import asyncio

@@ -1,12 +1,10 @@
 import pytest
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 
-from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import LocationFactory, TokenFactory, CredentialsRoleFactory
 from ocpi22.tokens.auth import find_authorize_party_details
-from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.tokens.dataclasses import TokenReference
-from ocpiconnector.party import Party
 from ocpi22.routing import find_route
 
 

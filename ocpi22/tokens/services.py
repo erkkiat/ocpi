@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from aiohttp import ClientSession
@@ -14,10 +14,8 @@ from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.credentials.services import CredentialsService
 from ocpi22.choices import TokenType, MessageTexts
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tokens.dataclasses import PartyDetails
-from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from util import with_trailing_slash
