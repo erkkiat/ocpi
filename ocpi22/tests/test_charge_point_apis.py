@@ -17,6 +17,7 @@ from ocpi22.tests.factories import (
     TariffFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization, _authorize_token
+from ocpi22.tokens.dataclasses import TokenReference
 
 
 @pytest.fixture
@@ -245,7 +246,7 @@ class TestChargePointAPI:
             response = admin_user_client.post(self.authorize_url, data=request_body)
             assert response.status_code == 200
             mock_authorize_token.assert_called_once_with(
-                allowed_token.uid,
+                TokenReference(uid=allowed_token.uid, adhoc=False, token=allowed_token),
                 [
                     (
                         "https://localhost/ocpi/tokens",
@@ -299,7 +300,7 @@ class TestChargePointAPI:
             response = admin_user_client.post(self.authorize_url, data=request_body)
             assert response.status_code == 200
             mock_authorize_token.assert_called_once_with(
-                never_token.uid,
+                TokenReference(uid=never_token.uid, adhoc=False, token=never_token),
                 [
                     (
                         "https://localhost/ocpi/tokens",
@@ -334,7 +335,7 @@ class TestChargePointAPI:
             response = admin_user_client.post(self.authorize_url, data=request_body)
             assert response.status_code == 401
             mock_authorize_token.assert_called_once_with(
-                never_token.uid,
+                TokenReference(uid=never_token.uid, adhoc=False, token=never_token),
                 [
                     (
                         "https://localhost/ocpi/tokens",

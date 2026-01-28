@@ -40,6 +40,7 @@ from ocpi22.tests.factories import (
     CredentialsFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
+from ocpi22.tokens.dataclasses import TokenReference
 
 
 class TestDecodeMessage:
@@ -777,8 +778,9 @@ class TestAuthorizeAndPublish:
         ):
             _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
+            token_reference = TokenReference(uid='TEST_TOKEN_123', adhoc=True, token=None)
             mock_authorize_token.assert_called_once_with(
-                token_auth_message.token_id, evse.location, evse_id=evse.evse_id
+                token_reference, evse.location, evse_id=evse.evse_id
             )
 
     @pytest.mark.django_db
@@ -1177,8 +1179,11 @@ class TestCreateAndSaveSession:
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
             _authorize_and_publish(token_auth_message, auth_request_message.topic)
+            token_reference = TokenReference(
+                uid=token.uid, adhoc=False, token=token
+            )
             mock_authorize_token.assert_called_once_with(
-                token, evse.location, evse_id=evse.evse_id
+                token_reference, evse.location, evse_id=evse.evse_id
             )
 
 
