@@ -119,10 +119,12 @@ async def authorize_with_msps(
     token_dto: TokenDto, data: dict, parties: list[tuple]
 ):
     """
-    Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
+    Send authorization request asynchronously to all MSPs and wait for the
+    first ALLOWED response in the adhoc token case. Whenever the token is known, only
+    send the request to the MSP that issued the token.
     If no MSP allows the token, returns the first denial response with specific reason.
 
-    @param token: token_id as str or Token object
+    @param token: TokenDto representing the token and metadata
     @param data: the data to be sent in the Token authorization request
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return: dict with authorization response or None if all tasks fail
