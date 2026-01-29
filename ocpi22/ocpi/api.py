@@ -19,6 +19,7 @@ from ocpi22.decorators import (
     requires_last_updated,
 )
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
@@ -326,9 +327,12 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         """
         Handle a POST request for a token authorization as a hub. Forward the authorization request.
         """
-        authorization: TokenAuthorization = authorize_token(
-            token, location, request=request
+        token_dto = TokenDto(
+            uid=token.uid if isinstance(token, Token) else token,
+            adhoc=isinstance(token, str),
+            token=token if isinstance(token, Token) else None,
         )
+        authorization: TokenAuthorization = authorize_token(token_dto, location, request=request)
         return make_ocpi_response(authorization)
 
 

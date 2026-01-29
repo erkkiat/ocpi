@@ -259,7 +259,7 @@ class TestKnownTokenAuthorization:
 
             result = await token_service.authorize_known_token(
                 [msp_fr_111["party_details"]], session,
-                {"location_id": location.uid}, "TOKEN1"
+                {"location_id": location.uid}, "t"
             )
 
             assert result is not None
@@ -290,7 +290,7 @@ class TestKnownTokenAuthorization:
             )
 
             result = await token_service.authorize_known_token(
-                [msp_fr_111["party_details"]], session, {}, "T1"
+                [msp_fr_111["party_details"]], session, {}, "t"
             )
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.NOT_ALLOWED

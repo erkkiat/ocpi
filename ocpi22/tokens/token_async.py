@@ -1,7 +1,6 @@
 import json
 import time
 from logging import getLogger
-from typing import Union
 
 import aiohttp
 import asyncio
@@ -17,10 +16,10 @@ from ocpi22.choices import (
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
-from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpiconnector.party import Party
 
@@ -76,6 +75,7 @@ async def post_request(
 def process_task_result(successful_task) -> dict | None:
     status_code, json_data, ocpi_master = successful_task.result()
     if status_code != 200:
+        logger.warning(f"Authorization failed with status {status_code}, data: {json_data} for {str(ocpi_master)}")
         return None
     if isinstance(json_data, dict):
         json_data = json_data.get("data")
@@ -117,13 +117,15 @@ async def create_ssl_context(credential_id):
 
 
 async def authorize_with_msps(
-    token: Union[str, Token], data: dict, parties: list[tuple]
+    token_dto: TokenDto, data: dict, parties: list[tuple]
 ):
     """
-    Send authorization request asynchronously to all MSPs and wait for the first ALLOWED response.
+    Send authorization request asynchronously to all MSPs and wait for the
+    first ALLOWED response in the adhoc token case. Whenever the token is known, only
+    send the request to the MSP that issued the token.
     If no MSP allows the token, returns the first denial response with specific reason.
 
-    @param token: token_id as str or Token object
+    @param token: TokenDto representing the token and metadata
     @param data: the data to be sent in the Token authorization request
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
     @return: dict with authorization response or None if all tasks fail
@@ -149,28 +151,28 @@ async def authorize_with_msps(
     prefetched_roles = await prefetch_roles()
 
     async with aiohttp.ClientSession() as session:
+        token_uid = token_dto.uid
         service = TokenAuthorizationService()
         party_details = service.build_party_details(
-            parties, ssl_contexts, prefetched_roles, token
+            parties, ssl_contexts, prefetched_roles, token_uid
         )
-        if isinstance(token, str):
+        if token_dto.adhoc:
             return await service.authorize_adhoc_token(
-                party_details, session, data, token
+                party_details, session, data, token_uid
             )
 
-        elif isinstance(token, Token):
+        else:
             party_details = [
-                p for p in party_details if p.ocpi_master == token.ocpi_master
+                p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
             ]
             return await service.authorize_known_token(
-                party_details, session, data, token.uid
+                party_details, session, data, token_uid
             )
 
-        return None
 
 
 def authorize_with_msps_sync(
-    token: str, parties: list[tuple], location: Location = None
+    token_dto: TokenDto, parties: list[tuple], location: Location = None
 ):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
@@ -185,16 +187,15 @@ def authorize_with_msps_sync(
     from ocpi22.tokens.auth import TokenAuthorization
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
 
+    token_uid = token_dto.uid
+
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
         allowed=AuthorizationEnum.NOT_ALLOWED,
         token=AdhocToken(
-            valid=False, type="", uid=token, billed_to=Party(), ocpi_master=None
+            valid=False, type="", uid=token_uid, billed_to=Party(), ocpi_master=None
         ),
     )
-
-    # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
-
     data = (
         {
             "location_id": location.uid,
@@ -208,9 +209,9 @@ def authorize_with_msps_sync(
         f"{country_code}*{party_id}: {url}"
         for url, _token_base64, country_code, party_id, _credentials in parties
     ]
-    logger.info(f"Authorizing token {token} with MSPs {', '.join(formatted_parties)}")
+    logger.info(f"Authorizing token {token_uid} with MSPs {', '.join(formatted_parties)}")
 
-    response = asyncio.run(authorize_with_msps(token, data, parties))
+    response = asyncio.run(authorize_with_msps(token_dto, data, parties))
     if response:
         responding_party = response.get(
             "responding_party", ""

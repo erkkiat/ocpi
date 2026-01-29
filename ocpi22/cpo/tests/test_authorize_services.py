@@ -5,6 +5,7 @@ from django.test import override_settings
 from asgiref.sync import sync_to_async
 
 from ocpi22.locations.services import EvseServices
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpi22.tokens.token_async import authorize_with_msps
 from ocpiconnector.party import Party
 from ocpi22.choices import OcpiRolesEnum
@@ -55,25 +56,22 @@ class TestHubjectFeatureFlag:
                 return_value=Party("DE", "CPO"),
             ):
                 with patch(
-                    "ocpi22.tokens.services.get_token_id",
-                    return_value="TEST_TOKEN_123",
+                    "ocpi22.tokens.token_async.asyncio.wait", return_value=([], [])
                 ):
                     with patch(
-                        "ocpi22.tokens.token_async.asyncio.wait", return_value=([], [])
+                        "ocpi22.tokens.token_async.create_ssl_context",
+                        return_value=AsyncMock(),
                     ):
                         with patch(
-                            "ocpi22.tokens.token_async.create_ssl_context",
-                            return_value=AsyncMock(),
+                            "ocpi22.tokens.services.CredentialsService.is_location_allowed",
+                            return_value=True,
                         ):
-                            with patch(
-                                "ocpi22.tokens.services.CredentialsService.is_location_allowed",
-                                return_value=True,
-                            ):
-                                await authorize_with_msps(
-                                    "TEST_TOKEN_123", sample_auth_data, []
-                                )
+                            token_dto = TokenDto(
+                                uid="TEST_TOKEN_123", adhoc=True, token=None
+                            )
+                            await authorize_with_msps(token_dto, sample_auth_data, [])
 
-                                mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123")
+                            mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123")
 
 
     @pytest.mark.asyncio
@@ -95,9 +93,10 @@ class TestHubjectFeatureFlag:
                         "ocpi22.tokens.services.CredentialsService.is_location_allowed",
                         return_value=True,
                     ):
-                        await authorize_with_msps(
-                            "SOME_TOKEN", sample_auth_data, []
+                        token_dto = TokenDto(
+                            uid="SOME_TOKEN", adhoc=True, token=None
                         )
+                        await authorize_with_msps(token_dto, sample_auth_data, [])
 
                         mock_post_authorize.assert_not_called()
 

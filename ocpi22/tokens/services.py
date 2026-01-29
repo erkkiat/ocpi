@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from aiohttp import ClientSession
@@ -14,10 +14,8 @@ from ocpi22.cpo.repositories import CredentialsRepository
 from ocpi22.credentials.services import CredentialsService
 from ocpi22.choices import TokenType, MessageTexts
 from ocpi22.models.session import Session
-from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tokens.dataclasses import PartyDetails
-from ocpi22.tokens.util import get_token_id
 from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from util import with_trailing_slash
@@ -101,6 +99,8 @@ class TokenAuthorizationService:
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
+        logger.info(f"Authorizing adhoc token {token_id}")
+
         priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
             party_details, session, data, token_id
         )
@@ -138,17 +138,21 @@ class TokenAuthorizationService:
                 if is_allowed:
                     priority = priority_by_task[task]
                     allowed_responses_by_priority[priority] = response
+                    logger.info(f"Received ALLOWED authorization from {task.get_name()}", extra={"priority": priority, "response": response})
 
                 elif not first_denial:
                     first_denial = response
+                    logger.info(f"Received NOT_ALLOWED authorization from {task.get_name()}", extra={"response": response})
 
             if allowed_responses_by_priority:
-                best_rank = min(allowed_responses_by_priority.keys())
+                highest_priority = min(allowed_responses_by_priority.keys())
                 if not self._has_better_ranks_pending(
-                    best_rank, priority_by_task, pending_tasks
+                    highest_priority, priority_by_task, pending_tasks
                 ):
                     self._cancel_pending_tasks(pending_tasks)
-                    return allowed_responses_by_priority[best_rank]
+                    best_allowed_response = allowed_responses_by_priority[highest_priority]
+                    logger.info(f"Selected best possible ALLOWED authorization with priority {highest_priority}", extra={"response": best_allowed_response})
+                    return best_allowed_response
 
         self._cancel_pending_tasks(pending_tasks)
 
@@ -168,12 +172,11 @@ class TokenAuthorizationService:
         parties: list[tuple],
         ssl_contexts: list,
         prefetched_roles: list,
-        token: Union[str, Token],
+        token_id: str,
     ) -> list[PartyDetails]:
         from ocpi22.ocpi.headers import make_headers
 
         sender = get_our_party(OcpiRolesEnum.CPO)
-        token_id = get_token_id(token)
 
         party_details = []
 
@@ -196,16 +199,19 @@ class TokenAuthorizationService:
         return party_details
 
     async def authorize_known_token(
-        self, party_details, session, data, token_id
+        self, party_details: list[PartyDetails], session: ClientSession, data: dict, token_uid: str
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         party_details = party_details[0]
+        logger.info(f"Authorizing known token {token_uid} with its owner {str(party_details.ocpi_master)}")
+
         task = self._create_ocpi_task(session, party_details, data)
 
         try:
             await task
             response = process_task_result(task)
+            logger.info(f"Authorization response for known token {token_uid} : {response}")
             return response
         except Exception as e:
             logger.error(f"Error authorizing known token with owner: {e}")

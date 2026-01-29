@@ -34,6 +34,7 @@ from ocpi22.locations.services import LocationService, EvseServices
 from ocpi22.models import enum
 from ocpi22.ocpi.auth import NinjaBasicAuth, get_credentialsrole
 from ocpi22.routing import find_route_from_credentials
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpi22.viewsets import FlowchartViewSet
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import (
@@ -514,13 +515,17 @@ class ChargePointViewSet(FlowchartViewSet):
                     next_url = reverse("chargepoint-start-transaction")
 
                     evse: Evse = serializer.validated_data.get("evse")
-                    token: Union[Token, AdhocToken, str] = (
+                    token: Union[Token, str] = (
                         serializer.validated_data.get("token")
                     )
                     data["token"] = get_token_id(token)
-                    authorization: TokenAuthorization = authorize_token(
-                        token, evse.location, request=request, evse_id=evse.evse_id
+                    token_dto = TokenDto(
+                        uid=data["token"],
+                        adhoc=isinstance(token, str),
+                        token=token if isinstance(token, Token) else None,
                     )
+                    authorization: TokenAuthorization = authorize_token(token_dto, evse.location, request=request,
+                                                                        evse_id=evse.evse_id)
 
                     if (
                         not authorization
@@ -674,16 +679,20 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(session_serializer.data)
 
                     # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
-                    authorization: TokenAuthorization = authorize_token(
-                        session.cdr_token.uid,
-                        evse_id=session.evse.evse_id if session.evse else None,
+                    token = Token.get_if_exists(uid__iexact=session.cdr_token.uid) or session.cdr_token.uid
+                    token_dto = TokenDto(
+                        uid=token.uid if isinstance(token, Token) else token,
+                        adhoc=isinstance(token, str),
+                        token=token if isinstance(token, Token) else None,
                     )
+                    authorization: TokenAuthorization = authorize_token(token_dto,
+                                                                        evse_id=session.evse.evse_id if session.evse else None)
 
                     if not authorization:
                         return Response(
                             dict(
                                 status_text="Token is (no longer) valid",
-                                token_id=session.cdr_token.uid,
+                                token_id=token_dto.uid,
                             ),
                             status=status.HTTP_401_UNAUTHORIZED,
                         )
