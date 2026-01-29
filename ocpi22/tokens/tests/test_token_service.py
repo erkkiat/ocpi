@@ -5,7 +5,7 @@ from django.test import override_settings
 
 from ocpi22.tokens.dataclasses import PartyDetails
 from ocpi22.tokens.services import TokenAuthorizationService
-from ocpi22.tokens.token_async import AuthorizationEnum
+from ocpi22.tokens.token_async import AuthorizationEnum, process_task_result
 from ocpi22.tests.factories import CredentialsRoleFactory, CredentialsFactory, OCPISessionFactory, LocationFactory, \
     EvseFactory
 from ocpi22.choices import OcpiRolesEnum
@@ -161,6 +161,25 @@ class TestAdhocTokenAuthorization:
             assert task_states.get("DE*HUB") == "completed"
 
     @pytest.mark.django_db
+    async def test_authorize_adhoc_token_handles_task_timeout_exception(
+        self, party_details, token_service, hubject_credentials, location, session
+    ):
+        msp_fr_111 = await sync_to_async(party_details)(
+            priority=2, country_code="FR", party_id="111", delay=0.5, allowed=True
+        )
+        parties_details = [msp_fr_111["party_details"]]
+        parties = [msp_fr_111]
+
+        token_service._timeout = 0.1
+        delayed_post_request = self._create_delayed_post_request(parties)
+
+        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+            result = await token_service.authorize_adhoc_token(
+                parties_details, session, {}, "ADHOC"
+            )
+            assert result is None
+
+    @pytest.mark.django_db
     async def test_authorize_adhoc_token_returns_none_when_timeout_occurs(
         self, party_details, token_service, hubject_credentials, location, session
     ):
@@ -294,3 +313,73 @@ class TestKnownTokenAuthorization:
             )
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.NOT_ALLOWED
+
+
+class TestProcessTaskResult:
+    def test_process_task_result_handles_timeout_exception(self):
+        mock_task = MagicMock(spec=asyncio.Task)
+        mock_task.result.side_effect = asyncio.TimeoutError("Task timed out")
+
+        result = process_task_result(mock_task)
+
+        assert result is None
+
+    def test_process_task_result_returns_none_when_status_code_is_not_200(self):
+        mock_task = MagicMock(spec=asyncio.Task)
+        allowed_response = {
+            "data": {
+                "allowed": "ALLOWED",
+                "token": {
+                    "country_code": "DE",
+                    "party_id": "MSP"
+                }
+            }
+        }
+        mock_task.result.return_value = (400, {"data": allowed_response}, "OCPI_MASTER")
+        mock_task.get_name.return_value = "DE*MSP"
+
+        result = process_task_result(mock_task)
+
+        assert result is None
+
+    def test_process_task_result_returns_json_data_when_auth_request_is_allowed(self):
+        mock_task = MagicMock(spec=asyncio.Task)
+
+        allowed_response = {
+            "data": {
+                "allowed": "ALLOWED",
+                "token": {
+                    "country_code": "DE",
+                    "party_id": "MSP"
+                }
+            }
+        }
+        mock_task.result.return_value = (200, allowed_response, "DE*MSP")
+        mock_task.get_name.return_value = "DE*MSP"
+
+        result = process_task_result(mock_task)
+
+        assert result is not None
+        assert result.get("allowed") == "ALLOWED"
+
+    def test_process_task_result_returns_json_data_when_auth_request_is_not_allowed(self):
+        mock_task = MagicMock(spec=asyncio.Task)
+
+        not_allowed_response = {
+            "data": {
+                "allowed": "NOT_ALLOWED",
+                "token": {
+                    "country_code": "DE",
+                    "party_id": "MSP"
+                }
+            }
+        }
+        mock_task.result.return_value = (200, not_allowed_response, "DE*MSP")
+        mock_task.get_name.return_value = "DE*MSP"
+
+        result = process_task_result(mock_task)
+
+        assert result is not None
+        assert result.get("allowed") == "NOT_ALLOWED"
+
+
