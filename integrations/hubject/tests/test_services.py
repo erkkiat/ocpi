@@ -267,6 +267,7 @@ class TestHubjectService:
             assert result.OperatorEvseData.EvseDataRecord == [berlin_evse_data_record]
 
     @responses.activate
+    @pytest.mark.django_db
     def test_post_evse_full_load(
         self, evse_full_load_payload, hubject_successful_response
     ):
