@@ -382,4 +382,37 @@ class TestProcessTaskResult:
         assert result is not None
         assert result.get("allowed") == "NOT_ALLOWED"
 
+    def test_process_task_result_returns_not_allowed_when_response_has_custom_error(self, caplog):
+        mock_task = MagicMock(spec=asyncio.Task)
+
+        error_response = {
+            "status_code": 2000,
+            "status_message": "Custom Error",
+            "data": {},
+        }
+        mock_task.result.return_value = (200, error_response, "DE*MSP")
+        mock_task.get_name.return_value = "DE*MSP"
+        
+        result = process_task_result(mock_task)
+
+        assert result is not None
+        assert result.get("allowed") == "NOT_ALLOWED"
+        assert "DE*MSP responded OCPI error Custom Error" in caplog.text
+
+    def test_process_task_result_returns_none_when_response_data_empty_and_status_code_lt_2000(self):
+        mock_task = MagicMock(spec=asyncio.Task)
+
+        error_response = {
+            "status_code": 1500,
+            "status_message": "Success with no information on authorization",
+            "data": {},
+        }
+        mock_task.result.return_value = (200, error_response, "DE*MSP")
+        mock_task.get_name.return_value = "DE*MSP"
+
+        result = process_task_result(mock_task)
+
+        assert result is None
+
+
 

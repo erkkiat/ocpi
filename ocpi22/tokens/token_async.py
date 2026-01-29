@@ -82,16 +82,24 @@ def process_task_result(successful_task) -> dict | None:
     if status_code != 200:
         logger.warning(f"Authorization failed with status {status_code}, data: {json_data} for {str(ocpi_master)}")
         return None
-    if isinstance(json_data, dict):
-        json_data = json_data.get("data")
-        if isinstance(json_data, dict) and json_data.get("allowed"):
-            json_data["responding_party"] = successful_task.get_name()
-            token = json_data.get("token", {})
-            json_data["msp"] = (
-                f'{token.get("country_code", "")}*{token.get("party_id", "")}'
-            )
-            return json_data
-        pass
+
+    if not isinstance(json_data, dict):
+        return None
+
+    response_data = json_data.get("data")
+    task_name = successful_task.get_name()
+    if not response_data and json_data.get("status_code") >= 2000:
+        logger.warning(f"{task_name} responded OCPI error {json_data.get('status_message')}")
+        return {
+            "allowed": "NOT_ALLOWED",
+        }
+    if isinstance(response_data, dict) and response_data.get("allowed"):
+        response_data["responding_party"] = task_name
+        token = response_data.get("token", {})
+        response_data["msp"] = (
+            f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+        )
+        return response_data
     return None
 
 
