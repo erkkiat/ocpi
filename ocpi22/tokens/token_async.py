@@ -88,7 +88,8 @@ def process_task_result(successful_task) -> dict | None:
 
     response_data = json_data.get("data")
     task_name = successful_task.get_name()
-    if not response_data and json_data.get("status_code") >= 2000:
+    status_code = json_data.get("status_code")
+    if not response_data and isinstance(status_code, int) and status_code >= 2000:
         logger.warning(f"{task_name} responded OCPI error {json_data.get('status_message')}")
         return {
             "allowed": "NOT_ALLOWED",
