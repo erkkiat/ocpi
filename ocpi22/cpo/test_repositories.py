@@ -3,7 +3,7 @@ import pytest
 from integrations.hubject.services import HubjectService
 from ocpi22.cpo.repositories import EvseRepository
 from ocpi22.choices import OcpiRolesEnum
-from ocpi22.tests.factories import CredentialsRoleFactory, LocationFactory, EvseFactory
+from ocpi22.tests.factories import CredentialsRoleFactory, LocationFactory, EvseFactory, CredentialsFactory
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
 
@@ -37,15 +37,19 @@ class TestEvseRepository:
     def test_iterate_status_by_credentials_no_hubject_role_returns_empty_list(self):
         HubjectService._get_hubject_credentials_id.cache_clear()
         get_our_credentialsrole.cache_clear()
-        results = list(EvseRepository.iterate_status_by_credentials(get_our_credentialsrole()))
+        results = list(EvseRepository.iterate_status_by_credentials(get_our_credentialsrole(role=OcpiRolesEnum.CPO)))
         assert results == []
 
     @pytest.mark.django_db
     def test_iterate_status_by_credentials_with_allowed_locations(
-        self, hubject_credentials
+        self, clear_hubject_credentials_role
     ):
-        hubject_credentials.allowed_locations = ["LOC1"]
-        hubject_credentials.save()
+        credentials = CredentialsFactory(
+            allowed_locations=["LOC1"]
+        )
+        CredentialsRoleFactory(
+            country_code="DE", party_id="ICE", role=OcpiRolesEnum.HUB.value, credentials=credentials
+        )
 
         credentials_role = CredentialsRoleFactory(
             country_code="DE",

@@ -162,3 +162,25 @@ async def hubject_credentials_async():
     )
     yield creds_role
     await sync_to_async(creds_role.credentials.delete)()
+
+@pytest.fixture
+def clear_hubject_credentials_role():
+    from ocpi22.ocpi.auth import find_credentials
+    from ocpi22.choices import OcpiRolesEnum
+    from ocpi22.models.credentials import CredentialsRole
+
+    HubjectService._get_hubject_credentials_id.cache_clear()
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
+    find_credentials.cache_clear()
+    
+    country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
+    
+    roles = CredentialsRole.objects.filter(
+        country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
+    )
+
+    for role in roles:
+        if role.credentials:
+            role.credentials.delete()
+        role.delete()
