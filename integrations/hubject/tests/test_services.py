@@ -67,6 +67,7 @@ from integrations.hubject.tests.test_mappings import get_timezone_offset
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.commands.repository import SessionRepository
 from ocpi22.cpo.repositories import CredentialsRepository
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Evse
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import SolidTariff
@@ -1000,7 +1001,14 @@ class TestOICPDynamicPricingService:
         }
 
     @pytest.mark.django_db
-    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self):
+    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self, hubject_credentials):
+        HubjectService._get_hubject_credentials_id.cache_clear()
+        role = CredentialsRole.objects.filter(country_code="DE", party_id="ICE")
+        credentials = role.first().credentials
+
+        role.delete()
+        credentials.delete()
+
         result = self.hubject_service.get_evse_product_maps()
         assert result is None
 

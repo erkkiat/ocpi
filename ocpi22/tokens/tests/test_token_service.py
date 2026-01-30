@@ -107,7 +107,7 @@ class TestAdhocTokenAuthorization:
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
             result = await token_service.authorize_adhoc_token(
-                parties_details, session, {"location_id": location.uid}, "ADHOC"
+                parties_details, {"location_id": location.uid}, "ADHOC"
             )
 
             assert result is not None
@@ -127,7 +127,7 @@ class TestAdhocTokenAuthorization:
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
             result = await token_service.authorize_adhoc_token(
-                parties_details, session, {"location_id": location.uid}, "ADHOC"
+                parties_details, {"location_id": location.uid}, "ADHOC"
             )
 
             assert result is not None
@@ -151,7 +151,7 @@ class TestAdhocTokenAuthorization:
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
             result = await token_service.authorize_adhoc_token(
-                parties_details, session, {"location_id": location.uid}, "ADHOC"
+                parties_details, {"location_id": location.uid}, "ADHOC"
             )
 
             assert result is not None
@@ -175,7 +175,7 @@ class TestAdhocTokenAuthorization:
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
             result = await token_service.authorize_adhoc_token(
-                parties_details, session, {}, "ADHOC"
+                parties_details, {}, "ADHOC"
             )
             assert result is None
 
@@ -196,7 +196,7 @@ class TestAdhocTokenAuthorization:
 
         with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
             result = await token_service.authorize_adhoc_token(
-                parties_details, session, {}, "ADHOC"
+                parties_details, {}, "ADHOC"
             )
             assert result is None
 
@@ -227,7 +227,7 @@ class TestAdhocTokenAuthorization:
                 "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
             ):
                 result = await token_service.authorize_adhoc_token(
-                    parties_details, session, {"location_id": location.uid}, "ADHOC"
+                    parties_details, {"location_id": location.uid}, "ADHOC"
                 )
 
                 assert result is not None

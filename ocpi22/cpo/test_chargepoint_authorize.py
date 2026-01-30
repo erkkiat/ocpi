@@ -1,7 +1,6 @@
 import pytest
 
 from ocpi22.models.session import Session
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
@@ -9,7 +8,7 @@ from ocpi22.tests.factories import (
     CredentialsRoleFactoryWithoutCredentials,
     CredentialsRoleFactory,
 )
-from ocpi22.tokens.auth import TokenAuthorization, AuthorizationEnum
+from ocpi22.tokens.auth import TokenAuthorization, AuthorizationEnum, _authorize_token
 from util import reverse
 
 
@@ -74,9 +73,9 @@ def test_authorize_successful_with_200(
 
 
 def test_authorize_with_non_existent_credentialsrole_fails_with_404(
-    monkeypatch, evse, token, ocpi_master, caplog, admin_user_client
+    monkeypatch, evse, token, ocpi_master, caplog, admin_user_client, clear_hubject_credentials_role
 ):
-    get_credentialsrole.cache_clear()
+    _authorize_token.cache_clear()
     auth = TokenAuthorization(
         allowed=AuthorizationEnum.ALLOWED,
         token=token,

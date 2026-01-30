@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
+import aiohttp
 from aiohttp import ClientSession
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -48,16 +49,19 @@ class TokenAuthorizationService:
 
         return asyncio.create_task(coroutine, name=party_details.task_name)
 
-    def _create_hubject_task(self, token_uid: str) -> asyncio.Task | None:
+    def _create_hubject_task(
+        self, token_uid: str, session: ClientSession
+    ) -> asyncio.Task | None:
         operator_id = get_our_party(OcpiRolesEnum.CPO)
         coroutine = HubjectService.post_authorize_request(
             operator_id=str(operator_id),
             token_id=token_uid,
+            session=session,
         )
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
     async def start_all_tasks(
-        self, party_details, session, data, token_id
+        self, party_details, data, token_id, session: ClientSession
     ) -> dict[asyncio.Task, int]:
         tasks: dict[asyncio.Task, int] = {}
 
@@ -74,10 +78,10 @@ class TokenAuthorizationService:
                 logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
                 return tasks
             if CredentialsService.is_location_allowed(
-                    role.credentials, data.get("location_id", "")
+                role.credentials, data.get("location_id", "")
             ):
                 hubject_rank = role.credentials.auth_priority
-                task = self._create_hubject_task(token_id)
+                task = self._create_hubject_task(token_id, session)
                 tasks[task] = hubject_rank
 
         return tasks
@@ -95,73 +99,74 @@ class TokenAuthorizationService:
             task.cancel()
 
     async def authorize_adhoc_token(
-        self, party_details, session, data, token_id
+        self, party_details, data, token_id
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         logger.info(f"Authorizing adhoc token {token_id}")
 
-        priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
-            party_details, session, data, token_id
-        )
-
-        if not priority_by_task:
-            return None
-
-        pending_tasks = set(priority_by_task.keys())
-
-        allowed_responses_by_priority: dict[int, dict] = {}
-        first_denial: dict | None = None
-
-        start_time = time.time()
-        while pending_tasks:
-            elapsed = time.time() - start_time
-            remaining = self._timeout - elapsed
-
-            if remaining <= 0:
-                break
-
-            done_tasks, pending_tasks = await asyncio.wait(
-                pending_tasks, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+        async with aiohttp.ClientSession() as session:
+            priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
+                party_details, data, token_id, session
             )
 
-            if not done_tasks:
-                break
+            if not priority_by_task:
+                return None
 
-            for task in done_tasks:
-                response = process_task_result(task)
-                if not response:
-                    continue
+            pending_tasks = set(priority_by_task.keys())
 
-                is_allowed = response.get("allowed") == AuthorizationEnum.ALLOWED
+            allowed_responses_by_priority: dict[int, dict] = {}
+            first_denial: dict | None = None
 
-                if is_allowed:
-                    priority = priority_by_task[task]
-                    allowed_responses_by_priority[priority] = response
-                    logger.info(f"Received ALLOWED authorization from {task.get_name()}", extra={"priority": priority, "response": response})
+            start_time = time.time()
+            while pending_tasks:
+                elapsed = time.time() - start_time
+                remaining = self._timeout - elapsed
 
-                elif not first_denial:
-                    first_denial = response
-                    logger.info(f"Received NOT_ALLOWED authorization from {task.get_name()}", extra={"response": response})
+                if remaining <= 0:
+                    break
+
+                done_tasks, pending_tasks = await asyncio.wait(
+                    pending_tasks, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+                )
+
+                if not done_tasks:
+                    break
+
+                for task in done_tasks:
+                    response = process_task_result(task)
+                    if not response:
+                        continue
+
+                    is_allowed = response.get("allowed") == AuthorizationEnum.ALLOWED
+
+                    if is_allowed:
+                        priority = priority_by_task[task]
+                        allowed_responses_by_priority[priority] = response
+                        logger.info(f"Received ALLOWED authorization from {task.get_name()}", extra={"priority": priority, "response": response})
+
+                    elif not first_denial:
+                        first_denial = response
+                        logger.info(f"Received NOT_ALLOWED authorization from {task.get_name()}", extra={"response": response})
+
+                if allowed_responses_by_priority:
+                    highest_priority = min(allowed_responses_by_priority.keys())
+                    if not self._has_better_ranks_pending(
+                        highest_priority, priority_by_task, pending_tasks
+                    ):
+                        self._cancel_pending_tasks(pending_tasks)
+                        best_allowed_response = allowed_responses_by_priority[highest_priority]
+                        logger.info(f"Selected best possible ALLOWED authorization with priority {highest_priority}", extra={"response": best_allowed_response})
+                        return best_allowed_response
+
+            self._cancel_pending_tasks(pending_tasks)
 
             if allowed_responses_by_priority:
-                highest_priority = min(allowed_responses_by_priority.keys())
-                if not self._has_better_ranks_pending(
-                    highest_priority, priority_by_task, pending_tasks
-                ):
-                    self._cancel_pending_tasks(pending_tasks)
-                    best_allowed_response = allowed_responses_by_priority[highest_priority]
-                    logger.info(f"Selected best possible ALLOWED authorization with priority {highest_priority}", extra={"response": best_allowed_response})
-                    return best_allowed_response
+                return allowed_responses_by_priority[
+                    min(allowed_responses_by_priority.keys())
+                ]
 
-        self._cancel_pending_tasks(pending_tasks)
-
-        if allowed_responses_by_priority:
-            return allowed_responses_by_priority[
-                min(allowed_responses_by_priority.keys())
-            ]
-
-        return first_denial
+            return first_denial
 
     @staticmethod
     def build_url(base_url, token_id_param):
@@ -206,16 +211,17 @@ class TokenAuthorizationService:
         party_details = party_details[0]
         logger.info(f"Authorizing known token {token_uid} with its owner {str(party_details.ocpi_master)}")
 
-        task = self._create_ocpi_task(session, party_details, data)
+        async with aiohttp.ClientSession() as session:
+            task = self._create_ocpi_task(session, party_details, data)
 
-        try:
-            await task
-            response = process_task_result(task)
-            logger.info(f"Authorization response for known token {token_uid} : {response}")
-            return response
-        except Exception as e:
-            logger.error(f"Error authorizing known token with owner: {e}")
-            return None
+            try:
+                await task
+                response = process_task_result(task)
+                logger.info(f"Authorization response for known token {token_uid} : {response}")
+                return response
+            except Exception as e:
+                logger.error(f"Error authorizing known token with owner: {e}")
+                return None
 
     @staticmethod
     def build_default_allowed_authorization(
