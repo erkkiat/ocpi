@@ -15,7 +15,6 @@ from django.db.models import Prefetch, QuerySet
 from django.urls import reverse
 from pydantic_core import PydanticSerializationError, ValidationError
 from requests import Response
-from rest_framework import status
 
 from integrations.hubject.exceptions import HubjectRemoteCommandError
 from integrations.hubject.ocpi_to_oicp_converter import (

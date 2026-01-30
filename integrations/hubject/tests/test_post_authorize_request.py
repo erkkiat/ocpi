@@ -1,6 +1,6 @@
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, ANY
+from unittest.mock import MagicMock
 from integrations.hubject.services import HubjectService
 import integrations.hubject.services as services
 from aiohttp import ClientError, ClientSession
