@@ -320,6 +320,7 @@ class TestHubjectService:
         assert result == hubject_unsuccessful_response
 
     @responses.activate
+    @pytest.mark.django_db
     def test_execute_evse_full_load_http_error(self, evse_full_load_payload):
         operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
 
