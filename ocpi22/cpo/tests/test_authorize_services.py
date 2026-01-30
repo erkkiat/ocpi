@@ -71,7 +71,7 @@ class TestHubjectFeatureFlag:
                             )
                             await authorize_with_msps(token_dto, sample_auth_data, [])
 
-                            mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123", ANY, ANY)
+                            mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123", ANY)
 
 
     @pytest.mark.asyncio

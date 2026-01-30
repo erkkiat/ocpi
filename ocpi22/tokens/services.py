@@ -49,14 +49,13 @@ class TokenAuthorizationService:
         return asyncio.create_task(coroutine, name=party_details.task_name)
 
     def _create_hubject_task(
-        self, token_uid: str, session: ClientSession, ssl_context=None
+        self, token_uid: str, session: ClientSession
     ) -> asyncio.Task | None:
         operator_id = get_our_party(OcpiRolesEnum.CPO)
         coroutine = HubjectService.post_authorize_request(
             operator_id=str(operator_id),
             token_id=token_uid,
             session=session,
-            ssl_context=ssl_context,
         )
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
@@ -81,7 +80,7 @@ class TokenAuthorizationService:
                 role.credentials, data.get("location_id", "")
             ):
                 hubject_rank = role.credentials.auth_priority
-                task = self._create_hubject_task(token_id, session, hubject_ssl_context)
+                task = self._create_hubject_task(token_id, session)
                 tasks[task] = hubject_rank
 
         return tasks
