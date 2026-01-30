@@ -164,24 +164,23 @@ async def authorize_with_msps(
     )
     prefetched_roles = await prefetch_roles()
 
-    async with aiohttp.ClientSession() as session:
-        token_uid = token_dto.uid
-        service = TokenAuthorizationService()
-        party_details = service.build_party_details(
-            parties, ssl_contexts, prefetched_roles, token_uid
+    token_uid = token_dto.uid
+    service = TokenAuthorizationService()
+    party_details = service.build_party_details(
+        parties, ssl_contexts, prefetched_roles, token_uid
+    )
+    if token_dto.adhoc:
+        return await service.authorize_adhoc_token(
+            party_details, data, token_uid
         )
-        if token_dto.adhoc:
-            return await service.authorize_adhoc_token(
-                party_details, session, data, token_uid
-            )
 
-        else:
-            party_details = [
-                p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
-            ]
-            return await service.authorize_known_token(
-                party_details, session, data, token_uid
-            )
+    else:
+        party_details = [
+            p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
+        ]
+        return await service.authorize_known_token(
+            party_details, data, token_uid
+        )
 
 
 

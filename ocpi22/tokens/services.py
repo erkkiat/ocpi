@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
+import aiohttp
 from aiohttp import ClientSession
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -60,28 +61,29 @@ class TokenAuthorizationService:
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
     async def start_all_tasks(
-        self, party_details, session, data, token_id
+        self, party_details, data, token_id
     ) -> dict[asyncio.Task, int]:
         tasks: dict[asyncio.Task, int] = {}
 
-        for party in party_details:
-            task = self._create_ocpi_task(session, party, data)
-            tasks[task] = party.auth_priority
+        async with aiohttp.ClientSession() as session:
+            for party in party_details:
+                task = self._create_ocpi_task(session, party, data)
+                tasks[task] = party.auth_priority
 
-        if settings.ENABLE_HUBJECT:
-            role = await sync_to_async(
-                CredentialsRepository.find_hubject_credentials_role,
-                thread_sensitive=True,
-            )()
-            if not role:
-                logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
-                return tasks
-            if CredentialsService.is_location_allowed(
-                role.credentials, data.get("location_id", "")
-            ):
-                hubject_rank = role.credentials.auth_priority
-                task = self._create_hubject_task(token_id, session)
-                tasks[task] = hubject_rank
+            if settings.ENABLE_HUBJECT:
+                role = await sync_to_async(
+                    CredentialsRepository.find_hubject_credentials_role,
+                    thread_sensitive=True,
+                )()
+                if not role:
+                    logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
+                    return tasks
+                if CredentialsService.is_location_allowed(
+                    role.credentials, data.get("location_id", "")
+                ):
+                    hubject_rank = role.credentials.auth_priority
+                    task = self._create_hubject_task(token_id, session)
+                    tasks[task] = hubject_rank
 
         return tasks
 
@@ -98,14 +100,14 @@ class TokenAuthorizationService:
             task.cancel()
 
     async def authorize_adhoc_token(
-        self, party_details, session, data, token_id
+        self, party_details, data, token_id
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         logger.info(f"Authorizing adhoc token {token_id}")
 
         priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
-            party_details, session, data, token_id
+            party_details, data, token_id
         )
 
         if not priority_by_task:
@@ -209,16 +211,17 @@ class TokenAuthorizationService:
         party_details = party_details[0]
         logger.info(f"Authorizing known token {token_uid} with its owner {str(party_details.ocpi_master)}")
 
-        task = self._create_ocpi_task(session, party_details, data)
+        async with aiohttp.ClientSession() as session:
+            task = self._create_ocpi_task(session, party_details, data)
 
-        try:
-            await task
-            response = process_task_result(task)
-            logger.info(f"Authorization response for known token {token_uid} : {response}")
-            return response
-        except Exception as e:
-            logger.error(f"Error authorizing known token with owner: {e}")
-            return None
+            try:
+                await task
+                response = process_task_result(task)
+                logger.info(f"Authorization response for known token {token_uid} : {response}")
+                return response
+            except Exception as e:
+                logger.error(f"Error authorizing known token with owner: {e}")
+                return None
 
     @staticmethod
     def build_default_allowed_authorization(
