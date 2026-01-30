@@ -1,10 +1,11 @@
 from base64 import b64encode
 
 import pytest
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from rest_framework.test import APIClient
 
-from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
@@ -20,6 +21,7 @@ from ocpi22.tests.factories import (
     StaffUserFactory,
 )
 from ocpiconnector.party import Party
+from integrations.hubject.services import HubjectService
 
 
 @pytest.fixture
@@ -147,3 +149,16 @@ def hubject_credentials() -> Credentials:
         business_details__name="Hubject",
         credentials=credentials,
     ).credentials
+
+@pytest.fixture
+async def hubject_credentials_async():
+    HubjectService._get_hubject_credentials_id.cache_clear()
+    creds_role = await sync_to_async(CredentialsRoleFactory)(
+        country_code="DE",
+        party_id="ICE",
+        role=OcpiRolesEnum.HUB.value,
+        business_details__name="Hubject",
+        credentials__auth_priority=2
+    )
+    yield creds_role
+    await sync_to_async(creds_role.credentials.delete)()

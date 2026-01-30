@@ -1,8 +1,10 @@
 import pytest
 
+from integrations.hubject.services import HubjectService
 from ocpi22.cpo.repositories import EvseRepository
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.tests.factories import CredentialsRoleFactory, LocationFactory, EvseFactory
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
 
 class TestEvseRepository:
@@ -33,7 +35,9 @@ class TestEvseRepository:
 
     @pytest.mark.django_db
     def test_iterate_status_by_credentials_no_hubject_role_returns_empty_list(self):
-        results = list(EvseRepository.iterate_status_by_credentials("dummy_role"))
+        HubjectService._get_hubject_credentials_id.cache_clear()
+        get_our_credentialsrole.cache_clear()
+        results = list(EvseRepository.iterate_status_by_credentials(get_our_credentialsrole()))
         assert results == []
 
     @pytest.mark.django_db

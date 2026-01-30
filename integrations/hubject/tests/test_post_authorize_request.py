@@ -1,6 +1,8 @@
 
 import pytest
-from unittest.mock import MagicMock
+
+from django.test import override_settings
+
 from integrations.hubject.services import HubjectService
 import integrations.hubject.services as services
 from aiohttp import ClientError, ClientSession
@@ -10,10 +12,10 @@ from django.conf import settings
 
 @pytest.mark.django_db
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_succeeds(hubject_credentials):
+@override_settings(ENABLE_HUBJECT=True)
+async def test_post_authorize_request_returns_succeeds(hubject_credentials_async):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
-    
+
     with aioresponses() as mocked_responses:
         mocked_responses.post(
             url,
@@ -28,7 +30,7 @@ async def test_post_authorize_request_returns_succeeds(hubject_credentials):
         
         async with ClientSession() as session:
             status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
 
     assert status_code == 200
@@ -39,9 +41,10 @@ async def test_post_authorize_request_returns_succeeds(hubject_credentials):
 
 
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatch):
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
+async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatch, hubject_credentials_async):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     def fake_get_credentialsrole(*args, **kwargs):
         return "FR*ABC"
@@ -62,7 +65,7 @@ async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatc
         
         async with ClientSession() as session:
             status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
     
     assert status_code == 200
@@ -71,11 +74,12 @@ async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatc
 
 
 @pytest.mark.asyncio
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
 async def test_post_authorize_request_returns_success_without_ocpi_master_when_status_code_not_000(
-    monkeypatch,
+    monkeypatch, hubject_credentials_async
 ):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     monkeypatch.setattr(
         services,
@@ -92,7 +96,7 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
 
         async with ClientSession() as session:
             status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
 
     assert status_code == 200
@@ -101,11 +105,12 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
 
 
 @pytest.mark.asyncio
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
 async def test_post_authorize_request_logs_warning_when_status_code_not_000(
-    monkeypatch, caplog
+    monkeypatch, caplog, hubject_credentials_async
 ):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(
@@ -117,7 +122,7 @@ async def test_post_authorize_request_logs_warning_when_status_code_not_000(
         async with ClientSession() as session:
             with caplog.at_level("WARNING"):
                 await HubjectService.post_authorize_request(
-                    "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                    "DE*XYZ", "E4CEA229D30A523A19CC", session=session
                 )
     
     assert (
@@ -129,14 +134,13 @@ async def test_post_authorize_request_logs_warning_when_status_code_not_000(
 @pytest.mark.asyncio
 async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=ClientError("Network error occurred"))
         
         async with ClientSession() as session:
             status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
 
     assert status_code == 404
@@ -148,14 +152,13 @@ async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch
 @pytest.mark.asyncio
 async def test_post_authorize_request_returns_error_tuple_on_runtime_error(monkeypatch):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=asyncio.TimeoutError("Timeout occurred"))
         
         async with ClientSession() as session:
             status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
 
     assert status_code == 404
@@ -173,14 +176,13 @@ async def test_post_authorize_request_returns_error_tuple_on_generic_exception(m
     # aioresponses 'exception' argument raises the exception when request is called.
     
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=Exception("Unexpected error"))
         
         async with ClientSession() as session:
             status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
             
     assert status_code == 404
@@ -190,11 +192,11 @@ async def test_post_authorize_request_returns_error_tuple_on_generic_exception(m
 
 
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_500_on_processing_error(monkeypatch):
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
+async def test_post_authorize_request_returns_500_on_processing_error(monkeypatch, hubject_credentials_async):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-    mock_ssl_context = MagicMock()
 
-    # Mock get_credentialsrole to raise an exception
     def fake_get_credentialsrole(*args, **kwargs):
         raise Exception("Processing error")
 
@@ -214,7 +216,7 @@ async def test_post_authorize_request_returns_500_on_processing_error(monkeypatc
         
         async with ClientSession() as session:
             status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
-                "DE*XYZ", "E4CEA229D30A523A19CC", session=session, ssl_context=mock_ssl_context
+                "DE*XYZ", "E4CEA229D30A523A19CC", session=session
             )
     
     assert status_code == 500
