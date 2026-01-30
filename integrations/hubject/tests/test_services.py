@@ -291,6 +291,7 @@ class TestHubjectService:
         assert result == hubject_successful_response
 
     @responses.activate
+    @pytest.mark.django_db
     def test_post_evse_full_load_unsuccessful_response(
         self, evse_full_load_payload, hubject_unsuccessful_response
     ):
