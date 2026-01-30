@@ -60,7 +60,7 @@ class TokenAuthorizationService:
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
     async def start_all_tasks(
-        self, party_details, session, data, token_id, hubject_ssl_context=None
+        self, party_details, session, data, token_id
     ) -> dict[asyncio.Task, int]:
         tasks: dict[asyncio.Task, int] = {}
 
