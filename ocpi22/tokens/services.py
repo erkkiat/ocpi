@@ -48,16 +48,20 @@ class TokenAuthorizationService:
 
         return asyncio.create_task(coroutine, name=party_details.task_name)
 
-    def _create_hubject_task(self, token_uid: str) -> asyncio.Task | None:
+    def _create_hubject_task(
+        self, token_uid: str, session: ClientSession, ssl_context=None
+    ) -> asyncio.Task | None:
         operator_id = get_our_party(OcpiRolesEnum.CPO)
         coroutine = HubjectService.post_authorize_request(
             operator_id=str(operator_id),
             token_id=token_uid,
+            session=session,
+            ssl_context=ssl_context,
         )
         return asyncio.create_task(coroutine, name=settings.HUBJECT_OPERATOR_ID)
 
     async def start_all_tasks(
-        self, party_details, session, data, token_id
+        self, party_details, session, data, token_id, hubject_ssl_context=None
     ) -> dict[asyncio.Task, int]:
         tasks: dict[asyncio.Task, int] = {}
 
@@ -74,10 +78,10 @@ class TokenAuthorizationService:
                 logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
                 return tasks
             if CredentialsService.is_location_allowed(
-                    role.credentials, data.get("location_id", "")
+                role.credentials, data.get("location_id", "")
             ):
                 hubject_rank = role.credentials.auth_priority
-                task = self._create_hubject_task(token_id)
+                task = self._create_hubject_task(token_id, session, hubject_ssl_context)
                 tasks[task] = hubject_rank
 
         return tasks
@@ -95,14 +99,14 @@ class TokenAuthorizationService:
             task.cancel()
 
     async def authorize_adhoc_token(
-        self, party_details, session, data, token_id
+        self, party_details, session, data, token_id, hubject_ssl_context=None
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         logger.info(f"Authorizing adhoc token {token_id}")
 
         priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
-            party_details, session, data, token_id
+            party_details, session, data, token_id, hubject_ssl_context
         )
 
         if not priority_by_task:

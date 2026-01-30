@@ -158,11 +158,20 @@ async def authorize_with_msps(
             roles.append(role)
         return roles
 
+    from integrations.hubject.services import HubjectService
+    from django.conf import settings
+
     # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
     prefetched_roles = await prefetch_roles()
+
+    hubject_ssl_context = None
+    if settings.ENABLE_HUBJECT:
+        hubject_credentials_id = await sync_to_async(HubjectService._get_hubject_credentials_id)()
+        if hubject_credentials_id:
+             hubject_ssl_context = await create_ssl_context(hubject_credentials_id)
 
     async with aiohttp.ClientSession() as session:
         token_uid = token_dto.uid
@@ -172,7 +181,7 @@ async def authorize_with_msps(
         )
         if token_dto.adhoc:
             return await service.authorize_adhoc_token(
-                party_details, session, data, token_uid
+                party_details, session, data, token_uid, hubject_ssl_context
             )
 
         else:
