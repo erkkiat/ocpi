@@ -73,7 +73,6 @@ from util import with_trailing_slash
 from typing import TYPE_CHECKING, Optional
 import aiohttp
 import asyncio
-import ssl
 from aiohttp import ClientError
 from ocpi22.tasks import send_hubject_request, get_certificate_loaded_request
 
@@ -330,8 +329,9 @@ class HubjectService:
         operator_id: str,
         token_id: str,
         session: aiohttp.ClientSession,
-        ssl_context: ssl.SSLContext | None,
     ) -> tuple[Any, dict | None, Any]:
+        from ocpi22.tokens.token_async import create_ssl_context
+
         url = f"{with_trailing_slash(settings.HUBJECT_URL)}charging/v21/operators/{operator_id}/authorize/start"
 
         try:
@@ -366,15 +366,30 @@ class HubjectService:
         response_json, response_status = None, None
         
         try:
-             response = await session.post(
+            hubject_credentials_id = await sync_to_async(HubjectService._get_hubject_credentials_id)()
+            if not hubject_credentials_id:
+                return (
+                500,
+                {
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Hubject Credentials not found",
+                    "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                    ),
+                },
+                None,
+            )
+            ssl_context = await create_ssl_context(hubject_credentials_id)
+            response = await session.post(
                 url,
                 json=payload_dict,
                 headers={"accept": "application/json", "Content-Type": "application/json"},
                 timeout=HubjectService.REQUEST_TIMEOUT,
                 ssl=ssl_context
             )
-             response_status = response.status
-             response_json = await response.json()
+            response_status = response.status
+            response_json = await response.json()
              
         except (aiohttp.ContentTypeError, JSONDecodeError):
             logger.exception(

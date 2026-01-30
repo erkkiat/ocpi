@@ -99,14 +99,14 @@ class TokenAuthorizationService:
             task.cancel()
 
     async def authorize_adhoc_token(
-        self, party_details, session, data, token_id, hubject_ssl_context=None
+        self, party_details, session, data, token_id
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         logger.info(f"Authorizing adhoc token {token_id}")
 
         priority_by_task: dict[asyncio.Task, int] = await self.start_all_tasks(
-            party_details, session, data, token_id, hubject_ssl_context
+            party_details, session, data, token_id
         )
 
         if not priority_by_task:
