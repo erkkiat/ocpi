@@ -1,7 +1,6 @@
 import pytest
 
 from ocpi22.models.session import Session
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
