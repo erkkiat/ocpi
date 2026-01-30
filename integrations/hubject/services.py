@@ -73,7 +73,7 @@ from util import with_trailing_slash
 from typing import TYPE_CHECKING, Optional
 import aiohttp
 import asyncio
-from aiohttp import ClientError
+from aiohttp import ClientError, ServerTimeoutError, ClientConnectionError
 from ocpi22.tasks import send_hubject_request, get_certificate_loaded_request
 
 if TYPE_CHECKING:
@@ -397,6 +397,22 @@ class HubjectService:
                 extra={"status_code": response_status},
             )
             response_json = None
+        except (TimeoutError, asyncio.TimeoutError, ServerTimeoutError, ClientConnectionError):
+             logger.error(
+                f"Timeout connecting to {url}", exc_info=True
+            )
+             return (
+                404,
+                {
+                     "allowed": "NOT_ALLOWED",
+                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                     "status_message": "Request error occurred",
+                     "timestamp": datetime.now(pytz.utc).strftime(
+                        settings.OCPI_DATE_FORMAT
+                     ),
+                },
+                None
+             )
         except ClientError:
              logger.error(
                 f"Cannot connect to {url} for token authorization", exc_info=True
@@ -413,22 +429,6 @@ class HubjectService:
                 },
                 None,
             )
-        except (TimeoutError, asyncio.TimeoutError):
-             logger.error(
-                f"Timeout connecting to {url}", exc_info=True
-            )
-             return (
-                404,
-                {
-                     "allowed": "NOT_ALLOWED",
-                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                     "status_message": "Request error occurred",
-                     "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                     ),
-                },
-                None
-             )
         except Exception:
              logger.error(
                 f"Generic error connecting to {url}", exc_info=True
