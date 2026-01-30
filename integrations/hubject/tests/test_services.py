@@ -1001,7 +1001,7 @@ class TestOICPDynamicPricingService:
         }
 
     @pytest.mark.django_db
-    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self):
+    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self, hubject_credentials):
         HubjectService._get_hubject_credentials_id.cache_clear()
         role = CredentialsRole.objects.filter(country_code="DE", party_id="ICE")
         credentials = role.first().credentials
