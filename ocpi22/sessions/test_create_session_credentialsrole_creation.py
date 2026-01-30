@@ -16,6 +16,8 @@ from ocpi22.tests.factories import (
 )
 from ocpi22.choices import AuthorizationEnum
 from ocpiconnector.party import Party
+from ocpi22.ocpi.auth import get_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
 
 @pytest.mark.django_db
@@ -59,6 +61,8 @@ class TestCreateSessionCredentialsRoleCreation:
     def test_create_session_creates_new_credentialsrole_when_billed_to_party_does_not_exist(
         self,
     ):
+        get_our_credentialsrole.cache_clear()
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC002")
         evse = EvseFactory(location=location, uid="EVSE002")
         connector = ConnectorFactory(evse=evse, uid="CONN002")
