@@ -160,6 +160,7 @@ class Terminal(models.Model):
     )
 
     last_updated = models.DateTimeField(
+        auto_now=True,
         verbose_name=_("Last Updated"),
         help_text=_("Timestamp when this Terminal was last updated (or created)"),
     )

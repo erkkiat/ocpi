@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 
 from ocpi22.util import ModelUtilMixin
-from ocpi22.payments.models import *  # noqa # For registering the payment models
+import ocpi22.payments.models # noqa # For registering the payment model
 
 
 class AuthorizationInfo(models.Model, ModelUtilMixin):
