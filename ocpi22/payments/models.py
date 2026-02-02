@@ -8,7 +8,6 @@ Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 """
 
 from django.db import models
-from django.forms.fields import CharField
 from django.utils.translation import gettext_lazy as _
 
 
@@ -41,7 +40,7 @@ class Terminal(models.Model):
             models.Index(fields=["last_updated"], name="ocpi22_term_last_up_idx"),
         ]
 
-    terminal_id = CharField(
+    terminal_id = models.CharField(
         max_length=36,
         unique=True,
         db_index=True,
@@ -49,7 +48,7 @@ class Terminal(models.Model):
         help_text=_("Unique ID that identifies a terminal"),
     )
 
-    customer_reference = CharField(
+    customer_reference = models.CharField(
         max_length=36,
         blank=True,
         null=True,
@@ -58,14 +57,14 @@ class Terminal(models.Model):
         help_text=_("Reference sent by PTP to link terminal to CSMS/contract"),
     )
 
-    party_id = CharField(
+    party_id = models.CharField(
         max_length=3,
         blank=True,
         null=True,
         verbose_name=_("Party ID"),
         help_text=_("Alternative to customer_reference"),
     )
-    country_code = CharField(
+    country_code = models.CharField(
         max_length=2,
         blank=True,
         null=True,
@@ -73,35 +72,35 @@ class Terminal(models.Model):
         help_text=_("Alternative to customer_reference"),
     )
 
-    address = CharField(
+    address = models.CharField(
         max_length=45,
         blank=True,
         null=True,
         verbose_name=_("Address"),
         help_text=_("Street/block name and house number"),
     )
-    city = CharField(
+    city = models.CharField(
         max_length=45,
         blank=True,
         null=True,
         verbose_name=_("City"),
         help_text=_("City or town"),
     )
-    postal_code = CharField(
+    postal_code = models.CharField(
         max_length=10,
         blank=True,
         null=True,
         verbose_name=_("Postal Code"),
         help_text=_("Postal code of the terminal"),
     )
-    state = CharField(
+    state = models.CharField(
         max_length=20,
         blank=True,
         null=True,
         verbose_name=_("State"),
         help_text=_("State or province"),
     )
-    country = CharField(
+    country = models.CharField(
         max_length=3,
         blank=True,
         null=True,
@@ -109,13 +108,13 @@ class Terminal(models.Model):
         help_text=_("ISO 3166-1 alpha-3 country code"),
     )
 
-    latitude = CharField(
+    latitude = models.CharField(
         max_length=10,
         blank=True,
         null=True,
         verbose_name=_("Latitude"),
     )
-    longitude = CharField(
+    longitude = models.CharField(
         max_length=11,
         blank=True,
         null=True,
@@ -131,7 +130,7 @@ class Terminal(models.Model):
             "Full URL: {invoice_base_url}/{authorization_reference}"
         ),
     )
-    invoice_creator = CharField(
+    invoice_creator = models.CharField(
         max_length=3,
         choices=InvoiceCreatorEnum.choices,
         blank=True,
