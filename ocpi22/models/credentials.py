@@ -158,7 +158,7 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     )
     auth_priority = models.PositiveIntegerField(
         default=100,
-        verbose_name=_("Priority rank"),
+        verbose_name=_("Auth Priority rank"),
         help_text=_("Lower numbers indicate higher priority"),
     )
 
