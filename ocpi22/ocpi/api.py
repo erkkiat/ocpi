@@ -1,6 +1,6 @@
 from logging import getLogger
 from django.conf import settings
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Q
 
 from typing import Optional
 
@@ -355,9 +355,13 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Cdr.objects.all().order_by("created")
-        if hasattr(self.request, "country_code"):
+        
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
             return Cdr.objects.filter(
-                ocpi_master=self.request.credentialsrole
+                Q(ocpi_master=role) | Q(billed_to=role)
             ).order_by("created")
         return Cdr.objects.none()
 
@@ -719,9 +723,21 @@ def update_authorization(request, session: Session) -> None:
 class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
-    queryset = Session.objects.all().order_by("created")
     serializer_class = SessionSerializer
     versioning_class = OCPIVersioning
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Session.objects.all().order_by("created")
+        
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
+            return Session.objects.filter(
+                Q(ocpi_master=role) | Q(billed_to=role)
+            ).order_by("created")
+        return Session.objects.none()
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
