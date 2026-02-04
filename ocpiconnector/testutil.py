@@ -18,11 +18,11 @@ from django.test import Client, TestCase
 from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
-from ocpi22.test_data import expected_get_responses, expected_get_headers
-from ocpiconnector.party import Party
 from ocpi22.ocpi.partners import partners_cache
 from ocpi22.routing import find_route
+from ocpi22.test_data import expected_get_responses, expected_get_headers
 from ocpi22.tokens.auth import _authorize_token, _get_authorization_from_sessions
+from ocpiconnector.party import Party
 from util import unwrap
 
 client = Client()
@@ -253,6 +253,7 @@ class Simulation:
         _authorize_token.cache_clear()
         _get_authorization_from_sessions.cache_clear()
         partners_cache.clear()
+        get_credentialsrole.cache_clear()
 
         self.get_our_credentialsrole.side_effect = (
             lambda x: self.original_get_our_credentialsrole(x)
