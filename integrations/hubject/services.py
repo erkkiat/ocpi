@@ -364,60 +364,68 @@ class HubjectService:
             )
 
         response_json, response_status = None, None
-        
+
         try:
-            hubject_credentials_id = await sync_to_async(HubjectService._get_hubject_credentials_id)()
+            hubject_credentials_id = await sync_to_async(
+                HubjectService._get_hubject_credentials_id
+            )()
             if not hubject_credentials_id:
                 return (
-                500,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Hubject Credentials not found",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                None,
-            )
+                    500,
+                    {
+                        "allowed": "NOT_ALLOWED",
+                        "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                        "status_message": "Hubject Credentials not found",
+                        "timestamp": datetime.now(pytz.utc).strftime(
+                            settings.OCPI_DATE_FORMAT
+                        ),
+                    },
+                    None,
+                )
             ssl_context = await create_ssl_context(hubject_credentials_id)
             response = await session.post(
                 url,
                 json=payload_dict,
-                headers={"accept": "application/json", "Content-Type": "application/json"},
+                headers={
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                },
                 timeout=HubjectService.REQUEST_TIMEOUT,
-                ssl=ssl_context
+                ssl=ssl_context,
             )
             response_status = response.status
             response_json = await response.json()
-             
+
         except (aiohttp.ContentTypeError, JSONDecodeError):
             logger.exception(
                 f"Cannot decode JSON response from url {url}",
                 extra={"status_code": response_status},
             )
             response_json = None
-        except (TimeoutError, asyncio.TimeoutError, ServerTimeoutError, ClientConnectionError):
-             logger.error(
-                f"Timeout connecting to {url}", exc_info=True
-            )
-             return (
+        except (
+            TimeoutError,
+            asyncio.TimeoutError,
+            ServerTimeoutError,
+            ClientConnectionError,
+        ):
+            logger.error(f"Timeout connecting to {url}", exc_info=True)
+            return (
                 404,
                 {
-                     "allowed": "NOT_ALLOWED",
-                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                     "status_message": "Request error occurred",
-                     "timestamp": datetime.now(pytz.utc).strftime(
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Request error occurred",
+                    "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
-                     ),
+                    ),
                 },
-                None
-             )
+                None,
+            )
         except ClientError:
-             logger.error(
+            logger.error(
                 f"Cannot connect to {url} for token authorization", exc_info=True
             )
-             return (
+            return (
                 404,
                 {
                     "allowed": "NOT_ALLOWED",
@@ -430,47 +438,53 @@ class HubjectService:
                 None,
             )
         except Exception:
-             logger.error(
-                f"Generic error connecting to {url}", exc_info=True
-            )
-             return (
+            logger.error(f"Generic error connecting to {url}", exc_info=True)
+            return (
                 404,
                 {
-                     "allowed": "NOT_ALLOWED",
-                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                     "status_message": "Request error occurred",
-                     "timestamp": datetime.now(pytz.utc).strftime(
+                    "allowed": "NOT_ALLOWED",
+                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
+                    "status_message": "Request error occurred",
+                    "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
-                     ),
+                    ),
                 },
-                None
-             )
-
+                None,
+            )
 
         try:
             logger.info(
                 f"Hubject authorize for token: {token_id} and operator id: {operator_id} responded: {response_json}"
             )
 
-            oicp_status_code = response_json.get("StatusCode", {}).get("Code") if response_json else None
-            
+            oicp_status_code = (
+                response_json.get("StatusCode", {}).get("Code")
+                if response_json
+                else None
+            )
+
             mapped_response = None
             ocpi_master = None
-            
+
             if response_status == 200 and oicp_status_code == "000":
-                 ocpi_master = await sync_to_async(get_credentialsrole)(
+                provider_id = response_json.get("ProviderID")
+                country_code, party_id = (
+                    HubjectService.decode_country_code_and_party_id(provider_id)
+                )
+                provider_party = Party(country_code=country_code, party_id=party_id)
+                ocpi_master = await sync_to_async(get_credentialsrole)(
                     credentials=None,
-                    party=Party.from_str(response_json.get("ProviderID", "*")),
+                    party=provider_party,
                     create=True,
                     role=OcpiRolesEnum.EMSP,
                 )
-                 mapped_response = (
+                mapped_response = (
                     map_successful_oicp_authorization_response_to_ocpi_221(
                         response_json, token_id
                     )
                 )
             else:
-                 logger.warning(
+                logger.warning(
                     f"Authorization failed with status code {response_status or 'Unknown'} "
                     f"and Hubject error code {oicp_status_code or 'Unknown'} ({STATUS_CODE_TEXT.get(oicp_status_code, 'Unknown')})"
                 )
@@ -481,33 +495,33 @@ class HubjectService:
                 ocpi_master,
             )
         except Exception:
-             logger.error("Error processing Hubject response" , exc_info=True)
-             return (
+            logger.error("Error processing Hubject response", exc_info=True)
+            return (
                 500,
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
                     "status_message": "",
-                     "timestamp": datetime.now(pytz.utc).strftime(
+                    "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
-                     ),
+                    ),
                 },
-                None
-             )
+                None,
+            )
         except Exception:
-             logger.error("Error processing Hubject response", exc_info=True)
-             return (
+            logger.error("Error processing Hubject response", exc_info=True)
+            return (
                 500,
                 {
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
                     "status_message": "Error processing Hubject response",
-                     "timestamp": datetime.now(pytz.utc).strftime(
+                    "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
-                     ),
+                    ),
                 },
-                None
-             )
+                None,
+            )
 
     def get_default_tariffs(self):
         if not (
