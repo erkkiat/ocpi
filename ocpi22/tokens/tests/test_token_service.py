@@ -6,14 +6,20 @@ from django.test import override_settings
 from ocpi22.tokens.dataclasses import PartyDetails
 from ocpi22.tokens.services import TokenAuthorizationService
 from ocpi22.tokens.token_async import AuthorizationEnum, process_task_result
-from ocpi22.tests.factories import CredentialsRoleFactory, CredentialsFactory, OCPISessionFactory, LocationFactory, \
-    EvseFactory
+from ocpi22.tests.factories import (
+    CredentialsRoleFactory,
+    CredentialsFactory,
+    OCPISessionFactory,
+    LocationFactory,
+    EvseFactory,
+)
 from ocpi22.choices import OcpiRolesEnum
 from asgiref.sync import sync_to_async
 
+
 @pytest.fixture
 def location():
-    location =  LocationFactory(
+    location = LocationFactory(
         uid="LOC1",
     )
     EvseFactory(
@@ -25,10 +31,11 @@ def location():
 
 @pytest.fixture
 def party_details(location):
-    def _create_party_details(priority, country_code, party_id, delay=0, allowed=True, hub=False):
+    def _create_party_details(
+        priority, country_code, party_id, delay=0, allowed=True, hub=False
+    ):
         credentials = CredentialsFactory(
-            auth_priority=priority,
-            allowed_locations=[location.uid]
+            auth_priority=priority, allowed_locations=[location.uid]
         )
         role = CredentialsRoleFactory(
             country_code=country_code,
@@ -60,6 +67,7 @@ def party_details(location):
 def token_service():
     return TokenAuthorizationService()
 
+
 @pytest.fixture
 def session():
     return OCPISessionFactory()
@@ -68,13 +76,17 @@ def session():
 class TestAdhocTokenAuthorization:
     def _create_delayed_post_request(self, parties, task_states=None):
         async def delayed_post_request(session, url, data, ocpi_master, **kwargs):
-            party = next(party for party in parties if party["party_details"].url == url)
+            party = next(
+                party for party in parties if party["party_details"].url == url
+            )
             party_details = party["party_details"]
 
             try:
                 await asyncio.sleep(party["_delay"])
                 if task_states is not None:
-                    task_states[f"{party_details.country_code}*{party_details.party_id}"] = "completed"
+                    task_states[
+                        f"{party_details.country_code}*{party_details.party_id}"
+                    ] = "completed"
 
                 allowed = (
                     AuthorizationEnum.ALLOWED
@@ -90,6 +102,7 @@ class TestAdhocTokenAuthorization:
                 if task_states is not None:
                     task_states[party["party_details"].party_id] = "cancelled"
                 raise
+
         return delayed_post_request
 
     @pytest.mark.django_db
@@ -97,15 +110,21 @@ class TestAdhocTokenAuthorization:
         self, party_details, token_service, hubject_credentials, location, session
     ):
         # Lowest value is the highest priority
-        msp_fr_111 = await sync_to_async(party_details)(priority=2, country_code="FR", party_id="111", allowed=True)
-        msp_fi_msp = await sync_to_async(party_details)(priority=3, country_code="FI", party_id="MSP", allowed=True)
+        msp_fr_111 = await sync_to_async(party_details)(
+            priority=2, country_code="FR", party_id="111", allowed=True
+        )
+        msp_fi_msp = await sync_to_async(party_details)(
+            priority=3, country_code="FI", party_id="MSP", allowed=True
+        )
         parties = [msp_fr_111, msp_fi_msp]
 
         delayed_post_request = self._create_delayed_post_request(parties)
 
         parties_details = [party["party_details"] for party in parties]
 
-        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+        with patch(
+            "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+        ):
             result = await token_service.authorize_adhoc_token(
                 parties_details, {"location_id": location.uid}, "ADHOC"
             )
@@ -118,14 +137,20 @@ class TestAdhocTokenAuthorization:
     async def test_ranking_priority_when_party_returns_allowed_and_other_party_returns_not_allowed(
         self, party_details, token_service, hubject_credentials, location, session
     ):
-        msp_fr_111 = await sync_to_async(party_details)(priority=2, country_code="FR", party_id="111", allowed=False)
-        msp_fi_msp = await sync_to_async(party_details)(priority=3, country_code="FI", party_id="MSP", allowed=True)
+        msp_fr_111 = await sync_to_async(party_details)(
+            priority=2, country_code="FR", party_id="111", allowed=False
+        )
+        msp_fi_msp = await sync_to_async(party_details)(
+            priority=3, country_code="FI", party_id="MSP", allowed=True
+        )
         parties = [msp_fr_111, msp_fi_msp]
 
         delayed_post_request = self._create_delayed_post_request(parties)
         parties_details = [party["party_details"] for party in parties]
 
-        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+        with patch(
+            "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+        ):
             result = await token_service.authorize_adhoc_token(
                 parties_details, {"location_id": location.uid}, "ADHOC"
             )
@@ -139,7 +164,8 @@ class TestAdhocTokenAuthorization:
         self, party_details, token_service, hubject_credentials, location, session
     ):
         msp_de_hub = await sync_to_async(party_details)(
-            priority=2, country_code="DE", party_id="HUB", delay=0.2, allowed=True)
+            priority=2, country_code="DE", party_id="HUB", delay=0.2, allowed=True
+        )
         msp_fr_111 = await sync_to_async(party_details)(
             priority=4, country_code="FR", party_id="111", delay=0, allowed=True
         )
@@ -149,7 +175,9 @@ class TestAdhocTokenAuthorization:
         delayed_post_request = self._create_delayed_post_request(parties, task_states)
         parties_details = [party["party_details"] for party in parties]
 
-        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+        with patch(
+            "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+        ):
             result = await token_service.authorize_adhoc_token(
                 parties_details, {"location_id": location.uid}, "ADHOC"
             )
@@ -173,7 +201,9 @@ class TestAdhocTokenAuthorization:
         token_service._timeout = 0.1
         delayed_post_request = self._create_delayed_post_request(parties)
 
-        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+        with patch(
+            "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+        ):
             result = await token_service.authorize_adhoc_token(
                 parties_details, {}, "ADHOC"
             )
@@ -183,18 +213,19 @@ class TestAdhocTokenAuthorization:
     async def test_authorize_adhoc_token_returns_none_when_timeout_occurs(
         self, party_details, token_service, hubject_credentials, location, session
     ):
-
         msp_fr_111 = await sync_to_async(party_details)(
             priority=2, country_code="FR", party_id="111", delay=0.3, allowed=True
         )
         parties = [msp_fr_111]
 
         token_service._timeout = 0.1
-        
+
         delayed_post_request = self._create_delayed_post_request(parties)
         parties_details = [party["party_details"] for party in parties]
 
-        with patch("ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request):
+        with patch(
+            "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+        ):
             result = await token_service.authorize_adhoc_token(
                 parties_details, {}, "ADHOC"
             )
@@ -205,7 +236,6 @@ class TestAdhocTokenAuthorization:
     async def test_authorize_adhoc_token_executes_hubject_task(
         self, party_details, token_service, location, session, hubject_credentials
     ):
-
         msp_fr_111 = await sync_to_async(party_details)(
             priority=9, country_code="FR", party_id="111", allowed=False
         )
@@ -224,7 +254,8 @@ class TestAdhocTokenAuthorization:
             )
 
             with patch(
-                "ocpi22.tokens.token_async.post_request", side_effect=delayed_post_request
+                "ocpi22.tokens.token_async.post_request",
+                side_effect=delayed_post_request,
             ):
                 result = await token_service.authorize_adhoc_token(
                     parties_details, {"location_id": location.uid}, "ADHOC"
@@ -277,8 +308,9 @@ class TestKnownTokenAuthorization:
             )
 
             result = await token_service.authorize_known_token(
-                [msp_fr_111["party_details"]], session,
-                {"location_id": location.uid}, "t"
+                [msp_fr_111["party_details"]],
+                {"location_id": location.uid},
+                "t",
             )
 
             assert result is not None
@@ -309,7 +341,7 @@ class TestKnownTokenAuthorization:
             )
 
             result = await token_service.authorize_known_token(
-                [msp_fr_111["party_details"]], session, {}, "t"
+                [msp_fr_111["party_details"]], {}, "t"
             )
             assert result is not None
             assert result["allowed"] == AuthorizationEnum.NOT_ALLOWED
@@ -329,10 +361,7 @@ class TestProcessTaskResult:
         allowed_response = {
             "data": {
                 "allowed": "ALLOWED",
-                "token": {
-                    "country_code": "DE",
-                    "party_id": "MSP"
-                }
+                "token": {"country_code": "DE", "party_id": "MSP"},
             }
         }
         mock_task.result.return_value = (400, {"data": allowed_response}, "OCPI_MASTER")
@@ -348,10 +377,7 @@ class TestProcessTaskResult:
         allowed_response = {
             "data": {
                 "allowed": "ALLOWED",
-                "token": {
-                    "country_code": "DE",
-                    "party_id": "MSP"
-                }
+                "token": {"country_code": "DE", "party_id": "MSP"},
             }
         }
         mock_task.result.return_value = (200, allowed_response, "DE*MSP")
@@ -362,16 +388,15 @@ class TestProcessTaskResult:
         assert result is not None
         assert result.get("allowed") == "ALLOWED"
 
-    def test_process_task_result_returns_json_data_when_auth_request_is_not_allowed(self):
+    def test_process_task_result_returns_json_data_when_auth_request_is_not_allowed(
+        self,
+    ):
         mock_task = MagicMock(spec=asyncio.Task)
 
         not_allowed_response = {
             "data": {
                 "allowed": "NOT_ALLOWED",
-                "token": {
-                    "country_code": "DE",
-                    "party_id": "MSP"
-                }
+                "token": {"country_code": "DE", "party_id": "MSP"},
             }
         }
         mock_task.result.return_value = (200, not_allowed_response, "DE*MSP")
@@ -382,7 +407,9 @@ class TestProcessTaskResult:
         assert result is not None
         assert result.get("allowed") == "NOT_ALLOWED"
 
-    def test_process_task_result_returns_not_allowed_when_response_has_custom_error(self, caplog):
+    def test_process_task_result_returns_not_allowed_when_response_has_custom_error(
+        self, caplog
+    ):
         mock_task = MagicMock(spec=asyncio.Task)
 
         error_response = {
@@ -392,14 +419,16 @@ class TestProcessTaskResult:
         }
         mock_task.result.return_value = (200, error_response, "DE*MSP")
         mock_task.get_name.return_value = "DE*MSP"
-        
+
         result = process_task_result(mock_task)
 
         assert result is not None
         assert result.get("allowed") == "NOT_ALLOWED"
         assert "DE*MSP responded OCPI error Custom Error" in caplog.text
 
-    def test_process_task_result_returns_none_when_response_data_empty_and_status_code_lt_2000(self):
+    def test_process_task_result_returns_none_when_response_data_empty_and_status_code_lt_2000(
+        self,
+    ):
         mock_task = MagicMock(spec=asyncio.Task)
 
         error_response = {
@@ -413,6 +442,3 @@ class TestProcessTaskResult:
         result = process_task_result(mock_task)
 
         assert result is None
-
-
-
