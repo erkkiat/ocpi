@@ -101,11 +101,6 @@ class HubjectService:
             return role.credentials.id
         return None
 
-    # This init is used to fail fast execution if the credentials are not present
-    def __init__(self):
-        if settings.ENABLE_HUBJECT:
-            HubjectService._get_hubject_credentials_id()
-
     @staticmethod
     def _get_request() -> requests.Session:
         cred_id = HubjectService._get_hubject_credentials_id()
