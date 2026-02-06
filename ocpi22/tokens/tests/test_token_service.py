@@ -424,6 +424,7 @@ class TestProcessTaskResult:
 
         assert result is not None
         assert result.get("allowed") == "NOT_ALLOWED"
+        assert result.get("token") == {}
         assert "DE*MSP responded OCPI error Custom Error" in caplog.text
 
     def test_process_task_result_returns_none_when_response_data_empty_and_status_code_lt_2000(
