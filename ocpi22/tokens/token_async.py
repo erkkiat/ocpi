@@ -248,8 +248,13 @@ def authorize_with_msps_sync(
                 )
             else:
                 logger.error(
-                    'Cannot create TokenAuthorization from response from '
-                    f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}'
+                    "Cannot create TokenAuthorization from response from %s",
+                    responding_party or "N/A",
+                    extra={
+                        "response_data": response,
+                        "validation_errors": serializer.errors,
+                        "responding_party": responding_party,
+                    },
                 )
                 return TokenNotAuthorized
         except TypeError:
