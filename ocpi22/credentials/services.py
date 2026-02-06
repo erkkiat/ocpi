@@ -7,6 +7,7 @@ from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 from ocpiconnector.party import Party
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +29,13 @@ class CredentialsService:
             find_credentials.cache_clear()
         except Exception:
             logger.exception("Failed to clear find_credentials cache")
+
+        try:
+            from ocpi22.tokens.auth import _authorize_token
+
+            _authorize_token.cache_clear()
+        except Exception:
+            logger.exception("Failed to clear _authorize_token cache")
 
     @staticmethod
     def invalidate_credentials_role_caches() -> None:
