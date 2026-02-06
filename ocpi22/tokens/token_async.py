@@ -80,7 +80,9 @@ def process_task_result(successful_task) -> dict | None:
         return None
 
     if status_code != 200:
-        logger.warning(f"Authorization failed with status {status_code}, data: {json_data} for {str(ocpi_master)}")
+        logger.warning(
+            f"Authorization failed with status {status_code}, data: {json_data} for {str(ocpi_master)}"
+        )
         return None
 
     if not isinstance(json_data, dict):
@@ -90,9 +92,12 @@ def process_task_result(successful_task) -> dict | None:
     task_name = successful_task.get_name()
     status_code = json_data.get("status_code")
     if not response_data and isinstance(status_code, int) and status_code >= 2000:
-        logger.warning(f"{task_name} responded OCPI error {json_data.get('status_message')}")
+        logger.warning(
+            f"{task_name} responded OCPI error {json_data.get('status_message')}"
+        )
         return {
             "allowed": "NOT_ALLOWED",
+            "token": {},
         }
     if isinstance(response_data, dict) and response_data.get("allowed"):
         response_data["responding_party"] = task_name
@@ -130,9 +135,7 @@ async def create_ssl_context(credential_id):
     )
 
 
-async def authorize_with_msps(
-    token_dto: TokenDto, data: dict, parties: list[tuple]
-):
+async def authorize_with_msps(token_dto: TokenDto, data: dict, parties: list[tuple]):
     """
     Send authorization request asynchronously to all MSPs and wait for the
     first ALLOWED response in the adhoc token case. Whenever the token is known, only
@@ -170,18 +173,13 @@ async def authorize_with_msps(
         parties, ssl_contexts, prefetched_roles, token_uid
     )
     if token_dto.adhoc:
-        return await service.authorize_adhoc_token(
-            party_details, data, token_uid
-        )
+        return await service.authorize_adhoc_token(party_details, data, token_uid)
 
     else:
         party_details = [
             p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
         ]
-        return await service.authorize_known_token(
-            party_details, data, token_uid
-        )
-
+        return await service.authorize_known_token(party_details, data, token_uid)
 
 
 def authorize_with_msps_sync(
@@ -222,7 +220,9 @@ def authorize_with_msps_sync(
         f"{country_code}*{party_id}: {url}"
         for url, _token_base64, country_code, party_id, _credentials in parties
     ]
-    logger.info(f"Authorizing token {token_uid} with MSPs {', '.join(formatted_parties)}")
+    logger.info(
+        f"Authorizing token {token_uid} with MSPs {', '.join(formatted_parties)}"
+    )
 
     response = asyncio.run(authorize_with_msps(token_dto, data, parties))
     if response:
