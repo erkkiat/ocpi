@@ -641,6 +641,8 @@ class TestAuthorizeWithMspsSyncEarlyReturn:
             "token": {
                 "uid": "TEST_TOKEN_123",
                 "type": "RFID",
+                "contract_id": "CONTRACT123",
+                "issuer": "ISSUER_DE",
                 "valid": True,
                 "country_code": "DE",
                 "party_id": "MSP",
@@ -714,6 +716,8 @@ class TestAuthorizeWithMspsSyncEarlyReturn:
             "token": {
                 "uid": "TEST_TOKEN_123",
                 "type": "RFID",
+                "contract_id": "CONTRACT_MSP2",
+                "issuer": "ISSUER_MSP2",
                 "valid": True,
                 "country_code": "DE",
                 "party_id": "MSP2",
