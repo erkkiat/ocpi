@@ -450,8 +450,6 @@ class TestProcessTaskResult:
 
 
 class TestProcessTaskResultOcpiErrorVariants:
-    """Tests for process_task_result handling various OCPI error codes without token field"""
-
     def test_process_task_result_returns_not_allowed_without_token_field_when_ocpi_error_2001(
         self, caplog
     ):
