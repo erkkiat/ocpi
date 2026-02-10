@@ -13,6 +13,8 @@ from django.utils.translation import gettext_lazy as _
 from generic.validators import (
     validate_country_code_alpha2,
     validate_country_code_alpha3,
+    validate_latitude,
+    validate_longitude,
 )
 
 
@@ -121,12 +123,14 @@ class Terminal(models.Model):
         max_length=10,
         blank=True,
         null=True,
+        validators=[validate_latitude],
         verbose_name=_("Latitude"),
     )
     longitude = models.CharField(
         max_length=11,
         blank=True,
         null=True,
+        validators=[validate_longitude],
         verbose_name=_("Longitude"),
     )
 
@@ -204,6 +208,10 @@ class Terminal(models.Model):
             validate_country_code_alpha2(self.country_code)
         if self.country:
             validate_country_code_alpha3(self.country)
+        if self.latitude:
+            validate_latitude(self.latitude)
+        if self.longitude:
+            validate_longitude(self.longitude)
 
     def save(self, *args, **kwargs) -> None:
         self.clean()
