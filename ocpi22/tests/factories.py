@@ -39,6 +39,7 @@ from integrations.hubject.schemas import (
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
+from ocpi22.payments.models import Terminal
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -736,3 +737,19 @@ class CallBackFactory(factory.django.DjangoModelFactory):
     response_status_code = None
     response_body = None
     executed_at = None
+
+
+class TerminalFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Terminal
+
+    terminal_id = factory.Sequence(lambda n: f"TERM-{n:05d}")
+    customer_reference = factory.Sequence(lambda n: f"CUST-REF-{n:05d}")
+    party_id = "PAY"
+    country_code = "NL"
+    address = "Keizersgracht 100"
+    city = "Amsterdam"
+    postal_code = "1015AA"
+    country = "NLD"
+    invoice_creator = "PTP"
+    credentials = factory.SubFactory(CredentialsFactory)
