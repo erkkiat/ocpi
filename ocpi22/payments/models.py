@@ -45,6 +45,14 @@ class Terminal(models.Model):
             models.Index(fields=["terminal_id"], name="ocpi22_term_termina_idx"),
             models.Index(fields=["customer_reference"], name="ocpi22_term_custome_idx"),
             models.Index(fields=["last_updated"], name="ocpi22_term_last_up_idx"),
+            models.Index(
+                fields=["credentials", "last_updated"],
+                name="ocpi22_term_cred_last_idx",
+            ),
+            models.Index(
+                fields=["country_code", "party_id"],
+                name="ocpi22_term_cc_party_idx",
+            ),
         ]
 
     terminal_id = models.CharField(
