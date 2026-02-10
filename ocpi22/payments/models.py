@@ -10,6 +10,11 @@ Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from generic.validators import (
+    validate_country_code_alpha2,
+    validate_country_code_alpha3,
+)
+
 
 class InvoiceCreatorEnum(models.TextChoices):
     CPO = "CPO", _("Charge Point Operator")
@@ -68,8 +73,11 @@ class Terminal(models.Model):
         max_length=2,
         blank=True,
         null=True,
+        validators=[validate_country_code_alpha2],
         verbose_name=_("Country Code"),
-        help_text=_("Alternative to customer_reference"),
+        help_text=_(
+            "ISO 3166-1 alpha-2 country code. Alternative to customer_reference"
+        ),
     )
 
     address = models.CharField(
@@ -104,6 +112,7 @@ class Terminal(models.Model):
         max_length=3,
         blank=True,
         null=True,
+        validators=[validate_country_code_alpha3],
         verbose_name=_("Country"),
         help_text=_("ISO 3166-1 alpha-3 country code"),
     )
@@ -188,6 +197,17 @@ class Terminal(models.Model):
         if self.customer_reference:
             return f"Terminal {self.terminal_id} ({self.customer_reference})"
         return f"Terminal {self.terminal_id}"
+
+    def clean(self) -> None:
+        super().clean()
+        if self.country_code:
+            validate_country_code_alpha2(self.country_code)
+        if self.country:
+            validate_country_code_alpha3(self.country)
+
+    def save(self, *args, **kwargs) -> None:
+        self.clean()
+        super().save(*args, **kwargs)
 
     @property
     def coordinates(self) -> dict[str, str] | None:
