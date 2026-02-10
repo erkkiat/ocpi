@@ -292,6 +292,7 @@ class TestHubjectService:
         assert result == hubject_successful_response
 
     @responses.activate
+    @pytest.mark.django_db
     def test_post_evse_full_load_unsuccessful_response(
         self, evse_full_load_payload, hubject_unsuccessful_response
     ):
@@ -320,6 +321,7 @@ class TestHubjectService:
         assert result == hubject_unsuccessful_response
 
     @responses.activate
+    @pytest.mark.django_db
     def test_execute_evse_full_load_http_error(self, evse_full_load_payload):
         operator_id = evse_full_load_payload.OperatorEvseData.OperatorID.root
 
@@ -783,6 +785,7 @@ class TestOICPDynamicPricingService:
             )
 
     @responses.activate
+    @pytest.mark.django_db
     def test_post_pricing_products_full_load(
         self, pricing_products_full_load_payload, hubject_successful_response
     ):
@@ -808,6 +811,7 @@ class TestOICPDynamicPricingService:
         assert result == hubject_successful_response
 
     @responses.activate
+    @pytest.mark.django_db
     def test_post_pricing_products_full_load_returns_400_when_pricing_default_price_is_none(
         self, pricing_products_full_load_payload, hubject_unsuccessful_response
     ):
@@ -1001,7 +1005,9 @@ class TestOICPDynamicPricingService:
         }
 
     @pytest.mark.django_db
-    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(self, hubject_credentials):
+    def test_get_evse_product_maps_returns_none_when_hubject_role_does_not_exists(
+        self, hubject_credentials
+    ):
         HubjectService._get_hubject_credentials_id.cache_clear()
         role = CredentialsRole.objects.filter(country_code="DE", party_id="ICE")
         credentials = role.first().credentials

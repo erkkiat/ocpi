@@ -1,4 +1,3 @@
-
 import pytest
 
 from django.test import override_settings
@@ -10,15 +9,19 @@ import asyncio
 from aioresponses import aioresponses
 from django.conf import settings
 
+
 @pytest.fixture
 async def client_session():
     async with ClientSession() as session:
         yield session
 
+
 @pytest.mark.django_db
 @pytest.mark.asyncio
 @override_settings(ENABLE_HUBJECT=True)
-async def test_post_authorize_request_returns_succeeds(hubject_credentials_async, client_session):
+async def test_post_authorize_request_returns_succeeds(
+    hubject_credentials_async, client_session
+):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     with aioresponses() as mocked_responses:
@@ -30,9 +33,9 @@ async def test_post_authorize_request_returns_succeeds(hubject_credentials_async
                 "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
                 "AuthorizationStatus": "Authorized",
             },
-            status=200
+            status=200,
         )
-        
+
         status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
@@ -47,7 +50,9 @@ async def test_post_authorize_request_returns_succeeds(hubject_credentials_async
 @pytest.mark.asyncio
 @pytest.mark.django_db
 @override_settings(ENABLE_HUBJECT=True)
-async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatch, hubject_credentials_async, client_session):
+async def test_post_authorize_request_returns_success_and_ocpi_master(
+    monkeypatch, hubject_credentials_async, client_session
+):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     def fake_get_credentialsrole(*args, **kwargs):
@@ -59,18 +64,18 @@ async def test_post_authorize_request_returns_success_and_ocpi_master(monkeypatc
         "map_successful_oicp_authorization_response_to_ocpi_221",
         lambda data, token: {"mapped": token},
     )
-    
+
     with aioresponses() as mocked_responses:
         mocked_responses.post(
             url,
             payload={"StatusCode": {"Code": "000"}, "ProviderID": "DE*XYZ"},
-            status=200
+            status=200,
         )
-        
+
         status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
-    
+
     assert status_code == 200
     assert mapped == {"mapped": "E4CEA229D30A523A19CC"}
     assert ocpi_master == "FR*ABC"
@@ -89,12 +94,12 @@ async def test_post_authorize_request_returns_success_without_ocpi_master_when_s
         "map_successful_oicp_authorization_response_to_ocpi_221",
         lambda data, token: {"mapped": token},
     )
-    
+
     with aioresponses() as mocked_responses:
         mocked_responses.post(
             url,
             payload={"StatusCode": {"Code": "123"}, "ProviderID": "DEXYZ"},
-            status=200
+            status=200,
         )
 
         status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
@@ -118,14 +123,14 @@ async def test_post_authorize_request_logs_warning_when_status_code_not_000(
         mocked_responses.post(
             url,
             payload={"StatusCode": {"Code": "017"}, "ProviderID": "DE*XYZ"},
-            status=200
+            status=200,
         )
-        
+
         with caplog.at_level("WARNING"):
             await HubjectService.post_authorize_request(
                 "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
             )
-    
+
     assert (
         "Authorization failed with status code 200 and Hubject error code 017 (Unauthorized Access)"
         in caplog.text
@@ -133,13 +138,19 @@ async def test_post_authorize_request_logs_warning_when_status_code_not_000(
 
 
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch, client_session):
+async def test_post_authorize_request_returns_error_tuple_on_oserror(
+    monkeypatch, client_session
+):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=ClientError("Network error occurred"))
-        
-        status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
+
+        (
+            status_code,
+            error_dict,
+            ocpi_master,
+        ) = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
 
@@ -150,13 +161,19 @@ async def test_post_authorize_request_returns_error_tuple_on_oserror(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_error_tuple_on_runtime_error(monkeypatch, client_session):
+async def test_post_authorize_request_returns_error_tuple_on_runtime_error(
+    monkeypatch, client_session
+):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=asyncio.TimeoutError("Timeout occurred"))
-        
-        status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
+
+        (
+            status_code,
+            error_dict,
+            ocpi_master,
+        ) = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
 
@@ -167,22 +184,28 @@ async def test_post_authorize_request_returns_error_tuple_on_runtime_error(monke
 
 
 @pytest.mark.asyncio
-async def test_post_authorize_request_returns_error_tuple_on_generic_exception(monkeypatch, client_session):
+async def test_post_authorize_request_returns_error_tuple_on_generic_exception(
+    monkeypatch, client_session
+):
     # This test simulates an exception during the HTTP request setup or execution that falls into the generic Exception block
     # However, since we are using aioresponses, triggering a generic Exception specifically 'connecting' might be hard if it's not one of the caught ones.
     # But checking the code, 'except Exception' is at the end.
     # We can mock side_effect on the session if we really wanted to, but we are using real session.
     # aioresponses 'exception' argument raises the exception when request is called.
-    
+
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=Exception("Unexpected error"))
-        
-        status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
+
+        (
+            status_code,
+            error_dict,
+            ocpi_master,
+        ) = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
-            
+
     assert status_code == 404
     assert error_dict["status_message"] == "Request error occurred"
     assert "timestamp" in error_dict
@@ -192,7 +215,9 @@ async def test_post_authorize_request_returns_error_tuple_on_generic_exception(m
 @pytest.mark.asyncio
 @pytest.mark.django_db
 @override_settings(ENABLE_HUBJECT=True)
-async def test_post_authorize_request_returns_500_on_processing_error(monkeypatch, hubject_credentials_async, client_session):
+async def test_post_authorize_request_returns_500_on_processing_error(
+    monkeypatch, hubject_credentials_async, client_session
+):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
     def fake_get_credentialsrole(*args, **kwargs):
@@ -204,19 +229,96 @@ async def test_post_authorize_request_returns_500_on_processing_error(monkeypatc
         "map_successful_oicp_authorization_response_to_ocpi_221",
         lambda data, token: {"mapped": token},
     )
-    
+
     with aioresponses() as mocked_responses:
         mocked_responses.post(
             url,
             payload={"StatusCode": {"Code": "000"}, "ProviderID": "DE*XYZ"},
-            status=200
+            status=200,
         )
-        
-        status_code, error_dict, ocpi_master = await HubjectService.post_authorize_request(
+
+        (
+            status_code,
+            error_dict,
+            ocpi_master,
+        ) = await HubjectService.post_authorize_request(
             "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
         )
-    
+
     assert status_code == 500
     assert error_dict["status_message"] == ""
     assert "timestamp" in error_dict
     assert ocpi_master is None
+
+
+@pytest.mark.django_db
+@pytest.mark.asyncio
+@override_settings(ENABLE_HUBJECT=True)
+async def test_post_authorize_request_handles_dash_separated_provider_id(
+    hubject_credentials_async, client_session
+):
+    url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
+
+    with aioresponses() as mocked_responses:
+        mocked_responses.post(
+            url,
+            payload={
+                "StatusCode": {"Code": "000"},
+                "ProviderID": "NL-TNM",
+                "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "AuthorizationStatus": "Authorized",
+            },
+            status=200,
+        )
+
+        status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
+            "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
+        )
+
+    assert status_code == 200
+    assert mapped is not None
+    assert ocpi_master is not None
+    assert ocpi_master.country_code == "NL"
+    assert ocpi_master.party_id == "TNM"
+
+
+@pytest.mark.django_db
+@pytest.mark.asyncio
+@override_settings(ENABLE_HUBJECT=True)
+@pytest.mark.parametrize(
+    "provider_id,expected_country_code,expected_party_id",
+    [
+        ("NL-TNM", "NL", "TNM"),
+        ("DE*MSP", "DE", "MSP"),
+        ("FRXYZ", "FR", "XYZ"),
+    ],
+)
+async def test_post_authorize_request_parses_provider_id_formats(
+    hubject_credentials_async,
+    client_session,
+    provider_id,
+    expected_country_code,
+    expected_party_id,
+):
+    url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
+
+    with aioresponses() as mocked_responses:
+        mocked_responses.post(
+            url,
+            payload={
+                "StatusCode": {"Code": "000"},
+                "ProviderID": provider_id,
+                "SessionID": "f98efba4-02d8-4fa0-b810-9a9d50d25527",
+                "AuthorizationStatus": "Authorized",
+            },
+            status=200,
+        )
+
+        status_code, mapped, ocpi_master = await HubjectService.post_authorize_request(
+            "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
+        )
+
+    assert status_code == 200
+    assert ocpi_master is not None
+    assert ocpi_master.country_code == expected_country_code
+    assert ocpi_master.party_id == expected_party_id

@@ -75,7 +75,9 @@ class TokenAuthorizationService:
                 thread_sensitive=True,
             )()
             if not role:
-                logger.error("Hubject Credentials Role not found, skipping Hubject authorization task")
+                logger.error(
+                    "Hubject Credentials Role not found, skipping Hubject authorization task"
+                )
                 return tasks
             if CredentialsService.is_location_allowed(
                 role.credentials, data.get("location_id", "")
@@ -92,15 +94,15 @@ class TokenAuthorizationService:
         tasks_map: dict[asyncio.Task, int],
         pending_tasks: set[asyncio.Task],
     ) -> bool:
-        return any(tasks_map[pending_task] < current_rank for pending_task in pending_tasks)
+        return any(
+            tasks_map[pending_task] < current_rank for pending_task in pending_tasks
+        )
 
     def _cancel_pending_tasks(self, pending: set[asyncio.Task]) -> None:
         for task in pending:
             task.cancel()
 
-    async def authorize_adhoc_token(
-        self, party_details, data, token_id
-    ) -> dict | None:
+    async def authorize_adhoc_token(self, party_details, data, token_id) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         logger.info(f"Authorizing adhoc token {token_id}")
@@ -127,7 +129,9 @@ class TokenAuthorizationService:
                     break
 
                 done_tasks, pending_tasks = await asyncio.wait(
-                    pending_tasks, timeout=remaining, return_when=asyncio.FIRST_COMPLETED
+                    pending_tasks,
+                    timeout=remaining,
+                    return_when=asyncio.FIRST_COMPLETED,
                 )
 
                 if not done_tasks:
@@ -143,11 +147,17 @@ class TokenAuthorizationService:
                     if is_allowed:
                         priority = priority_by_task[task]
                         allowed_responses_by_priority[priority] = response
-                        logger.info(f"Received ALLOWED authorization from {task.get_name()}", extra={"priority": priority, "response": response})
+                        logger.info(
+                            f"Received ALLOWED authorization from {task.get_name()}",
+                            extra={"priority": priority, "response": response},
+                        )
 
                     elif not first_denial:
                         first_denial = response
-                        logger.info(f"Received NOT_ALLOWED authorization from {task.get_name()}", extra={"response": response})
+                        logger.info(
+                            f"Received NOT_ALLOWED authorization from {task.get_name()}",
+                            extra={"response": response},
+                        )
 
                 if allowed_responses_by_priority:
                     highest_priority = min(allowed_responses_by_priority.keys())
@@ -155,8 +165,13 @@ class TokenAuthorizationService:
                         highest_priority, priority_by_task, pending_tasks
                     ):
                         self._cancel_pending_tasks(pending_tasks)
-                        best_allowed_response = allowed_responses_by_priority[highest_priority]
-                        logger.info(f"Selected best possible ALLOWED authorization with priority {highest_priority}", extra={"response": best_allowed_response})
+                        best_allowed_response = allowed_responses_by_priority[
+                            highest_priority
+                        ]
+                        logger.info(
+                            f"Selected best possible ALLOWED authorization with priority {highest_priority}",
+                            extra={"response": best_allowed_response},
+                        )
                         return best_allowed_response
 
             self._cancel_pending_tasks(pending_tasks)
@@ -204,12 +219,14 @@ class TokenAuthorizationService:
         return party_details
 
     async def authorize_known_token(
-        self, party_details: list[PartyDetails], session: ClientSession, data: dict, token_uid: str
+        self, party_details: list[PartyDetails], data: dict, token_uid: str
     ) -> dict | None:
         from ocpi22.tokens.token_async import process_task_result
 
         party_details = party_details[0]
-        logger.info(f"Authorizing known token {token_uid} with its owner {str(party_details.ocpi_master)}")
+        logger.info(
+            f"Authorizing known token {token_uid} with its owner {str(party_details.ocpi_master)}"
+        )
 
         async with aiohttp.ClientSession() as session:
             task = self._create_ocpi_task(session, party_details, data)
@@ -217,7 +234,9 @@ class TokenAuthorizationService:
             try:
                 await task
                 response = process_task_result(task)
-                logger.info(f"Authorization response for known token {token_uid} : {response}")
+                logger.info(
+                    f"Authorization response for known token {token_uid} : {response}"
+                )
                 return response
             except Exception as e:
                 logger.error(f"Error authorizing known token with owner: {e}")
