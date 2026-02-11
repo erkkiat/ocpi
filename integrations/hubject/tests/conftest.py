@@ -35,6 +35,7 @@ from integrations.hubject.schemas import (
     EvseDataRecord,
     CalibrationLawDataAvailability,
 )
+from integrations.hubject.services import HubjectService
 from ocpi22.tests.factories import (
     LocationFactory,
     ConnectorFactory,
@@ -56,7 +57,6 @@ from ocpi22.tests.factories import (
     CdrLocationFactory,
     ERoamingPushEVSEPricingFactory,
 )
-
 
 
 @pytest.fixture
@@ -384,6 +384,10 @@ def berlin_evse_data_record():
         DynamicPowerLevel=None,
         RenewableEnergy=False,
     )
+
+
+def clear_hubject_credentials_cache():
+    HubjectService._get_hubject_credentials_id.cache_clear()
 
 
 @pytest.fixture
