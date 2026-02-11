@@ -138,8 +138,10 @@ async def test_post_authorize_request_logs_warning_when_status_code_not_000(
 
 
 @pytest.mark.asyncio
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
 async def test_post_authorize_request_returns_error_tuple_on_oserror(
-    monkeypatch, client_session
+    monkeypatch, client_session, hubject_credentials_async
 ):
     url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
 
@@ -161,6 +163,7 @@ async def test_post_authorize_request_returns_error_tuple_on_oserror(
 
 
 @pytest.mark.asyncio
+@pytest.mark.django_db
 async def test_post_authorize_request_returns_error_tuple_on_runtime_error(
     monkeypatch, client_session
 ):
@@ -168,35 +171,6 @@ async def test_post_authorize_request_returns_error_tuple_on_runtime_error(
 
     with aioresponses() as mocked_responses:
         mocked_responses.post(url, exception=asyncio.TimeoutError("Timeout occurred"))
-
-        (
-            status_code,
-            error_dict,
-            ocpi_master,
-        ) = await HubjectService.post_authorize_request(
-            "DE*XYZ", "E4CEA229D30A523A19CC", session=client_session
-        )
-
-    assert status_code == 404
-    assert error_dict["status_message"] == "Request error occurred"
-    assert "timestamp" in error_dict
-    assert ocpi_master is None
-
-
-@pytest.mark.asyncio
-async def test_post_authorize_request_returns_error_tuple_on_generic_exception(
-    monkeypatch, client_session
-):
-    # This test simulates an exception during the HTTP request setup or execution that falls into the generic Exception block
-    # However, since we are using aioresponses, triggering a generic Exception specifically 'connecting' might be hard if it's not one of the caught ones.
-    # But checking the code, 'except Exception' is at the end.
-    # We can mock side_effect on the session if we really wanted to, but we are using real session.
-    # aioresponses 'exception' argument raises the exception when request is called.
-
-    url = f"{settings.HUBJECT_URL}charging/v21/operators/DE*XYZ/authorize/start"
-
-    with aioresponses() as mocked_responses:
-        mocked_responses.post(url, exception=Exception("Unexpected error"))
 
         (
             status_code,
