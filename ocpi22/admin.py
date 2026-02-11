@@ -29,17 +29,13 @@ from ocpi22.models.token import Token
 from ocpi22.payments.models import Terminal
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpi22.ocpi.partners import (
-    invalidate_partner_cache,
-    get_partners_by_party_as_party,
-)
 from ocpi22.pull import admin_pull_all
+from ocpi22.credentials.services import CredentialsService
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_credentialsrole,
 )
-from ocpiconnector.party import Party
 from payment.models import Payment
 
 admin.site.site_header = "Roaming Admin"
@@ -861,29 +857,22 @@ class CredentialsAdmin(SolidModelAdmin):
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if obj and change:
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_caches()
 
-            def invalidate_current_partners_cache():
-                current_partners: [Party] = list(
-                    map(get_partners_by_party_as_party, roles)
-                )
-                if current_partners:
-                    flattened_set = set.union(*current_partners)
-                    list(map(invalidate_partner_cache, flattened_set))
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        has_inline_changes = any(formset.has_changed() for formset in formsets)
+        if has_inline_changes:
+            CredentialsService.invalidate_all_caches()
 
-            # Todo: The below code is not working fully, there is a n+1 delay in clearing the cache
-            # Now the cache is cleared fully every time to compensate
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_all_caches()
 
-            # List all the roles of the changed Credentials
-            roles = {role.party_str() for role in obj.roles.all()}
-
-            # Invalidate the agreed partners cache to enable the new roles and disable the old ones
-            list(map(invalidate_partner_cache, roles))
-
-            # Do the same for the partners (this one comes from cache)
-            invalidate_current_partners_cache()
-            # Do the same again, now cache has been reset
-            invalidate_current_partners_cache()
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_all_caches()
 
     last_update.admin_order_field = "last_connection"
     last_update.short_description = "Last connection"
@@ -902,6 +891,19 @@ class CredentialsRoleAdmin(SolidModelAdmin):
         "agreed_parties__country_code",
         "agreed_parties__party_id",
     ]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_credentials_role_caches()
 
 
 @admin.register(DefaultTariffs)
