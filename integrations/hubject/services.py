@@ -489,20 +489,6 @@ class HubjectService:
                 },
                 None,
             )
-        except Exception:
-            logger.error("Error processing Hubject response", exc_info=True)
-            return (
-                500,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Error processing Hubject response",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                None,
-            )
 
     def get_default_tariffs(self):
         if not (
