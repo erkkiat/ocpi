@@ -432,20 +432,6 @@ class HubjectService:
                 },
                 None,
             )
-        except Exception:
-            logger.error(f"Generic error connecting to {url}", exc_info=True)
-            return (
-                404,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Request error occurred",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                None,
-            )
 
         try:
             logger.info(
@@ -497,20 +483,6 @@ class HubjectService:
                     "allowed": "NOT_ALLOWED",
                     "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
                     "status_message": "",
-                    "timestamp": datetime.now(pytz.utc).strftime(
-                        settings.OCPI_DATE_FORMAT
-                    ),
-                },
-                None,
-            )
-        except Exception:
-            logger.error("Error processing Hubject response", exc_info=True)
-            return (
-                500,
-                {
-                    "allowed": "NOT_ALLOWED",
-                    "status_code": Ocpi.ServerError.GENERIC_SERVER_ERROR,
-                    "status_message": "Error processing Hubject response",
                     "timestamp": datetime.now(pytz.utc).strftime(
                         settings.OCPI_DATE_FORMAT
                     ),
