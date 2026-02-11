@@ -26,6 +26,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
+from ocpi22.payments.models import Terminal
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
 from ocpi22.ocpi.partners import (
@@ -1001,3 +1002,91 @@ admin.site.register(Tariff, TariffAdmin)
 admin.site.register(Cdr, CdrAdmin)
 admin.site.register(Session, SessionAdmin)
 admin.site.register(Credentials, CredentialsAdmin)
+
+
+@admin.register(Terminal)
+class TerminalAdmin(SolidModelAdmin):
+    model = Terminal
+    list_display = [
+        "terminal_id",
+        "customer_reference",
+        "credentials",
+        "city",
+        "country",
+        "invoice_creator",
+        "location_count",
+        "last_updated",
+    ]
+    list_display_links = ["terminal_id"]
+    search_fields = [
+        "terminal_id",
+        "customer_reference",
+        "party_id",
+        "country_code",
+        "city",
+        "address",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "locations", "evses"]
+    list_filter = ["invoice_creator", "country"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "terminal_id",
+                    "customer_reference",
+                    ("country_code", "party_id"),
+                    "credentials",
+                )
+            ),
+        ),
+        (
+            "Location",
+            dict(
+                fields=(
+                    "address",
+                    ("postal_code", "city"),
+                    ("state", "country"),
+                    ("latitude", "longitude"),
+                )
+            ),
+        ),
+        (
+            "Invoice",
+            dict(
+                fields=(
+                    "invoice_base_url",
+                    "invoice_creator",
+                )
+            ),
+        ),
+        (
+            "Assigned Charging Locations",
+            dict(
+                fields=(
+                    "locations",
+                    "evses",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
+
+    def location_count(self, obj):
+        return obj.locations.count()
+
+    location_count.short_description = "Locations"
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)
