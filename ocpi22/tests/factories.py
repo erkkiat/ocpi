@@ -39,7 +39,7 @@ from integrations.hubject.schemas import (
 )
 from ocpi22.choices import EndpointRoleEnum, OcpiModuleEnum, CdrDimensionEnum
 from ocpi22.commands.models import CallBacks, CallBackExecutionStatus
-from ocpi22.payments.models import Terminal
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.models.business_details import BusinessDetails
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.cdrtoken import CdrToken
@@ -753,3 +753,22 @@ class TerminalFactory(factory.django.DjangoModelFactory):
     country = "NLD"
     invoice_creator = "PTP"
     credentials = factory.SubFactory(CredentialsFactory)
+
+
+class FinancialAdviceConfirmationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FinancialAdviceConfirmation
+
+    fac_id = factory.Sequence(lambda n: f"FAC-{n:05d}")
+    authorization_reference = factory.Sequence(lambda n: f"AUTH-REF-{n:05d}")
+    total_cost_excl_vat = 10.0
+    total_cost_incl_vat = 12.4
+    currency = "EUR"
+    eft_data = factory.LazyFunction(lambda: ["EFT-DATA-001", "EFT-DATA-002"])
+    capture_status_code = "SUCCESS"
+    capture_status_message = None
+    last_updated = factory.LazyFunction(
+        lambda: datetime(2025, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+    )
+    credentials = factory.SubFactory(CredentialsFactory)
+    terminal = factory.SubFactory(TerminalFactory)
