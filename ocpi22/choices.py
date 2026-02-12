@@ -119,7 +119,6 @@ class OcpiModuleEnum(Enum):
             self.TARIFFS.value: "ocpi22.ocpi.api.TariffViewSet",
             self.CDRS.value: "ocpi22.ocpi.api.CdrViewSet",
             self.SESSIONS.value: "ocpi22.ocpi.api.SessionViewSet",
-            self.PAYMENTS.value: "ocpi22.payments.api.TerminalViewSet",
         }[self.value]
 
 
