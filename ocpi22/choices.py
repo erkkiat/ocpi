@@ -100,6 +100,7 @@ class OcpiModuleEnum(Enum):
     CDRS = "cdrs"
     SESSIONS = "sessions"
     HUBCLIENTINFO = "hubclientinfo"
+    PAYMENTS = "payments"
 
     def get_owner(self):
         return {
@@ -108,6 +109,7 @@ class OcpiModuleEnum(Enum):
             self.TARIFFS.value: OcpiRolesEnum.CPO,
             self.CDRS.value: OcpiRolesEnum.CPO,
             self.SESSIONS.value: OcpiRolesEnum.CPO,
+            self.PAYMENTS.value: OcpiRolesEnum.PTP,
         }[self.value]
 
     def get_viewset(self):
