@@ -16,11 +16,28 @@ from generic.validators import (
     validate_latitude,
     validate_longitude,
 )
+from ocpi22.payments.validators import (
+    validate_currency_code,
+    validate_eft_data,
+    validate_total_costs,
+)
 
 
 class InvoiceCreatorEnum(models.TextChoices):
     CPO = "CPO", _("Charge Point Operator")
     PTP = "PTP", _("Payment Terminal Provider")
+
+
+class CaptureStatusCode(models.TextChoices):
+    """
+    Status codes for Financial Advice Confirmation capture results.
+
+    Reference: EVRF DirectPayment spec Section 5.2.2
+    """
+
+    SUCCESS = "SUCCESS", _("Capture successful at PSP")
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS", _("Capture partially successful at PSP")
+    FAILED = "FAILED", _("Capture failed at PSP")
 
 
 class Terminal(models.Model):
@@ -238,3 +255,162 @@ class Terminal(models.Model):
     @property
     def evse_uids(self) -> list[str]:
         return list(self.evses.values_list("uid", flat=True))
+
+
+class FinancialAdviceConfirmation(models.Model):
+    """
+    Financial Advice Confirmation (FAC) from a Payment Terminal Provider.
+
+    Sent by PTP (e.g., Payter) to CPO after a charging session to confirm
+    the financial outcome of the transaction. Links to the session via
+    authorization_reference.
+
+    Flow:
+        1. PTP processes payment for a completed charging session
+        2. PTP POSTs FAC to CPO with capture result
+        3. CPO stores FAC and reconciles with CDR
+
+    Reference: EVRF DirectPayment spec Section 5.2
+    """
+
+    class Meta:
+        app_label = "ocpi22"
+        db_table = "ocpi22_financial_advice_confirmation"
+        verbose_name = _("Financial Advice Confirmation")
+        verbose_name_plural = _("Financial Advice Confirmations")
+        indexes = [
+            models.Index(
+                fields=["authorization_reference"],
+                name="ocpi22_fac_auth_ref_idx",
+            ),
+            models.Index(
+                fields=["capture_status_code"],
+                name="ocpi22_fac_capture_idx",
+            ),
+            models.Index(
+                fields=["last_updated"],
+                name="ocpi22_fac_last_up_idx",
+            ),
+            models.Index(
+                fields=["credentials", "last_updated"],
+                name="ocpi22_fac_cred_last_idx",
+            ),
+        ]
+
+    fac_id = models.CharField(
+        max_length=36,
+        unique=True,
+        db_index=True,
+        verbose_name=_("FAC ID"),
+        help_text=_("Unique ID of this Financial Advice Confirmation"),
+    )
+
+    authorization_reference = models.CharField(
+        max_length=36,
+        db_index=True,
+        verbose_name=_("Authorization Reference"),
+        help_text=_(
+            "Reference linking this FAC to the charging session. "
+            "Must match the authorization_reference used in the session."
+        ),
+    )
+
+    total_cost_excl_vat = models.FloatField(
+        verbose_name=_("Total Cost excl. VAT"),
+        help_text=_("Total cost of the charging session excluding VAT"),
+    )
+
+    total_cost_incl_vat = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name=_("Total Cost incl. VAT"),
+        help_text=_("Total cost of the charging session including VAT"),
+    )
+
+    currency = models.CharField(
+        max_length=3,
+        validators=[validate_currency_code],
+        verbose_name=_("Currency"),
+        help_text=_("ISO 4217 currency code (e.g., EUR, USD)"),
+    )
+
+    eft_data = models.JSONField(
+        default=list,
+        validators=[validate_eft_data],
+        verbose_name=_("EFT Data"),
+        help_text=_(
+            "List of Electronic Funds Transfer data strings "
+            "related to the payment transaction"
+        ),
+    )
+
+    capture_status_code = models.CharField(
+        max_length=15,
+        choices=CaptureStatusCode.choices,
+        verbose_name=_("Capture Status Code"),
+        help_text=_("Status of the payment capture for this transaction"),
+    )
+
+    capture_status_message = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name=_("Capture Status Message"),
+        help_text=_(
+            "Human-readable message providing details about the capture status"
+        ),
+    )
+
+    last_updated = models.DateTimeField(
+        verbose_name=_("Last Updated"),
+        help_text=_(
+            "Timestamp when this FAC was last updated (or created). " "Set by the PTP."
+        ),
+    )
+
+    created = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Created"),
+    )
+
+    updated = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_("Updated"),
+    )
+
+    credentials = models.ForeignKey(
+        "ocpi22.Credentials",
+        on_delete=models.PROTECT,
+        related_name="financial_advice_confirmations",
+        null=True,
+        blank=True,
+        verbose_name=_("PTP Credentials"),
+        help_text=_("Credentials of the PTP that sent this FAC"),
+    )
+
+    terminal = models.ForeignKey(
+        Terminal,
+        on_delete=models.SET_NULL,
+        related_name="financial_advice_confirmations",
+        null=True,
+        blank=True,
+        verbose_name=_("Terminal"),
+        help_text=_("Payment terminal that processed this transaction"),
+    )
+
+    def __str__(self) -> str:
+        return (
+            f"FAC {self.fac_id} "
+            f"({self.authorization_reference} - {self.capture_status_code})"
+        )
+
+    def clean(self) -> None:
+        super().clean()
+        if self.currency:
+            validate_currency_code(self.currency)
+        validate_eft_data(self.eft_data)
+        validate_total_costs(self.total_cost_excl_vat, self.total_cost_incl_vat)
+
+    def save(self, *args, **kwargs) -> None:
+        self.clean()
+        super().save(*args, **kwargs)

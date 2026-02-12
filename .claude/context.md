@@ -32,6 +32,7 @@ OCPI Connector is a Django-based platform for managing electric vehicle charging
   - `sessions/` - Session tracking
   - `models/` - Django ORM models for OCPI entities
   - `tasks.py` - Celery tasks for OCPI operations
+  - `payments/` - Direct Payment terminal and financial advice confirmation
 
 - `ocpiconnector/` - Django project settings
   - `settings/` - Environment-specific settings (dev, staging, production, tests)
@@ -39,7 +40,6 @@ OCPI Connector is a Django-based platform for managing electric vehicle charging
 - `integrations/` - External integrations
   - `hubject/` - Hubject/OICP protocol conversion
 
-- `payment/` - Payment processing
 - `settlement/` - Settlement and invoicing
 
 ### Testing Structure
