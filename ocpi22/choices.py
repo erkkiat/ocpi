@@ -18,6 +18,7 @@ class OcpiRolesEnum(Enum):
     NAP = "NAP"
     NSP = "NSP"
     OTHER = "OTHER"
+    PTP = "PTP"
     SCSP = "SCSP"
     UNKNO = "UNKNO"
 
@@ -46,6 +47,7 @@ ROLE_CHOICES = (
     ("NAP", "National Access Point"),
     ("NSP", "Navigation Service Provider"),
     ("OTHER", "Other"),
+    ("PTP", "Payment Terminal Provider"),
     ("SCSP", "Smart Charging Service Provider"),
     (
         "UNKNO",
@@ -122,7 +124,7 @@ IDENTIFIER_CHOICES = list(
     (module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum
 )
 
-ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "SCSP")
+ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "PTP", "SCSP")
 
 
 class EndpointRoleEnum(Enum):
