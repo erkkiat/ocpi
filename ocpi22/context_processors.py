@@ -143,6 +143,11 @@ def _get_environment(request):
                     name=_("Payment Terminals"),
                     icon="fa-cash-register",
                 ),
+                dict(
+                    url=reverse("admin:ocpi22_financialadviceconfirmation_changelist"),
+                    name=_("Financial Advice Confirmations"),
+                    icon="fa-file-invoice-dollar",
+                ),
             ],
         ),
     )

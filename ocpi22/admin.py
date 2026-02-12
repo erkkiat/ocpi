@@ -26,7 +26,7 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
-from ocpi22.payments.models import Terminal
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
 from ocpi22.pull import admin_pull_all
@@ -1083,6 +1083,78 @@ class TerminalAdmin(SolidModelAdmin):
         return obj.locations.count()
 
     location_count.short_description = "Locations"
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)
+
+
+@admin.register(FinancialAdviceConfirmation)
+class FinancialAdviceConfirmationAdmin(SolidModelAdmin):
+    model = FinancialAdviceConfirmation
+    list_display = [
+        "fac_id",
+        "authorization_reference",
+        "terminal",
+        "capture_status_code",
+        "total_cost_incl_vat",
+        "currency",
+        "credentials",
+        "last_updated",
+    ]
+    list_display_links = ["fac_id"]
+    search_fields = [
+        "fac_id",
+        "authorization_reference",
+        "terminal__terminal_id",
+        "terminal__customer_reference",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "terminal"]
+    list_filter = ["capture_status_code", "currency"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "fac_id",
+                    "authorization_reference",
+                    "credentials",
+                    "terminal",
+                )
+            ),
+        ),
+        (
+            "Payment Details",
+            dict(
+                fields=(
+                    "total_cost_excl_vat",
+                    "total_cost_incl_vat",
+                    "currency",
+                    "eft_data",
+                )
+            ),
+        ),
+        (
+            "Capture Status",
+            dict(
+                fields=(
+                    "capture_status_code",
+                    "capture_status_message",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
 
     def has_add_permission(self, request):
         return super().has_add_permission(request)
