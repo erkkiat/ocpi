@@ -46,16 +46,6 @@ class TerminalRepository:
             .order_by("created")
         )
 
-    @staticmethod
-    def create(terminal: Terminal) -> Terminal:
-        terminal.save()
-        return terminal
-
-    @staticmethod
-    def update(terminal: Terminal) -> Terminal:
-        terminal.save()
-        return terminal
-
 
 class FinancialAdviceConfirmationRepository:
     @staticmethod
@@ -103,8 +93,3 @@ class FinancialAdviceConfirmationRepository:
             ).get(authorization_reference=authorization_reference)
         except FinancialAdviceConfirmation.DoesNotExist:
             return None
-
-    @staticmethod
-    def create(fac: FinancialAdviceConfirmation) -> FinancialAdviceConfirmation:
-        fac.save()
-        return fac
