@@ -25,12 +25,12 @@ urlpatterns = [
     ),
     # Financial Advice Confirmations
     path(
-        "facs/",
+        "financial-advice-confirmations/",
         FinancialAdviceConfirmationViewSet.as_view({"get": "list", "post": "post"}),
         name="fac-list",
     ),
     path(
-        "facs/<str:fac_id>",
+        "financial-advice-confirmations/<str:fac_id>",
         FinancialAdviceConfirmationViewSet.as_view({"get": "get"}),
         name="fac-detail",
     ),
