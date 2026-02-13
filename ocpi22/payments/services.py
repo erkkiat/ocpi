@@ -164,10 +164,10 @@ class FinancialAdviceConfirmationService:
             credentials=credentialsrole.credentials,
         ).exists()
 
-    def _get_terminal_for_fac(
+    def _validate_terminal_exists(
         self, terminal_id: str, credentialsrole: CredentialsRole
-    ) -> Optional[Terminal]:
-        return (
+    ) -> Terminal:
+        terminal = (
             Terminal.objects.filter(
                 terminal_id=terminal_id,
                 credentials=credentialsrole.credentials,
@@ -175,6 +175,13 @@ class FinancialAdviceConfirmationService:
             .select_related("credentials")
             .first()
         )
+
+        if not terminal:
+            raise FinancialAdviceConfirmationValidationError(
+                f"Terminal with ID {terminal_id} not found for this party"
+            )
+
+        return terminal
 
     @transaction.atomic
     def create_fac(
@@ -199,11 +206,7 @@ class FinancialAdviceConfirmationService:
         fac.credentials = credentialsrole.credentials
 
         if terminal_id:
-            terminal = self._get_terminal_for_fac(terminal_id, credentialsrole)
-            if not terminal:
-                raise FinancialAdviceConfirmationValidationError(
-                    f"Terminal with ID {terminal_id} not found for this party"
-                )
+            terminal = self._validate_terminal_exists(terminal_id, credentialsrole)
             fac.terminal = terminal
 
         fac.save()
