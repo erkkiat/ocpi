@@ -37,6 +37,7 @@ from ocpi22.payments.serializers import (
     TerminalSerializer,
     TerminalWriteSerializer,
     FinancialAdviceConfirmationSerializer,
+    FinancialAdviceConfirmationWriteSerializer,
 )
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
@@ -241,7 +242,7 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role(OcpiRolesEnum.PTP)
     @requires_credentialsrole
     def post(self, request, credentialsrole, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
+        serializer = FinancialAdviceConfirmationWriteSerializer(data=request.data)
 
         if not serializer.is_valid():
             return OCPIResponse(
@@ -256,7 +257,7 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
             fac = self.service.create_fac(
                 serializer.validated_data, credentialsrole, terminal_id=terminal_id
             )
-            response_serializer = self.serializer_class(fac)
+            response_serializer = FinancialAdviceConfirmationSerializer(fac)
             return OCPIResponse(
                 response_serializer.data, http_status=status.HTTP_201_CREATED
             )
