@@ -20,7 +20,6 @@ Roles:
 """
 
 from logging import getLogger
-from typing import Optional
 
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
@@ -30,7 +29,6 @@ from ocpi22.choices import OcpiRolesEnum
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
-    requires_last_updated,
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.serializers import (
@@ -52,7 +50,6 @@ from ocpi22.ocpi.util import (
     OCPIResponse,
     Ocpi,
     OCPIPaginationAndHeaders,
-    OCPIBadRequestResponse,
 )
 from ocpiconnector.exception_handler import ocpi_exception_handler
 
@@ -126,91 +123,6 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             Terminal, terminal_id=terminal_id, credentials=credentialsrole.credentials
         )
         return OCPIResponse(TerminalSerializer(terminal).data)
-
-    @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.PTP)
-    @requires_credentialsrole
-    def put(
-        self,
-        request,
-        credentialsrole,
-        terminal_id: Optional[str] = None,
-        *args,
-        **kwargs,
-    ):
-        data = request.data
-        terminal_id = terminal_id or data.get("terminal_id")
-
-        if not terminal_id:
-            return OCPIBadRequestResponse("terminal_id is required")
-
-        serializer = TerminalSerializer(data=data)
-
-        if not serializer.is_valid():
-            return OCPIResponse(
-                errors=serializer.errors,
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-        try:
-            terminal, created = self.service.update_terminal(
-                terminal_id, serializer.validated_data, credentialsrole, partial=False
-            )
-            http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            return OCPIResponse(
-                TerminalSerializer(terminal).data, http_status=http_status
-            )
-        except (TerminalAlreadyExistsError, TerminalValidationError) as e:
-            logger.error(f"Failed to update terminal {terminal_id}: {e}")
-            return OCPIResponse(
-                errors=str(e),
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-    @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.PTP)
-    @requires_last_updated
-    @requires_credentialsrole
-    def patch(
-        self,
-        request,
-        credentialsrole,
-        terminal_id: Optional[str] = None,
-        *args,
-        **kwargs,
-    ):
-        data = request.data
-        terminal_id = terminal_id or data.get("terminal_id")
-
-        if not terminal_id:
-            return OCPIBadRequestResponse("terminal_id is required")
-
-        serializer = TerminalSerializer(data=data, partial=True)
-
-        if not serializer.is_valid():
-            return OCPIResponse(
-                errors=serializer.errors,
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-
-        try:
-            terminal, created = self.service.update_terminal(
-                terminal_id, serializer.validated_data, credentialsrole, partial=True
-            )
-            http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            return OCPIResponse(
-                TerminalSerializer(terminal).data, http_status=http_status
-            )
-        except (TerminalAlreadyExistsError, TerminalValidationError) as e:
-            logger.error(f"Failed to update terminal {terminal_id}: {e}")
-            return OCPIResponse(
-                errors=str(e),
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
 
 
 class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
