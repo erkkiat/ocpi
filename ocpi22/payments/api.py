@@ -35,9 +35,7 @@ from ocpi22.decorators import (
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.serializers import (
     TerminalSerializer,
-    TerminalWriteSerializer,
     FinancialAdviceConfirmationSerializer,
-    FinancialAdviceConfirmationWriteSerializer,
 )
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
@@ -90,7 +88,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role(OcpiRolesEnum.PTP)
     @requires_credentialsrole
     def post(self, request, credentialsrole, *args, **kwargs):
-        serializer = TerminalWriteSerializer(data=request.data)
+        serializer = TerminalSerializer(data=request.data)
 
         if not serializer.is_valid():
             return OCPIResponse(
@@ -103,9 +101,8 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             terminal = self.service.create_terminal(
                 serializer.validated_data, credentialsrole
             )
-            response_serializer = TerminalSerializer(terminal)
             return OCPIResponse(
-                response_serializer.data, http_status=status.HTTP_201_CREATED
+                TerminalSerializer(terminal).data, http_status=status.HTTP_201_CREATED
             )
         except TerminalAlreadyExistsError as e:
             logger.error(f"Terminal already exists: {e}")
@@ -128,8 +125,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
         terminal = get_object_or_404(
             Terminal, terminal_id=terminal_id, credentials=credentialsrole.credentials
         )
-        serializer = TerminalSerializer(terminal)
-        return OCPIResponse(serializer.data)
+        return OCPIResponse(TerminalSerializer(terminal).data)
 
     @ocpi_exception_handler
     @requires_sender_role(OcpiRolesEnum.PTP)
@@ -148,7 +144,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
         if not terminal_id:
             return OCPIBadRequestResponse("terminal_id is required")
 
-        serializer = TerminalWriteSerializer(data=data)
+        serializer = TerminalSerializer(data=data)
 
         if not serializer.is_valid():
             return OCPIResponse(
@@ -161,9 +157,10 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             terminal, created = self.service.update_terminal(
                 terminal_id, serializer.validated_data, credentialsrole, partial=False
             )
-            response_serializer = TerminalSerializer(terminal)
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            return OCPIResponse(response_serializer.data, http_status=http_status)
+            return OCPIResponse(
+                TerminalSerializer(terminal).data, http_status=http_status
+            )
         except (TerminalAlreadyExistsError, TerminalValidationError) as e:
             logger.error(f"Failed to update terminal {terminal_id}: {e}")
             return OCPIResponse(
@@ -190,7 +187,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
         if not terminal_id:
             return OCPIBadRequestResponse("terminal_id is required")
 
-        serializer = TerminalWriteSerializer(data=data, partial=True)
+        serializer = TerminalSerializer(data=data, partial=True)
 
         if not serializer.is_valid():
             return OCPIResponse(
@@ -203,9 +200,10 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             terminal, created = self.service.update_terminal(
                 terminal_id, serializer.validated_data, credentialsrole, partial=True
             )
-            response_serializer = TerminalSerializer(terminal)
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            return OCPIResponse(response_serializer.data, http_status=http_status)
+            return OCPIResponse(
+                TerminalSerializer(terminal).data, http_status=http_status
+            )
         except (TerminalAlreadyExistsError, TerminalValidationError) as e:
             logger.error(f"Failed to update terminal {terminal_id}: {e}")
             return OCPIResponse(
@@ -242,7 +240,7 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
     @requires_sender_role(OcpiRolesEnum.PTP)
     @requires_credentialsrole
     def post(self, request, credentialsrole, *args, **kwargs):
-        serializer = FinancialAdviceConfirmationWriteSerializer(data=request.data)
+        serializer = FinancialAdviceConfirmationSerializer(data=request.data)
 
         if not serializer.is_valid():
             return OCPIResponse(
@@ -257,9 +255,9 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
             fac = self.service.create_fac(
                 serializer.validated_data, credentialsrole, terminal_id=terminal_id
             )
-            response_serializer = FinancialAdviceConfirmationSerializer(fac)
             return OCPIResponse(
-                response_serializer.data, http_status=status.HTTP_201_CREATED
+                FinancialAdviceConfirmationSerializer(fac).data,
+                http_status=status.HTTP_201_CREATED,
             )
         except FinancialAdviceConfirmationAlreadyExistsError as e:
             logger.error(f"FAC already exists: {e}")
@@ -284,5 +282,4 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
             fac_id=fac_id,
             credentials=credentialsrole.credentials,
         )
-        serializer = self.serializer_class(fac)
-        return OCPIResponse(serializer.data)
+        return OCPIResponse(FinancialAdviceConfirmationSerializer(fac).data)
