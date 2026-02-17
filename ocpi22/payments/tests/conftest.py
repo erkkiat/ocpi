@@ -31,18 +31,7 @@ def db_terminal(db, credentials):
         if "credentials" not in kwargs:
             kwargs["credentials"] = credentials
 
-        location_ids = kwargs.pop("location_ids", None)
-        evse_uids = kwargs.pop("evse_uids", None)
-
-        terminal = Terminal.objects.create(**kwargs)
-
-        if location_ids is not None:
-            pass
-
-        if evse_uids is not None:
-            pass
-
-        return terminal
+        return Terminal.objects.create(**kwargs)
 
     return _create_terminal
 

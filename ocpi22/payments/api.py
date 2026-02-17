@@ -6,13 +6,17 @@ Implements EVRF DirectPayment OCPI 2.2.1 extension specification.
 
 Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 
-URL Structure:
-    GET    /2.2.1/cpo/payments/terminals - List terminals
-    POST   /2.2.1/cpo/payments/terminals - Create terminal (PTP → CPO)
+URL Structure (CPO-side — inbound from PTP):
+    GET    /2.2.1/cpo/payments/terminals/              - List terminals
+    POST   /2.2.1/cpo/payments/terminals/              - Create terminal (PTP → CPO)
     GET    /2.2.1/cpo/payments/terminals/{terminal_id} - Get terminal
-    PUT    /2.2.1/cpo/payments/terminals/{terminal_id} - Update terminal
-    PATCH  /2.2.1/cpo/payments/terminals/{terminal_id} - Partial update
-    POST   /2.2.1/cpo/payments/facs - Create FAC (PTP → CPO)
+    GET    /2.2.1/cpo/payments/facs/                   - List FACs
+    POST   /2.2.1/cpo/payments/facs/                   - Create FAC (PTP → CPO)
+    GET    /2.2.1/cpo/payments/facs/{fac_id}           - Get FAC
+
+Note: PATCH and PUT for terminals are PTP-side endpoints (Table 5.1).
+SolidRoam calls those outbound on Payter's system to assign locations.
+They are NOT inbound endpoints on our CPO side (Table 5.6).
 
 Roles:
     PTP (Payment Terminal Provider like Payter) is SENDER

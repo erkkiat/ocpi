@@ -60,13 +60,16 @@ class PriceSerializer(serializers.Serializer):
 
 class TerminalSerializer(serializers.ModelSerializer):
     """
-    Single serializer for Terminal — handles both incoming (POST/PUT/PATCH from PTP)
-    and outgoing (GET responses) directions.
+    Serializer for Terminal — handles both incoming (POST from PTP) and outgoing
+    (GET responses) directions.
 
-    Incoming wire format:
+    Incoming wire format (spec §5.1.1.5, Table 5.6 — CPO side):
         coordinates: {latitude, longitude}  (optional)
-        location_ids: [str, ...]            (optional, write-only — CPO-assigned)
-        evse_uids: [str, ...]               (optional, write-only — CPO-assigned)
+
+    Note: location_ids and evse_uids are NOT accepted on incoming POST.
+    Per spec §5.1.1.5: "no location ids should be included as the assignment
+    will be done by the CPO." Location assignment is an outbound CPO → PTP
+    operation (spec Table 5.1 — PTP side PATCH/PUT).
 
     Outgoing wire format (spec §5.1.2, §5.1.3):
         coordinates: {latitude, longitude}  (omitted when both are null)
@@ -77,14 +80,6 @@ class TerminalSerializer(serializers.ModelSerializer):
 
     coordinates = GeoLocationSerializer(
         required=False, allow_null=True, write_only=True
-    )
-    location_ids = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
-    )
-    evse_uids = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
     )
 
     class Meta:
@@ -102,8 +97,6 @@ class TerminalSerializer(serializers.ModelSerializer):
             "coordinates",
             "invoice_base_url",
             "invoice_creator",
-            "location_ids",
-            "evse_uids",
             "last_updated",
         ]
 

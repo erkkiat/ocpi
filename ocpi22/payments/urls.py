@@ -20,7 +20,7 @@ urlpatterns = [
     ),
     path(
         "terminals/<str:terminal_id>",
-        TerminalViewSet.as_view({"get": "get", "put": "put", "patch": "patch"}),
+        TerminalViewSet.as_view({"get": "get"}),
         name="terminal-detail",
     ),
     # Financial Advice Confirmations

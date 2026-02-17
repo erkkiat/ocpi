@@ -4,7 +4,6 @@ from typing import Optional
 from django.db import transaction
 
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.models.location import Location, Evse
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
@@ -54,17 +53,6 @@ class TerminalService:
             credentials=credentialsrole.credentials,
         ).exists()
 
-    def _assign_locations_and_evses(
-        self, terminal: Terminal, location_ids: list, evse_uids: list
-    ) -> None:
-        if location_ids:
-            locations = Location.objects.filter(uid__in=location_ids)
-            terminal.locations.set(locations)
-
-        if evse_uids:
-            evses = Evse.objects.filter(uid__in=evse_uids)
-            terminal.evses.set(evses)
-
     @transaction.atomic
     def create_terminal(
         self, validated_data: dict, credentialsrole: CredentialsRole
@@ -82,58 +70,11 @@ class TerminalService:
             f"Creating terminal {terminal_id} for {credentialsrole.get_party()}"
         )
 
-        location_ids = validated_data.pop("location_ids", [])
-        evse_uids = validated_data.pop("evse_uids", [])
-
         terminal = Terminal(**validated_data)
         terminal.credentials = credentialsrole.credentials
         terminal.save()
 
-        self._assign_locations_and_evses(terminal, location_ids, evse_uids)
-
         return terminal
-
-    @transaction.atomic
-    def update_terminal(
-        self,
-        terminal_id: str,
-        validated_data: dict,
-        credentialsrole: CredentialsRole,
-        partial: bool = False,
-    ) -> tuple[Terminal, bool]:
-        terminal = self.get_terminal_by_id(terminal_id, credentialsrole)
-
-        location_ids = validated_data.pop("location_ids", None)
-        evse_uids = validated_data.pop("evse_uids", None)
-
-        if terminal:
-            logger.info(
-                f"Updating terminal {terminal_id} for {credentialsrole.get_party()}"
-            )
-
-            for field, value in validated_data.items():
-                setattr(terminal, field, value)
-
-            terminal.save()
-
-            if location_ids is not None:
-                self._assign_locations_and_evses(
-                    terminal, location_ids, evse_uids or []
-                )
-            elif evse_uids is not None:
-                self._assign_locations_and_evses(terminal, [], evse_uids)
-
-            return terminal, False
-        else:
-            logger.info(
-                f"Terminal {terminal_id} not found, creating new terminal for {credentialsrole.get_party()}"
-            )
-            validated_data["terminal_id"] = terminal_id
-            validated_data["location_ids"] = location_ids or []
-            validated_data["evse_uids"] = evse_uids or []
-
-            new_terminal = self.create_terminal(validated_data, credentialsrole)
-            return new_terminal, True
 
 
 class FinancialAdviceConfirmationService:

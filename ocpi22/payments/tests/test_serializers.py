@@ -149,6 +149,24 @@ class TestTerminalSerializerIncoming:
         assert not serializer.is_valid()
         assert "coordinates" in serializer.errors
 
+    @pytest.mark.parametrize(
+        "extra_field",
+        ["location_ids", "evse_uids"],
+    )
+    def test_terminal_serializer_ignores_location_and_evse_fields_in_incoming_ptp_post(
+        self, extra_field
+    ):
+        data = {
+            "terminal_id": "TERM006",
+            "customer_reference": "CUST006",
+            extra_field: ["some-uid-1", "some-uid-2"],
+        }
+
+        serializer = TerminalSerializer(data=data)
+
+        assert serializer.is_valid(), serializer.errors
+        assert extra_field not in serializer.validated_data
+
 
 @pytest.mark.django_db
 class TestTerminalSerializerOutgoing:
