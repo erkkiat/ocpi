@@ -1,13 +1,3 @@
-"""
-Tests for DirectPayment Serializers
-
-Covers spec-compliant wire format for Terminal and FinancialAdviceConfirmation:
-- Incoming: nested coordinates / total_costs unpacked to flat model fields
-- Outgoing: flat model fields repacked to spec nested shape
-- Spec field names: Terminal.coordinates, FAC.id (not fac_id), FAC.total_costs,
-  FAC.currency at root level
-"""
-
 import pytest
 from django.utils import timezone
 

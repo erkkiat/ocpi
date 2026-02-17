@@ -1,10 +1,3 @@
-"""
-Tests for DirectPayment Nested Object Serializers
-
-Focused unit tests for GeoLocation and Price nested object handling
-in TerminalSerializer and FinancialAdviceConfirmationSerializer.
-"""
-
 import pytest
 from django.utils import timezone
 

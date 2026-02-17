@@ -1,7 +1,3 @@
-"""
-Pytest fixtures for DirectPayment module tests
-"""
-
 import pytest
 
 from ocpi22.models.credentials import Credentials, CredentialsRole
@@ -12,7 +8,6 @@ from ocpi22.choices import OcpiRolesEnum
 
 @pytest.fixture
 def credentials(db):
-    """Create test PTP credentials."""
     creds = Credentials.objects.create(
         url="https://ptp.example.com/ocpi/2.2.1/",
     )
@@ -32,8 +27,6 @@ def credentials(db):
 
 @pytest.fixture
 def db_terminal(db, credentials):
-    """Factory fixture for creating Terminal instances."""
-
     def _create_terminal(**kwargs):
         if "credentials" not in kwargs:
             kwargs["credentials"] = credentials
@@ -56,8 +49,6 @@ def db_terminal(db, credentials):
 
 @pytest.fixture
 def db_fac(db, credentials):
-    """Factory fixture for creating FAC instances."""
-
     def _create_fac(**kwargs):
         if "credentials" not in kwargs:
             kwargs["credentials"] = credentials
