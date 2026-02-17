@@ -78,7 +78,7 @@ class FinancialAdviceConfirmationService:
     ) -> QuerySet[FinancialAdviceConfirmation]:
         return self.fac_repository.get_all_by_credentials(credentialsrole)
 
-    def _resolve_terminal(
+    def _get_terminal_or_raise(
         self, terminal_id: str, credentialsrole: CredentialsRole
     ) -> Terminal:
         terminal = self.terminal_repository.get_by_terminal_id_and_credentials(
@@ -115,7 +115,7 @@ class FinancialAdviceConfirmationService:
         fac.credentials = credentialsrole.credentials
 
         if terminal_id:
-            fac.terminal = self._resolve_terminal(terminal_id, credentialsrole)
+            fac.terminal = self._get_terminal_or_raise(terminal_id, credentialsrole)
 
         fac.save()
         return fac
