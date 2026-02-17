@@ -2,69 +2,49 @@ from logging import getLogger
 from typing import Optional
 
 from django.db import transaction
+from django.db.models import QuerySet
 
 from ocpi22.models.credentials import CredentialsRole
-from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
-    TerminalValidationError,
     FinancialAdviceConfirmationAlreadyExistsError,
     FinancialAdviceConfirmationValidationError,
+)
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
+from ocpi22.payments.repositories import (
+    TerminalRepository,
+    FinancialAdviceConfirmationRepository,
 )
 
 logger = getLogger(__name__)
 
 
 class TerminalService:
+    def __init__(self, repository: TerminalRepository = None):
+        self.repository = repository or TerminalRepository()
+
     def get_terminal_by_id(
         self, terminal_id: str, credentialsrole: CredentialsRole
     ) -> Optional[Terminal]:
-        return (
-            Terminal.objects.filter(
-                terminal_id=terminal_id,
-                credentials=credentialsrole.credentials,
-            )
-            .select_related("credentials")
-            .first()
+        return self.repository.get_by_terminal_id_and_credentials(
+            terminal_id, credentialsrole
         )
 
-    def get_terminals(self, credentialsrole: CredentialsRole):
-        return (
-            Terminal.objects.filter(credentials=credentialsrole.credentials)
-            .select_related("credentials")
-            .prefetch_related("locations", "evses")
-            .order_by("created")
-        )
-
-    def _validate_terminal_identification(self, data: dict) -> None:
-        customer_ref = bool(data.get("customer_reference"))
-        party_info = bool(data.get("party_id") and data.get("country_code"))
-
-        if not customer_ref and not party_info:
-            raise TerminalValidationError(
-                "Either customer_reference or (party_id + country_code) must be provided"
-            )
-
-    def _check_terminal_exists(
-        self, terminal_id: str, credentialsrole: CredentialsRole
-    ) -> bool:
-        return Terminal.objects.filter(
-            terminal_id=terminal_id,
-            credentials=credentialsrole.credentials,
-        ).exists()
+    def get_terminals(self, credentialsrole: CredentialsRole) -> QuerySet[Terminal]:
+        return self.repository.get_all_by_credentials(credentialsrole)
 
     @transaction.atomic
     def create_terminal(
         self, validated_data: dict, credentialsrole: CredentialsRole
     ) -> Terminal:
-        terminal_id = validated_data.get("terminal_id")
+        terminal_id = validated_data["terminal_id"]
 
-        if self._check_terminal_exists(terminal_id, credentialsrole):
+        if self.repository.exists_by_terminal_id_and_credentials(
+            terminal_id, credentialsrole
+        ):
             raise TerminalAlreadyExistsError(
                 f"Terminal with ID {terminal_id} already exists for this party"
             )
-
-        self._validate_terminal_identification(validated_data)
 
         logger.info(
             f"Creating terminal {terminal_id} for {credentialsrole.get_party()}"
@@ -78,50 +58,36 @@ class TerminalService:
 
 
 class FinancialAdviceConfirmationService:
+    def __init__(
+        self,
+        fac_repository: FinancialAdviceConfirmationRepository = None,
+        terminal_repository: TerminalRepository = None,
+    ):
+        self.fac_repository = fac_repository or FinancialAdviceConfirmationRepository()
+        self.terminal_repository = terminal_repository or TerminalRepository()
+
     def get_fac_by_id(
         self, fac_id: str, credentialsrole: CredentialsRole
     ) -> Optional[FinancialAdviceConfirmation]:
-        return (
-            FinancialAdviceConfirmation.objects.filter(
-                fac_id=fac_id,
-                credentials=credentialsrole.credentials,
-            )
-            .select_related("credentials", "terminal")
-            .first()
+        return self.fac_repository.get_by_fac_id_and_credentials(
+            fac_id, credentialsrole
         )
 
-    def get_facs(self, credentialsrole: CredentialsRole):
-        return (
-            FinancialAdviceConfirmation.objects.filter(
-                credentials=credentialsrole.credentials
-            )
-            .select_related("credentials", "terminal")
-            .order_by("-created")
-        )
+    def get_facs(
+        self, credentialsrole: CredentialsRole
+    ) -> QuerySet[FinancialAdviceConfirmation]:
+        return self.fac_repository.get_all_by_credentials(credentialsrole)
 
-    def _check_fac_exists(self, fac_id: str, credentialsrole: CredentialsRole) -> bool:
-        return FinancialAdviceConfirmation.objects.filter(
-            fac_id=fac_id,
-            credentials=credentialsrole.credentials,
-        ).exists()
-
-    def _validate_terminal_exists(
+    def _resolve_terminal(
         self, terminal_id: str, credentialsrole: CredentialsRole
     ) -> Terminal:
-        terminal = (
-            Terminal.objects.filter(
-                terminal_id=terminal_id,
-                credentials=credentialsrole.credentials,
-            )
-            .select_related("credentials")
-            .first()
+        terminal = self.terminal_repository.get_by_terminal_id_and_credentials(
+            terminal_id, credentialsrole
         )
-
         if not terminal:
             raise FinancialAdviceConfirmationValidationError(
                 f"Terminal with ID {terminal_id} not found for this party"
             )
-
         return terminal
 
     @transaction.atomic
@@ -131,9 +97,11 @@ class FinancialAdviceConfirmationService:
         credentialsrole: CredentialsRole,
         terminal_id: Optional[str] = None,
     ) -> FinancialAdviceConfirmation:
-        fac_id = validated_data.get("fac_id")
+        fac_id = validated_data["fac_id"]
 
-        if self._check_fac_exists(fac_id, credentialsrole):
+        if self.fac_repository.exists_by_fac_id_and_credentials(
+            fac_id, credentialsrole
+        ):
             raise FinancialAdviceConfirmationAlreadyExistsError(
                 f"FAC with ID {fac_id} already exists for this party"
             )
@@ -147,8 +115,7 @@ class FinancialAdviceConfirmationService:
         fac.credentials = credentialsrole.credentials
 
         if terminal_id:
-            terminal = self._validate_terminal_exists(terminal_id, credentialsrole)
-            fac.terminal = terminal
+            fac.terminal = self._resolve_terminal(terminal_id, credentialsrole)
 
         fac.save()
         return fac

@@ -41,7 +41,6 @@ from ocpi22.payments.serializers import (
 )
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
-    TerminalValidationError,
     FinancialAdviceConfirmationAlreadyExistsError,
     FinancialAdviceConfirmationValidationError,
 )
@@ -107,13 +106,6 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             )
         except TerminalAlreadyExistsError as e:
             logger.error(f"Terminal already exists: {e}")
-            return OCPIResponse(
-                errors=str(e),
-                http_status=status.HTTP_400_BAD_REQUEST,
-                status_code=Ocpi.ClientError.INVALID_OR_MISSING_PARAMETERS,
-            )
-        except TerminalValidationError as e:
-            logger.error(f"Terminal validation failed: {e}")
             return OCPIResponse(
                 errors=str(e),
                 http_status=status.HTTP_400_BAD_REQUEST,
