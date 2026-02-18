@@ -367,7 +367,7 @@ def send_hubject_request(
             from integrations.hubject.schemas import ERoamingAcknowledgment
 
             try:
-                ack = ERoamingAcknowledgment.model_validate_json(response.json())
+                ack = ERoamingAcknowledgment.model_validate(response.json())
                 if not ack.result:
                     logger.warning(
                         f"Hubject responded with negative acknowledgment for {url}",
