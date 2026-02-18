@@ -144,7 +144,7 @@ class TestTerminalServiceCreate:
 
         assert Terminal.objects.filter(terminal_id="term-001").count() == 1
 
-    def test_create_terminal_raises_when_terminal_id_already_exists_globally(
+    def test_create_terminal_raises_when_terminal_id_already_exists_for_different_credentials(
         self, terminal_service, credentialsrole, minimal_terminal_data
     ):
         other_credentialsrole = CredentialsRoleFactory(
@@ -152,7 +152,7 @@ class TestTerminalServiceCreate:
         )
         terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
 
-        with pytest.raises(Exception):
+        with pytest.raises(TerminalAlreadyExistsError):
             terminal_service.create_terminal(
                 minimal_terminal_data.copy(), other_credentialsrole
             )

@@ -39,11 +39,9 @@ class TerminalService:
     ) -> Terminal:
         terminal_id = validated_data["terminal_id"]
 
-        if self.repository.exists_by_terminal_id_and_credentials(
-            terminal_id, credentialsrole
-        ):
+        if self.repository.exists_by_terminal_id(terminal_id):
             raise TerminalAlreadyExistsError(
-                f"Terminal with ID {terminal_id} already exists for this party"
+                f"Terminal with ID {terminal_id} already exists"
             )
 
         logger.info(

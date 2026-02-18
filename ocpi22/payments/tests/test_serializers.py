@@ -106,41 +106,32 @@ class TestTerminalSerializerIncoming:
         assert "latitude" not in serializer.validated_data
         assert "longitude" not in serializer.validated_data
 
-    def test_terminal_serializer_rejects_incoming_coordinates_when_latitude_invalid(
-        self,
+    @pytest.mark.parametrize(
+        "latitude,longitude,expected_error_field",
+        [
+            ("invalid", "4.898632", "latitude"),
+            ("52.372294", "invalid", "longitude"),
+        ],
+    )
+    def test_terminal_serializer_rejects_incoming_coordinates_when_coordinate_is_invalid(
+        self, latitude, longitude, expected_error_field
     ):
         data = {
             "terminal_id": "TERM003",
-            "customer_reference": "CUST003",
-            "coordinates": {"latitude": "invalid", "longitude": "4.898632"},
+            "coordinates": {"latitude": latitude, "longitude": longitude},
         }
 
         serializer = TerminalSerializer(data=data)
 
         assert not serializer.is_valid()
         assert "coordinates" in serializer.errors
-        assert "latitude" in serializer.errors["coordinates"]
-
-    def test_terminal_serializer_rejects_incoming_coordinates_when_longitude_invalid(
-        self,
-    ):
-        data = {
-            "terminal_id": "TERM004",
-            "customer_reference": "CUST004",
-            "coordinates": {"latitude": "52.372294", "longitude": "invalid"},
-        }
-
-        serializer = TerminalSerializer(data=data)
-
-        assert not serializer.is_valid()
-        assert "coordinates" in serializer.errors
-        assert "longitude" in serializer.errors["coordinates"]
+        assert expected_error_field in serializer.errors["coordinates"]
 
     def test_terminal_serializer_rejects_incoming_coordinates_when_latitude_missing_but_longitude_present(
         self,
     ):
         data = {
-            "terminal_id": "TERM005",
+            "terminal_id": "TERM004",
             "coordinates": {"longitude": "4.898632"},
         }
 
@@ -149,16 +140,13 @@ class TestTerminalSerializerIncoming:
         assert not serializer.is_valid()
         assert "coordinates" in serializer.errors
 
-    @pytest.mark.parametrize(
-        "extra_field",
-        ["location_ids", "evse_uids"],
-    )
+    @pytest.mark.parametrize("extra_field", ["location_ids", "evse_uids"])
     def test_terminal_serializer_ignores_location_and_evse_fields_in_incoming_ptp_post(
         self, extra_field
     ):
         data = {
-            "terminal_id": "TERM006",
-            "customer_reference": "CUST006",
+            "terminal_id": "TERM005",
+            "customer_reference": "CUST005",
             extra_field: ["some-uid-1", "some-uid-2"],
         }
 
@@ -175,7 +163,6 @@ class TestTerminalSerializerOutgoing:
     ):
         terminal = db_terminal(
             terminal_id="TERM010",
-            customer_reference="CUST010",
             latitude="52.372294",
             longitude="4.898632",
         )
@@ -191,7 +178,6 @@ class TestTerminalSerializerOutgoing:
     ):
         terminal = db_terminal(
             terminal_id="TERM011",
-            customer_reference="CUST011",
             latitude=None,
             longitude=None,
         )
@@ -203,10 +189,7 @@ class TestTerminalSerializerOutgoing:
     def test_terminal_serializer_includes_location_ids_and_evse_uids_in_outgoing(
         self, db_terminal
     ):
-        terminal = db_terminal(
-            terminal_id="TERM012",
-            customer_reference="CUST012",
-        )
+        terminal = db_terminal(terminal_id="TERM012")
 
         data = TerminalSerializer(terminal).data
 
@@ -216,10 +199,7 @@ class TestTerminalSerializerOutgoing:
         assert data["evse_uids"] == []
 
     def test_terminal_serializer_includes_last_updated_in_outgoing(self, db_terminal):
-        terminal = db_terminal(
-            terminal_id="TERM013",
-            customer_reference="CUST013",
-        )
+        terminal = db_terminal(terminal_id="TERM013")
 
         data = TerminalSerializer(terminal).data
 

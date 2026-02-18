@@ -29,6 +29,10 @@ class TerminalRepository:
             return None
 
     @staticmethod
+    def exists_by_terminal_id(terminal_id: str) -> bool:
+        return Terminal.objects.filter(terminal_id=terminal_id).exists()
+
+    @staticmethod
     def exists_by_terminal_id_and_credentials(
         terminal_id: str, credentialsrole: CredentialsRole
     ) -> bool:
