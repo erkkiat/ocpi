@@ -20,6 +20,7 @@ from django.utils.module_loading import import_string
 from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
@@ -362,6 +363,31 @@ def send_hubject_request(
             logger.warning(
                 f"Got {response.status_code} for {response.url}: {response.json()}"
             )
+        if response.status_code == 200:
+            from integrations.hubject.schemas import ERoamingAcknowledgment
+
+            try:
+                ack = ERoamingAcknowledgment.model_validate_json(response.json())
+                if not ack.result:
+                    logger.warning(
+                        f"Hubject responded with negative acknowledgment for {url}",
+                        extra={
+                            "path": url,
+                            "method": response.request.method,
+                            "response_data": ack,
+                            "status_code": response.status_code,
+                        },
+                    )
+            except ValidationError:
+                logger.warning(
+                    f"Validation error when parsing Hubject acknowledgment for {url}",
+                    extra={
+                        "path": url,
+                        "method": response.request.method,
+                        "response_data": response.text,
+                        "status_code": response.status_code,
+                    },
+                )
     except RequestException as e:
         retry_count = self.request.retries
         logger.warning(f"Request failed for {url}")
