@@ -303,7 +303,7 @@ def send_ocpi_request(
         return None
 
     status_message = response_json.get("status_message", "")
-    logger.error(
+    logger.warning(
         f"{host} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
         extra={
             "path": url,
