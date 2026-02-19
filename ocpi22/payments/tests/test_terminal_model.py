@@ -153,3 +153,32 @@ class TestTerminalValidators:
         terminal.save()
         terminal.refresh_from_db()
         assert terminal.longitude == "151.2093"
+
+    @pytest.mark.parametrize("value", ["caf\u00e9", "\u20ac10", "na\u00efve"])
+    def test_save_raises_validation_error_when_terminal_id_contains_non_ascii(
+        self, value
+    ):
+        with pytest.raises(ValidationError, match="must contain only ASCII"):
+            TerminalFactory(terminal_id=value)
+
+    @pytest.mark.parametrize("value", ["caf\u00e9", "\u20ac10", "na\u00efve"])
+    def test_save_raises_validation_error_when_customer_reference_contains_non_ascii(
+        self, value
+    ):
+        with pytest.raises(ValidationError, match="must contain only ASCII"):
+            TerminalFactory(customer_reference=value)
+
+    @pytest.mark.parametrize("value", ["caf\u00e9", "\u20ac10", "na\u00efve"])
+    def test_save_raises_validation_error_when_party_id_contains_non_ascii(self, value):
+        with pytest.raises(ValidationError, match="must contain only ASCII"):
+            TerminalFactory(party_id=value)
+
+    def test_save_succeeds_with_null_customer_reference(self):
+        terminal = TerminalFactory(customer_reference=None)
+        assert terminal.pk is not None
+        assert terminal.customer_reference is None
+
+    def test_save_succeeds_with_null_party_id(self):
+        terminal = TerminalFactory(party_id=None)
+        assert terminal.pk is not None
+        assert terminal.party_id is None

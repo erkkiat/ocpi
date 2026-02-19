@@ -17,6 +17,7 @@ from generic.validators import (
     validate_longitude,
 )
 from ocpi22.payments.validators import (
+    validate_ci_ascii_string,
     validate_currency_code,
     validate_eft_data,
     validate_total_costs,
@@ -76,6 +77,7 @@ class Terminal(models.Model):
         max_length=36,
         unique=True,
         db_index=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("Terminal ID"),
         help_text=_("Unique ID that identifies a terminal"),
     )
@@ -85,6 +87,7 @@ class Terminal(models.Model):
         blank=True,
         null=True,
         db_index=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("Customer Reference"),
         help_text=_("Reference sent by PTP to link terminal to CSMS/contract"),
     )
@@ -93,6 +96,7 @@ class Terminal(models.Model):
         max_length=3,
         blank=True,
         null=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("Party ID"),
         help_text=_("Alternative to customer_reference"),
     )
@@ -229,6 +233,11 @@ class Terminal(models.Model):
 
     def clean(self) -> None:
         super().clean()
+        validate_ci_ascii_string(self.terminal_id)
+        if self.customer_reference:
+            validate_ci_ascii_string(self.customer_reference)
+        if self.party_id:
+            validate_ci_ascii_string(self.party_id)
         if self.country_code:
             validate_country_code_alpha2(self.country_code)
         if self.country:
@@ -301,6 +310,7 @@ class FinancialAdviceConfirmation(models.Model):
         max_length=36,
         unique=True,
         db_index=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("FAC ID"),
         help_text=_("Unique ID of this Financial Advice Confirmation"),
     )
@@ -308,6 +318,7 @@ class FinancialAdviceConfirmation(models.Model):
     authorization_reference = models.CharField(
         max_length=36,
         db_index=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("Authorization Reference"),
         help_text=_(
             "Reference linking this FAC to the charging session. "
@@ -355,6 +366,7 @@ class FinancialAdviceConfirmation(models.Model):
         max_length=255,
         blank=True,
         null=True,
+        validators=[validate_ci_ascii_string],
         verbose_name=_("Capture Status Message"),
         help_text=_(
             "Human-readable message providing details about the capture status"
@@ -406,6 +418,10 @@ class FinancialAdviceConfirmation(models.Model):
 
     def clean(self) -> None:
         super().clean()
+        validate_ci_ascii_string(self.fac_id)
+        validate_ci_ascii_string(self.authorization_reference)
+        if self.capture_status_message:
+            validate_ci_ascii_string(self.capture_status_message)
         if self.currency:
             validate_currency_code(self.currency)
         validate_eft_data(self.eft_data)
