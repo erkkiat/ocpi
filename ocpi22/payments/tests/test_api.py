@@ -148,9 +148,16 @@ class TestTerminalPostAPI:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"]["terminal_id"] == "TERM-API-001"
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["terminal_id"] == "TERM-API-001"
+        assert body["data"]["customer_reference"] == "CUST-API-001"
+        assert body["data"]["location_ids"] == []
+        assert body["data"]["evse_uids"] == []
+        assert "last_updated" in body["data"]
+        assert "coordinates" not in body["data"]
         assert Terminal.objects.filter(terminal_id="TERM-API-001").exists()
 
     def test_post_terminal_persists_with_correct_credentials(
@@ -181,6 +188,10 @@ class TestTerminalPostAPI:
         terminal = Terminal.objects.get(terminal_id="TERM-API-002")
         assert terminal.latitude == "52.372294"
         assert terminal.longitude == "4.898632"
+        assert terminal.address == "Keizersgracht 100"
+        assert terminal.city == "Amsterdam"
+        assert terminal.postal_code == "1015AA"
+        assert terminal.country == "NLD"
 
     def test_post_terminal_response_contains_nested_coordinates(
         self,
@@ -196,9 +207,22 @@ class TestTerminalPostAPI:
             **ocpi_headers,
         )
 
-        data = response.json()
-        assert data["data"]["coordinates"]["latitude"] == "52.372294"
-        assert data["data"]["coordinates"]["longitude"] == "4.898632"
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["terminal_id"] == "TERM-API-002"
+        assert body["data"]["customer_reference"] == "CUST-API-002"
+        assert body["data"]["coordinates"]["latitude"] == "52.372294"
+        assert body["data"]["coordinates"]["longitude"] == "4.898632"
+        assert body["data"]["address"] == "Keizersgracht 100"
+        assert body["data"]["city"] == "Amsterdam"
+        assert body["data"]["postal_code"] == "1015AA"
+        assert body["data"]["country"] == "NLD"
+        assert body["data"]["location_ids"] == []
+        assert body["data"]["evse_uids"] == []
+        assert "last_updated" in body["data"]
 
     def test_post_terminal_duplicate_returns_400(
         self,
@@ -215,6 +239,9 @@ class TestTerminalPostAPI:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert Terminal.objects.filter(terminal_id="TERM-API-001").count() == 1
 
     def test_post_terminal_with_globally_duplicate_terminal_id_returns_400(
@@ -235,6 +262,9 @@ class TestTerminalPostAPI:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert Terminal.objects.filter(terminal_id="TERM-API-001").count() == 1
 
     def test_post_terminal_with_invalid_coordinates_returns_400(
@@ -248,6 +278,9 @@ class TestTerminalPostAPI:
         response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-BAD-001").exists()
 
     def test_post_terminal_without_auth_returns_401(self, client, valid_terminal_data):
@@ -266,6 +299,9 @@ class TestTerminalPostAPI:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-API-001").exists()
 
 
@@ -279,9 +315,15 @@ class TestTerminalGetAPI:
         response = client.get(f"{TERMINALS_URL}TERM-GET-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"]["terminal_id"] == "TERM-GET-001"
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["terminal_id"] == "TERM-GET-001"
+        assert body["data"]["customer_reference"] == "CUST-GET-001"
+        assert body["data"]["location_ids"] == []
+        assert body["data"]["evse_uids"] == []
+        assert "last_updated" in body["data"]
 
     def test_get_terminal_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
@@ -324,9 +366,15 @@ class TestTerminalGetAPI:
 
         response = client.get(f"{TERMINALS_URL}TERM-COORD-001", **ocpi_headers)
 
-        data = response.json()
-        assert data["data"]["coordinates"]["latitude"] == "60.169857"
-        assert data["data"]["coordinates"]["longitude"] == "24.938379"
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["terminal_id"] == "TERM-COORD-001"
+        assert body["data"]["coordinates"]["latitude"] == "60.169857"
+        assert body["data"]["coordinates"]["longitude"] == "24.938379"
+        assert "last_updated" in body["data"]
 
 
 @pytest.mark.django_db
@@ -337,9 +385,11 @@ class TestTerminalListAPI:
         response = client.get(TERMINALS_URL, **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"] == []
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert "status_message" not in body
+        assert "timestamp" in body
+        assert body["data"] == []
 
     def test_list_terminals_returns_only_terminals_for_authenticated_party(
         self,
@@ -349,7 +399,15 @@ class TestTerminalListAPI:
         ocpi_headers,
         db_terminal,
     ):
-        db_terminal(terminal_id="TERM-MINE-001")
+        db_terminal(
+            terminal_id="TERM-MINE-001",
+            customer_reference="CUST-MINE-001",
+            address="Keizersgracht 100",
+            city="Amsterdam",
+            postal_code="1015AA",
+            country="NLD",
+            invoice_creator="PTP",
+        )
         db_terminal(terminal_id="TERM-MINE-002")
         TerminalFactory(
             terminal_id="TERM-OTHER-001",
@@ -358,9 +416,22 @@ class TestTerminalListAPI:
 
         response = client.get(TERMINALS_URL, **ocpi_headers)
 
-        data = response.json()
         assert response.status_code == status.HTTP_200_OK
-        returned_ids = [t["terminal_id"] for t in data["data"]]
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert "status_message" not in body
+        mine = next(t for t in body["data"] if t["terminal_id"] == "TERM-MINE-001")
+        assert mine["customer_reference"] == "CUST-MINE-001"
+        assert mine["address"] == "Keizersgracht 100"
+        assert mine["city"] == "Amsterdam"
+        assert mine["postal_code"] == "1015AA"
+        assert mine["country"] == "NLD"
+        assert mine["invoice_creator"] == "PTP"
+        assert mine["location_ids"] == []
+        assert mine["evse_uids"] == []
+        assert "last_updated" in mine
+        assert "coordinates" not in mine
+        returned_ids = [t["terminal_id"] for t in body["data"]]
         assert "TERM-MINE-001" in returned_ids
         assert "TERM-MINE-002" in returned_ids
         assert "TERM-OTHER-001" not in returned_ids
@@ -381,9 +452,19 @@ class TestFACPostAPI:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"]["id"] == "FAC-API-001"
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-API-001"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 10.50
+        assert body["data"]["total_costs"]["incl_vat"] == 12.60
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
+        assert "fac_id" not in body["data"]
         assert FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").exists()
 
     def test_post_fac_persists_with_correct_credentials(
@@ -408,9 +489,9 @@ class TestFACPostAPI:
             FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
         )
 
-        data = response.json()
-        assert "id" in data["data"]
-        assert "fac_id" not in data["data"]
+        body = response.json()
+        assert body["data"]["id"] == "FAC-API-001"
+        assert "fac_id" not in body["data"]
 
     def test_post_fac_response_has_nested_total_costs_with_currency_at_root(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
@@ -419,11 +500,20 @@ class TestFACPostAPI:
             FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
         )
 
-        data = response.json()["data"]
-        assert data["total_costs"]["excl_vat"] == 10.50
-        assert data["total_costs"]["incl_vat"] == 12.60
-        assert data["currency"] == "EUR"
-        assert "currency" not in data["total_costs"]
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-API-001"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 10.50
+        assert body["data"]["total_costs"]["incl_vat"] == 12.60
+        assert body["data"]["currency"] == "EUR"
+        assert "currency" not in body["data"]["total_costs"]
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
 
     def test_post_fac_links_terminal_when_terminal_id_provided(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data, db_terminal
@@ -434,6 +524,18 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-API-001"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 10.50
+        assert body["data"]["total_costs"]["incl_vat"] == 12.60
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
         fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
         assert fac.terminal == terminal
 
@@ -445,6 +547,18 @@ class TestFACPostAPI:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-API-001"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 10.50
+        assert body["data"]["total_costs"]["incl_vat"] == 12.60
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
         fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
         assert fac.terminal is None
 
@@ -456,6 +570,9 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -477,6 +594,9 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -491,6 +611,9 @@ class TestFACPostAPI:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert (
             FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").count()
             == 1
@@ -504,6 +627,9 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -516,6 +642,12 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
 
     def test_post_fac_without_auth_returns_401(self, client, valid_fac_data):
         response = client.post(FACS_URL, data=valid_fac_data, format="json")
@@ -530,6 +662,9 @@ class TestFACPostAPI:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -554,6 +689,12 @@ class TestFACPostAPI:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == f"FAC-STATUS-{capture_status_code}"
+        assert body["data"]["capture_status_code"] == capture_status_code
         assert FinancialAdviceConfirmation.objects.filter(
             fac_id=f"FAC-STATUS-{capture_status_code}",
             capture_status_code=capture_status_code,
@@ -565,14 +706,34 @@ class TestFACGetAPI:
     def test_get_fac_returns_200_with_fac_data(
         self, client, ptp_credentialsrole, ocpi_headers, db_fac
     ):
-        db_fac(fac_id="FAC-GET-001", authorization_reference="AUTH-GET-001")
+        db_fac(
+            fac_id="FAC-GET-001",
+            authorization_reference="AUTH-GET-001",
+            total_cost_excl_vat=10.0,
+            total_cost_incl_vat=12.4,
+            currency="EUR",
+            eft_data=["EFT-DATA-001", "EFT-DATA-002"],
+            capture_status_code="SUCCESS",
+            capture_status_message="Capture successful at PSP",
+        )
 
         response = client.get(f"{FACS_URL}FAC-GET-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"]["id"] == "FAC-GET-001"
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-GET-001"
+        assert body["data"]["authorization_reference"] == "AUTH-GET-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 10.0
+        assert body["data"]["total_costs"]["incl_vat"] == 12.4
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-DATA-001", "EFT-DATA-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert body["data"]["capture_status_message"] == "Capture successful at PSP"
+        assert "last_updated" in body["data"]
+        assert "fac_id" not in body["data"]
 
     def test_get_fac_response_uses_id_not_fac_id(
         self, client, ptp_credentialsrole, ocpi_headers, db_fac
@@ -581,9 +742,13 @@ class TestFACGetAPI:
 
         response = client.get(f"{FACS_URL}FAC-GET-002", **ocpi_headers)
 
-        data = response.json()
-        assert "id" in data["data"]
-        assert "fac_id" not in data["data"]
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-GET-002"
+        assert "fac_id" not in body["data"]
 
     def test_get_fac_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
@@ -620,18 +785,30 @@ class TestFACGetAPI:
     ):
         db_fac(
             fac_id="FAC-COSTS-001",
+            authorization_reference="AUTH-COSTS-001",
             total_cost_excl_vat=25.00,
             total_cost_incl_vat=31.00,
             currency="NOK",
+            eft_data=["EFT-NOK-001"],
+            capture_status_code="SUCCESS",
         )
 
         response = client.get(f"{FACS_URL}FAC-COSTS-001", **ocpi_headers)
 
-        data = response.json()["data"]
-        assert data["total_costs"]["excl_vat"] == 25.00
-        assert data["total_costs"]["incl_vat"] == 31.00
-        assert data["currency"] == "NOK"
-        assert "currency" not in data["total_costs"]
+        assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-COSTS-001"
+        assert body["data"]["authorization_reference"] == "AUTH-COSTS-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 25.00
+        assert body["data"]["total_costs"]["incl_vat"] == 31.00
+        assert body["data"]["currency"] == "NOK"
+        assert "currency" not in body["data"]["total_costs"]
+        assert body["data"]["eft_data"] == ["EFT-NOK-001"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
 
 
 @pytest.mark.django_db
@@ -642,9 +819,11 @@ class TestFACListAPI:
         response = client.get(FACS_URL, **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["status_code"] == 1000
-        assert data["data"] == []
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert "status_message" not in body
+        assert "timestamp" in body
+        assert body["data"] == []
 
     def test_list_facs_returns_only_facs_for_authenticated_party(
         self,
@@ -654,7 +833,15 @@ class TestFACListAPI:
         ocpi_headers,
         db_fac,
     ):
-        db_fac(fac_id="FAC-MINE-001")
+        db_fac(
+            fac_id="FAC-MINE-001",
+            authorization_reference="AUTH-MINE-001",
+            total_cost_excl_vat=10.0,
+            total_cost_incl_vat=12.4,
+            currency="EUR",
+            eft_data=["EFT-DATA-001", "EFT-DATA-002"],
+            capture_status_code="SUCCESS",
+        )
         db_fac(fac_id="FAC-MINE-002")
         FinancialAdviceConfirmationFactory(
             fac_id="FAC-OTHER-001",
@@ -663,9 +850,21 @@ class TestFACListAPI:
 
         response = client.get(FACS_URL, **ocpi_headers)
 
-        data = response.json()
         assert response.status_code == status.HTTP_200_OK
-        returned_ids = [f["id"] for f in data["data"]]
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert "status_message" not in body
+        mine = next(f for f in body["data"] if f["id"] == "FAC-MINE-001")
+        assert mine["authorization_reference"] == "AUTH-MINE-001"
+        assert mine["total_costs"]["excl_vat"] == 10.0
+        assert mine["total_costs"]["incl_vat"] == 12.4
+        assert mine["currency"] == "EUR"
+        assert mine["eft_data"] == ["EFT-DATA-001", "EFT-DATA-002"]
+        assert mine["capture_status_code"] == "SUCCESS"
+        assert mine["capture_status_message"] is None
+        assert "last_updated" in mine
+        assert "fac_id" not in mine
+        returned_ids = [f["id"] for f in body["data"]]
         assert "FAC-MINE-001" in returned_ids
         assert "FAC-MINE-002" in returned_ids
         assert "FAC-OTHER-001" not in returned_ids
@@ -689,6 +888,9 @@ class TestTerminalPostEdgeCases:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not Terminal.objects.filter(customer_reference="CUST-NO-ID").exists()
 
     def test_post_terminal_with_partial_coordinates_missing_longitude_returns_400(
@@ -702,6 +904,9 @@ class TestTerminalPostEdgeCases:
         response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-PARTIAL-COORD").exists()
 
     def test_post_terminal_with_partial_coordinates_missing_latitude_returns_400(
@@ -715,6 +920,9 @@ class TestTerminalPostEdgeCases:
         response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-PARTIAL-LAT").exists()
 
     def test_post_terminal_response_has_no_coordinates_key_when_no_coordinates_provided(
@@ -727,9 +935,11 @@ class TestTerminalPostEdgeCases:
             **ocpi_headers,
         )
 
-        data = response.json()
+        body = response.json()
         assert response.status_code == status.HTTP_201_CREATED
-        assert "coordinates" not in data["data"]
+        assert body["status_code"] == 1000
+        assert "timestamp" in body
+        assert "coordinates" not in body["data"]
 
     def test_post_terminal_with_null_coordinates_returns_201_without_coordinates(
         self, client, ptp_credentialsrole, ocpi_headers
@@ -738,8 +948,11 @@ class TestTerminalPostEdgeCases:
 
         response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
 
+        body = response.json()
         assert response.status_code == status.HTTP_201_CREATED
-        assert "coordinates" not in response.json()["data"]
+        assert body["status_code"] == 1000
+        assert "timestamp" in body
+        assert "coordinates" not in body["data"]
 
     def test_post_terminal_response_includes_empty_location_ids_and_evse_uids(
         self, client, ptp_credentialsrole, ocpi_headers
@@ -751,10 +964,12 @@ class TestTerminalPostEdgeCases:
             **ocpi_headers,
         )
 
-        data = response.json()["data"]
+        body = response.json()
         assert response.status_code == status.HTTP_201_CREATED
-        assert data["location_ids"] == []
-        assert data["evse_uids"] == []
+        assert body["status_code"] == 1000
+        assert "timestamp" in body
+        assert body["data"]["location_ids"] == []
+        assert body["data"]["evse_uids"] == []
 
 
 @pytest.mark.django_db
@@ -771,6 +986,17 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-NO-INCLVAT"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 8.00
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
         fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-NO-INCLVAT")
         assert fac.total_cost_incl_vat is None
 
@@ -785,9 +1011,19 @@ class TestFACPostEdgeCases:
 
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
-        data_out = response.json()["data"]
         assert response.status_code == status.HTTP_201_CREATED
-        assert "incl_vat" not in data_out["total_costs"]
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["status_message"] == "Success"
+        assert "timestamp" in body
+        assert body["data"]["id"] == "FAC-OMIT-INCLVAT"
+        assert body["data"]["authorization_reference"] == "AUTH-API-001"
+        assert body["data"]["total_costs"]["excl_vat"] == 8.00
+        assert "incl_vat" not in body["data"]["total_costs"]
+        assert body["data"]["currency"] == "EUR"
+        assert body["data"]["eft_data"] == ["EFT-001", "EFT-002"]
+        assert body["data"]["capture_status_code"] == "SUCCESS"
+        assert "last_updated" in body["data"]
 
     def test_post_fac_with_invalid_capture_status_code_returns_400(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
@@ -801,6 +1037,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-BAD-STATUS"
         ).exists()
@@ -813,6 +1052,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-BAD-CURRENCY"
         ).exists()
@@ -825,6 +1067,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
 
     def test_post_fac_without_authorization_reference_returns_400(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
@@ -836,6 +1081,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -848,6 +1096,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-API-001"
         ).exists()
@@ -860,6 +1111,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-EMPTY-EFT"
         ).exists()
@@ -876,6 +1130,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-NEG-EXCL"
         ).exists()
@@ -892,6 +1149,9 @@ class TestFACPostEdgeCases:
         response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert not FinancialAdviceConfirmation.objects.filter(
             fac_id="FAC-VAT-INVALID"
         ).exists()
@@ -914,6 +1174,9 @@ class TestFACPostEdgeCases:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+        body = response.json()
+        assert body["status_code"] == 2001
+        assert "timestamp" in body
         assert (
             FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").count()
             == 1
@@ -942,8 +1205,8 @@ class TestTerminalGetEdgeCases:
 
         data = response.json()["data"]
         assert response.status_code == status.HTTP_200_OK
-        assert "location_ids" in data
-        assert "evse_uids" in data
+        assert data["location_ids"] == []
+        assert data["evse_uids"] == []
 
 
 @pytest.mark.django_db
