@@ -1,0 +1,971 @@
+import base64
+
+import pytest
+from django.utils import timezone
+from rest_framework import status
+
+from ocpi22.choices import OcpiRolesEnum
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
+from ocpi22.tests.factories import (
+    CredentialsFactory,
+    CredentialsRoleFactory,
+    TerminalFactory,
+    FinancialAdviceConfirmationFactory,
+)
+
+TERMINALS_URL = "/ocpi/2.2.1/payments/terminals/"
+FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations/"
+
+
+@pytest.fixture
+def ptp_credentials():
+    return CredentialsFactory()
+
+
+@pytest.fixture
+def ptp_credentialsrole(ptp_credentials):
+    return CredentialsRoleFactory(
+        role=OcpiRolesEnum.PTP,
+        country_code="NL",
+        party_id="PAY",
+        credentials=ptp_credentials,
+    )
+
+
+@pytest.fixture
+def other_ptp_credentials():
+    return CredentialsFactory()
+
+
+@pytest.fixture
+def other_ptp_credentialsrole(other_ptp_credentials):
+    return CredentialsRoleFactory(
+        role=OcpiRolesEnum.PTP,
+        country_code="DE",
+        party_id="OTH",
+        credentials=other_ptp_credentials,
+    )
+
+
+@pytest.fixture
+def cpo_credentials():
+    return CredentialsFactory()
+
+
+@pytest.fixture
+def cpo_credentialsrole(cpo_credentials):
+    return CredentialsRoleFactory(
+        role=OcpiRolesEnum.CPO,
+        country_code="FI",
+        party_id="CPO",
+        credentials=cpo_credentials,
+    )
+
+
+@pytest.fixture
+def ocpi_headers(ptp_credentials, ptp_credentialsrole):
+    return {
+        "HTTP_AUTHORIZATION": f"Token {base64.b64encode(ptp_credentials.ours.encode()).decode()}",
+        "HTTP_OCPI_FROM_COUNTRY_CODE": "NL",
+        "HTTP_OCPI_FROM_PARTY_ID": "PAY",
+        "HTTP_OCPI_TO_COUNTRY_CODE": "FI",
+        "HTTP_OCPI_TO_PARTY_ID": "CPO",
+        "CONTENT_TYPE": "application/json",
+    }
+
+
+@pytest.fixture
+def cpo_ocpi_headers(cpo_credentials, cpo_credentialsrole):
+    return {
+        "HTTP_AUTHORIZATION": f"Token {base64.b64encode(cpo_credentials.ours.encode()).decode()}",
+        "HTTP_OCPI_FROM_COUNTRY_CODE": "FI",
+        "HTTP_OCPI_FROM_PARTY_ID": "CPO",
+        "HTTP_OCPI_TO_COUNTRY_CODE": "FI",
+        "HTTP_OCPI_TO_PARTY_ID": "CPO",
+        "CONTENT_TYPE": "application/json",
+    }
+
+
+@pytest.fixture
+def valid_terminal_data():
+    return {
+        "terminal_id": "TERM-API-001",
+        "customer_reference": "CUST-API-001",
+    }
+
+
+@pytest.fixture
+def valid_terminal_data_with_coordinates():
+    return {
+        "terminal_id": "TERM-API-002",
+        "customer_reference": "CUST-API-002",
+        "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
+        "address": "Keizersgracht 100",
+        "city": "Amsterdam",
+        "postal_code": "1015AA",
+        "country": "NLD",
+    }
+
+
+@pytest.fixture
+def valid_fac_data():
+    return {
+        "id": "FAC-API-001",
+        "authorization_reference": "AUTH-API-001",
+        "total_costs": {"excl_vat": 10.50, "incl_vat": 12.60},
+        "currency": "EUR",
+        "eft_data": ["EFT-001", "EFT-002"],
+        "capture_status_code": "SUCCESS",
+        "last_updated": timezone.now().isoformat(),
+    }
+
+
+@pytest.fixture
+def db_terminal(ptp_credentialsrole):
+    def _create(**kwargs):
+        kwargs.setdefault("credentials", ptp_credentialsrole.credentials)
+        return TerminalFactory(**kwargs)
+
+    return _create
+
+
+@pytest.fixture
+def db_fac(ptp_credentialsrole):
+    def _create(**kwargs):
+        kwargs.setdefault("credentials", ptp_credentialsrole.credentials)
+        return FinancialAdviceConfirmationFactory(**kwargs)
+
+    return _create
+
+
+@pytest.mark.django_db
+class TestTerminalPostAPI:
+    def test_post_terminal_creates_terminal_and_returns_201(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_terminal_data
+    ):
+        response = client.post(
+            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"]["terminal_id"] == "TERM-API-001"
+        assert Terminal.objects.filter(terminal_id="TERM-API-001").exists()
+
+    def test_post_terminal_persists_with_correct_credentials(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_terminal_data
+    ):
+        client.post(
+            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+        )
+
+        terminal = Terminal.objects.get(terminal_id="TERM-API-001")
+        assert terminal.credentials == ptp_credentialsrole.credentials
+
+    def test_post_terminal_with_coordinates_persists_flat_fields(
+        self,
+        client,
+        ptp_credentialsrole,
+        ocpi_headers,
+        valid_terminal_data_with_coordinates,
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data=valid_terminal_data_with_coordinates,
+            format="json",
+            **ocpi_headers,
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        terminal = Terminal.objects.get(terminal_id="TERM-API-002")
+        assert terminal.latitude == "52.372294"
+        assert terminal.longitude == "4.898632"
+
+    def test_post_terminal_response_contains_nested_coordinates(
+        self,
+        client,
+        ptp_credentialsrole,
+        ocpi_headers,
+        valid_terminal_data_with_coordinates,
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data=valid_terminal_data_with_coordinates,
+            format="json",
+            **ocpi_headers,
+        )
+
+        data = response.json()
+        assert data["data"]["coordinates"]["latitude"] == "52.372294"
+        assert data["data"]["coordinates"]["longitude"] == "4.898632"
+
+    def test_post_terminal_duplicate_returns_400(
+        self,
+        client,
+        ptp_credentialsrole,
+        ocpi_headers,
+        valid_terminal_data,
+        db_terminal,
+    ):
+        db_terminal(terminal_id="TERM-API-001")
+
+        response = client.post(
+            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert Terminal.objects.filter(terminal_id="TERM-API-001").count() == 1
+
+    def test_post_terminal_with_globally_duplicate_terminal_id_returns_400(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+        valid_terminal_data,
+    ):
+        TerminalFactory(
+            terminal_id="TERM-API-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.post(
+            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert Terminal.objects.filter(terminal_id="TERM-API-001").count() == 1
+
+    def test_post_terminal_with_invalid_coordinates_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-BAD-001",
+            "coordinates": {"latitude": "999.0", "longitude": "4.898632"},
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Terminal.objects.filter(terminal_id="TERM-BAD-001").exists()
+
+    def test_post_terminal_without_auth_returns_401(self, client, valid_terminal_data):
+        response = client.post(TERMINALS_URL, data=valid_terminal_data, format="json")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_post_terminal_with_cpo_role_returns_400(
+        self, client, cpo_credentialsrole, cpo_ocpi_headers, valid_terminal_data
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data=valid_terminal_data,
+            format="json",
+            **cpo_ocpi_headers,
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Terminal.objects.filter(terminal_id="TERM-API-001").exists()
+
+
+@pytest.mark.django_db
+class TestTerminalGetAPI:
+    def test_get_terminal_returns_200_with_terminal_data(
+        self, client, ptp_credentialsrole, ocpi_headers, db_terminal
+    ):
+        db_terminal(terminal_id="TERM-GET-001", customer_reference="CUST-GET-001")
+
+        response = client.get(f"{TERMINALS_URL}TERM-GET-001", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"]["terminal_id"] == "TERM-GET-001"
+
+    def test_get_terminal_returns_404_when_not_found(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(f"{TERMINALS_URL}NONEXISTENT", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_terminal_returns_404_when_terminal_belongs_to_different_party(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+    ):
+        TerminalFactory(
+            terminal_id="TERM-OTHER-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.get(f"{TERMINALS_URL}TERM-OTHER-001", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_terminal_without_auth_returns_401(self, client, db_terminal):
+        db_terminal(terminal_id="TERM-NOAUTH-001")
+
+        response = client.get(f"{TERMINALS_URL}TERM-NOAUTH-001")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_terminal_response_contains_coordinates_as_nested_object(
+        self, client, ptp_credentialsrole, ocpi_headers, db_terminal
+    ):
+        db_terminal(
+            terminal_id="TERM-COORD-001",
+            latitude="60.169857",
+            longitude="24.938379",
+        )
+
+        response = client.get(f"{TERMINALS_URL}TERM-COORD-001", **ocpi_headers)
+
+        data = response.json()
+        assert data["data"]["coordinates"]["latitude"] == "60.169857"
+        assert data["data"]["coordinates"]["longitude"] == "24.938379"
+
+
+@pytest.mark.django_db
+class TestTerminalListAPI:
+    def test_list_terminals_returns_200_with_empty_list(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(TERMINALS_URL, **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"] == []
+
+    def test_list_terminals_returns_only_terminals_for_authenticated_party(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+        db_terminal,
+    ):
+        db_terminal(terminal_id="TERM-MINE-001")
+        db_terminal(terminal_id="TERM-MINE-002")
+        TerminalFactory(
+            terminal_id="TERM-OTHER-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.get(TERMINALS_URL, **ocpi_headers)
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = [t["terminal_id"] for t in data["data"]]
+        assert "TERM-MINE-001" in returned_ids
+        assert "TERM-MINE-002" in returned_ids
+        assert "TERM-OTHER-001" not in returned_ids
+
+    def test_list_terminals_without_auth_returns_401(self, client):
+        response = client.get(TERMINALS_URL)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestFACPostAPI:
+    def test_post_fac_creates_fac_and_returns_201(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"]["id"] == "FAC-API-001"
+        assert FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").exists()
+
+    def test_post_fac_persists_with_correct_credentials(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        client.post(FACS_URL, data=valid_fac_data, format="json", **ocpi_headers)
+
+        fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
+        assert fac.credentials == ptp_credentialsrole.credentials
+
+    def test_post_fac_maps_spec_id_field_to_fac_id_model_field(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        client.post(FACS_URL, data=valid_fac_data, format="json", **ocpi_headers)
+
+        assert FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").exists()
+
+    def test_post_fac_response_uses_id_not_fac_id(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        data = response.json()
+        assert "id" in data["data"]
+        assert "fac_id" not in data["data"]
+
+    def test_post_fac_response_has_nested_total_costs_with_currency_at_root(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        data = response.json()["data"]
+        assert data["total_costs"]["excl_vat"] == 10.50
+        assert data["total_costs"]["incl_vat"] == 12.60
+        assert data["currency"] == "EUR"
+        assert "currency" not in data["total_costs"]
+
+    def test_post_fac_links_terminal_when_terminal_id_provided(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data, db_terminal
+    ):
+        terminal = db_terminal(terminal_id="TERM-FOR-FAC-001")
+        data = {**valid_fac_data, "terminal_id": "TERM-FOR-FAC-001"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
+        assert fac.terminal == terminal
+
+    def test_post_fac_has_no_terminal_when_terminal_id_not_provided(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
+        assert fac.terminal is None
+
+    def test_post_fac_returns_400_when_terminal_id_does_not_exist(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {**valid_fac_data, "terminal_id": "NONEXISTENT-TERM"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    def test_post_fac_returns_400_when_terminal_belongs_to_different_party(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+        valid_fac_data,
+    ):
+        TerminalFactory(
+            terminal_id="TERM-OTHER-PARTY",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+        data = {**valid_fac_data, "terminal_id": "TERM-OTHER-PARTY"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    def test_post_fac_duplicate_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data, db_fac
+    ):
+        db_fac(fac_id="FAC-API-001")
+
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert (
+            FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").count()
+            == 1
+        )
+
+    def test_post_fac_with_missing_total_costs_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {k: v for k, v in valid_fac_data.items() if k != "total_costs"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    def test_post_fac_with_missing_currency_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {k: v for k, v in valid_fac_data.items() if k != "currency"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_post_fac_without_auth_returns_401(self, client, valid_fac_data):
+        response = client.post(FACS_URL, data=valid_fac_data, format="json")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_post_fac_with_cpo_role_returns_400(
+        self, client, cpo_credentialsrole, cpo_ocpi_headers, valid_fac_data
+    ):
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **cpo_ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    @pytest.mark.parametrize(
+        "capture_status_code", ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"]
+    )
+    def test_post_fac_accepts_all_valid_capture_status_codes(
+        self,
+        client,
+        ptp_credentialsrole,
+        ocpi_headers,
+        valid_fac_data,
+        capture_status_code,
+    ):
+        data = {
+            **valid_fac_data,
+            "id": f"FAC-STATUS-{capture_status_code}",
+            "capture_status_code": capture_status_code,
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert FinancialAdviceConfirmation.objects.filter(
+            fac_id=f"FAC-STATUS-{capture_status_code}",
+            capture_status_code=capture_status_code,
+        ).exists()
+
+
+@pytest.mark.django_db
+class TestFACGetAPI:
+    def test_get_fac_returns_200_with_fac_data(
+        self, client, ptp_credentialsrole, ocpi_headers, db_fac
+    ):
+        db_fac(fac_id="FAC-GET-001", authorization_reference="AUTH-GET-001")
+
+        response = client.get(f"{FACS_URL}FAC-GET-001", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"]["id"] == "FAC-GET-001"
+
+    def test_get_fac_response_uses_id_not_fac_id(
+        self, client, ptp_credentialsrole, ocpi_headers, db_fac
+    ):
+        db_fac(fac_id="FAC-GET-002")
+
+        response = client.get(f"{FACS_URL}FAC-GET-002", **ocpi_headers)
+
+        data = response.json()
+        assert "id" in data["data"]
+        assert "fac_id" not in data["data"]
+
+    def test_get_fac_returns_404_when_not_found(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(f"{FACS_URL}NONEXISTENT", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_fac_returns_404_when_fac_belongs_to_different_party(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+    ):
+        FinancialAdviceConfirmationFactory(
+            fac_id="FAC-OTHER-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.get(f"{FACS_URL}FAC-OTHER-001", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_fac_without_auth_returns_401(self, client, db_fac):
+        db_fac(fac_id="FAC-NOAUTH-001")
+
+        response = client.get(f"{FACS_URL}FAC-NOAUTH-001")
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_get_fac_response_has_nested_total_costs_with_currency_at_root(
+        self, client, ptp_credentialsrole, ocpi_headers, db_fac
+    ):
+        db_fac(
+            fac_id="FAC-COSTS-001",
+            total_cost_excl_vat=25.00,
+            total_cost_incl_vat=31.00,
+            currency="NOK",
+        )
+
+        response = client.get(f"{FACS_URL}FAC-COSTS-001", **ocpi_headers)
+
+        data = response.json()["data"]
+        assert data["total_costs"]["excl_vat"] == 25.00
+        assert data["total_costs"]["incl_vat"] == 31.00
+        assert data["currency"] == "NOK"
+        assert "currency" not in data["total_costs"]
+
+
+@pytest.mark.django_db
+class TestFACListAPI:
+    def test_list_facs_returns_200_with_empty_list(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(FACS_URL, **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["status_code"] == 1000
+        assert data["data"] == []
+
+    def test_list_facs_returns_only_facs_for_authenticated_party(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+        db_fac,
+    ):
+        db_fac(fac_id="FAC-MINE-001")
+        db_fac(fac_id="FAC-MINE-002")
+        FinancialAdviceConfirmationFactory(
+            fac_id="FAC-OTHER-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.get(FACS_URL, **ocpi_headers)
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = [f["id"] for f in data["data"]]
+        assert "FAC-MINE-001" in returned_ids
+        assert "FAC-MINE-002" in returned_ids
+        assert "FAC-OTHER-001" not in returned_ids
+
+    def test_list_facs_without_auth_returns_401(self, client):
+        response = client.get(FACS_URL)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestTerminalPostEdgeCases:
+    def test_post_terminal_without_terminal_id_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data={"customer_reference": "CUST-NO-ID"},
+            format="json",
+            **ocpi_headers,
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Terminal.objects.filter(customer_reference="CUST-NO-ID").exists()
+
+    def test_post_terminal_with_partial_coordinates_missing_longitude_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-PARTIAL-COORD",
+            "coordinates": {"latitude": "60.169857"},
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Terminal.objects.filter(terminal_id="TERM-PARTIAL-COORD").exists()
+
+    def test_post_terminal_with_partial_coordinates_missing_latitude_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-PARTIAL-LAT",
+            "coordinates": {"longitude": "24.938379"},
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not Terminal.objects.filter(terminal_id="TERM-PARTIAL-LAT").exists()
+
+    def test_post_terminal_response_has_no_coordinates_key_when_no_coordinates_provided(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data={"terminal_id": "TERM-NO-COORD"},
+            format="json",
+            **ocpi_headers,
+        )
+
+        data = response.json()
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "coordinates" not in data["data"]
+
+    def test_post_terminal_with_null_coordinates_returns_201_without_coordinates(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {"terminal_id": "TERM-NULL-COORD", "coordinates": None}
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "coordinates" not in response.json()["data"]
+
+    def test_post_terminal_response_includes_empty_location_ids_and_evse_uids(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.post(
+            TERMINALS_URL,
+            data={"terminal_id": "TERM-LOC-FIELDS"},
+            format="json",
+            **ocpi_headers,
+        )
+
+        data = response.json()["data"]
+        assert response.status_code == status.HTTP_201_CREATED
+        assert data["location_ids"] == []
+        assert data["evse_uids"] == []
+
+
+@pytest.mark.django_db
+class TestFACPostEdgeCases:
+    def test_post_fac_without_incl_vat_returns_201(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            **valid_fac_data,
+            "id": "FAC-NO-INCLVAT",
+            "total_costs": {"excl_vat": 8.00},
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-NO-INCLVAT")
+        assert fac.total_cost_incl_vat is None
+
+    def test_post_fac_response_omits_incl_vat_when_not_provided(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            **valid_fac_data,
+            "id": "FAC-OMIT-INCLVAT",
+            "total_costs": {"excl_vat": 8.00},
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        data_out = response.json()["data"]
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "incl_vat" not in data_out["total_costs"]
+
+    def test_post_fac_with_invalid_capture_status_code_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            **valid_fac_data,
+            "id": "FAC-BAD-STATUS",
+            "capture_status_code": "INVALID_CODE",
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-BAD-STATUS"
+        ).exists()
+
+    def test_post_fac_with_invalid_currency_code_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {**valid_fac_data, "id": "FAC-BAD-CURRENCY", "currency": "INVALID"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-BAD-CURRENCY"
+        ).exists()
+
+    def test_post_fac_without_id_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {k: v for k, v in valid_fac_data.items() if k != "id"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_post_fac_without_authorization_reference_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            k: v for k, v in valid_fac_data.items() if k != "authorization_reference"
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    def test_post_fac_without_last_updated_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {k: v for k, v in valid_fac_data.items() if k != "last_updated"}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-API-001"
+        ).exists()
+
+    def test_post_fac_with_empty_eft_data_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {**valid_fac_data, "id": "FAC-EMPTY-EFT", "eft_data": []}
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-EMPTY-EFT"
+        ).exists()
+
+    def test_post_fac_with_negative_excl_vat_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            **valid_fac_data,
+            "id": "FAC-NEG-EXCL",
+            "total_costs": {"excl_vat": -1.00, "incl_vat": -0.50},
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-NEG-EXCL"
+        ).exists()
+
+    def test_post_fac_with_incl_vat_less_than_excl_vat_returns_400(
+        self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
+    ):
+        data = {
+            **valid_fac_data,
+            "id": "FAC-VAT-INVALID",
+            "total_costs": {"excl_vat": 20.00, "incl_vat": 10.00},
+        }
+
+        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert not FinancialAdviceConfirmation.objects.filter(
+            fac_id="FAC-VAT-INVALID"
+        ).exists()
+
+    def test_post_fac_with_cross_party_duplicate_fac_id_returns_400(
+        self,
+        client,
+        ptp_credentialsrole,
+        other_ptp_credentialsrole,
+        ocpi_headers,
+        valid_fac_data,
+    ):
+        FinancialAdviceConfirmationFactory(
+            fac_id="FAC-API-001",
+            credentials=other_ptp_credentialsrole.credentials,
+        )
+
+        response = client.post(
+            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert (
+            FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").count()
+            == 1
+        )
+
+
+@pytest.mark.django_db
+class TestTerminalGetEdgeCases:
+    def test_get_terminal_response_has_no_coordinates_when_lat_lon_null(
+        self, client, ptp_credentialsrole, ocpi_headers, db_terminal
+    ):
+        db_terminal(terminal_id="TERM-NO-LATLON", latitude=None, longitude=None)
+
+        response = client.get(f"{TERMINALS_URL}TERM-NO-LATLON", **ocpi_headers)
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert "coordinates" not in data["data"]
+
+    def test_get_terminal_response_includes_location_ids_and_evse_uids(
+        self, client, ptp_credentialsrole, ocpi_headers, db_terminal
+    ):
+        db_terminal(terminal_id="TERM-WITH-LOCS")
+
+        response = client.get(f"{TERMINALS_URL}TERM-WITH-LOCS", **ocpi_headers)
+
+        data = response.json()["data"]
+        assert response.status_code == status.HTTP_200_OK
+        assert "location_ids" in data
+        assert "evse_uids" in data
+
+
+@pytest.mark.django_db
+class TestListPaginationHeaders:
+    def test_list_terminals_response_includes_x_total_count_header(
+        self, client, ptp_credentialsrole, ocpi_headers, db_terminal
+    ):
+        db_terminal(terminal_id="TERM-PAGE-001")
+        db_terminal(terminal_id="TERM-PAGE-002")
+
+        response = client.get(TERMINALS_URL, **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "X-Total-Count" in response
+
+    def test_list_facs_response_includes_x_total_count_header(
+        self, client, ptp_credentialsrole, ocpi_headers, db_fac
+    ):
+        db_fac(fac_id="FAC-PAGE-001")
+        db_fac(fac_id="FAC-PAGE-002")
+
+        response = client.get(FACS_URL, **ocpi_headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "X-Total-Count" in response

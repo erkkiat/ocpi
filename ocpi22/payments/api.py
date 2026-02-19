@@ -75,7 +75,9 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
         return "Payment Terminals"
 
     def get_queryset(self):
-        credentialsrole = getattr(self.request, "credentialsrole", None)
+        credentialsrole = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
         if credentialsrole:
             return self.service.get_terminals(credentialsrole)
         return Terminal.objects.none()
@@ -113,6 +115,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
             )
 
     @ocpi_exception_handler
+    @requires_sender_role(OcpiRolesEnum.PTP)
     @requires_credentialsrole
     def get(self, request, credentialsrole, terminal_id: str, **kwargs):
         terminal = get_object_or_404(
@@ -135,7 +138,9 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
         return "Financial Advice Confirmations"
 
     def get_queryset(self):
-        credentialsrole = getattr(self.request, "credentialsrole", None)
+        credentialsrole = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
         if credentialsrole:
             return self.service.get_facs(credentialsrole)
         return FinancialAdviceConfirmation.objects.none()
@@ -183,6 +188,7 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
             )
 
     @ocpi_exception_handler
+    @requires_sender_role(OcpiRolesEnum.PTP)
     @requires_credentialsrole
     def get(self, request, credentialsrole, fac_id: str, **kwargs):
         fac = get_object_or_404(

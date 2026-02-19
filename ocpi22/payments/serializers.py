@@ -25,7 +25,11 @@ from rest_framework import serializers
 
 from generic.validators import validate_latitude, validate_longitude
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
-from ocpi22.payments.validators import validate_currency_code
+from ocpi22.payments.validators import (
+    validate_ci_ascii_string,
+    validate_currency_code,
+    validate_total_costs,
+)
 
 
 class GeoLocationSerializer(serializers.Serializer):
@@ -144,7 +148,7 @@ class FinancialAdviceConfirmationSerializer(serializers.ModelSerializer):
         currency:                str   (root-level)
     """
 
-    id = serializers.CharField(source="fac_id")
+    id = serializers.CharField(source="fac_id", validators=[validate_ci_ascii_string])
     total_costs = PriceSerializer(required=True, write_only=True)
     currency = serializers.CharField(
         max_length=3,
@@ -172,6 +176,13 @@ class FinancialAdviceConfirmationSerializer(serializers.ModelSerializer):
         validated_data["total_cost_incl_vat"] = cost_data.get("incl_vat")
 
         return validated_data
+
+    def validate(self, attrs):
+        validate_total_costs(
+            attrs.get("total_cost_excl_vat"),
+            attrs.get("total_cost_incl_vat"),
+        )
+        return attrs
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
