@@ -39,7 +39,7 @@ class CommandsViewSet(GenericViewSet):
     permission_classes = [OCPIPermission]
 
     @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.EMSP)
+    @requires_sender_role([OcpiRolesEnum.EMSP, OcpiRolesEnum.PTP])
     def start_session(self, request, **kwargs):
         if not request.data:
             return OCPIResponse(
@@ -89,7 +89,7 @@ class CommandsViewSet(GenericViewSet):
             )
 
     @ocpi_exception_handler
-    @requires_sender_role(OcpiRolesEnum.EMSP)
+    @requires_sender_role([OcpiRolesEnum.EMSP, OcpiRolesEnum.PTP])
     def stop_session(self, request, **kwargs):
         if not request.data:
             return OCPIResponse(
