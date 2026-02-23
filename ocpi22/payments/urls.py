@@ -9,9 +9,14 @@ Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 
 from django.urls import path
 
-from ocpi22.payments.api import TerminalViewSet, FinancialAdviceConfirmationViewSet
+from ocpi22.payments.api import (
+    TerminalViewSet,
+    FinancialAdviceConfirmationViewSet,
+    PaymentsRootView,
+)
 
 urlpatterns = [
+    path("", PaymentsRootView.as_view({"get": "list"}), name="payments-list"),
     # Terminals
     path(
         "terminals/",
