@@ -80,6 +80,11 @@ def get_endpoints_dict(request=None, version=None) -> dict:
                 url=build_absolute_uri(reverse("payments-list", args=[version])),
             ),
             dict(
+                identifier="payments",
+                role=S,
+                url=build_absolute_uri(reverse("payments-list", args=[version])),
+            ),
+            dict(
                 identifier="tariffs",
                 role=S,
                 url=build_absolute_uri(reverse("tariff-list", args=[version])),

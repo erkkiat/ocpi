@@ -1,38 +1,36 @@
-import pytest
-
 from ocpi22.credentials.versions import get_endpoints_dict
 
 
-def _endpoints_by_module(version="2.2.1") -> dict:
+def _payments_endpoints(version="2.2.1") -> list:
     result = get_endpoints_dict(version=version)
-    return {e["identifier"]: e for e in result["endpoints"]}
+    return [e for e in result["endpoints"] if e["identifier"] == "payments"]
 
 
-@pytest.mark.django_db
 class TestGetEndpointsDictPaymentsEntry:
-    def test_get_endpoints_dict_includes_payments_module_for_cpo(self):
-        endpoints = _endpoints_by_module()
+    def test_get_endpoints_dict_includes_payments_receiver_and_sender_for_cpo(self):
+        payments = _payments_endpoints()
+        roles = {e["role"] for e in payments}
 
-        assert "payments" in endpoints
+        assert roles == {"RECEIVER", "SENDER"}
 
-    def test_get_endpoints_dict_payments_module_has_receiver_role(self):
-        endpoints = _endpoints_by_module()
+    def test_get_endpoints_dict_payments_receiver_url_points_to_payments_root(self):
+        payments = _payments_endpoints()
+        receiver = next(e for e in payments if e["role"] == "RECEIVER")
 
-        assert endpoints["payments"]["role"] == "RECEIVER"
+        assert receiver["url"].endswith("/payments/")
 
-    def test_get_endpoints_dict_payments_module_url_points_to_payments_root(self):
-        endpoints = _endpoints_by_module()
+    def test_get_endpoints_dict_payments_sender_url_points_to_payments_root(self):
+        payments = _payments_endpoints()
+        sender = next(e for e in payments if e["role"] == "SENDER")
 
-        assert endpoints["payments"]["url"].endswith("/payments/")
+        assert sender["url"].endswith("/payments/")
 
-    def test_get_endpoints_dict_payments_module_url_does_not_contain_terminals(self):
-        endpoints = _endpoints_by_module()
+    def test_get_endpoints_dict_payments_urls_do_not_contain_terminals(self):
+        payments = _payments_endpoints()
 
-        assert "terminals" not in endpoints["payments"]["url"]
+        assert all("terminals" not in e["url"] for e in payments)
 
-    def test_get_endpoints_dict_payments_module_url_does_not_contain_financial_advice(
-        self,
-    ):
-        endpoints = _endpoints_by_module()
+    def test_get_endpoints_dict_payments_urls_do_not_contain_financial_advice(self):
+        payments = _payments_endpoints()
 
-        assert "financial-advice-confirmations" not in endpoints["payments"]["url"]
+        assert all("financial-advice-confirmations" not in e["url"] for e in payments)
