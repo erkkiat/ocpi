@@ -217,6 +217,6 @@ class PaymentsRootView(GenericViewSet):
     def list(self, request, *args, **kwargs):
         return OCPIResponse(
             http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
-            status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
+            status_code=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
             status_message="Please use /payments/terminals/ or /payments/financial-advice-confirmations/",
         )

@@ -1252,7 +1252,7 @@ class TestPaymentsRootView:
         response = client.get(PAYMENTS_ROOT_URL, **ocpi_headers)
 
         body = response.json()
-        assert body["status_code"] == 3000
+        assert body["status_code"] == 2000
 
     def test_get_payments_root_without_auth_returns_401(self, client):
         response = client.get(PAYMENTS_ROOT_URL)
