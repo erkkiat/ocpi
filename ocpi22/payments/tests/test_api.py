@@ -1232,3 +1232,29 @@ class TestListPaginationHeaders:
 
         assert response.status_code == status.HTTP_200_OK
         assert "X-Total-Count" in response
+
+
+PAYMENTS_ROOT_URL = "/ocpi/2.2.1/payments/"
+
+
+@pytest.mark.django_db
+class TestPaymentsRootView:
+    def test_get_payments_root_returns_405(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(PAYMENTS_ROOT_URL, **ocpi_headers)
+
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    def test_get_payments_root_returns_ocpi_error_status_code(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        response = client.get(PAYMENTS_ROOT_URL, **ocpi_headers)
+
+        body = response.json()
+        assert body["status_code"] == 3000
+
+    def test_get_payments_root_without_auth_returns_401(self, client):
+        response = client.get(PAYMENTS_ROOT_URL)
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

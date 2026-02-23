@@ -197,3 +197,26 @@ class FinancialAdviceConfirmationViewSet(OCPIListModelMixin, GenericViewSet):
             credentials=credentialsrole.credentials,
         )
         return OCPIResponse(FinancialAdviceConfirmationSerializer(fac).data)
+
+
+class PaymentsRootView(GenericViewSet):
+    """
+    Stub view for the payments module root URL (/payments/).
+
+    This view exists solely to provide a named URL ("payments-list") that can be
+    reversed during the OCPI credentials handshake in get_endpoints_dict(). The
+    payments module root has no defined behaviour in the EVRF DirectPayment spec —
+    counterparties should use /payments/terminals/ and
+    /payments/financial-advice-confirmations/ directly.
+
+    The queryset is required by DjangoModelPermissions which is applied globally.
+    """
+
+    queryset = Terminal.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        return OCPIResponse(
+            http_status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            status_code=Ocpi.ServerError.GENERIC_SERVER_ERROR,
+            status_message="Please use /payments/terminals/ or /payments/financial-advice-confirmations/",
+        )
