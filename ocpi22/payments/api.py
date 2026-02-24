@@ -25,16 +25,20 @@ Roles:
 
 from logging import getLogger
 
+from ninja import Router
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.viewsets import GenericViewSet
 
+from custom_ninja_api import CustomNinjaAPI
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
 )
+from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
+from ocpi22.payments.schemas import TerminalIn, TerminalOut
 from ocpi22.payments.serializers import (
     TerminalSerializer,
     FinancialAdviceConfirmationSerializer,
@@ -220,3 +224,30 @@ class PaymentsRootView(GenericViewSet):
             status_code=Ocpi.ClientError.GENERIC_CLIENT_ERROR,
             status_message="Please use /payments/terminals/ or /payments/financial-advice-confirmations/",
         )
+
+
+payments_ninja_api = CustomNinjaAPI(
+    auth=NinjaBasicAuth(),
+    urls_namespace="payments",
+    title="Payments Ninja API",
+)
+
+router = Router()
+payments_ninja_api.add_router("/", router)
+service = TerminalService()
+
+
+@router.put("/terminals", response={200: TerminalOut, 404: dict})
+def put_terminal(request, payload: TerminalIn):
+    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+    terminal = service._update_terminal(terminal, payload, partial=False)
+    service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=True))
+    return 200, terminal
+
+
+@router.patch("/terminals", response={200: TerminalOut, 404: dict})
+def patch_terminal(request, payload: TerminalIn):
+    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+    terminal = service._update_terminal(terminal, payload, partial=True)
+    service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
+    return 200, terminal
