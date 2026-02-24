@@ -4,7 +4,9 @@ from typing import Optional
 from django.db import transaction
 from django.db.models import QuerySet
 
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.location import Location, Evse
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
     FinancialAdviceConfirmationAlreadyExistsError,
@@ -15,6 +17,9 @@ from ocpi22.payments.repositories import (
     TerminalRepository,
     FinancialAdviceConfirmationRepository,
 )
+from ocpi22.payments.schemas import TerminalIn
+from ocpi22.tasks import send_ocpi_request
+from ocpiconnector.ocpi_identities import get_our_party
 
 logger = getLogger(__name__)
 
@@ -53,6 +58,60 @@ class TerminalService:
         terminal.save()
 
         return terminal
+
+    def _update_terminal(self, terminal: Terminal, payload: TerminalIn, partial: bool = False) -> Terminal:
+        payload_dict = payload.dict(exclude_unset=partial)
+
+        if "customer_reference" in payload_dict:
+            terminal.customer_reference = payload_dict["customer_reference"]
+        if "invoice_base_url" in payload_dict:
+            terminal.invoice_base_url = payload_dict["invoice_base_url"]
+        if "last_updated" in payload_dict:
+            terminal.last_updated = payload_dict["last_updated"]
+
+        if "location_uids" in payload_dict:
+            locations = Location.objects.filter(uid__in=payload_dict["location_uids"])
+            terminal.locations.set(locations)
+
+        if "evse_uids" in payload_dict:
+            evses = Evse.objects.filter(uid__in=payload_dict["evse_uids"])
+            terminal.evses.set(evses)
+
+        terminal.save()
+        return terminal
+
+    def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
+        credentials = terminal.credentials
+        if not credentials or not credentials.url:
+            logger.error(f"Terminal {terminal.terminal_id} has no credentials.")
+            return
+
+        ptp_role = credentials.roles.first()
+        if not ptp_role:
+            logger.error(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
+            return
+        
+
+        sender = get_our_party(OcpiRolesEnum.CPO)
+        if not sender:
+            logger.error(f"Failed to get sender for terminal {terminal.terminal_id}")
+            return
+
+        url = credentials.url + "/terminals/" + terminal.terminal_id
+
+        kwargs = {
+            "data": payload,
+            "url": url,
+            "token_base64": credentials.theirs_base64(),
+            "to_country_code": ptp_role.country_code,
+            "to_party_id": ptp_role.party_id,
+            "from_country_code": sender.country_code,
+            "from_party_id": sender.party_id,
+            "method": method.lower(),
+            "credentials_id": credentials.id,
+        }
+
+        send_ocpi_request.apply_async(kwargs=kwargs)
 
 
 class FinancialAdviceConfirmationService:
