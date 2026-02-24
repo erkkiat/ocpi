@@ -10,7 +10,7 @@ from ocpi22.models.location import Location, Evse
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
     FinancialAdviceConfirmationAlreadyExistsError,
-    FinancialAdviceConfirmationValidationError,
+    FinancialAdviceConfirmationValidationError, TerminalValidationError,
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.repositories import (
@@ -70,16 +70,38 @@ class TerminalService:
         if "last_updated" in payload_dict:
             terminal.last_updated = payload_dict["last_updated"]
 
-        if "location_uids" in payload_dict:
-            locations = Location.objects.filter(uid__in=payload_dict["location_uids"])
+        if "location_uids" in payload_dict and payload_dict["location_uids"]:
+            uids = payload_dict["location_uids"]
+            locations = self._validate_locations(uids)
             terminal.locations.set(locations)
 
-        if "evse_uids" in payload_dict:
-            evses = Evse.objects.filter(uid__in=payload_dict["evse_uids"])
+        if "evse_uids" in payload_dict and payload_dict["evse_uids"]:
+            uids = payload_dict["evse_uids"]
+            evses = self._validate_evses(uids)
             terminal.evses.set(evses)
 
         terminal.save()
         return terminal
+
+    def _validate_locations(self, uids: list[str]) -> list[Location]:
+        locations = []
+        for uid in uids:
+            try:
+                location = Location.objects.get(uid=uid)
+                locations.append(location)
+            except Location.DoesNotExist:
+                raise TerminalValidationError(f"Location with uid {uid} is invalid.")
+        return locations
+
+    def _validate_evses(self, uids: list[str]) -> list[Evse]:
+        evses = []
+        for uid in uids:
+            try:
+                evse = Evse.objects.get(uid=uid)
+                evses.append(evse)
+            except Evse.DoesNotExist:
+                raise TerminalValidationError(f"Evse with uid {uid} is invalid.")
+        return evses
 
     def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
         credentials = terminal.credentials
