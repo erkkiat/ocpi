@@ -1345,6 +1345,26 @@ class TestCPOTerminalAPI:
 
         assert response.status_code == 422
 
+    @pytest.mark.parametrize("method", ["put", "patch"])
+    def test_update_terminal_with_invalid_location_or_evse_uids_returns_422(self, authenticated_user_client, db_terminal, method):
+        terminal = db_terminal(terminal_id="TERM-INVALID-UIDS")
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "location_uids": ["NON-EXISTENT-LOC"],
+            "evse_uids": ["NON-EXISTENT-EVSE"],
+        }
+
+        url = reverse(f"payments:{method}_terminal")
+        function = getattr(authenticated_user_client, method.lower(), None)
+        response = function(
+            url,
+            payload,
+            format="json"
+        )
+
+        assert response.status_code == 422
+        assert "invalid" in response.json().get("message", "").lower()
+
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_put_terminal_locations_updates_database_and_calls_ptp(
             self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
@@ -1385,7 +1405,7 @@ class TestCPOTerminalAPI:
 
         mock_send_ocpi_request.apply_async.assert_called_once()
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
-        assert kwargs["url"] == "https://example.com/ocpi/cpo/2.2/terminals/TERM-001"
+        assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-001"
         assert kwargs["method"] == "put"
         assert kwargs["data"]["location_uids"] == [location.uid]
         assert kwargs["to_party_id"] == "PAY"
@@ -1423,6 +1443,6 @@ class TestCPOTerminalAPI:
 
         mock_send_ocpi_request.apply_async.assert_called_once()
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
-        assert kwargs["url"] == "https://example.com/ocpi/cpo/2.2/terminals/TERM-002"
+        assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-002"
         assert kwargs["method"] == "patch"
         assert kwargs["data"]["location_uids"] == [location.uid]

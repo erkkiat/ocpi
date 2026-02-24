@@ -4,7 +4,8 @@ from typing import Optional
 from django.db import transaction
 from django.db.models import QuerySet
 
-from ocpi22.choices import OcpiRolesEnum
+from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Evse
 from ocpi22.payments.exceptions import (
@@ -113,23 +114,40 @@ class TerminalService:
         if not ptp_role:
             logger.error(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
             return
-        
 
-        sender = get_our_party(OcpiRolesEnum.CPO)
-        if not sender:
+        endpoints = find_endpoints_by_roles(
+            roles=(str(ptp_role.role),),
+            ocpi_module=OcpiModuleEnum.PAYMENTS,
+            endpoint_role=EndpointRoleEnum.RECEIVER.value,
+        )
+
+        url = None
+        for endpoint in endpoints:
+            endpoint_url, _, _, _, endpoint_credentials = endpoint
+            if endpoint_credentials.id == credentials.id:
+                url = endpoint_url
+                break
+
+        if not url:
+            logger.error(f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}")
+            return
+
+        sender_party = get_our_party()
+        if not sender_party:
             logger.error(f"Failed to get sender for terminal {terminal.terminal_id}")
             return
 
-        url = f"{with_trailing_slash(credentials.url)}terminals/{terminal.terminal_id}"
+        url = f"{with_trailing_slash(url)}terminals/{terminal.terminal_id}"
 
         kwargs = {
             "data": payload,
+            "method": method,
             "url": url,
             "token_base64": credentials.theirs_base64(),
             "to_country_code": ptp_role.country_code,
             "to_party_id": ptp_role.party_id,
-            "from_country_code": sender.country_code,
-            "from_party_id": sender.party_id,
+            "from_country_code": sender_party.country_code,
+            "from_party_id": sender_party.party_id,
             "method": method.lower(),
             "credentials_id": credentials.id,
         }
