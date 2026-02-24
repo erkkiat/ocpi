@@ -42,7 +42,7 @@ class TestSendHubjectRequest:
         responses.add(
             responses.PUT,
             TestSendHubjectRequest.HUBJECT_URL,
-            json={"success": True},
+            json={"Result": True, "StatusCode": {"Code": "2000"}},
             status=200,
             match=[matchers.json_params_matcher(payload_json)],
         )
