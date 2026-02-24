@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from ninja import Schema
-from pydantic import Field, StringConstraints
+from pydantic import Field
 
 class GeoLocationSchema(Schema):
     latitude: str = Field(max_length=10)
