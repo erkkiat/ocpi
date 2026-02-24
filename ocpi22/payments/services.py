@@ -20,6 +20,7 @@ from ocpi22.payments.repositories import (
 from ocpi22.payments.schemas import TerminalIn
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
+from util import with_trailing_slash
 
 logger = getLogger(__name__)
 
@@ -97,7 +98,7 @@ class TerminalService:
             logger.error(f"Failed to get sender for terminal {terminal.terminal_id}")
             return
 
-        url = credentials.url + "/terminals/" + terminal.terminal_id
+        url = f"{with_trailing_slash(credentials.url)}terminals/{terminal.terminal_id}"
 
         kwargs = {
             "data": payload,
