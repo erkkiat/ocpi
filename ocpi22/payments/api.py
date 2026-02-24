@@ -241,7 +241,7 @@ service = TerminalService()
 def put_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     terminal = service._update_terminal(terminal, payload, partial=False)
-    service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=True))
+    service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
     return 200, terminal
 
 
