@@ -4,7 +4,7 @@ from typing import Optional
 from django.db import transaction
 from django.db.models import QuerySet
 
-from ocpi22.choices import OcpiRolesEnum, OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location, Evse
@@ -141,14 +141,13 @@ class TerminalService:
 
         kwargs = {
             "data": payload,
-            "method": method,
+            "method": method.lower(),
             "url": url,
             "token_base64": credentials.theirs_base64(),
             "to_country_code": ptp_role.country_code,
             "to_party_id": ptp_role.party_id,
             "from_country_code": sender_party.country_code,
             "from_party_id": sender_party.party_id,
-            "method": method.lower(),
             "credentials_id": credentials.id,
         }
 
