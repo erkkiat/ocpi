@@ -32,6 +32,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from custom_ninja_api import CustomNinjaAPI
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.schemas import Error
 from ocpi22.decorators import (
     requires_sender_role,
     requires_credentialsrole,
@@ -244,7 +245,7 @@ def put_terminal(request, payload: TerminalIn):
     try:
         terminal = service._update_terminal(terminal, payload, partial=False)
     except TerminalValidationError as e:
-        return 422, {"message": str(e)}
+        return 422, Error(e.args[0])
     service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
     return 200, terminal
 
@@ -255,6 +256,6 @@ def patch_terminal(request, payload: TerminalIn):
     try:
         terminal = service._update_terminal(terminal, payload, partial=True)
     except TerminalValidationError as e:
-        return 422, {"message": str(e)}
+        return 422, Error(e.args[0])
     service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
     return 200, terminal
