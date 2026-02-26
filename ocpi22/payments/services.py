@@ -84,24 +84,25 @@ class TerminalService:
         terminal.save()
         return terminal
 
+    def _check_missing_uids(self, uids: list[str], uids_db: set[str]):
+        if not uids:
+            return []
+        uids = set(uids)
+
+        missing_uids = uids - uids_db
+        if missing_uids:
+            raise TerminalValidationError(f"uids {', '.join(missing_uids)} are invalid.")
+
     def _validate_locations(self, uids: list[str]) -> list[Location]:
-        locations = []
-        for uid in uids:
-            try:
-                location = Location.objects.get(uid=uid)
-                locations.append(location)
-            except Location.DoesNotExist:
-                raise TerminalValidationError(f"Location with uid {uid} is invalid.")
+        locations = list(Location.objects.filter(uid__in=uids))
+        uid_db = {loc.uid for loc in locations}
+        self._check_missing_uids(uids, uid_db)
         return locations
 
     def _validate_evses(self, uids: list[str]) -> list[Evse]:
-        evses = []
-        for uid in uids:
-            try:
-                evse = Evse.objects.get(uid=uid)
-                evses.append(evse)
-            except Evse.DoesNotExist:
-                raise TerminalValidationError(f"Evse with uid {uid} is invalid.")
+        evses = list(Evse.objects.filter(uid__in=uids))
+        uid_db = {evse.uid for evse in evses}
+        self._check_missing_uids(uids, uid_db)
         return evses
 
     def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
