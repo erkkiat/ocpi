@@ -113,7 +113,7 @@ class TerminalService:
 
         ptp_role = credentials.roles.first()
         if not ptp_role:
-            logger.error(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
+            logger.warning(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
             return
 
         endpoints = find_endpoints_by_roles(
@@ -130,7 +130,7 @@ class TerminalService:
                 break
 
         if not url:
-            logger.error(f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}")
+            logger.warning(f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}")
             return
 
         sender_party = get_our_party()
