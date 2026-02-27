@@ -86,7 +86,7 @@ class TerminalService:
 
     def _check_missing_uids(self, uids: list[str], uids_db: set[str]):
         if not uids:
-            return []
+            return
         uids = set(uids)
 
         missing_uids = uids - uids_db
