@@ -61,8 +61,22 @@ class TerminalService:
 
         return terminal
 
-    def _update_terminal(self, terminal: Terminal, payload: TerminalIn, partial: bool = False) -> Terminal:
-        payload_dict = payload.dict(exclude_unset=partial)
+    def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
+        terminal.customer_reference = payload.customer_reference
+        terminal.invoice_base_url = payload.invoice_base_url
+        terminal.last_updated = payload.last_updated
+
+        locations = self._validate_locations(payload.location_uids)
+        terminal.locations.set(locations)
+
+        evses = self._validate_evses(payload.evse_uids)
+        terminal.evses.set(evses)
+
+        terminal.save()
+        return terminal
+
+    def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
+        payload_dict = payload.dict(exclude_unset=True)
 
         if "customer_reference" in payload_dict:
             terminal.customer_reference = payload_dict["customer_reference"]
@@ -72,13 +86,11 @@ class TerminalService:
             terminal.last_updated = payload_dict["last_updated"]
 
         if "location_uids" in payload_dict:
-            uids = payload_dict["location_uids"]
-            locations = self._validate_locations(uids)
+            locations = self._validate_locations(payload_dict["location_uids"])
             terminal.locations.set(locations)
 
         if "evse_uids" in payload_dict:
-            uids = payload_dict["evse_uids"]
-            evses = self._validate_evses(uids)
+            evses = self._validate_evses(payload_dict["evse_uids"])
             terminal.evses.set(evses)
 
         terminal.save()

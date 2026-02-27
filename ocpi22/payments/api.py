@@ -243,7 +243,7 @@ service = TerminalService()
 def put_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
-        terminal = service._update_terminal(terminal, payload, partial=False)
+        terminal = service.put_terminal(terminal, payload)
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
@@ -254,7 +254,7 @@ def put_terminal(request, payload: TerminalIn):
 def patch_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
-        terminal = service._update_terminal(terminal, payload, partial=True)
+        terminal = service.patch_terminal(terminal, payload)
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
