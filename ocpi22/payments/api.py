@@ -239,23 +239,23 @@ payments_ninja_api.add_router("/", router)
 service = TerminalService()
 
 
-@router.put("/terminals", response={200: TerminalOut, 404: dict, 422: dict})
+@router.put("/terminals", response={200: TerminalOut, 404: dict, 422: Error})
 def put_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
         terminal = service._update_terminal(terminal, payload, partial=False)
     except TerminalValidationError as e:
-        return 422, Error(e.args[0])
+        return 422, Error(message=e.args[0])
     service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
     return 200, terminal
 
 
-@router.patch("/terminals", response={200: TerminalOut, 404: dict, 422: dict})
+@router.patch("/terminals", response={200: TerminalOut, 404: dict, 422: Error})
 def patch_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
         terminal = service._update_terminal(terminal, payload, partial=True)
     except TerminalValidationError as e:
-        return 422, Error(e.args[0])
+        return 422, Error(message=e.args[0])
     service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
     return 200, terminal
