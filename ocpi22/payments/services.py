@@ -71,12 +71,12 @@ class TerminalService:
         if "last_updated" in payload_dict:
             terminal.last_updated = payload_dict["last_updated"]
 
-        if "location_uids" in payload_dict and payload_dict["location_uids"]:
+        if "location_uids" in payload_dict:
             uids = payload_dict["location_uids"]
             locations = self._validate_locations(uids)
             terminal.locations.set(locations)
 
-        if "evse_uids" in payload_dict and payload_dict["evse_uids"]:
+        if "evse_uids" in payload_dict:
             uids = payload_dict["evse_uids"]
             evses = self._validate_evses(uids)
             terminal.evses.set(evses)
