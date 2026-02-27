@@ -4,17 +4,24 @@ from typing import Optional
 from django.db import transaction
 from django.db.models import QuerySet
 
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.location import Location, Evse
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
     FinancialAdviceConfirmationAlreadyExistsError,
-    FinancialAdviceConfirmationValidationError,
+    FinancialAdviceConfirmationValidationError, TerminalValidationError,
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.repositories import (
     TerminalRepository,
     FinancialAdviceConfirmationRepository,
 )
+from ocpi22.payments.schemas import TerminalIn
+from ocpi22.tasks import send_ocpi_request
+from ocpiconnector.ocpi_identities import get_our_party
+from util import with_trailing_slash
 
 logger = getLogger(__name__)
 
@@ -53,6 +60,111 @@ class TerminalService:
         terminal.save()
 
         return terminal
+
+    def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
+        terminal.customer_reference = payload.customer_reference
+        terminal.invoice_base_url = payload.invoice_base_url
+        terminal.last_updated = payload.last_updated
+
+        locations = self._validate_locations(payload.location_uids)
+        terminal.locations.set(locations)
+
+        evses = self._validate_evses(payload.evse_uids)
+        terminal.evses.set(evses)
+
+        terminal.save()
+        return terminal
+
+    def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
+        payload_dict = payload.dict(exclude_unset=True)
+
+        if "customer_reference" in payload_dict:
+            terminal.customer_reference = payload_dict["customer_reference"]
+        if "invoice_base_url" in payload_dict:
+            terminal.invoice_base_url = payload_dict["invoice_base_url"]
+        if "last_updated" in payload_dict:
+            terminal.last_updated = payload_dict["last_updated"]
+
+        if "location_uids" in payload_dict:
+            locations = self._validate_locations(payload_dict["location_uids"])
+            terminal.locations.set(locations)
+
+        if "evse_uids" in payload_dict:
+            evses = self._validate_evses(payload_dict["evse_uids"])
+            terminal.evses.set(evses)
+
+        terminal.save()
+        return terminal
+
+    def _check_missing_uids(self, uids: list[str], uids_db: set[str]):
+        if not uids:
+            return
+        uids = set(uids)
+
+        missing_uids = uids - uids_db
+        if missing_uids:
+            raise TerminalValidationError(f"uids {', '.join(missing_uids)} are invalid.")
+
+    def _validate_locations(self, uids: list[str]) -> list[Location]:
+        locations = list(Location.objects.filter(uid__in=uids))
+        uid_db = {loc.uid for loc in locations}
+        self._check_missing_uids(uids, uid_db)
+        return locations
+
+    def _validate_evses(self, uids: list[str]) -> list[Evse]:
+        evses = list(Evse.objects.filter(uid__in=uids))
+        uid_db = {evse.uid for evse in evses}
+        self._check_missing_uids(uids, uid_db)
+        return evses
+
+    def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
+        credentials = terminal.credentials
+        if not credentials or not credentials.url:
+            logger.error(f"Terminal {terminal.terminal_id} has no credentials.")
+            return
+
+        ptp_role = credentials.roles.first()
+        if not ptp_role:
+            logger.warning(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
+            return
+
+        endpoints = find_endpoints_by_roles(
+            roles=(str(ptp_role.role),),
+            ocpi_module=OcpiModuleEnum.PAYMENTS,
+            endpoint_role=EndpointRoleEnum.RECEIVER.value,
+        )
+
+        url = None
+        for endpoint in endpoints:
+            endpoint_url, _, _, _, endpoint_credentials = endpoint
+            if endpoint_credentials.id == credentials.id:
+                url = endpoint_url
+                break
+
+        if not url:
+            logger.warning(f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}")
+            return
+
+        sender_party = get_our_party()
+        if not sender_party:
+            logger.error(f"Failed to get sender for terminal {terminal.terminal_id}")
+            return
+
+        url = f"{with_trailing_slash(url)}terminals/{terminal.terminal_id}"
+
+        kwargs = {
+            "data": payload,
+            "method": method.lower(),
+            "url": url,
+            "token_base64": credentials.theirs_base64(),
+            "to_country_code": ptp_role.country_code,
+            "to_party_id": ptp_role.party_id,
+            "from_country_code": sender_party.country_code,
+            "from_party_id": sender_party.party_id,
+            "credentials_id": credentials.id,
+        }
+
+        send_ocpi_request.apply_async(kwargs=kwargs)
 
 
 class FinancialAdviceConfirmationService:
