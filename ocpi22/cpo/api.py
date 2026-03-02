@@ -1324,7 +1324,7 @@ def update_location(request, location: LocationIn):
         saved_location = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
             saved_location
         )
-        location_out = LocationOut.from_orm(saved_location).dict(exclude_none=True)
+        location_out = LocationOut.model_validate(saved_location).model_dump(exclude_none=True)
 
         return status_code, location_out
     except ValidationError as e:
