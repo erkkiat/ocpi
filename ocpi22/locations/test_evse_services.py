@@ -7,8 +7,9 @@ import responses
 from django.test import override_settings
 
 from ocpi22.locations.services import EvseServices
+from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
-from ocpi22.tests.factories import EvseFactory, LocationFactory, CredentialsRoleFactory
+from ocpi22.tests.factories import EvseFactory, LocationFactory, CredentialsRoleFactory, CredentialsFactory
 
 
 class TestEvseServices:
@@ -140,14 +141,19 @@ class TestEvseServices:
     @pytest.mark.django_db
     @override_settings(ENABLE_HUBJECT=True)
     def test_send_status_for_not_allowed_location_does_not_call_background_update(
-        self, evse_patch_payload, evse, hubject_credentials
+        self, evse_patch_payload, evse
     ):
+        Credentials.objects.filter(roles__country_code="DE", roles__party_id="ICE").delete()
+
+        hubject_creds = CredentialsFactory(allowed_locations=["some_other_location_uid"])
+        CredentialsRoleFactory(
+            country_code="DE", party_id="ICE", role="HUB", credentials=hubject_creds
+        )
+
         role = CredentialsRoleFactory(country_code="DE", party_id="TST", role="EMSP")
         role.credentials.allowed_locations = ["some_other_location_uid"]
         role.credentials.save()
 
-        hubject_credentials.allowed_locations = ["some_other_location_uid"]
-        hubject_credentials.save()
 
         with (
             patch(

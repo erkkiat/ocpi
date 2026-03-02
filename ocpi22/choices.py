@@ -18,6 +18,7 @@ class OcpiRolesEnum(Enum):
     NAP = "NAP"
     NSP = "NSP"
     OTHER = "OTHER"
+    PTP = "PTP"
     SCSP = "SCSP"
     UNKNO = "UNKNO"
 
@@ -46,6 +47,7 @@ ROLE_CHOICES = (
     ("NAP", "National Access Point"),
     ("NSP", "Navigation Service Provider"),
     ("OTHER", "Other"),
+    ("PTP", "Payment Terminal Provider"),
     ("SCSP", "Smart Charging Service Provider"),
     (
         "UNKNO",
@@ -98,6 +100,7 @@ class OcpiModuleEnum(Enum):
     CDRS = "cdrs"
     SESSIONS = "sessions"
     HUBCLIENTINFO = "hubclientinfo"
+    PAYMENTS = "payments"
 
     def get_owner(self):
         return {
@@ -106,6 +109,7 @@ class OcpiModuleEnum(Enum):
             self.TARIFFS.value: OcpiRolesEnum.CPO,
             self.CDRS.value: OcpiRolesEnum.CPO,
             self.SESSIONS.value: OcpiRolesEnum.CPO,
+            self.PAYMENTS.value: OcpiRolesEnum.PTP,
         }[self.value]
 
     def get_viewset(self):
@@ -122,7 +126,7 @@ IDENTIFIER_CHOICES = list(
     (module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum
 )
 
-ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "SCSP")
+ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "PTP", "SCSP")
 
 
 class EndpointRoleEnum(Enum):

@@ -100,6 +100,19 @@ def cpo_credentials():
 
 
 @pytest.fixture
+def ptp_credentials_role():
+    credentials = CredentialsFactory()
+    business_details = BusinessDetailsFactory(name="PTP")
+    return CredentialsRoleFactory(
+        role="PTP",
+        country_code="NL",
+        party_id="PTP",
+        business_details=business_details,
+        credentials=credentials,
+    )
+
+
+@pytest.fixture
 def ocpi_headers(emsp_credentials, nl_tst_credentials_role):
     return {
         "HTTP_AUTHORIZATION": f"Token {base64.b64encode(emsp_credentials.ours.encode()).decode()}",
@@ -560,6 +573,54 @@ class TestStartSessionAPI:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @responses.activate
+    def test_start_session_with_ptp_role_returns_accepted(
+        self,
+        client,
+        ptp_credentials_role,
+        valid_start_session_data,
+        active_start_webhook,
+    ):
+        client.credentials = ptp_credentials_role.credentials
+
+        headers = {
+            "HTTP_AUTHORIZATION": f"Token {base64.b64encode(ptp_credentials_role.credentials.ours.encode()).decode()}",
+            "HTTP_OCPI_FROM_COUNTRY_CODE": ptp_credentials_role.country_code,
+            "HTTP_OCPI_FROM_PARTY_ID": ptp_credentials_role.party_id,
+            "HTTP_OCPI_TO_COUNTRY_CODE": "NL",
+            "HTTP_OCPI_TO_PARTY_ID": "CPO",
+            "CONTENT_TYPE": "application/json",
+        }
+
+        responses.add(
+            responses.POST,
+            active_start_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        location = LocationFactory(uid=valid_start_session_data["location_id"])
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
+        )
+        ConnectorFactory(
+            uid=valid_start_session_data["connector_id"], evse=evse
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/START_SESSION",
+            data=valid_start_session_data,
+            format="json",
+            **headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 1000
+        assert response_data["data"]["result"] == "ACCEPTED"
+
+    @responses.activate
     def test_start_session_webhook_payload_always_includes_session_id_for_new_session(
         self,
         client,
@@ -774,6 +835,65 @@ class TestStopSessionAPI:
             **headers,
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @responses.activate
+    @pytest.mark.django_db
+    def test_stop_session_with_ptp_role_returns_accepted(
+        self,
+        client,
+        ptp_credentials_role,
+        valid_stop_session_data,
+        active_stop_webhook,
+        session_factory,
+    ):
+        client.credentials = ptp_credentials_role.credentials
+
+        headers = {
+            "HTTP_AUTHORIZATION": f"Token {base64.b64encode(ptp_credentials_role.credentials.ours.encode()).decode()}",
+            "HTTP_OCPI_FROM_COUNTRY_CODE": ptp_credentials_role.country_code,
+            "HTTP_OCPI_FROM_PARTY_ID": ptp_credentials_role.party_id,
+            "HTTP_OCPI_TO_COUNTRY_CODE": "NL",
+            "HTTP_OCPI_TO_PARTY_ID": "CPO",
+            "CONTENT_TYPE": "application/json",
+        }
+
+        location = LocationFactory(uid=valid_stop_session_data["session_id"])
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
+
+        active_session = session_factory(
+            token_uid="TOKEN123",
+            authorization_reference="AUTH_REF_123",
+            status=Session.ACTIVE,
+            connector=connector,
+            evse=evse,
+            location=location,
+            ocpi_master=ptp_credentials_role,
+            credentials=ptp_credentials_role.credentials,
+        )
+
+        data = {
+            "response_url": "https://example.com/callback",
+            "session_id": active_session.uid,
+        }
+
+        responses.add(
+            responses.POST,
+            active_stop_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/STOP_SESSION",
+            data=data,
+            format="json",
+            **headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response_data = response.json()
+        assert response_data["status_code"] == 1000
+        assert response_data["data"]["result"] == "ACCEPTED"
 
     @pytest.mark.django_db
     def test_stop_session_with_nonexistent_session_returns_rejected(
