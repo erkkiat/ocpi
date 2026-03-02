@@ -11,6 +11,8 @@ from ocpi22.models.location import Location
 from ocpi22.models.session import Session
 from ocpi22.models.tariff import Tariff
 from ocpiconnector.ocpi_identities import ocpi_platform
+from ocpi22.payments.models import Terminal
+from webhooks.models import Webhook
 
 
 # @cachetools.cached(cache={})  # Cannot cache the recent activity
@@ -109,6 +111,44 @@ def _get_environment(request):
             icon="fa-handshake",
             list_url=get_url("ocpi22", "credentials", "changelist"),
             add_url=get_url("ocpi22", "credentials", "add"),
+        ),
+        dict(
+            name="webhooks",
+            items=Webhook.objects.all(),
+            icon="fa-exchange-alt",
+            list_url=get_url("webhooks", "webhook", "changelist"),
+            add_url=get_url("webhooks", "webhook", "add"),
+            extra_items=[
+                dict(
+                    url=reverse("admin:webhooks_webhookevent_changelist"),
+                    name=_("Webhook Events"),
+                    icon="fa-list",
+                ),
+                dict(
+                    url=reverse("admin:webhooks_webhookauth_changelist"),
+                    name=_("Webhook Auth"),
+                    icon="fa-key",
+                ),
+            ],
+        ),
+        dict(
+            name="payments",
+            items=Terminal.objects.all(),
+            icon="fa-credit-card",
+            list_url=get_url("ocpi22", "terminal", "changelist"),
+            add_url="",
+            extra_items=[
+                dict(
+                    url=reverse("admin:ocpi22_terminal_changelist"),
+                    name=_("Payment Terminals"),
+                    icon="fa-cash-register",
+                ),
+                dict(
+                    url=reverse("admin:ocpi22_financialadviceconfirmation_changelist"),
+                    name=_("Financial Advice Confirmations"),
+                    icon="fa-file-invoice-dollar",
+                ),
+            ],
         ),
     )
     return result

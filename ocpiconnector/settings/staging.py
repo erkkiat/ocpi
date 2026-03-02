@@ -12,6 +12,7 @@ from ocpiconnector.settings.infra_services import (
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
+HUBJECT_HOSTS = ["18.195.149.69", "18.195.61.108"]
 ALLOWED_HOSTS = get_allowed_hosts()
 USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True
@@ -62,5 +63,9 @@ DATABASES = {
         "HOST": db_url,
         "PORT": "3306",
         "OPTIONS": {"ssl_mode": "REQUIRED"},
+        "CONN_MAX_AGE": 200,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
+
+HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")

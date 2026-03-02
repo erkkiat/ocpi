@@ -1,16 +1,22 @@
 # TODO refactor this to have ddomain speicific services
+import zoneinfo
+
+from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.credentials.services import CredentialsService
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
-from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
 from ocpi22.cpo.schemas import SolidLocation
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
 from ocpiconnector.party import Party
+from integrations.hubject.services import HubjectService
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +46,37 @@ class EvseServices:
             case _:
                 raise ValueError(f"Invalid OCPP status [{status}] found")
 
+    @staticmethod
+    def send_status_updates(evse: Evse) -> None:
+        last_updated_serialized = evse.last_updated.replace(
+            tzinfo=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        data = {"status": evse.status, "last_updated": last_updated_serialized}
+        location = evse.location
+        location.send_all_updates(
+            data=data,
+            method="patch",
+            path_components=[
+                location.ocpi_master.country_code,
+                location.ocpi_master.party_id,
+                location.uid,
+                evse.uid,
+            ],
+        )
+
+        if settings.ENABLE_HUBJECT:
+            role = CredentialsRepository.find_hubject_credentials_role()
+            if not role:
+                logger.error("Hubject credentials role not found")
+                return
+            credentials = role.credentials if role else None
+            if CredentialsService.is_evse_allowed(credentials, evse):
+                HubjectService.post_eroaming_push_evse_status(evse)
+
 
 class LocationService:
     solid_tariff_repository = SolidTariffRepository()
+    solid_tariff_service = SolidTariffService()
 
     @staticmethod
     def get_allowed_locations_queryset(
@@ -129,3 +163,21 @@ class LocationService:
             saved_location.post_process_after_update_or_create()
             return serializer.data
         raise ValidationError(serializer.errors)
+
+    def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
+        for evse in location["evses"]:
+            for connector in evse["connectors"]:
+                if connector.get("tariff_ids"):
+                    solid_tariff_ids = []
+                    for tariff_id in connector["tariff_ids"]:
+                        solid_tariff_external_id = self.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid(
+                            tariff_id.upper()
+                        )
+                        if solid_tariff_external_id:
+                            solid_tariff_ids.append(solid_tariff_external_id)
+                        else:
+                            raise ValidationError(
+                                f"SolidTariff for OCPI tariff '{tariff_id}' not found"
+                            )
+                    connector["tariff_ids"] = solid_tariff_ids
+        return location

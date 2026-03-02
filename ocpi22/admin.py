@@ -9,7 +9,6 @@ from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
-from humanize import naturaltime
 
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
@@ -27,20 +26,16 @@ from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
 from ocpi22.models.token import Token
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpi22.ocpi.partners import (
-    invalidate_partner_cache,
-    get_partners_by_party_as_party,
-)
 from ocpi22.pull import admin_pull_all
+from ocpi22.credentials.services import CredentialsService
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_credentialsrole,
 )
-from ocpiconnector.party import Party
-from webhooks.models import Webhook
 from payment.models import Payment
 
 admin.site.site_header = "Roaming Admin"
@@ -49,7 +44,7 @@ admin.site.index_title = "Dashboard"
 
 class AdminUtilityMixin:
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -65,7 +60,8 @@ class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
 class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.post_process_after_update_or_create()
+        if hasattr(obj, "post_process_after_update_or_create"):
+            obj.post_process_after_update_or_create()
 
 
 class TokenAdmin(SolidModelAdmin):
@@ -251,6 +247,41 @@ class EvseAdminForm(forms.ModelForm):
         fields = "__all__"
 
 
+@admin.action(description="Send background updates to interested parties")
+def send_updates(modeladmin, request, queryset):
+    model_cls = queryset.model
+    if not hasattr(model_cls, "send_updates"):
+        modeladmin.message_user(
+            request,
+            f"{model_cls.__name__} does not have a send_updates method.",
+            level=messages.ERROR,
+        )
+        return
+    count = queryset.count()
+    MAX_OBJECTS = 100
+    WARN_OBJECTS = 50
+    if count > MAX_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Cannot send updates to more than {MAX_OBJECTS} {model_cls.__name__}s at once. Please select fewer {model_cls.__name__}s.",
+            level=messages.ERROR,
+        )
+        return
+    elif count > WARN_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Warning: Sending updates to {count} {model_cls.__name__}s may take some time.",
+            level=messages.WARNING,
+        )
+    for obj in queryset:
+        obj.send_updates()
+    modeladmin.message_user(
+        request,
+        f"Updates sent for {count} {model_cls.__name__}s.",
+        level=messages.SUCCESS,
+    )
+
+
 class LocationAdmin(SolidNestedModelAdmin):
     class EvseInline(NestedStackedInline):
         model = Evse
@@ -337,6 +368,7 @@ class LocationAdmin(SolidNestedModelAdmin):
     inlines = [EvseInline]  # [OpeningTimesInline, EvseInline]
     autocomplete_fields = ["publish_allowed_to", "operator", "suboperator", "owner"]
     radio_fields = dict(parking_type=admin.VERTICAL)
+    actions = [send_updates]
 
     def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.is_ours() and super().has_change_permission(request, obj)
@@ -423,7 +455,7 @@ class EvseAdmin(SolidNestedModelAdmin):
     location_link.short_description = "Location"
 
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -557,14 +589,16 @@ class SessionAdmin(SolidNestedModelAdmin):
     model = Session
     ordering = ["-updated"]
     list_display = [
-        "success",
-        "status",
-        "party_long",
-        "last_update",  # Todo: Show time in local timezone
+        "uid",
         "location",
+        "party_long",
         "kwh",
         "cost",
+        "last_update",
+        "status",
     ]
+
+    list_display_links = ["location", "status"]
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -596,7 +630,6 @@ class SessionAdmin(SolidNestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    list_display_links = ["status"]
     search_fields = [
         "location__name",
         "location__address",
@@ -735,6 +768,7 @@ class TariffAdmin(SolidNestedModelAdmin):
             ),
         ),
     ]
+    actions = [send_updates]
 
     def get_queryset(self, _request):
         # Hide archived
@@ -791,6 +825,8 @@ class CredentialsAdmin(SolidModelAdmin):
         "responding",
         "last_update",
         "allowed_locations",
+        "meter_value_frequency",
+        "auth_priority",
     ]
     readonly_fields = [
         "theirs_base64",
@@ -818,33 +854,26 @@ class CredentialsAdmin(SolidModelAdmin):
         return super().has_change_permission(request, obj=obj)
 
     def last_update(self, obj):
-        return naturaltime(obj.last_connection)
+        return obj.last_connection
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if obj and change:
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_caches()
 
-            def invalidate_current_partners_cache():
-                current_partners: [Party] = list(
-                    map(get_partners_by_party_as_party, roles)
-                )
-                if current_partners:
-                    flattened_set = set.union(*current_partners)
-                    list(map(invalidate_partner_cache, flattened_set))
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        has_inline_changes = any(formset.has_changed() for formset in formsets)
+        if has_inline_changes:
+            CredentialsService.invalidate_all_caches()
 
-            # Todo: The below code is not working fully, there is a n+1 delay in clearing the cache
-            # Now the cache is cleared fully every time to compensate
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_all_caches()
 
-            # List all the roles of the changed Credentials
-            roles = {role.party_str() for role in obj.roles.all()}
-
-            # Invalidate the agreed partners cache to enable the new roles and disable the old ones
-            list(map(invalidate_partner_cache, roles))
-
-            # Do the same for the partners (this one comes from cache)
-            invalidate_current_partners_cache()
-            # Do the same again, now cache has been reset
-            invalidate_current_partners_cache()
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_all_caches()
 
     last_update.admin_order_field = "last_connection"
     last_update.short_description = "Last connection"
@@ -863,6 +892,19 @@ class CredentialsRoleAdmin(SolidModelAdmin):
         "agreed_parties__country_code",
         "agreed_parties__party_id",
     ]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_credentials_role_caches()
 
 
 @admin.register(DefaultTariffs)
@@ -956,13 +998,6 @@ class AuthorizationAdmin(SolidModelAdmin):
         return False
 
 
-@admin.register(Webhook)
-class WebhookAdmin(admin.ModelAdmin):
-    model = Webhook
-    list_display = ["event", "url", "created_at", "updated_at"]
-    search_fields = ["event", "url"]
-
-
 admin.site.register(Token, TokenAdmin)
 admin.site.register(Location, LocationAdmin)
 admin.site.register(Evse, EvseAdmin)
@@ -970,3 +1005,163 @@ admin.site.register(Tariff, TariffAdmin)
 admin.site.register(Cdr, CdrAdmin)
 admin.site.register(Session, SessionAdmin)
 admin.site.register(Credentials, CredentialsAdmin)
+
+
+@admin.register(Terminal)
+class TerminalAdmin(SolidModelAdmin):
+    model = Terminal
+    list_display = [
+        "terminal_id",
+        "customer_reference",
+        "credentials",
+        "city",
+        "country",
+        "invoice_creator",
+        "location_count",
+        "last_updated",
+    ]
+    list_display_links = ["terminal_id"]
+    search_fields = [
+        "terminal_id",
+        "customer_reference",
+        "party_id",
+        "country_code",
+        "city",
+        "address",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "locations", "evses"]
+    list_filter = ["invoice_creator", "country"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "terminal_id",
+                    "customer_reference",
+                    ("country_code", "party_id"),
+                    "credentials",
+                )
+            ),
+        ),
+        (
+            "Location",
+            dict(
+                fields=(
+                    "address",
+                    ("postal_code", "city"),
+                    ("state", "country"),
+                    ("latitude", "longitude"),
+                )
+            ),
+        ),
+        (
+            "Invoice",
+            dict(
+                fields=(
+                    "invoice_base_url",
+                    "invoice_creator",
+                )
+            ),
+        ),
+        (
+            "Assigned Charging Locations",
+            dict(
+                fields=(
+                    "locations",
+                    "evses",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
+
+    def location_count(self, obj):
+        return obj.locations.count()
+
+    location_count.short_description = "Locations"
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)
+
+
+@admin.register(FinancialAdviceConfirmation)
+class FinancialAdviceConfirmationAdmin(SolidModelAdmin):
+    model = FinancialAdviceConfirmation
+    list_display = [
+        "fac_id",
+        "authorization_reference",
+        "terminal",
+        "capture_status_code",
+        "total_cost_incl_vat",
+        "currency",
+        "credentials",
+        "last_updated",
+    ]
+    list_display_links = ["fac_id"]
+    search_fields = [
+        "fac_id",
+        "authorization_reference",
+        "terminal__terminal_id",
+        "terminal__customer_reference",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "terminal"]
+    list_filter = ["capture_status_code", "currency"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "fac_id",
+                    "authorization_reference",
+                    "credentials",
+                    "terminal",
+                )
+            ),
+        ),
+        (
+            "Payment Details",
+            dict(
+                fields=(
+                    "total_cost_excl_vat",
+                    "total_cost_incl_vat",
+                    "currency",
+                    "eft_data",
+                )
+            ),
+        ),
+        (
+            "Capture Status",
+            dict(
+                fields=(
+                    "capture_status_code",
+                    "capture_status_message",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)

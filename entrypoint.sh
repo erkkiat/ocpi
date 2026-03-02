@@ -7,22 +7,20 @@ case "$1" in
     django-app)
         echo "Running collectstatic..."
         python manage.py collectstatic --noinput
-        echo "Applying migrations"
-        python manage.py migrate --noinput
-        echo "Starting Django server with New Relic monitoring..."
-        exec newrelic-admin run-program gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+        echo "Starting Django server..."
+        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec newrelic-admin run-program celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
+        exec celery -A ocpi22.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME --beat
         ;;
     mqtt-subscriber)
-        echo "Starting MQTT subscriber with New Relic monitoring..."
-        exec newrelic-admin run-program python -m ocpi22.cpo.mqtt.mqtt_subscriber
+        echo "Starting MQTT subscriber..."
+        exec python -m ocpi22.cpo.mqtt.mqtt_subscriber
         ;;
     celery-mqtt)
         echo "Starting Celery worker for MQTT tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"
-        exec newrelic-admin run-program celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME -E
+        exec celery -A ocpi22.cpo.mqtt.tasks worker --loglevel=info --hostname=$WORKER_HOSTNAME -Q $CELERY_QUEUE_NAME
         ;;
     *)
         echo "Unknown service: $1"

@@ -263,3 +263,36 @@ class SolidLocation(BaseSchema):
 
 class Error(Schema):
     message: str
+
+
+class StatusScheduleOut(BaseSchema):
+    period_begin: datetime
+    period_end: datetime
+    status: str
+
+
+class ConnectorOut(Connector):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+
+class EVSEOut(EVSE):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+    status_schedule: Optional[List[StatusScheduleOut]] = None
+    connectors: List[ConnectorOut] = Field(
+        ..., description="List of connectors for this EVSE"
+    )
+
+
+class LocationOut(LocationIn):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+    evses: List[EVSEOut] = Field(
+        ..., description="List of EVSEs available at this location"
+    )

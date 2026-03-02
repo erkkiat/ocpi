@@ -1,6 +1,6 @@
 from logging import getLogger
 from django.conf import settings
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Q
 
 from typing import Optional
 
@@ -19,6 +19,7 @@ from ocpi22.decorators import (
     requires_last_updated,
 )
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
@@ -31,7 +32,7 @@ from ocpi22.choices import (
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -227,7 +228,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                     "token_id": token_uid,
                     "location_id": location.uid if location else None,
                 }
-                msp_response = send_to_webhook(
+                msp_response = send_to_webhook_legacy(
                     webhook_data, MSPAuthorizeCallbackSerializer, timeout=28
                 )  # Just under the 30 second limit which is maximum for Heroku requests
                 if msp_response:
@@ -326,9 +327,12 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         """
         Handle a POST request for a token authorization as a hub. Forward the authorization request.
         """
-        authorization: TokenAuthorization = authorize_token(
-            token, location, request=request
+        token_dto = TokenDto(
+            uid=token.uid if isinstance(token, Token) else token,
+            adhoc=isinstance(token, str),
+            token=token if isinstance(token, Token) else None,
         )
+        authorization: TokenAuthorization = authorize_token(token_dto, location, request=request)
         return make_ocpi_response(authorization)
 
 
@@ -351,9 +355,13 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Cdr.objects.all().order_by("created")
-        if hasattr(self.request, "country_code"):
+        
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
             return Cdr.objects.filter(
-                ocpi_master=self.request.credentialsrole
+                Q(ocpi_master=role) | Q(billed_to=role)
             ).order_by("created")
         return Cdr.objects.none()
 
@@ -715,9 +723,21 @@ def update_authorization(request, session: Session) -> None:
 class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
-    queryset = Session.objects.all().order_by("created")
     serializer_class = SessionSerializer
     versioning_class = OCPIVersioning
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Session.objects.all().order_by("created")
+        
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
+            return Session.objects.filter(
+                Q(ocpi_master=role) | Q(billed_to=role)
+            ).order_by("created")
+        return Session.objects.none()
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
@@ -803,7 +823,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                     "exclude_urls": True,
                 },
             ).data
-            send_to_webhook(
+            send_to_webhook_legacy(
                 data, MSPSessionCallbackSerializer, serialized_data=outbound_data
             )
             stop_session_if_money_runs_out(request, session)

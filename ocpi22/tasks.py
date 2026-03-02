@@ -1,12 +1,16 @@
 import os
 import random
+import ssl
 from datetime import timedelta, datetime
+from functools import lru_cache
 from logging import getLogger
+from typing import Literal
 from urllib.parse import urlparse
 
 import celery
 import pytz
 import requests
+from json import JSONDecodeError
 
 from celery import shared_task
 from celery.schedules import crontab
@@ -16,11 +20,15 @@ from django.utils.module_loading import import_string
 from requests import Response, RequestException
 from requests.auth import HTTPBasicAuth
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 
 from base_task_services import RefreshTokenBaseTask
 from ocpi22 import choices
+from ocpi22.choices import OcpiRolesEnum
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context, SSLAdapter
+from ocpiconnector.exceptions import ConnectorTariffNotFoundError
+from ocpiconnector.ocpi_identities import get_our_party
 from ocpiconnector.party import Party
 from ocpiconnector.settings import setup_sentry
 from util import unwrap
@@ -50,10 +58,6 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 pull_hour = random.randint(0, 3)
 pull_minute = random.randint(0, 59)
 
-# Register celery signals
-# DO NOT REMOVE IT!!
-from base_task_services import setup_worker_connection  # noqa
-
 app.conf.beat_schedule = {
     "run-me-every-minute": {
         "task": "ocpi22.tasks.celery_heartbeat",
@@ -67,6 +71,12 @@ app.conf.beat_schedule = {
         "task": "ocpi22.tasks.pull_all_objects",
         # 'schedule': 120  # For testing
         "schedule": crontab(hour=str(pull_hour), minute=str(pull_minute)),
+    },
+    "weekly-hubject-evse-full-load": {
+        "task": "ocpi22.tasks.send_hubject_evse_full_load",
+        "schedule": crontab(
+            hour="2", minute="0", day_of_week="0"
+        ),  # Every Sunday at 02:00AM
     },
 }
 
@@ -98,6 +108,46 @@ if "rediss" in REDIS_URL and "ssl_cert_reqs" not in REDIS_URL:
 if REDIS_URL:
     app.conf.update(broker_url=REDIS_URL, result_backend=REDIS_URL)
 
+    app.conf.update(
+        beat_scheduler="redbeat.RedBeatScheduler",
+        redbeat_redis_url=REDIS_URL,
+        redbeat_lock_timeout=30,  # Lock expires after 30s if beat process dies
+        redbeat_key_prefix="redbeat:",
+        broker_connection_retry=True,
+        broker_connection_retry_on_startup=True,
+        broker_connection_max_retries=None,
+        task_publish_retry=True,
+        task_publish_retry_policy={
+            "max_retries": 5,
+            "interval_start": 0,
+            "interval_step": 1,
+            "interval_max": 5,
+        },
+        broker_transport_options={
+            "socket_timeout": 30,
+            "socket_connect_timeout": 30,
+            "socket_keepalive": True,
+            "retry_on_timeout": True,
+            "health_check_interval": 30,
+            "max_connections": 50,
+        },
+        result_backend_transport_options={
+            "socket_timeout": 30,
+            "socket_connect_timeout": 30,
+            "socket_keepalive": True,
+            "retry_on_timeout": True,
+            "health_check_interval": 30,
+            "max_connections": 20,
+        },
+        broker_pool_limit=20,
+        task_acks_late=True,
+        task_reject_on_worker_lost=True,
+        worker_prefetch_multiplier=1,
+        worker_cancel_long_running_tasks_on_connection_loss=True,
+        worker_max_tasks_per_child=1000,
+        task_ignore_result=True,
+    )
+
     # Load task modules from all registered Django apps.
     app.autodiscover_tasks()
 else:
@@ -111,7 +161,8 @@ def get_cert_from_env(var_name: str) -> str | None:
     return val.replace("\\n", "\n").strip()
 
 
-def get_request_session(credential_id):
+@lru_cache(maxsize=128)
+def get_certificate_loaded_request(credential_id):
     from ocpi22.models.credentials import Credentials  # noqa
 
     credentials = Credentials.objects.filter(id=credential_id).first()
@@ -148,6 +199,7 @@ def _get_ssl_session_client(
     bind=True,
     retry_backoff=1,
     max_retries=10,
+    ignore_result=True,
 )
 def send_ocpi_request(
     self,
@@ -162,7 +214,7 @@ def send_ocpi_request(
     credentials_id=None,
     title=None,
     **kwargs,
-) -> Response:
+) -> Response | None:
     to = Party(to_country_code, to_party_id)
     sender = Party(from_country_code, from_party_id)
 
@@ -173,28 +225,199 @@ def send_ocpi_request(
     else:
         kwargs.update(dict(url=url, data=data, headers=headers))
 
-    request_session = get_request_session(credentials_id)
-    function = getattr(request_session, method.lower())
-    if not function:
+    try:
+        request_session = get_certificate_loaded_request(credentials_id)
+    except ssl.SSLError:
+        logger.exception(f"SSL error while creating session for {url}.")
+        return None
+
+    function = getattr(request_session, method.lower(), None)
+    if function is None:
         raise NotImplementedError(
             f"Method {method} is not supported for send_ocpi_request"
         )
 
-    logger.info(f"Sending ocpi {method} request to {url} for {credentials_id}")
-    response: requests.Response = function(**kwargs)
-    if self.request.is_eager:
-        return response
-    env = os.environ["ENV"]
-    if response.status_code >= 300 and env in ["staging", "development"]:
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+    logger.info(f"Sending OCPI {method.upper()} request to {url} for {credentials_id}")
+    timeout = settings.OCPI_REQUEST_TIMEOUT
+    host = urlparse(url).hostname or url
+
+    try:
+        response: requests.Response = function(
+            timeout=timeout,
+            **kwargs,
         )
-    if response.status_code >= 500 and env == "production":
-        logger.warning(f"Got {response.status_code} for {response.url}: Retrying")
-        raise self.retry(
-            exc=Exception(f"Server Error for {response.url}: {response.status_code}")
+
+    except requests.Timeout:
+        logger.error(
+            f"{host} timed out after {timeout}s, not retrying",
+            extra={"path": url, "method": method},
         )
+        return None
+
+    except requests.RequestException as exc:
+        logger.warning(f"{host} non-retryable requests error", exc_info=exc)
+        return None
+
+    status = response.status_code
+
+    if 300 <= status < 500:
+        logger.error(
+            f"{host} responded with {status}, not retrying",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.content,
+                "status_code": status,
+            },
+        )
+        return None
+
+    if status >= 500:
+        if self.request.is_eager:
+            logger.warning(f"{host} responded with {status}, not retrying")
+            return None
+
+        logger.warning(
+            f"{host} responded with {status}: Retrying",
+            extra={"path": url, "method": method},
+        )
+        raise self.retry(exc=Exception(f"Server Error for {response.url}: {status}"))
+
+    try:
+        response_json = response.json()
+    except JSONDecodeError:
+        logger.error(
+            f"{host} returned non-JSON response with status {status}",
+            extra={
+                "path": url,
+                "method": response.request.method,
+                "response_data": response.text,
+                "status_code": status,
+            },
+        )
+        return None
+
+    ocpi_status_code = response_json.get("status_code", 1000)
+    if ocpi_status_code < 2000:
+        if self.request.is_eager or self.request.called_directly:
+            return response
+        return None
+
+    status_message = response_json.get("status_message", "")
+    logger.warning(
+        f"{host} responded with OCPI error code {ocpi_status_code}: {status_message}, not retrying",
+        extra={
+            "path": url,
+            "method": response.request.method,
+            "response_data": response_json,
+            "status_code": status,
+        },
+    )
+    return None
+
+
+@shared_task(
+    bind=True,
+    retry_backoff=1,
+    max_retries=3,
+)
+def send_hubject_request(
+    self,
+    payload_json,
+    url: str,
+    timeout: int,
+    credentials_id: int,
+    method: Literal["get", "post", "put", "patch", "delete"] = "put",
+) -> dict | None:
+    try:
+        logger.info(f"Sending hubject {method} request to {url}")
+        try:
+            request_session = get_certificate_loaded_request(credentials_id)
+        except ssl.SSLError:
+            logger.exception(f"SSL error while creating session for {url}.")
+            return None
+
+        function = getattr(request_session, method.lower(), None)
+        if function is None:
+            raise NotImplementedError(
+                f"Method {method} is not supported for send_hubject_request"
+            )
+        response: requests.Response = function(
+            timeout=timeout,
+            url=url,
+            json=payload_json,
+        )
+        if self.app.conf.task_always_eager:
+            return response.json() if response.text else None
+        retry_count = self.request.retries
+        if response.status_code >= 500:
+            logger.warning(
+                f"Hubject responded {response.status_code} for {response.url}: Retrying({retry_count})"
+            )
+            raise self.retry(
+                exc=Exception(
+                    f"Server Error for {response.url}: {response.status_code}"
+                )
+            )
+        if response.status_code >= 400:
+            logger.warning(
+                f"Got {response.status_code} for {response.url}: {response.json()}"
+            )
+        if response.status_code == 200:
+            from integrations.hubject.schemas import ERoamingAcknowledgment
+
+            try:
+                ack = ERoamingAcknowledgment.model_validate(response.json())
+                if not ack.result:
+                    logger.warning(
+                        f"Hubject responded with negative acknowledgment for {url}",
+                        extra={
+                            "path": url,
+                            "method": response.request.method,
+                            "response_data": ack,
+                            "status_code": response.status_code,
+                        },
+                    )
+            except ValidationError:
+                logger.warning(
+                    f"Validation error when parsing Hubject acknowledgment for {url}",
+                    extra={
+                        "path": url,
+                        "method": response.request.method,
+                        "response_data": response.text,
+                        "status_code": response.status_code,
+                    },
+                )
+    except RequestException as e:
+        retry_count = self.request.retries
+        logger.warning(f"Request failed for {url}")
+        if retry_count < self.max_retries:
+            raise self.retry(exc=e)
+
+
+@shared_task(bind=True, max_retries=3, retry_backoff=60)
+def send_hubject_evse_full_load(self) -> None:
+    from integrations.hubject.services import HubjectService
+
+    try:
+        our_party = get_our_party(OcpiRolesEnum.CPO)
+        service = HubjectService()
+        try:
+            payload = service.get_evse_full_load_payload(our_party)
+
+            if payload is None:
+                logger.warning(
+                    f"Failed to create payload for {str(our_party)} during Hubject EVSE FullLoad. No EVSE/location data available",
+                )
+                return
+        except ConnectorTariffNotFoundError:
+            return
+
+        HubjectService.post_evse_full_load(str(our_party), payload)
+
+    except Exception as exc:
+        logger.exception(f"Error updating OICP EVSEs for {str(our_party)}")
+        raise self.retry(exc=exc, countdown=60)
 
 
 @shared_task(max_retries=2, retry_backoff=2)

@@ -7,12 +7,10 @@ import ocpi22.ocpi_logging as logging
 import os
 from typing import Union
 
-from rest_framework import exceptions
 from rest_framework.generics import get_object_or_404
 
 from typing import TYPE_CHECKING
 
-from ocpi22.models import enum
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.ocpi.dataclasses import AdhocToken
 
@@ -22,10 +20,8 @@ if TYPE_CHECKING:
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session
 from ocpi22.models.token import Token
-from ocpi22.choices import AuthorizationEnum
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.util import generate_session_uid
-from ocpi22.tokens.auth import TokenAuthorization, get_session_by_token_uid
 from ocpi22.tokens.util import get_token_id
 from ocpiconnector.party import Party
 
@@ -42,6 +38,8 @@ def get_session(
     token: Union[Token, str], statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Session:
     token_id = get_token_id(token)
+    from ocpi22.tokens.auth import get_session_by_token_uid
+
     return get_session_by_token_uid(
         token_id, max_age_minutes=365 * 24 * 60, statuses=statuses
     )
@@ -67,24 +65,19 @@ def create_session(
     reservation_id=None,
     authorization_method=None,
     currency=None,
-    ocpi_master=None,
-    *_args,
-    **kwargs,
+    hub_session_id=None,
 ) -> Session:
     token: Token = (
         get_token(token_id, ad_hoc_token)
         if not isinstance(token_id, Token)
         else token_id
     )
-    if ocpi_master:
-        billed_to = ocpi_master
-    else:
-        if not billed_to:
-            billed_to = token.ocpi_master
-        if isinstance(billed_to, str):
-            billed_to = get_credentialsrole(party=Party(*billed_to.split("*")))
-        if isinstance(billed_to, Party):
-            billed_to = get_credentialsrole(party=billed_to)
+    if not billed_to:
+        billed_to = token.ocpi_master
+    if isinstance(billed_to, str):
+        billed_to = get_credentialsrole(party=Party(*billed_to.split("*")), create=True)
+    if isinstance(billed_to, Party):
+        billed_to = get_credentialsrole(party=billed_to, create=True)
     if not uid:
         uid = generate_session_uid()
     location = location_id
@@ -99,23 +92,6 @@ def create_session(
         if connector_id
         else None
     )
-    if not authorization_method:
-        from ocpi22.tokens.auth import authorize_token
-
-        authorization: TokenAuthorization = authorize_token(token.uid, location)
-        if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
-            msg = (
-                f'Token {token} is not authorized for use by MSP at this time: '
-                f'{authorization.info if authorization else ""}'
-            )
-            logging.error(msg)
-            raise exceptions.PermissionDenied(msg)
-        authorization_method, authorization_reference = (
-            authorization.auth_method,
-            authorization.authorization_reference,
-        )
-    else:
-        authorization_method = authorization_method or enum.AuthMethodChoices.COMMAND
 
     from ocpi22.models.credentials import CredentialsRole
 
@@ -152,8 +128,8 @@ def create_session(
         billed_to=billed_to,
         credentials=credentials,
         ocpi_master=location.ocpi_master,
+        hub_session_id=hub_session_id,
     )
-    params.update(kwargs)
     params.pop("expiry_date", None)  # Todo: Finish implementing reservations
 
     session = Session.objects.create(**params)

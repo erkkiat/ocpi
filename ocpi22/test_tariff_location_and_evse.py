@@ -39,6 +39,8 @@ from django.test import TestCase, Client
 #                                   [A-Z]{2}[A-Za-z0-9]{3}[E][A-Za-z0-9][A-Za-z0-9\*]{0,30}   ????
 from rest_framework import status
 
+from ocpi22.cpo.services import CdrService
+from ocpi22.credentials.services import CredentialsService
 from ocpi22.credentials.versions import get_versions_dict
 from ocpi22.locations.serializers import LocationSerializer
 from ocpi22.locations.services import LocationService
@@ -82,7 +84,7 @@ from ocpi22.choices import (
     OcpiRolesEnum,
     AuthorizationEnum,
 )
-from ocpi22.commands.commands import CommandsViewSet
+from ocpi22.commands.commands import CommandsViewSetLegacy
 from ocpi22.commands.serializers import CommandResponse
 from ocpi22.cpo.api import ChargePointViewSet
 from ocpi22.locations.location import LocationViewSet, EvseViewSet
@@ -776,25 +778,55 @@ class ApiPutTests(TestCase):
             (
                 "tariff_1_simple_2hour",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
-                5,
-                5.5,
+                Decimal("5"),
+                Decimal("5.5"),
             ),
-            ("tariff_8_simple_025kwh", dict(stop_kwh=20), 5, 5.5),
-            ("tariff_9_025kwh_start", dict(stop_kwh=20), 5.5, 6.1),
-            ("tariff_12_025kwh_min_price", dict(stop_kwh=20), 5, 5.5),
-            ("tariff_12_025kwh_min_price", dict(stop_kwh=1), 0.5, 0.55),
+            ("tariff_8_simple_025kwh", dict(stop_kwh=20), Decimal("5"), Decimal("5.5")),
+            (
+                "tariff_9_025kwh_start",
+                dict(stop_kwh=20),
+                Decimal("5.5"),
+                Decimal("6.1"),
+            ),
+            (
+                "tariff_12_025kwh_min_price",
+                dict(stop_kwh=20),
+                Decimal("5"),
+                Decimal("5.5"),
+            ),
+            (
+                "tariff_12_025kwh_min_price",
+                dict(stop_kwh=1),
+                Decimal("0.5"),
+                Decimal("0.55"),
+            ),
             # ('tariff_10_025kwh_parking_start', dict(stop_kwh=20, parking=40*60), 7, 7.9),
-            ("tariff_6_025kwh_start_max_price", dict(stop_kwh=50), 10, 11),
-            ("tariff_6_025kwh_start_max_price", dict(stop_kwh=30), 8, 8.85),
+            (
+                "tariff_6_025kwh_start_max_price",
+                dict(stop_kwh=50),
+                Decimal("10"),
+                Decimal("11"),
+            ),
+            (
+                "tariff_6_025kwh_start_max_price",
+                dict(stop_kwh=30),
+                Decimal("8"),
+                Decimal("8.85"),
+            ),
             # Parking
             # ('tariff_13_simple_3hour_5parking', dict(stop_kwh=20)),
             (
                 "tariff_2_alt_text",
                 dict(stop_kwh=1, end_date_time=start_date_time + timedelta(hours=2.5)),
-                4.75,
-                5,
+                Decimal("4.75"),
+                Decimal("4.997"),
             ),
-            ("tariff_3_alt_url", dict(stop_kwh=Decimal(20.45)), 5.63, 6.24),
+            (
+                "tariff_3_alt_url",
+                dict(stop_kwh=Decimal(20.45)),
+                Decimal("5.625"),
+                Decimal("6.238"),
+            ),
             # Parking, weekdays, times
             # ('tariff_4_complex', dict(stop_kwh=20.45), 5.63, 6.24),
         )
@@ -946,7 +978,12 @@ class ApiPutTests(TestCase):
                 first_json_price_component = (
                     data.get("tariffs")[0].get("elements")[0].get("price_components")[0]
                 )
-                first_price_component = dict(price_components[0])
+                first_price_component = {
+                    "price": float(price_components[0].get("price")),
+                    "step_size": price_components[0].get("step_size"),
+                    "type": price_components[0].get("type"),
+                    "vat": float(price_components[0].get("vat")),
+                }
                 assert first_price_component == first_json_price_component, filename
 
                 saved_data = json.loads(json.dumps(saved_data))
@@ -965,6 +1002,10 @@ class ApiPutTests(TestCase):
                 for t in range(0, len(saved_data["tariffs"])):
                     if "tariff_alt_text" in saved_data["tariffs"][t]:
                         del saved_data["tariffs"][t]["tariff_alt_text"]
+                    for el in saved_data["tariffs"][t]["elements"]:
+                        for pc in el["price_components"]:
+                            pc["price"] = float(pc["price"])
+                            pc["vat"] = float(pc["vat"])
                 assert saved_data == data, filename
 
     def test_put_token(self):
@@ -1125,8 +1166,13 @@ class TariffTests(TestCase):
         self.assertEqual(tariffs.count(), 1)
         self.assertIsInstance(tariffs[0], Tariff)
         tariff: Tariff = tariffs[0]
+        expected_price = Decimal("0.22")
+        actual_price = tariff.tariff_elements.all()[0].price_components.all()[0].price
+
         self.assertEqual(
-            tariff.tariff_elements.all()[0].price_components.all()[0].price, 0.22
+            actual_price.quantize(Decimal("0.01")),
+            expected_price,
+            f"Expected {expected_price}, got {actual_price}",
         )
 
     @pytest.mark.skip(reason="Fix me!")
@@ -1253,7 +1299,7 @@ class CdrTests(TestCase):
         )
         self.assertEqual(session.total_cost_excl_vat, 3.21, "Price doesn't seem right.")
 
-        cdr1: Cdr = Cdr.from_session(session)
+        cdr1: Cdr = CdrService.get_or_create_cdr(session)
 
         simulation.tasks_requests.post.assert_called_once()
 
@@ -1287,7 +1333,7 @@ class CdrTests(TestCase):
         #
 
         simulation.reset()
-        cdr: Cdr = Cdr.from_session(session)
+        cdr: Cdr = CdrService.get_or_create_cdr(session)
         simulation.tasks_requests.post.assert_called_once()
 
         self.assertTrue(
@@ -1322,7 +1368,7 @@ class CommandTests(TestCase):
     @simulate_surrounding_world
     def test_start_stop_session(self, simulation):
         url = reverse("commands-start-session")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
         request = api_factory.get(url, sender=Party("FI", "MSP"))
@@ -1443,7 +1489,7 @@ class CommandTests(TestCase):
     def test_reserve_now(self, simulation):
         return  # Reservations are not in use (yet)
         url = reverse("commands-reserve-now")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Make sure an empty get doesn't cause validation errors, since we expect the user to just get some instructions
         request = api_factory.get(url, sender=Party("FI", "MSP"))
@@ -2037,6 +2083,9 @@ class CredentialsTest(TestCase):
     maxDiff = 99999
 
     def test_cached_partylist(self):
+        # Clear cache to ensure test isolation during parallel execution
+        find_endpoints_by_roles.cache_clear()
+
         location_url = urljoin("http://localhost:8001", reverse("location-list"))
         token_url = urljoin("http://localhost:8001", reverse("token-list"))
         tariff_url = urljoin("http://localhost:8001", reverse("tariff-list"))
@@ -2345,12 +2394,6 @@ class TestSession(TestCase):
             uid=uid,
             billed_to=party,
             authorization_reference=authorization_reference,
-            ocpi_master=get_credentialsrole(
-                credentials,
-                party=Party("FI", "CPO"),
-                role=OcpiRolesEnum.CPO,
-                create=True,
-            ),
         )
         self.assertTrue(bool(session))
 
@@ -2408,7 +2451,7 @@ class TestSession(TestCase):
 
                 with (
                     patch("ocpi22.util.redis_store.get") as mock_get,
-                    patch("ocpi22.webhooks.requests.put") as webhook_post_mock,
+                    patch("ocpi22.legacy_webhooks.requests.put") as webhook_post_mock,
                 ):
                     mock_get.return_value = "http://localhost/session/"
                     response = SessionViewSet().patch(request, **kwargs)
@@ -2552,7 +2595,7 @@ class TestCpoApi(TestCase):
     @patch("ocpi22.ocpi.util.uuid.uuid4", return_value=MockUuid4())
     # @patch('ocpi22.tokens.auth.ocpi_post', side_effect=[make_json_response(AuthorizeData.accept_authorization)])
     @patch("ocpi22.tokens.token_async.post_request", new_callable=AsyncMock)
-    @patch("ocpi22.webhooks.requests.put")
+    @patch("ocpi22.legacy_webhooks.requests.put")
     def test_rfid_charging_flow(
         self,
         _webhook_post_mock: Mock,
@@ -2893,7 +2936,7 @@ class TestCpoApi(TestCase):
         mock_post_request.return_value = 200, AuthorizeData.accept_authorization
 
         url = reverse("commands-start-session")
-        viewset = CommandsViewSet()
+        viewset = CommandsViewSetLegacy()
 
         # Load up the test message and send it
         data = load_example("data/examples/command_start_session_adhoc.json")
@@ -3546,7 +3589,7 @@ def start_session(data, user):
     )
     request.data = data
     request.user = user
-    return CommandsViewSet.start_session(request)
+    return CommandsViewSetLegacy.start_session(request)
 
 
 def stop_session(data, user):
@@ -3555,13 +3598,13 @@ def stop_session(data, user):
     )
     request.data = data
     request.user = user
-    return CommandsViewSet().stop_session(request)
+    return CommandsViewSetLegacy().stop_session(request)
 
 
 def send_command_result(data, url, command, command_id):
     request = api_factory.post(url)
     request.data = data
-    return CommandsViewSet().command_result(request, command, command_id)
+    return CommandsViewSetLegacy().command_result(request, command, command_id)
 
 
 class TestMspMap(TestCase):
@@ -3663,9 +3706,12 @@ class TestOCPIAuthentication(TestCase):
     @staticmethod
     def _make_test_request(sender: Party, to: Party, hub: Optional[Party] = None):
         request = api_factory.post("http://localhost:8101/anyurl/")
-        from ocpi22.routing import find_credentials
 
-        credentials = find_credentials(hub) if hub else find_credentials(sender)
+        credentials = (
+            CredentialsService.find_credentials(hub)
+            if hub
+            else CredentialsService.find_credentials(sender)
+        )
         request.headers = make_headers(credentials.ours_base64(), to=to, sender=sender)
         return request, credentials.ours_base64()
 
@@ -3990,6 +4036,102 @@ class TokenAuthorizationTests(BetterTestCase):
 
 
 class TestSolidLocation:
+    @pytest.fixture
+    def location_payload(self):
+        return {
+            "country_code": "FI",
+            "party_id": "CPO",
+            "id": "LOC1",
+            "publish": True,
+            "name": "Gent Zuid",
+            "address": "F.Rooseveltlaan 3A",
+            "city": "Gent",
+            "postal_code": "9000",
+            "country": "BEL",
+            "coordinates": {"latitude": "51.047599", "longitude": "3.729944"},
+            "parking_type": "ON_STREET",
+            "evses": [
+                {
+                    "uid": "3256",
+                    "evse_id": "FI*CPO*E3256",
+                    "status": "AVAILABLE",
+                    "capabilities": ["RESERVABLE"],
+                    "connectors": [
+                        {
+                            "id": "1",
+                            "standard": "IEC_62196_T2",
+                            "format": "CABLE",
+                            "power_type": "AC_3_PHASE",
+                            "max_voltage": 220,
+                            "max_amperage": 16,
+                            "tariff_ids": ["11"],
+                            "last_updated": "2015-06-29T20:39:09Z",
+                        }
+                    ],
+                    "last_updated": "2015-06-29T20:39:09Z",
+                }
+            ],
+            "operator": {"name": "BeCharged"},
+            "time_zone": "Europe/Brussels",
+            "roaming_enabled": True,
+            "last_updated": "2015-06-29T20:39:09Z",
+        }
+
+    def get_expected_data(self, location: Location) -> dict:
+        return {
+            "country_code": location.ocpi_master.country_code,
+            "party_id": location.ocpi_master.party_id,
+            "id": location.uid,
+            "publish": location.publish,
+            "name": location.name,
+            "address": location.address,
+            "city": location.city,
+            "postal_code": location.postal_code,
+            "country": location.country,
+            "coordinates": {
+                "latitude": str(location.latitude),
+                "longitude": str(location.longitude),
+            },
+            "parking_type": location.parking_type,
+            "evses": [
+                {
+                    "uid": evse.uid,
+                    "evse_id": evse.evse_id,
+                    "status": evse.status,
+                    "capabilities": evse.capabilities if evse.capabilities else [],
+                    "connectors": [
+                        {
+                            "id": connector.uid,
+                            "standard": connector.standard,
+                            "format": connector.format,
+                            "power_type": connector.power_type,
+                            "max_voltage": connector.max_voltage,
+                            "max_amperage": connector.max_amperage,
+                            "tariff_ids": [
+                                str(t.uid) for t in connector.tariff_ids.all()
+                            ],
+                            "last_updated": connector.last_updated.strftime(
+                                "%Y-%m-%dT%H:%M:%SZ"
+                            )
+                            if connector.last_updated
+                            else None,
+                        }
+                        for connector in evse.connectors.all()
+                    ],
+                    "last_updated": evse.last_updated.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    if evse.last_updated
+                    else None,
+                }
+                for evse in location.evses.all()
+            ],
+            "operator": {"name": location.operator.name} if location.operator else None,
+            "time_zone": location.time_zone,
+            "roaming_enabled": getattr(location, "roaming_enabled", None),
+            "last_updated": location.last_updated.strftime("%Y-%m-%dT%H:%M:%SZ")
+            if location.last_updated
+            else None,
+        }
+
     @pytest.mark.parametrize(
         "api_client, expected_status_code",
         [
@@ -4021,8 +4163,6 @@ class TestSolidLocation:
         client = request.getfixturevalue(api_client)
 
         response = client.put(url, location_example, format="json")
-
-        print(response.json())
 
         assert response.status_code == expected_status_code
 
@@ -4060,6 +4200,31 @@ class TestSolidLocation:
 
         assert response.status_code == 200
         assert mock_post_process.call_count == 1
+
+    @patch("ocpi22.models.location.Location.post_process_after_update_or_create")
+    @pytest.mark.django_db
+    @time_machine.travel(datetime(2015, 6, 29, 20, 39, 9, tzinfo=pytz.UTC), tick=False)
+    def test_put_location_update_an_existing_location_returns_200(
+        self,
+        mock_post_process,
+        authenticated_user_client,
+        ocpi_master,
+        tariffs,
+        location_payload,
+    ):
+        url = reverse("cpo:update_location")
+        LocationFactory(uid=location_payload["id"], ocpi_master=ocpi_master)
+
+        authenticated_user_client.put(url, location_payload, format="json")
+        saved_location = Location.objects.get(uid=location_payload["id"])
+        expected_data = self.get_expected_data(saved_location)
+
+        # In the database it is mapped to ocpi tariff however in the payload it is the solid tariff
+        expected_data.get("evses")[0]["connectors"][0]["tariff_ids"] = ["11"]
+
+        assert compare_dicts_recursively(
+            expected_data, location_payload
+        ), "The saved location is different from the expected payload"
 
     def test_put_location_with_invalid_data_returns_422(
         self, authenticated_user_client, ocpi_master, location_example
@@ -4104,7 +4269,11 @@ class TestSolidLocation:
         )
 
         assert response.status_code == 201
+
+        country_code = location_example_with_evse_evse_id_none["country_code"]
+        party_id = location_example_with_evse_evse_id_none["party_id"]
+        uid = location_example_with_evse_evse_id_none["evses"][0]["uid"]
         assert (
             response.json()["evses"][0]["evse_id"]
-            == f'{location_example_with_evse_evse_id_none["country_code"]}*{location_example_with_evse_evse_id_none["party_id"]}*E{location_example_with_evse_evse_id_none["evses"][0]["uid"]}'
+            == f"{country_code}*{party_id}*E{uid}"
         )

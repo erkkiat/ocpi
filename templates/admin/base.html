@@ -123,7 +123,9 @@
 													</li>
 													{% if user.is_authenticated %}
 													{% for section in sections %}
+                                                    {% if section.name != 'webhooks' and section.name != 'payments' %}
 													{% include "admin/includes/menu_item.html" with section=section active_section=module_name %}
+                                                    {% endif %}
 													{% endfor %}
 													<li class="dropdown">
 														<a class="dropdown-item dropdown-toggle" href="#">

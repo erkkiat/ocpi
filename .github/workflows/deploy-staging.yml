@@ -8,11 +8,15 @@ on:
     branches:
       - develop
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   lint:
     name: Lint Code
     environment: staging
-    runs-on: ubuntu-latest-m
+    runs-on: linux-arm64
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -31,8 +35,7 @@ jobs:
   test:
     name: Run Tests
     environment: staging
-    runs-on: ubuntu-latest-m
-    needs: lint
+    runs-on: linux-arm64
     services:
       redis:
         image: redis:latest
@@ -82,10 +85,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov
 
-      - name: Run Pytest
-        run: pytest
+      - name: Run Pytest in Parallel
+        run: pytest -n auto
 
       - name: Upload HTML Coverage Report
         uses: actions/upload-artifact@v4
@@ -93,16 +95,22 @@ jobs:
           name: HTML Coverage Report
           path: htmlcov/
 
-  build-and-push-staging:
+  build-staging:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
-    runs-on: ubuntu-latest-m
-    needs: test
+    runs-on: linux-arm64
+    needs: [lint, test]
     if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
+      deploy_id: ${{ steps.set_tag.outputs.deploy_id }}
 
     env:
-      ECR_REPO_URL: ${{ secrets.SMP_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMP_AWS_REGION }}.amazonaws.com
+      AWS_REGION: ${{ secrets.SMAPPEE_AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}
+      ECR_REPO_URL: ${{ secrets.SMAPPEE_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.SMAPPEE_AWS_REGION }}.amazonaws.com
       FARMS: "f3"
+      AWS_PAGER: ""
 
     steps:
       - name: Checkout code
@@ -114,31 +122,39 @@ jobs:
       - name: Enable BuildKit
         run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.SMP_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.SMP_AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.SMP_AWS_REGION }}
+          role-to-assume: ${{ secrets.SMAPPEE_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
 
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set Docker Image Tag
+      - name: Set Docker Image Tag + Deploy ID
         id: set_tag
+        shell: bash
         run: |
+          set -euo pipefail
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"   # develop-<shortsha>
+          DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
+
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "DEPLOYID=${DEPLOYID}"
 
       - name: Build Base Image Once
         run: |
-          echo "Building base image once with tag: $IMAGE_TAG"
+          set -euo pipefail
+          echo "Building base image once with tag: ${{ steps.set_tag.outputs.image_tag }}"
           docker buildx build \
             --platform linux/arm64 \
-            -t "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" \
+            -t "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" \
             -f ./Dockerfile \
             --cache-from=type=gha,scope=staging-build \
             --cache-to=type=gha,mode=max,scope=staging-build \
@@ -146,15 +162,168 @@ jobs:
 
       - name: Tag and Push Base Image to Each Farm
         run: |
+          set -euo pipefail
           for farm in $FARMS; do
               repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
-              full_image_url_with_tag="$repo_url:$IMAGE_TAG"
+              full_image_url_with_tag="$repo_url:${{ steps.set_tag.outputs.image_tag }}"
 
               echo "Tagging base image for farm $farm..."
-              docker tag "$ECR_REPO_URL/solidroam-base:$IMAGE_TAG" "$full_image_url_with_tag"
+              docker tag "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" "$full_image_url_with_tag"
 
               echo "Pushing image to ECR: $full_image_url_with_tag"
               docker push "$full_image_url_with_tag"
 
               echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
+
+  deploy-staging:
+    name: Deploy to Staging via SSM
+    environment: staging
+    runs-on: linux-arm64
+    needs: build-staging
+    if: github.event_name == 'push'
+
+    env:
+      AWS_REGION: ${{ secrets.SMAPPEE_AWS_REGION }}
+      SSM_DOCUMENT_NAME: Solidroam-GHA-Deployment
+      TARGET_TAG_COMPONENT: solidroam
+      TARGET_TAG_STAGE: farm3
+      AWS_PAGER: ""
+      IMAGE_TAG: ${{ needs.build-staging.outputs.image_tag }}
+      DEPLOYID: ${{ needs.build-staging.outputs.deploy_id }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.SMAPPEE_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ secrets.SMAPPEE_AWS_REGION }}
+
+      - name: Deploy to farm3 via SSM
+        id: ssm_deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Sending SSM deploy: IMAGETAG=${IMAGE_TAG}, DEPLOYID=${DEPLOYID}"
+          echo "Target tags: component=${TARGET_TAG_COMPONENT}, stage=${TARGET_TAG_STAGE}"
+          echo "Document: ${SSM_DOCUMENT_NAME}"
+          echo "Region: ${AWS_REGION}"
+
+          COMMAND_ID=$(
+            aws ssm send-command \
+              --document-name "${SSM_DOCUMENT_NAME}" \
+              --targets "Key=tag:component,Values=${TARGET_TAG_COMPONENT}" "Key=tag:stage,Values=${TARGET_TAG_STAGE}" \
+              --max-concurrency "1" \
+              --max-errors "0" \
+              --comment "staging deploy ${IMAGE_TAG} (${DEPLOYID})" \
+              --parameters "{\"IMAGETAG\":[\"${IMAGE_TAG}\"],\"DEPLOYID\":[\"${DEPLOYID}\"]}" \
+              --region "${AWS_REGION}" \
+              --query "Command.CommandId" \
+              --output text
+          )
+
+          echo "SSM CommandId=${COMMAND_ID}"
+          echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
+
+          # ---- 5-minute bounded wait for terminal state ----
+          TIMEOUT_SECONDS=300
+          POLL_INTERVAL=10
+          DEADLINE=$((SECONDS + TIMEOUT_SECONDS))
+
+          while true; do
+            STATUS=$(
+              aws ssm list-command-invocations \
+                --command-id "${COMMAND_ID}" \
+                --details \
+                --region "${AWS_REGION}" \
+                --query "CommandInvocations[0].Status" \
+                --output text
+            )
+
+            echo "SSM status: ${STATUS}"
+
+            case "${STATUS}" in
+              Success)
+                echo "Deployment completed successfully."
+                break
+                ;;
+              Failed|Cancelled|TimedOut)
+                echo "Deployment reached terminal failure state: ${STATUS}"
+                exit 1
+                ;;
+              Pending|InProgress|Delayed|Cancelling)
+                if (( SECONDS >= DEADLINE )); then
+                  echo "Deployment did not finish within ${TIMEOUT_SECONDS}s (5 minutes)."
+                  exit 1
+                fi
+                sleep "${POLL_INTERVAL}"
+                ;;
+              ""|None)
+                echo "Waiting for command invocation to appear (AWS eventual consistency)..."
+                if (( SECONDS >= DEADLINE )); then
+                  echo "Command invocation never appeared within ${TIMEOUT_SECONDS}s."
+                  exit 1
+                fi
+                sleep "${POLL_INTERVAL}"
+                ;;
+              *)
+                echo "Unexpected SSM status: ${STATUS}"
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Show Deployment Logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMAND_ID="${{ steps.ssm_deploy.outputs.command_id }}"
+          if [[ -z "${COMMAND_ID}" ]]; then
+            echo "No COMMAND_ID captured (send-command likely failed)."
+            exit 0
+          fi
+          
+          echo "=== SSM Logs (CommandId=${COMMAND_ID}) ==="
+          
+          INSTANCE_IDS=$(
+            aws ssm list-command-invocations \
+              --command-id "${COMMAND_ID}" \
+              --region "${AWS_REGION}" \
+              --query "CommandInvocations[].InstanceId" \
+              --output text
+          )
+          
+          for iid in ${INSTANCE_IDS}; do
+            data=$(
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${iid}" \
+                --region "${AWS_REGION}" \
+                --query '{Status:Status,StatusDetails:StatusDetails,ResponseCode:ResponseCode,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
+                --output json || true
+            )
+          
+            echo
+            echo "----- ${iid} -----"
+            echo "$data" | jq -r '
+              "Status: \(.Status) (\(.StatusDetails // "n/a")), RC: \(.ResponseCode // "n/a")",
+              "STDOUT:\n\(.Stdout // "")\n\nSTDERR:\n\(.Stderr // "")"
+            '
+          done
+
+      - name: Create Sentry Release (staging)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: staging
+          release: ${{ env.IMAGE_TAG }}
+          set_commits: auto
+          finalize: true

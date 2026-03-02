@@ -44,6 +44,7 @@ from payment.views import PaymentViewSet
 from settlement.views import CdrReportViews
 from integrations.hubject.api import api as hubject_api
 from ocpi22.cpo.api import api as cpo_locations_api
+from ocpi22.payments.api import payments_ninja_api
 
 ocpi_router = OCPIRouter()
 ocpi_router.register(r"credentials/", CredentialsViewSet, basename="credentials")
@@ -104,6 +105,7 @@ urlpatterns = [
     ),
     path("api/cpo/", include(cpo_router.urls), name="cpo-interface"),
     path("api/cpo/locations/", cpo_locations_api.urls),
+    path("api/cpo/payments/", payments_ninja_api.urls),
     path("api/msp/v1/", include(msp_router.urls), name="msp-interface"),
     path("ocpi/", include(common_router.urls)),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),

@@ -1,3 +1,4 @@
+import logging
 from itertools import groupby
 from typing import Optional
 
@@ -8,12 +9,17 @@ from ocpi22 import choices
 from util import DistributedCache
 
 
+logger = logging.getLogger(__name__)
+
+
 @ttl_cache(
     ttl=14400
 )  # 4 hours local memory cache, maybe Redis would not be smart here since hub uses this for routing
 def find_endpoints_by_roles(
-        roles: Optional[tuple|list], ocpi_module: choices.OcpiModuleEnum,
-        endpoint_role: choices.EndpointRoleEnum = choices.EndpointRoleEnum.RECEIVER.value
+    roles: Optional[tuple | list],
+    ocpi_module: choices.OcpiModuleEnum,
+    endpoint_role: choices.EndpointRoleEnum = choices.EndpointRoleEnum.RECEIVER.value,
+    location_uid: Optional[str] = None,
 ) -> list:
     """
     Find all endpoints for specified roles for sending updates to other parties.
@@ -21,6 +27,7 @@ def find_endpoints_by_roles(
     to the same endpoint for the different roles they possess.
     """
     from ocpi22.models.credentials import CredentialsRole, Endpoint
+    from ocpi22.credentials.services import CredentialsService
 
     result = []
 
@@ -39,6 +46,13 @@ def find_endpoints_by_roles(
         country_code = role.country_code
         party_id = role.party_id
         if credentials and credentials.valid:
+            if location_uid and not CredentialsService.is_location_allowed(
+                credentials, location_uid
+            ):
+                logger.info(
+                    f"Skipping the endpoint for {ocpi_module} to {country_code}*{party_id} as it's not in allowed locations of credentials {credentials.id}"
+                )
+                continue
             result += [
                 (
                     endpoint.url,

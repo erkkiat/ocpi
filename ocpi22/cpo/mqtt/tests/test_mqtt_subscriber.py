@@ -1,27 +1,15 @@
-import os
-from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
 import paho.mqtt.client as mqtt
-import pytz
-from orjson import orjson
 from paho.mqtt.client import CallbackAPIVersion
 
-from ocpi22.cpo.mqtt.mqtt_subscriber import (
-    stop_and_disconnect,
-    connect_client,
-    on_message,
+from ocpi22.cpo.mqtt.mqtt_handler import get_topic, _subscribe, on_connect
+from ocpi22.cpo.mqtt.mqtt_client import (
+    MQTTClientSingleton,
     get_broker_username_password,
     get_broker_and_port,
-    configure_client,
-    on_connect,
-    start_client,
-    _subscribe,
-    get_topic,
-    MQTTClientSingleton,
 )
-from ocpi22.tests.factories import OCPISessionFactory
 
 
 @pytest.fixture
@@ -54,40 +42,7 @@ def reset_singleton():
     MQTTClientSingleton._instance = None
 
 
-class TestMqttSubscriber:
-    _smappee_status_topic = os.getenv("SMAPPEE_STATUS_UPDATE_TOPIC")
-    _smappee_meter_topic = os.getenv("SMAPPEE_METER_VALUES_TOPIC")
-
-    @pytest.mark.django_db
-    def test_on_message_calls_process_status_update_data(
-        self, smappee_status_update_message, db, celery_app, celery_worker
-    ):
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.process_status_update_data"
-        ) as mock_process_status_update_data:
-            on_message(None, None, smappee_status_update_message)
-            mock_process_status_update_data.assert_called_once_with(
-                smappee_status_update_message
-            )
-
-    @pytest.mark.django_db
-    def test_on_message_calls_process_meter_values(self, smappee_meter_message):
-        session = OCPISessionFactory(
-            uid=orjson.loads(smappee_meter_message.payload)["session_id"]
-        )
-        with patch(
-            "ocpi22.cpo.mqtt.services.process_meter_values"
-        ) as mock_process_meter_values:
-            on_message(None, None, smappee_meter_message)
-            mock_process_meter_values.assert_called_once_with(
-                request=None,
-                kwh=1.1,
-                soc=1.1,
-                power=2.2,
-                timestamp=datetime(2022, 2, 22, 22, 22, 22, tzinfo=pytz.UTC),
-                session=session,
-            )
-
+class TestGetTopic:
     def test_get_topic_from_env_var_success(self, monkeypatch):
         topic = "test_topic"
         monkeypatch.setenv("TEST_TOPIC", topic)
@@ -123,80 +78,28 @@ class TestMqttSubscriber:
         with pytest.raises(ValueError):
             get_broker_and_port()
 
-    def test_configure_client_legacy_wrapper(self):
-        mock_client_id = "test_client_id"
-
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_client = MagicMock()
-            mock_singleton_instance.get_client.return_value = mock_client
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            result = configure_client(mock_client_id)
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.get_client.assert_called_once()
-            assert result == mock_client
-
-    def test_start_client_with_loop_forever_behavior(self, mqtt_client):
-        with patch.object(mqtt_client, "loop_forever") as mock_loop_forever:
-            start_client(mqtt_client, True)
-            mock_loop_forever.assert_called_once()
-
-    def test_legacy_stop_and_disconnect_calls_singleton(self):
-        mock_client = MagicMock(spec=mqtt.Client)
-
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            stop_and_disconnect(mock_client)
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.stop_client.assert_called_once()
-
-    def test_connect_client_legacy_wrapper_returns_the_connected_client(self):
-        """Test that legacy connect_client function returns a client from singleton"""
-        with patch(
-            "ocpi22.cpo.mqtt.mqtt_subscriber.MQTTClientSingleton"
-        ) as mock_singleton_class:
-            mock_singleton_instance = MagicMock()
-            mock_client = MagicMock()
-            mock_singleton_instance.get_client.return_value = mock_client
-            mock_singleton_class.return_value = mock_singleton_instance
-
-            result = connect_client()
-
-            mock_singleton_class.assert_called_once()
-            mock_singleton_instance.get_client.assert_called_once()
-            assert result == mock_client
-
     def test_subscribe_success(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_SUCCESS, 1)
-            _subscribe(mqtt_client, "test/topic")
+            _subscribe(mqtt_client, "test/topic", 0)
 
-            mock_subscribe.assert_called_once_with("test/topic")
+            mock_subscribe.assert_called_once_with("test/topic", 0)
             assert "Successfully subscribed to test/topic" in caplog.text
 
     def test_subscribe_failure(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_NO_CONN, 1)
-            _subscribe(mqtt_client, "test/topic")
+            _subscribe(mqtt_client, "test/topic", 1)
 
-            mock_subscribe.assert_called_once_with("test/topic")
+            mock_subscribe.assert_called_once_with("test/topic", 1)
             assert "Failed to subscribe to test/topic with error code 4" in caplog.text
 
     def test_subscribe_invalid_topic(self, mqtt_client, caplog):
         with patch.object(mqtt_client, "subscribe") as mock_subscribe:
             mock_subscribe.return_value = (mqtt.MQTT_ERR_INVAL, 1)
-            _subscribe(mqtt_client, "invalid/topic")
+            _subscribe(mqtt_client, "invalid/topic", 0)
 
-            mock_subscribe.assert_called_once_with("invalid/topic")
+            mock_subscribe.assert_called_once_with("invalid/topic", 0)
             assert (
                 "Failed to subscribe to invalid/topic with error code 3" in caplog.text
             )
@@ -238,42 +141,34 @@ class TestMQTTClientSingleton:
             mock_create.assert_not_called()
             assert result == mock_client
 
-    def test_configure_client_creates_proper_client(self, mock_broker_config):
-        instance = MQTTClientSingleton()
-        client_id = "test_client_id"
-
-        # Mock only the network connection, not the client creation
-        with patch.object(instance, "_configure_ssl") as mock_ssl:
-            mock_client = mqtt.Client(
-                client_id=client_id, callback_api_version=CallbackAPIVersion.VERSION2
-            )
-            mock_ssl.return_value = mock_client
-
-            result = instance._configure_client(client_id)
-
-            assert result.on_connect == on_connect
-            assert result.on_message == on_message
-            assert result._client_id.decode() == client_id
-
-    def test_configure_client_without_ssl_succeeds(self, mock_broker_config):
+    def test_configure_client_sets_callbacks_with_db_wrapper(self, mock_broker_config):
         instance = MQTTClientSingleton()
         client_id = "test_client_id"
 
         result = instance._configure_client(client_id)
 
-        assert result.on_connect == on_connect
-        assert result.on_message == on_message
+        assert result.on_connect is not None
+        assert result.on_message is not None
         assert result._client_id.decode() == client_id
+        assert callable(result.on_connect)
+        assert callable(result.on_message)
 
-    def test_connect_client_success(self, mock_broker_config):
-        """Test successful client connection"""
+    def test_configure_client_sets_username_and_password(self, mock_broker_config):
+        instance = MQTTClientSingleton()
+        client_id = "test_client_id"
+
+        with patch.object(mqtt.Client, "username_pw_set") as mock_username_pw_set:
+            instance._configure_client(client_id)
+
+            mock_username_pw_set.assert_called_once_with("test_user", "test_pass")
+
+    def test_connect_client_calls_connect_with_keepalive(self, mock_broker_config):
         instance = MQTTClientSingleton()
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        # Mock only the actual connection to avoid network calls
         with patch.object(client, "connect") as mock_connect:
             instance._connect_client(client)
-            mock_connect.assert_called_once_with("test.broker.com", 1883)
+            mock_connect.assert_called_once_with("test.broker.com", 1883, keepalive=60)
 
     def test_connect_client_with_retries_on_failure(self, mock_broker_config):
         instance = MQTTClientSingleton()
@@ -284,7 +179,7 @@ class TestMQTTClientSingleton:
                 mock_connect.side_effect = [
                     ConnectionError("Failed"),
                     None,
-                ]  # Fail first, succeed second
+                ]
 
                 instance._connect_client(client, retries=2, delay=1)
 
@@ -292,7 +187,6 @@ class TestMQTTClientSingleton:
                 mock_sleep.assert_called_once_with(1)
 
     def test_connect_client_max_retries_exceeded_raises(self, mock_broker_config):
-        """Test client connection failure after max retries"""
         instance = MQTTClientSingleton()
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
@@ -316,23 +210,20 @@ class TestMQTTClientSingleton:
             mock_loop_forever.assert_called_once()
 
     def test_start_client_loop_start(self):
-        """Test start_client with loop_forever=False"""
         instance = MQTTClientSingleton()
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         instance.client = client
 
-        # For loop_start, we don't need to mock as it's non-blocking
         instance.start_client(loop_forever=False)
-        # Just verify no exception was raised
 
-    def test_stop_client_succeeds(self):
+    def test_reset_client_succeeds(self):
         instance = MQTTClientSingleton()
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         instance.client = client
 
-        # These methods are safe to call on a real client
-        instance.stop_client()
-        assert instance.client is None
+        with patch("ocpi22.cpo.mqtt.mqtt_client.close_old_connections"):
+            instance.reset_client()
+            assert instance.client is None
 
     def test_is_connected_returns_true_with_connected_client(self):
         instance = MQTTClientSingleton()
@@ -348,20 +239,11 @@ class TestMQTTClientSingleton:
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         instance.client = client
 
-        # Real client will return False when not connected
         assert instance.is_connected() is False
 
     def test_is_connected_returns_false_when_no_client(self):
         instance = MQTTClientSingleton()
         assert instance.is_connected() is False
-
-    def test_reset_client_succeeds(self):
-        instance = MQTTClientSingleton()
-        client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
-        instance.client = client
-
-        instance.reset_client()
-        assert instance.client is None
 
     def test_configure_ssl(self):
         instance = MQTTClientSingleton()
@@ -371,42 +253,30 @@ class TestMQTTClientSingleton:
 
 
 class TestOnConnect:
-    def test_on_connect_success(self, caplog):
+    def test_on_connect_success(self, monkeypatch, caplog):
+        meter_topic = "meter/topic"
+        status_topic = "status/topic"
+        auth_topic = "auth/topic"
+
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        with patch("ocpi22.cpo.mqtt.mqtt_subscriber._subscribe") as mock_subscribe:
-            with patch("ocpi22.cpo.mqtt.mqtt_subscriber.meter_topic", "meter/topic"):
-                with patch(
-                    "ocpi22.cpo.mqtt.mqtt_subscriber.status_topic", "status/topic"
-                ):
-                    on_connect(client, None, None, 0)
+        with (
+            patch("ocpi22.cpo.mqtt.mqtt_handler.METER_TOPIC", meter_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler.STATUS_TOPIC", status_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler.AUTH_REQUEST_TOPIC", auth_topic),
+            patch("ocpi22.cpo.mqtt.mqtt_handler._subscribe") as mock_subscribe,
+        ):
+            on_connect(client, None, None, 0)
 
-                    assert "Connected successfully to the broker" in caplog.text
-                    assert mock_subscribe.call_count == 2
-                    mock_subscribe.assert_any_call(client, "meter/topic")
-                    mock_subscribe.assert_any_call(client, "status/topic")
+            assert "Connected successfully to the broker" in caplog.text
+            assert mock_subscribe.call_count == 3
+            mock_subscribe.assert_any_call(client, meter_topic)
+            mock_subscribe.assert_any_call(client, status_topic)
+            mock_subscribe.assert_any_call(client, auth_topic, qos=1)
 
     def test_on_connect_failure(self, caplog):
         client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
 
-        on_connect(client, None, None, 1)  # rc != 0 means failure
+        on_connect(client, None, None, 1)
 
         assert "Failed to connect, return code 1" in caplog.text
-
-
-class TestOnMessage:
-    def test_on_message_unknown_topic(self, caplog):
-        class MockMessage:
-            def __init__(self, topic):
-                self.topic = topic
-
-        mock_message = MockMessage("unknown/completely/different")
-
-        with patch("ocpi22.cpo.mqtt.mqtt_subscriber.meter_topic", "meter/values"):
-            with patch(
-                "ocpi22.cpo.mqtt.mqtt_subscriber.status_topic", "status/updates"
-            ):
-                result = on_message(None, None, mock_message)
-
-                assert result is None
-                assert "Unknown topic unknown/completely/different" in caplog.text
