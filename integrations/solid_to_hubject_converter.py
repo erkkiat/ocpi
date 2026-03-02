@@ -57,7 +57,7 @@ from integrations.hubject.schemas import (
 from ocpi22 import choices
 from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
 from ocpi22.cpo.schemas import OpeningTimes, RegularHours
-from ocpi22.choices import OCPICapability, TokenType
+from ocpi22.choices import TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
