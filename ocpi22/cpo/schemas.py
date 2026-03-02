@@ -271,13 +271,13 @@ class StatusScheduleOut(BaseSchema):
     status: str
 
 
-class ConnectorOut(Connector):
+class ConnectorOut(SolidConnector):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
 
 
-class EVSEOut(EVSE):
+class EVSEOut(SolidEvse):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
@@ -288,7 +288,7 @@ class EVSEOut(EVSE):
     )
 
 
-class LocationOut(LocationIn):
+class LocationOut(SolidLocation):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
