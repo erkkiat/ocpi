@@ -27,7 +27,7 @@ from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
-from ocpi22.cpo.schemas import LocationIn, Error
+from ocpi22.cpo.schemas import LocationIn, Error, LocationOut
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.cpo.session_cache import save_to_session_cache, get_cached_session
 from ocpi22.locations.services import LocationService, EvseServices
@@ -1294,7 +1294,7 @@ location_service = LocationService()
 
 @api.put(
     "/",
-    response={200: LocationIn, 201: LocationIn, 403: Error, 400: Error},
+    response={200: LocationOut, 201: LocationOut, 403: Error, 400: Error},
     tags=["Location"],
 )
 def update_location(request, location: LocationIn):
@@ -1321,6 +1321,11 @@ def update_location(request, location: LocationIn):
             )
             status_code = status.HTTP_201_CREATED
 
-        return status_code, LocationIn.from_orm(saved_location)
+        saved_location = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
+            saved_location
+        )
+        location_out = LocationOut.model_validate(saved_location).model_dump(exclude_none=True)
+
+        return status_code, location_out
     except ValidationError as e:
         return 400, Error(message=str(e.detail))

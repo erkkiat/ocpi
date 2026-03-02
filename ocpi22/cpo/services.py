@@ -236,6 +236,13 @@ class SolidTariffService:
             connector.save()
             connector.evse.location.post_process_after_update_or_create()
 
+    def get_solid_tariff_external_id_by_ocpi_tariff_uid(self, ocpi_tariff_uid):
+        try:
+            solid_tariff = SolidTariff.objects.get(ocpi_tariff__uid=ocpi_tariff_uid)
+            return solid_tariff.external_id
+        except (Tariff.DoesNotExist, SolidTariff.DoesNotExist):
+            return None
+
 
 class CdrService:
     @classmethod

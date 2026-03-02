@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
 from ocpi22.credentials.services import CredentialsService
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
@@ -75,6 +76,7 @@ class EvseServices:
 
 class LocationService:
     solid_tariff_repository = SolidTariffRepository()
+    solid_tariff_service = SolidTariffService()
 
     @staticmethod
     def get_allowed_locations_queryset(
@@ -159,3 +161,21 @@ class LocationService:
             saved_location.post_process_after_update_or_create()
             return serializer.data
         raise ValidationError(serializer.errors)
+
+    def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
+        for evse in location["evses"]:
+            for connector in evse["connectors"]:
+                if connector.get("tariff_ids"):
+                    solid_tariff_ids = []
+                    for tariff_id in connector["tariff_ids"]:
+                        solid_tariff_external_id = self.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid(
+                            tariff_id.upper()
+                        )
+                        if solid_tariff_external_id:
+                            solid_tariff_ids.append(solid_tariff_external_id)
+                        else:
+                            raise ValidationError(
+                                f"SolidTariff for OCPI tariff '{tariff_id}' not found"
+                            )
+                    connector["tariff_ids"] = solid_tariff_ids
+        return location

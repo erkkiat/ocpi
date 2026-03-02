@@ -221,6 +221,36 @@ def test_create_solid_tariff_with_same_external_id_replaces_ocpi_tariff_in_conne
 
 
 @pytest.mark.django_db
+def test_get_solid_tariff_external_id_by_ocpi_tariff_uid_success(
+    solid_tariff_service_instance,
+):
+    tariff = TariffFactory(uid="TARIFF-1234")
+    SolidTariffFactory(external_id="SOLID-TARIFF-1234", ocpi_tariff=tariff)
+
+    result = (
+        solid_tariff_service_instance.get_solid_tariff_external_id_by_ocpi_tariff_uid(
+            tariff.uid
+        )
+    )
+    assert result == "SOLID-TARIFF-1234"
+
+
+@pytest.mark.django_db
+def test_get_solid_tariff_external_id_by_ocpi_tariff_uid_solid_tariff_not_found(
+    solid_tariff_service_instance,
+):
+    tariff = TariffFactory(uid="TARIFF-5678")
+
+    result = (
+        solid_tariff_service_instance.get_solid_tariff_external_id_by_ocpi_tariff_uid(
+            tariff.uid
+        )
+    )
+
+    assert result is None
+
+
+@pytest.mark.django_db
 def test_find_by_ocpi_tariff_id_found():
     ocpi_tariff = TariffFactory(uid="SMP1")
     solid_tariff = SolidTariffFactory(external_id="SD1", ocpi_tariff=ocpi_tariff)
