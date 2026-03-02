@@ -891,7 +891,7 @@ def test_map_regular_hours_to_opening_times(
 ):
     regular_hours = request.getfixturevalue(regular_hours_fixture)
     opening_times: list[OpeningTimes] = (
-        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
             regular_hours
         )
     )
@@ -910,7 +910,7 @@ def test_map_regular_hours_to_opening_times_from_monday_to_wednesday_returns_3_o
     monday_to_wednesday_regular_hours,
 ):
     opening_times: list[OpeningTimes] = (
-        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
             monday_to_wednesday_regular_hours
         )
     )
@@ -946,7 +946,7 @@ def test_map_regular_hours_with_multiple_periods_for_monday_returns_one_opening_
     monday_regular_hours,
 ):
     opening_times: list[OpeningTimes] = (
-        TestMappings._ocpi_2_oicp_converter.map_regular_hours_to_opening_times(
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
             monday_regular_hours
         )
     )

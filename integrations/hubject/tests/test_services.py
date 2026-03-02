@@ -248,7 +248,7 @@ class TestHubjectService:
         party = Party(country_code="DE", party_id="SMP")
         result = self.__hubject_service.get_operator_evse_data(party)
 
-        assert result == self.expected_berlin_op_evse_data_record()
+        assert result == self.expected_berlin_op_evse_data_record(berlin2_location.uid)
 
     def test_get_evse_full_load(
         self,
