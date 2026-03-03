@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional
 
 import cachetools
@@ -540,3 +540,25 @@ class RoamingProtocol(Enum):
 ROAMING_PROTOCOL_CHOICES = [
     (protocol.name, protocol.value) for protocol in RoamingProtocol
 ]
+
+
+class WEEKDAY_CHOICES(Enum):
+    Monday = auto()
+    Tuesday = auto()
+    Wednesday = auto()
+    Thursday = auto()
+    Friday = auto()
+    Saturday = auto()
+    Sunday = auto()
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def from_number(cls, number: int) -> Optional["WEEKDAY_CHOICES"]:
+        return next((day for day in cls if day.value == number), None)
+
+
+Everyday = {1, 2, 3, 4, 5, 6, 7}
+Workdays = {1, 2, 3, 4, 5}
+Weekend = {6, 7}

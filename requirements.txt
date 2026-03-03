@@ -62,6 +62,7 @@ locust==2.33.2
 deepdiff==8.4.2
 django-axes==7.0.2
 pytest-asyncio==0.26.0
+phonenumbers==9.0.6
 pytest-xdist==3.6.0
 regex==2024.11.6
 django-cryptography==1.1

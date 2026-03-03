@@ -11,7 +11,7 @@ from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
 from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
-from ocpi22.cpo.schemas import LocationIn
+from ocpi22.cpo.schemas import SolidLocation
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
@@ -86,7 +86,7 @@ class LocationService:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
 
-    def update_tariff_in_payload(self, location: LocationIn):
+    def update_tariff_in_payload(self, location: SolidLocation):
         for e in location.evses:
             for c in e.connectors:
                 tariffs = []
@@ -106,7 +106,7 @@ class LocationService:
                 c.tariff_ids = tariffs
         return location
 
-    def get_data_from_request_payload(self, location: LocationIn):
+    def get_data_from_request_payload(self, location: SolidLocation):
         location = self.update_tariff_in_payload(location)
 
         data = location.model_dump(by_alias=True, exclude_unset=True)
@@ -118,7 +118,9 @@ class LocationService:
 
         return data
 
-    def create_location(self, location: LocationIn, credentials_role: CredentialsRole):
+    def create_location(
+        self, location: SolidLocation, credentials_role: CredentialsRole
+    ):
         data = self.get_data_from_request_payload(location)
 
         serializer = LocationSerializer221(
@@ -138,7 +140,7 @@ class LocationService:
 
     def update_location(
         self,
-        location: LocationIn,
+        location: SolidLocation,
         credentials_role: CredentialsRole,
         existing_location: Location,
     ):

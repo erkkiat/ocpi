@@ -27,7 +27,7 @@ from rest_framework.exceptions import ValidationError
 
 from custom_ninja_api import CustomNinjaAPI
 from integrations.hubject.schemas import ChargingNotificationType
-from ocpi22.cpo.schemas import LocationIn, Error, LocationOut
+from ocpi22.cpo.schemas import SolidLocation, Error, LocationOut
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.cpo.session_cache import save_to_session_cache, get_cached_session
 from ocpi22.locations.services import LocationService, EvseServices
@@ -1297,7 +1297,7 @@ location_service = LocationService()
     response={200: LocationOut, 201: LocationOut, 403: Error, 400: Error},
     tags=["Location"],
 )
-def update_location(request, location: LocationIn):
+def update_location(request, location: SolidLocation):
     our_credentials_role = get_our_credentialsrole(role=OcpiRolesEnum.CPO)
     if (
         not our_credentials_role.party_str()

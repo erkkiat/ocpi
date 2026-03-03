@@ -415,6 +415,13 @@ class On(Enum):
     Saturday = "Saturday"
     Sunday = "Sunday"
 
+    @staticmethod
+    def get_day_from_str(day_str: str) -> On:
+        try:
+            return next(day for day in On if day.name.lower() == day_str.lower())
+        except StopIteration:
+            raise ValueError(f"Invalid day string: {day_str}")
+
 
 class ProductAvailabilityTime(BaseModel):
     Periods: List[Period]

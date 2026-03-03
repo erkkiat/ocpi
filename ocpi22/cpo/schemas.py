@@ -13,9 +13,14 @@ from pydantic import (
     model_validator,
 )
 from pydantic_extra_types.coordinate import Latitude, Longitude
+from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing_extensions import Annotated
 
 from generic import countries
+from integrations.hubject.schemas import (
+    CalibrationLawDataAvailability,
+    Accessibility,
+)
 from ocpi22.choices import (
     OCPICapability,
     OCPIFacility,
@@ -127,7 +132,7 @@ class GeoLocation(BaseSchema):
     longitude: Longitude
 
 
-class Connector(BaseSchema):
+class SolidConnector(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
@@ -142,7 +147,7 @@ class Connector(BaseSchema):
     terms_and_conditions: Optional[str] = None
 
 
-class EVSE(BaseSchema):
+class SolidEvse(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
@@ -152,7 +157,7 @@ class EVSE(BaseSchema):
     status: EVSEStatus
     status_schedule: Optional[List[StatusSchedule]] = None
     capabilities: Optional[List[OCPICapability]] = None
-    connectors: List[Connector] = Field(
+    connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
     floor_level: Optional[Annotated[str, StringConstraints(max_length=4)]] = None
@@ -166,6 +171,10 @@ class EVSE(BaseSchema):
     last_updated: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when this Evse was last updated",
+    )
+    is_dynamic_info_available: Optional[bool] = Field(
+        False,
+        description="Indicates whether dynamic information is available from this EVSE.",
     )
 
 
@@ -183,7 +192,7 @@ def validate_time_zone(value):
     return value
 
 
-class LocationIn(BaseSchema):
+class SolidLocation(BaseSchema):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
     )
@@ -212,7 +221,7 @@ class LocationIn(BaseSchema):
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
     related_locations: Optional[List[AdditionalGeoLocation]] = None
     parking_type: Optional[ParkingChoices] = None
-    evses: Optional[List[EVSE]] = Field(
+    evses: Optional[List[SolidEvse]] = Field(
         None, description="List of EVSEs available at this location"
     )
     directions: Optional[List[DisplayText]] = None
@@ -233,6 +242,23 @@ class LocationIn(BaseSchema):
         True,
         description="Indicates whether to share the location with roaming partners",
     )
+    is_green_energy: Optional[bool] = Field(
+        False,
+        description="Indicates whether the location only uses renewable energy sources.",
+    )
+    calibration_law_data_availability: Optional[CalibrationLawDataAvailability] = Field(
+        CalibrationLawDataAvailability.Local
+    )
+    # payment_options: Optional[List[PaymentOption]] = Field(
+    #     None, description="List of payment options available at this location."
+    # )
+    accessibility: Optional[List[Accessibility]] = Field(
+        None, description="Specifies how the charging station can be accessed."
+    )
+    hotline_phone_number: Optional[PhoneNumber] = None
+    is_hubject_compatible: Optional[bool] = Field(
+        False, description="Indicates whether the location is compatible with Hubject."
+    )
 
 
 class Error(Schema):
@@ -245,13 +271,13 @@ class StatusScheduleOut(BaseSchema):
     status: str
 
 
-class ConnectorOut(Connector):
+class ConnectorOut(SolidConnector):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
 
 
-class EVSEOut(EVSE):
+class EVSEOut(SolidEvse):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
@@ -262,7 +288,7 @@ class EVSEOut(EVSE):
     )
 
 
-class LocationOut(LocationIn):
+class LocationOut(SolidLocation):
     model_config = ConfigDict(
         extra="forbid", populate_by_name=True, use_enum_values=True
     )

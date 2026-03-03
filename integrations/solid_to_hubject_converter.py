@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_UP
 
 import regex
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -11,6 +12,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max
 
+from generic.countries import COUNTRIES_ISO_3
 from integrations.hubject.schemas import (
     OperatorEvseData,
     EvseDataRecord,
@@ -48,8 +50,14 @@ from integrations.hubject.schemas import (
     EvseStatus as OICPEvseStatus,
     RemoteIdentification,
     EvcoID,
+    PeriodItem,
+    OpeningTimes as HubjectOpeningTimes,
+    On,
 )
-from ocpi22.choices import OCPICapability, TokenType
+from ocpi22 import choices
+from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
+from ocpi22.cpo.schemas import OpeningTimes, RegularHours
+from ocpi22.choices import TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
@@ -92,20 +100,23 @@ class SolidToHubjectConverter:
         street, house_number = self.get_address_components(
             location.address, location.country
         )
+        germany = next(
+            (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
+        )
+        germany_code = germany[0] if germany else None
+        if hasattr(location, "opening_times"):
+            hours = location.opening_times
+        else:
+            hours = None
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
             lastUpdate=evse.last_updated,
             EvseID=self.get_evse_id(evse.evse_id),
-            # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
-            # todo : ChargingStationID missing in ocpi22
-            ChargingStationId=None,
-            # todo : HardwareManufacturer missing in ocpi22
+            ChargingStationId=location.uid,
             HardwareManufacturer=None,
-            # todo : ChargingStationImage missing in ocpi22
             ChargingStationImage=None,
-            # todo : SubOperatorName missing in ocpi22
             SubOperatorName=None,
             Address=Address(
                 Country=location.country,
@@ -113,10 +124,10 @@ class SolidToHubjectConverter:
                 Street=street,
                 PostalCode=location.postal_code,
                 HouseNum=house_number,
-                # todo : Floor missing in ocpi22,
-                # todo : Region missing in ocpi22,
+                Floor=None,
+                Region=None,
                 ParkingFacility=True if location.parking_type else False,
-                # todo : ParkingSpot missing in ocpi22,
+                ParkingSpot=None,
                 TimeZone=self.get_timezone(location.time_zone),
             ),
             GeoCoordinates=GeoCoordinates(
@@ -130,30 +141,23 @@ class SolidToHubjectConverter:
             Plugs=self.get_distinct_plugs(evse.connectors.all()),
             DynamicPowerLevel=None,
             ChargingFacilities=self.get_charging_facilities(evse.connectors.all()),
-            # todo : RenewableEnergy check with smappee, default to False
             RenewableEnergy=False,
-            # todo : EnergySource missing in ocpi22 location model, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnergySource=None,
-            # todo : EnvironmentalImpact missing in ocpi22, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnvironmentalImpact=None,
-            # todo : CalibrationLawDataAvailability missing in ocpi22, required, defaulted to Local
-            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local
+            if location.country == germany_code
+            else CalibrationLawDataAvailability.Not_Available,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
-            # todo : MaxCapacity missing in ocpi22,
             MaxCapacity=None,
-            # todo : PaymentOptions missing in ocpi22,
             PaymentOptions=self.get_payment_options(evse.capabilities),
             ValueAddedServices=self.get_value_added_services_list(evse.capabilities),
-            # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
             AccessibilityLocation=self.get_accessibility_locations(
                 location.parking_type
             ),
-            # todo : HotlinePhoneNumber missing in ocpi22, we have msp phone not CPO.
             HotlinePhoneNumber=settings.HOTLINE,
-            # todo : AdditionalInfo missing in ocpi22,
-            # todo : ChargingStationLocationReference missing in ocpi22,
-            # todo : ChargingStationNames missing in ocpi22
+            AdditionalInfo=None,
+            ChargingStationLocationReference=None,
             ChargingStationNames=[
                 InfoTextType(lang="en", value=location.name if location.name else "")
             ],
@@ -165,14 +169,16 @@ class SolidToHubjectConverter:
                 ),
                 DegreeMinuteSeconds=None,
             ),
-            # todo : IsOpen24Hours usage of the charging when closed does not directly map to OCIP,
-            IsOpen24Hours=location.charging_when_closed,
-            # todo : OpeningTimes will be implemented later,
-            OpeningTimes=None,
-            # todo : HubOperatorID missing in ocpi22,
-            # todo : ClearinghouseID missing in ocpi22,
+            IsOpen24Hours=hours.twentyfourseven if hours else True,
+            OpeningTimes=self.map_regular_hours_to_opening_times(
+                hours.regular_hours.all()
+            )
+            if hours and not hours.twentyfourseven
+            else None,
+            HubOperatorID=None,
+            ClearinghouseID=None,
             IsHubjectCompatible=True,
-            DynamicInfoAvailable=DynamicInfoAvailable.false,
+            DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
 
     def get_evse_id(self, evse_id: str) -> EvseID:
@@ -504,6 +510,7 @@ class SolidToHubjectConverter:
 
         mapping = {
             OCPICapability.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
+            OCPICapability.REMOTE_START_STOP_CAPABLE: AuthenticationMode.REMOTE,
         }
         return mapping.get(capability)
 
@@ -762,3 +769,56 @@ class SolidToHubjectConverter:
                 return OICPEvseStatus.Unknown
             case _:
                 raise ValueError(f"Invalid OCPI status [{status}] found")
+
+    def map_regular_hours_to_opening_times(
+        self, regular_hours: list[RegularHours]
+    ) -> list[OpeningTimes] | None:
+        def _label_from_days(day_list):
+            day_set = set(day_list)
+            if len(day_set) == 1:
+                return WEEKDAY_CHOICES.from_number(day_set.pop()).name
+            if day_set == choices.Everyday:
+                return "Everyday"
+            elif day_set == choices.Workdays:
+                return "Workdays"
+            elif day_set == choices.Weekend:
+                return "Weekend"
+            else:
+                return [WEEKDAY_CHOICES.from_number(d).name for d in sorted(day_set)]
+
+        def _group_the_weekdays_by_time_period(
+            regular_hours: list[RegularHours],
+        ) -> dict[str, list[str]]:
+            grouped_slots = defaultdict(list)
+
+            for rh in regular_hours:
+                time_slot = f"{datetime.strptime(rh.period_begin, '%H:%M').strftime('%H:%M')}-{datetime.strptime(rh.period_end, '%H:%M').strftime('%H:%M')}"
+                grouped_slots[time_slot].append(rh.weekday)
+            return dict(grouped_slots)
+
+        periods_list_per_workday = defaultdict(list)
+        for period, weekdays in _group_the_weekdays_by_time_period(
+            regular_hours
+        ).items():
+            weekday_names = _label_from_days(weekdays)
+            if isinstance(weekday_names, list):
+                for wd in weekday_names:
+                    periods_list_per_workday[wd].append(period)
+            else:
+                periods_list_per_workday[weekday_names].append(period)
+
+        opening_times = []
+        for weekday, periods in periods_list_per_workday.items():
+            opening_hour = HubjectOpeningTimes(
+                Period=[
+                    PeriodItem(
+                        begin=period.split("-")[0],
+                        end=period.split("-")[1],
+                    )
+                    for period in periods
+                ],
+                on=On.get_day_from_str(weekday),
+            )
+            opening_times.append(opening_hour)
+
+        return opening_times
