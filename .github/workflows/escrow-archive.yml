@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout ocpiconnector main (full files, no history)
+      - name: Checkout ocpiconnector main
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -32,6 +32,7 @@ jobs:
             IdentityFile ~/.ssh/escrow_deploy_key
             IdentitiesOnly yes
           EOF
+          echo "✅ SSH configured for escrow-github"
 
       - name: Push snapshot to escrow-smappee under src/
         env:
@@ -43,16 +44,29 @@ jobs:
           COMMIT_SHA="${{ github.sha }}"
           COMMIT_MSG="escrow: snapshot from ocpiconnector@${COMMIT_SHA:0:7}"
 
-          # Clone escrow repo (with history preserved on escrow side)
+          echo "📦 Cloning escrow repo: ${ESCROW_REPO}"
           git clone "git@escrow-github:${ESCROW_REPO}.git" escrow-repo
 
-          # Wipe src/ and replace with current ocpiconnector snapshot
+          echo "🗂️ Syncing ocpiconnector snapshot into src/"
           rm -rf escrow-repo/src
           mkdir -p escrow-repo/src
           rsync -a --exclude='.git' --exclude='escrow-repo' . escrow-repo/src/
 
+          FILE_COUNT=$(find escrow-repo/src -type f | wc -l)
+          echo "📁 Files synced into src/: ${FILE_COUNT}"
+
           cd escrow-repo
           git add -A
-          git diff --cached --quiet && echo "No changes to commit" && exit 0
+
+          if git diff --cached --quiet; then
+            echo "⏭️ No changes detected — escrow is already up to date."
+            exit 0
+          fi
+
+          CHANGED=$(git diff --cached --stat | tail -1)
+          echo "📝 Changes: ${CHANGED}"
+
           git commit -m "$COMMIT_MSG"
           git push origin main
+
+          echo "✅ Escrow updated: ${COMMIT_MSG}"
