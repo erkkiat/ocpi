@@ -784,7 +784,7 @@ class SolidToHubjectConverter:
             elif day_set == choices.Weekend:
                 return "Weekend"
             else:
-                return [WEEKDAY_CHOICES.from_number(d) for d in sorted(day_set)]
+                return [WEEKDAY_CHOICES.from_number(d).name for d in sorted(day_set)]
 
         def _group_the_weekdays_by_time_period(
             regular_hours: list[RegularHours],
