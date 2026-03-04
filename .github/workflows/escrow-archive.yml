@@ -1,20 +1,34 @@
 name: Archive to Escrow
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
   archive-to-escrow:
     name: Push snapshot to escrow-smappee
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     steps:
-      - name: Checkout ocpiconnector main
+      - name: Resolve release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName')
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "📌 Release tag: ${TAG}"
+
+      - name: Checkout ocpiconnector at release tag
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 1
 
       - name: Configure SSH for escrow repo
@@ -37,12 +51,12 @@ jobs:
       - name: Push snapshot to escrow-smappee under src/
         env:
           ESCROW_REPO: ${{ github.repository_owner }}/escrow-smappee
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
-          COMMIT_SHA="${{ github.sha }}"
-          COMMIT_MSG="escrow: snapshot from ocpiconnector@${COMMIT_SHA:0:7}"
+          COMMIT_MSG="escrow: snapshot from ocpiconnector@${RELEASE_TAG}"
 
           echo "📦 Cloning escrow repo: ${ESCROW_REPO}"
           git clone "git@escrow-github:${ESCROW_REPO}.git" escrow-repo
