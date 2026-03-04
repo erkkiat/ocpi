@@ -58,9 +58,6 @@ jobs:
           ESCROW_REPO: ${{ github.repository_owner }}/escrow-smappee
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-
           COMMIT_MSG="escrow: snapshot from ocpiconnector@${RELEASE_TAG}"
 
           echo "📦 Cloning escrow repo: ${ESCROW_REPO}"
@@ -75,6 +72,8 @@ jobs:
           echo "📁 Files synced into src/: ${FILE_COUNT}"
 
           cd escrow-repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
           git add -A
 
           if git diff --cached --quiet; then
