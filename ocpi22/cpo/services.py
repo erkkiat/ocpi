@@ -220,7 +220,7 @@ class SolidTariffService:
         ]
 
         for price_type, price in price_data:
-            if price:
+            if price is not None:
                 PriceComponent.objects.create(
                     tariff_element=tariff_element,
                     type=price_type,

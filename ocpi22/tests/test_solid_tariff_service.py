@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.location import Connector
-from ocpi22.models.tariff import SolidTariff
+from ocpi22.models.tariff import SolidTariff, PriceComponent
 from ocpi22.tests.factories import ConnectorFactory, TariffFactory, SolidTariffFactory
 
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -315,3 +315,71 @@ def test_set_missing_fields_handles_all_nullable_model_fields(
         f"Nullable fields changed! Expected: {expected_nullable_fields}, "
         f"Got: {actual_nullable_fields}. Update the _set_missing_fields method and this test."
     )
+
+
+@pytest.mark.django_db
+def test_create_price_components_with_zero_prices_creates_price_components(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+
+    solid_tariff_service_instance._create_price_components(
+        tariff=tariff,
+        per_kwh=0,
+        per_hr=0,
+        flat=0,
+        parking_price_per_hr=0,
+        vat=0,
+    )
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=tariff
+    )
+    assert price_components.count() == 4, (
+        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
+    )
+    for component in price_components:
+        assert component.price == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+def test_create_solid_tariff_with_zero_prices_creates_price_components(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    validated_data = {
+        "external_id": "ZERO-PRICE-SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0,
+        "price_per_min": 0,
+        "price_per_hr": 0,
+        "price_flat": 0,
+        "parking_price_per_min": 0,
+        "parking_price_per_hr": 0,
+        "parking_grace_period": 0,
+        "vat_percentage": 0,
+        "ocpi_master": operator_fi_cpo,
+        "msp": None,
+    }
+
+    solid_tariff = solid_tariff_service_instance.create(validated_data)
+
+    assert solid_tariff is not None
+    assert solid_tariff.price_per_kwh == 0
+    assert solid_tariff.price_per_hr == 0
+    assert solid_tariff.price_flat == 0
+    assert solid_tariff.parking_price_per_hr == 0
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=solid_tariff.ocpi_tariff
+    )
+    assert price_components.count() == 4, (
+        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
+    )
+    for component in price_components:
+        assert component.price == 0
+
