@@ -346,6 +346,35 @@ def test_create_price_components_with_zero_prices_creates_price_components(
 
 
 @pytest.mark.django_db
+def test_create_price_components_with_zero_kwh_price_creates_single_price_component(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+
+    solid_tariff_service_instance._create_price_components(
+        tariff=tariff,
+        per_kwh=0,
+        per_hr=None,
+        flat=None,
+        parking_price_per_hr=None,
+        vat=0,
+    )
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=tariff
+    )
+    assert price_components.count() == 1, (
+        f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
+    )
+    component = price_components.first()
+    assert component.type == "ENERGY"
+    assert component.price == 0
+
+
+@pytest.mark.django_db
 @time_machine.travel("2024-10-10 12:00:00")
 def test_create_solid_tariff_with_zero_prices_creates_price_components(
     solid_tariff_service_instance,
