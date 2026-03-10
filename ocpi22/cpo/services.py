@@ -127,7 +127,7 @@ class SolidTariffService:
 
     def _convert_to_hourly(self, per_minute_value):
         try:
-            return float(per_minute_value) * 60 if per_minute_value else None
+            return float(per_minute_value) * 60 if per_minute_value is not None else None
         except (ValueError, TypeError):
             return None
 

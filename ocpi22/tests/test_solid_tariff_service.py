@@ -99,6 +99,7 @@ def test_set_missing_fields(
 @pytest.mark.parametrize(
     "per_minute_value, expected_result",
     [
+        (0, 0.0),
         (0.5, 30.0),
         (1.0, 60.0),
         (None, None),
@@ -411,4 +412,34 @@ def test_create_solid_tariff_with_zero_prices_creates_price_components(
     )
     for component in price_components:
         assert component.price == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    validated_data = {
+        "external_id": "ZERO-PER-MIN-SMP1",
+        "currency": "EUR",
+        "price_per_min": 0,
+        "ocpi_master": operator_fi_cpo,
+        "msp": None,
+    }
+
+    solid_tariff = solid_tariff_service_instance.create(validated_data)
+
+    assert solid_tariff is not None
+    assert solid_tariff.price_per_min == 0
+    assert solid_tariff.price_per_hr == 0
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=solid_tariff.ocpi_tariff,
+        type="TIME",
+    )
+    assert price_components.count() == 1, (
+        f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
+    )
+    assert price_components.first().price == 0
 
