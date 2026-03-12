@@ -826,7 +826,7 @@ class TariffAdmin(SolidNestedModelAdmin):
             def has_add_permission(self, request, obj=None) -> bool:
                 return (
                     Tariff.ocpi_object_owner in ocpi_identities
-                    or super().has_change_permission(request, obj)
+                    and super().has_add_permission(request, obj)
                 )
 
             def get_queryset(self, request):
