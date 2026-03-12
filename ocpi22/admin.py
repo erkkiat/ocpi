@@ -303,6 +303,12 @@ class LocationAdmin(SolidNestedModelAdmin):
         def has_change_permission(self, request, obj=None) -> bool:
             return obj and obj.is_ours() and super().has_change_permission(request, obj)
 
+        def has_add_permission(self, request, obj=None) -> bool:
+            return (
+                Location.ocpi_object_owner in ocpi_identities
+                and super().has_add_permission(request, obj)
+            )
+
     # The below doesn't work, need more time to work on it
     #
     # class OpeningTimesInline(NestedTabularInline):
@@ -818,6 +824,12 @@ class TariffAdmin(SolidNestedModelAdmin):
             def has_change_permission(self, request, obj=None) -> bool:
                 return False
 
+            def has_add_permission(self, request, obj=None) -> bool:
+                return (
+                    Tariff.ocpi_object_owner in ocpi_identities
+                    and super().has_add_permission(request, obj)
+                )
+
             def get_queryset(self, request):
                 return super().get_queryset(request)
 
@@ -845,6 +857,12 @@ class TariffAdmin(SolidNestedModelAdmin):
 
         def has_change_permission(self, request, obj=None) -> bool:
             return False
+
+        def has_add_permission(self, request, obj=None) -> bool:
+            return (
+                Tariff.ocpi_object_owner in ocpi_identities
+                and super().has_add_permission(request, obj)
+            )
 
         def get_queryset(self, request):
             return super().get_queryset(request)
