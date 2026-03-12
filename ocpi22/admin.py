@@ -552,7 +552,8 @@ class CdrAdmin(SolidModelAdmin):
         "cdr_location__country",
         "cdr_token__uid",
         "cdr_token__contract_id",
-        "billed_to",
+        "billed_to__country_code",
+        "billed_to__party_id",
     ]
     autocomplete_fields = ["tariffs"]
 
