@@ -6,6 +6,7 @@
 {% endif %}
 {% if results %}
 <div class="results">
+<div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;">
 <table id="result_list" class="table mt-4 text-1">
     <thead>
     <tr>
@@ -40,5 +41,6 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 </div>
 {% endif %}

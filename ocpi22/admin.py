@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
+from django.db.models import Subquery, OuterRef
 from django.utils.html import format_html
 from nested_admin.nested import (
     NestedModelAdmin,
@@ -216,6 +217,14 @@ class ConnectorInline(NestedStackedInline):
             and super().has_change_permission(request, obj)
         )
 
+    def get_extra(self, request, obj: Evse = None, **kwargs) -> int:
+        if obj is not None and obj.connectors.exists():
+            return 0
+        return 1
+
+    def get_queryset(self, request):
+        return super().get_queryset(request)
+
     def has_add_permission(self, request, obj=None) -> bool:
         return (
             Location.ocpi_object_owner in ocpi_identities
@@ -294,12 +303,6 @@ class LocationAdmin(SolidNestedModelAdmin):
         def has_change_permission(self, request, obj=None) -> bool:
             return obj and obj.is_ours() and super().has_change_permission(request, obj)
 
-        def has_add_permission(self, request, obj=None) -> bool:
-            return (
-                Location.ocpi_object_owner in ocpi_identities
-                and super().has_add_permission(request, obj)
-            )
-
     # The below doesn't work, need more time to work on it
     #
     # class OpeningTimesInline(NestedTabularInline):
@@ -317,8 +320,7 @@ class LocationAdmin(SolidNestedModelAdmin):
     #     def has_change_permission(self, request, obj=None) -> bool:
     #         return obj and obj.is_ours() and super().has_change_permission(request, obj)
     #
-    #     def has_add_permission(self, request, obj=None) -> bool:
-    #         return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
+    #     def get_queryset(self, request):
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -578,6 +580,42 @@ class CdrAdmin(SolidModelAdmin):
         )
 
 
+class ViaHubFilter(admin.SimpleListFilter):
+    title = "Via hub"
+    parameter_name = "via_hub"
+
+    def lookups(self, request, model_admin):
+        hubs = (
+            Credentials.objects.filter(roles__role=OcpiRolesEnum.HUB.value)
+            .distinct()
+            .order_by("roles__party_id")
+        )
+        return [(hub.pk, hub.name) for hub in hubs]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(credentials__pk=self.value())
+        return queryset
+
+
+class BilledToFilter(admin.SimpleListFilter):
+    title = "Billed to"
+    parameter_name = "billed_to"
+
+    def lookups(self, request, model_admin):
+        roles = (
+            CredentialsRole.objects.filter(billed_to_sessions__isnull=False)
+            .distinct()
+            .order_by("country_code", "party_id")
+        )
+        return [(role.pk, role.party_str()) for role in roles]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(billed_to__pk=self.value())
+        return queryset
+
+
 class SessionAdmin(SolidNestedModelAdmin):
     class ChargingPeriodInline(NestedStackedInline):
         model = ChargingPeriod
@@ -590,16 +628,20 @@ class SessionAdmin(SolidNestedModelAdmin):
     model = Session
     ordering = ["-updated"]
     list_display = [
-        "uid",
-        "location",
+        "session_link",
+        "evse_link",
+        "location_name",
         "party_long",
+        "via",
+        "billed_to_party",
         "kwh",
         "cost",
         "last_update",
         "status",
+        "cdr_link",
     ]
 
-    list_display_links = ["location", "status"]
+    list_display_links = ["session_link"]
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -649,10 +691,89 @@ class SessionAdmin(SolidNestedModelAdmin):
         "evse",
         "connector",
     ]
-    list_filter = ["status", "last_updated"]
+    list_filter = ["status", "last_updated", ViaHubFilter, BilledToFilter]
+
+    def get_queryset(self, request):
+        cdr_subquery = Cdr.objects.filter(session_id=OuterRef("uid")).values("uid")[:1]
+        cdr_pk_subquery = Cdr.objects.filter(session_id=OuterRef("uid")).values("pk")[
+            :1
+        ]
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                "ocpi_master__business_details",
+                "ocpi_master__credentials",
+                "billed_to",
+                "credentials",
+                "evse",
+                "location",
+            )
+            .annotate(
+                cdr_uid=Subquery(cdr_subquery),
+                cdr_pk=Subquery(cdr_pk_subquery),
+            )
+        )
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
+
+    @admin.display(description="UID", ordering="uid")
+    def session_link(self, obj: Session) -> str:
+        from util import reverse
+
+        url = reverse("admin:ocpi22_session_change", args=[obj.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.uid)
+
+    @admin.display(description="CDR")
+    def cdr_link(self, obj: Session) -> str:
+        if obj.status != Session.COMPLETED:
+            return "-"
+        if not obj.cdr_pk:
+            return "-"
+        from util import reverse
+
+        url = reverse("admin:ocpi22_cdr_change", args=[obj.cdr_pk])
+        return format_html('<a href="{}">{}</a>', url, obj.cdr_uid)
+
+    @admin.display(description="Location", ordering="location__name")
+    def location_name(self, obj: Session) -> str:
+        from util import reverse
+
+        if not obj.location:
+            return "-"
+        url = reverse("admin:ocpi22_location_change", args=[obj.location.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.location.name)
+
+    @admin.display(description="EVSE", ordering="evse__evse_id")
+    def evse_link(self, obj: Session) -> str:
+        if not obj.evse:
+            return "-"
+        from util import reverse
+
+        url = reverse("admin:ocpi22_evse_change", args=[obj.evse.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.evse.evse_id)
+
+    @admin.display(description="Billed to", ordering="billed_to__party_id")
+    def billed_to_party(self, obj: Session) -> str:
+        if obj.billed_to is None:
+            return "-"
+        return obj.billed_to.party_str()
+
+    @admin.display(description="Via", ordering="credentials__name")
+    def via(self, obj: Session) -> str:
+        if obj.credentials:
+            from util import reverse
+
+            hub_role = obj.credentials.get_party_for_role(OcpiRolesEnum.HUB)
+            hub_party = (
+                f"{hub_role.country_code}*{hub_role.party_id}" if hub_role else ""
+            )
+            url = reverse("admin:ocpi22_credentials_change", args=[obj.credentials.pk])
+            return format_html(
+                '<a href="{}">{} ({})</a>', url, obj.credentials.name, hub_party
+            )
+        return "-"
 
     def response_post_save_change(self, request, obj: Session):
         if obj.kwh:
@@ -697,11 +818,8 @@ class TariffAdmin(SolidNestedModelAdmin):
             def has_change_permission(self, request, obj=None) -> bool:
                 return False
 
-            def has_add_permission(self, request, obj=None) -> bool:
-                return (
-                    Tariff.ocpi_object_owner in ocpi_identities
-                    or super().has_change_permission(request, obj)
-                )
+            def get_queryset(self, request):
+                return super().get_queryset(request)
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -728,11 +846,8 @@ class TariffAdmin(SolidNestedModelAdmin):
         def has_change_permission(self, request, obj=None) -> bool:
             return False
 
-        def has_add_permission(self, request, obj=None) -> bool:
-            return (
-                Tariff.ocpi_object_owner in ocpi_identities
-                and super().has_add_permission(request, obj)
-            )
+        def get_queryset(self, request):
+            return super().get_queryset(request)
 
     model = Tariff
     if ocpi_platform.is_cpo:

@@ -92,7 +92,7 @@
 
 			<header id="header" data-plugin-options="{'stickyEnabled': true, 'stickyEnableOnBoxed': true, 'stickyEnableOnMobile': true, 'stickyStartAt': 45, 'stickySetTop': '-45px', 'stickyChangeLogo': true}">
 				<div class="header-body">
-					<div class="header-container container">
+					<div class="header-container container-fluid px-3 px-md-4">
 						<div class="header-row">
 							<div class="header-column">
 								<div class="header-row">
@@ -217,7 +217,7 @@
 
 			<div role="main" class="main">
 
-				<div class="container mb-5 pb-4">
+				<div class="container-fluid px-3 px-md-4 mb-5 pb-4">
 
 					<div class="row">
 						<div class="col">
@@ -249,7 +249,7 @@
             {% endif %}
         {% endblock messages %}
         <!-- Content -->
-          <div class="container">
+          <div class="container-fluid px-3 px-md-4">
               {% block pretitle %}{% endblock %}
               {% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
               {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
