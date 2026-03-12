@@ -217,6 +217,11 @@ class ConnectorInline(NestedStackedInline):
             and super().has_change_permission(request, obj)
         )
 
+    def get_extra(self, request, obj: Evse = None, **kwargs) -> int:
+        if obj is not None and obj.connectors.exists():
+            return 0
+        return 1
+
     def get_queryset(self, request):
         return super().get_queryset(request)
 

@@ -1,1 +1,40 @@
 #header #site-name img{display:inline;filter:invert(100%);height:25px;vertical-align:text-top}fieldset.module .form-row label.required{padding:2px 10px 0 0;font-weight:900}fieldset.module .form-row .readonly{color:darkred}fieldset.module .form-row .fieldBox:not(:first-child){border-left:1px solid lightgrey;padding:0 0 0 14px;margin-left:6px}fieldset.module .form-row .fieldBox label.vCheckboxLabel{padding:9px 6px}.container h1{margin-top:1em}div.model{border:2px solid #606060;border-radius:13px;text-align:left;min-width:12em;line-height:1.1em;max-width:260px;font-size:larger;transition:transform .2s}div.model a:not(.secondary){display:block}div.model div{display:inline}div.model .secondary{font-size:x-small}div.model .button-image{display:inline}div.model .button-image img{height:80px;padding-right:10px;margin:-12px 0}div.model:hover{transform:scale(1.05)}.w-10{width:10%}form .submit-row a.deletelink{height:35px}.delete-confirmation form div .cancel-link{height:40px}.muted{color:#ffffff80;font-size:smaller}.nav-link{padding:.3rem 1rem}#nav-sidebar{flex:0 0 210px}.divider-top:not(:first-child){border-top:1px solid lightgrey}li{list-style-type:none}.radiolist{margin-left:0;padding-left:0}.credentials img.logo{max-height:1.8em;max-width:4em;padding:0 0.5em 0 0;margin:0;filter:grayscale(1)}.credentials table img.logo{max-height:3em;max-width:6em;padding:0;margin:0;filter:grayscale(1)}.hr-line{display:flex}.hr-line .fa{color:#9cbac9;position:relative;top:3px}.hr-line-left{width:100%;position:relative;margin:15px 10px 15px 0;border-bottom:5px solid #9cbac9;border-radius:5px 0px 0px 5px}.hr-line-right{width:100%;position:relative;margin:15px 0 15px 10px;border-bottom:5px solid #9cbac9;border-radius:0px 5px 5px 0px}
+
+/* ── Admin layout ─────────────────────────────────────────────────────────── */
+
+/* Full-width — no max-width caps */
+#main, .main, .content, #content-main { width: 100%; max-width: 100%; }
+.container-fluid h1 { margin-top: 1em; }
+
+/* Scrollable table */
+.results { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#result_list { min-width: 600px; }
+
+/* Compact result table rows */
+#result_list td, #result_list th { padding: .35rem .5rem; vertical-align: middle; }
+
+/* Actions strip — inline, no block margin */
+.actions { display: inline-flex; align-items: center; gap: .5rem; margin: 0; }
+
+/* Toolbar */
+#changelist-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+
+/* Two-column: table + filter */
+#changelist { display: flex; align-items: flex-start; gap: 1rem; }
+#changelist .changelist-form-container { flex: 1 1 0; min-width: 0; }
+#changelist #changelist-filter { flex: 0 0 220px; width: 220px; margin-top: 0; }
+
+/* Collapse to single column on narrow screens */
+@media (max-width: 991px) {
+  #changelist { flex-direction: column; }
+  #changelist .changelist-form-container,
+  #changelist #changelist-filter { flex: none; width: 100%; }
+}
+
+@media (max-width: 767px) {
+  .header-nav { flex-wrap: wrap; }
+  #mainNav { flex-wrap: wrap; }
+  #result_list { font-size: 0.82rem; }
+  #changelist-toolbar { flex-wrap: wrap; }
+}
+
