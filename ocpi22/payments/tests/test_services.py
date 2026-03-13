@@ -43,7 +43,7 @@ def fac_service():
 def minimal_terminal_data():
     return {
         "terminal_id": "term-001",
-        "customer_reference": "CUST-SVC-001",
+        "customer_reference": "TEST-CUSTOMER-REF",
         "last_updated": datetime(2026, 1, 1, 12, 0, 0, tzinfo=dt_timezone.utc),
     }
 
@@ -52,7 +52,7 @@ def minimal_terminal_data():
 def full_terminal_data():
     return {
         "terminal_id": "term-full-001",
-        "customer_reference": "CUST-REF-001",
+        "customer_reference": "TEST-CUSTOMER-REF",
         "address": "Street 1",
         "city": "Helsinki",
         "postal_code": "00100",
@@ -111,7 +111,7 @@ class TestTerminalServiceCreate:
     ):
         terminal = terminal_service.create_terminal(full_terminal_data, credentialsrole)
 
-        assert terminal.customer_reference == "CUST-REF-001"
+        assert terminal.customer_reference == "TEST-CUSTOMER-REF"
         assert terminal.address == "Street 1"
         assert terminal.city == "Helsinki"
         assert terminal.postal_code == "00100"

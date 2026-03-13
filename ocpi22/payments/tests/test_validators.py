@@ -206,21 +206,24 @@ class TestValidateTerminalPartyIdentification:
 
         assert exc_info.value.code == "incomplete_party_identification"
 
-    def test_validate_terminal_party_identification_passes_when_customer_reference_matches_expected(
+    def test_validate_terminal_party_identification_passes_when_customer_reference_matches_configured(
         self,
     ):
         validate_terminal_party_identification(
             "CUST-001", None, None, ptp_customer_reference="CUST-001"
         )
 
-    def test_validate_terminal_party_identification_passes_when_no_expected_customer_reference_configured(
+    def test_validate_terminal_party_identification_raises_when_customer_reference_sent_but_ptp_customer_reference_not_configured(
         self,
     ):
-        validate_terminal_party_identification(
-            "ANY-VALUE", None, None, ptp_customer_reference=None
-        )
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(
+                "ANY-VALUE", None, None, ptp_customer_reference=None
+            )
 
-    def test_validate_terminal_party_identification_raises_when_customer_reference_does_not_match_expected(
+        assert exc_info.value.code == "unsupported_customer_reference"
+
+    def test_validate_terminal_party_identification_raises_when_customer_reference_does_not_match_configured(
         self,
     ):
         with pytest.raises(ValidationError) as exc_info:
@@ -230,7 +233,7 @@ class TestValidateTerminalPartyIdentification:
 
         assert exc_info.value.code == "invalid_customer_reference"
 
-    def test_validate_terminal_party_identification_raises_when_customer_reference_is_case_different_from_expected(
+    def test_validate_terminal_party_identification_raises_when_customer_reference_differs_in_case_from_configured(
         self,
     ):
         with pytest.raises(ValidationError) as exc_info:

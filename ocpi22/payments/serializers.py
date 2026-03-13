@@ -118,14 +118,14 @@ class TerminalSerializer(serializers.ModelSerializer):
 
         return validated_data
 
-    def validate(self, attrs):
+    def validate(self, data):
         validate_terminal_party_identification(
-            attrs.get("customer_reference"),
-            attrs.get("country_code"),
-            attrs.get("party_id"),
+            data.get("customer_reference"),
+            data.get("country_code"),
+            data.get("party_id"),
             ptp_customer_reference=settings.PTP_CUSTOMER_REFERENCE,
         )
-        return attrs
+        return data
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

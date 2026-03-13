@@ -1,7 +1,11 @@
+from logging import getLogger
+
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from ocpi22.util import VALID_CURRENCY_CODE_SET
+
+logger = getLogger(__name__)
 
 
 def validate_ci_ascii_string(value: str, field_name: str = "field") -> None:
@@ -61,7 +65,20 @@ def validate_terminal_party_identification(
     ptp_customer_reference: str | None = None,
 ) -> None:
     if customer_reference:
-        if ptp_customer_reference and customer_reference != ptp_customer_reference:
+        if not ptp_customer_reference:
+            logger.error(
+                "Terminal POST received customer_reference '%s' but "
+                "PTP_CUSTOMER_REFERENCE is not configured.",
+                customer_reference,
+            )
+            raise ValidationError(
+                _(
+                    "customer_reference is not supported. "
+                    "Use country_code and party_id instead."
+                ),
+                code="unsupported_customer_reference",
+            )
+        if customer_reference != ptp_customer_reference:
             raise ValidationError(
                 _(
                     "customer_reference '%(received)s' does not match the configured value."

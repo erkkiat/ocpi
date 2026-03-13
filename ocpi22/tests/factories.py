@@ -744,7 +744,7 @@ class TerminalFactory(factory.django.DjangoModelFactory):
         model = Terminal
 
     terminal_id = factory.Sequence(lambda n: f"TERM-{n:05d}")
-    customer_reference = factory.Sequence(lambda n: f"CUST-REF-{n:05d}")
+    customer_reference = "TEST-CUSTOMER-REF"
     # party_id = "PAY"
     # country_code = "NL"
     address = "Keizersgracht 100"
