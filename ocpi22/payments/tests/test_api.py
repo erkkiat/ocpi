@@ -17,7 +17,7 @@ from ocpi22.tests.factories import (
     EvseFactory,
 )
 
-TERMINALS_URL = "/ocpi/2.2.1/payments//terminals"
+TERMINALS_URL = "/ocpi/2.2.1/payments/terminals"
 FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations"
 
 
