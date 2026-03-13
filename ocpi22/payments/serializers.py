@@ -23,11 +23,13 @@ Spec wire-format compliance (DirectPayment 2.2.1):
 
 from rest_framework import serializers
 
+from django.conf import settings
 from generic.validators import validate_latitude, validate_longitude
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.validators import (
     validate_ci_ascii_string,
     validate_currency_code,
+    validate_terminal_party_identification,
     validate_total_costs,
 )
 
@@ -85,6 +87,7 @@ class TerminalSerializer(serializers.ModelSerializer):
     coordinates = GeoLocationSerializer(
         required=False, allow_null=True, write_only=True
     )
+    last_updated = serializers.DateTimeField(required=True)
 
     class Meta:
         model = Terminal
@@ -114,6 +117,15 @@ class TerminalSerializer(serializers.ModelSerializer):
                 validated_data["longitude"] = coord_data["longitude"]
 
         return validated_data
+
+    def validate(self, attrs):
+        validate_terminal_party_identification(
+            attrs.get("customer_reference"),
+            attrs.get("country_code"),
+            attrs.get("party_id"),
+            ptp_customer_reference=settings.PTP_CUSTOMER_REFERENCE,
+        )
+        return attrs
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

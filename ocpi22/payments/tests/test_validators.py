@@ -5,6 +5,7 @@ from ocpi22.payments.validators import (
     validate_ci_ascii_string,
     validate_currency_code,
     validate_eft_data,
+    validate_terminal_party_identification,
     validate_total_costs,
 )
 
@@ -79,11 +80,8 @@ class TestValidateEftData:
 
         assert exc_info.value.code == "invalid_eft_data_type"
 
-    def test_validate_eft_data_raises_for_empty_list(self):
-        with pytest.raises(ValidationError) as exc_info:
-            validate_eft_data([])
-
-        assert exc_info.value.code == "empty_eft_data"
+    def test_validate_eft_data_passes_for_empty_list(self):
+        validate_eft_data([])
 
     @pytest.mark.parametrize(
         "value",
@@ -138,3 +136,103 @@ class TestValidateTotalCosts:
 
         assert "total_cost_incl_vat" in exc_info.value.message_dict
         assert "less than" in exc_info.value.message_dict["total_cost_incl_vat"][0]
+
+
+class TestValidateTerminalPartyIdentification:
+    @pytest.mark.parametrize(
+        "customer_reference, country_code, party_id",
+        [
+            ("CUST-001", None, None),
+            (None, "FI", "CPO"),
+            ("CUST-001", "FI", "CPO"),
+            ("CUST-001", "FI", None),
+            ("CUST-001", None, "CPO"),
+        ],
+    )
+    def test_validate_terminal_party_identification_passes_for_valid_combinations(
+        self, customer_reference, country_code, party_id
+    ):
+        validate_terminal_party_identification(
+            customer_reference, country_code, party_id
+        )
+
+    def test_validate_terminal_party_identification_raises_when_no_identification_provided(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(None, None, None)
+
+        assert exc_info.value.code == "missing_party_identification"
+
+    def test_validate_terminal_party_identification_raises_when_empty_customer_reference_and_no_pair(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification("", None, None)
+
+        assert exc_info.value.code == "missing_party_identification"
+
+    def test_validate_terminal_party_identification_raises_when_country_code_provided_without_party_id(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(None, "FI", None)
+
+        assert exc_info.value.code == "incomplete_party_identification"
+
+    def test_validate_terminal_party_identification_raises_when_party_id_provided_without_country_code(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(None, None, "CPO")
+
+        assert exc_info.value.code == "incomplete_party_identification"
+
+    @pytest.mark.parametrize(
+        "country_code, party_id",
+        [
+            ("FI", None),
+            (None, "CPO"),
+        ],
+    )
+    def test_validate_terminal_party_identification_raises_when_partial_pair_and_empty_customer_reference(
+        self, country_code, party_id
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification("", country_code, party_id)
+
+        assert exc_info.value.code == "incomplete_party_identification"
+
+    def test_validate_terminal_party_identification_passes_when_customer_reference_matches_expected(
+        self,
+    ):
+        validate_terminal_party_identification(
+            "CUST-001", None, None, ptp_customer_reference="CUST-001"
+        )
+
+    def test_validate_terminal_party_identification_passes_when_no_expected_customer_reference_configured(
+        self,
+    ):
+        validate_terminal_party_identification(
+            "ANY-VALUE", None, None, ptp_customer_reference=None
+        )
+
+    def test_validate_terminal_party_identification_raises_when_customer_reference_does_not_match_expected(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(
+                "WRONG-REF", None, None, ptp_customer_reference="CUST-001"
+            )
+
+        assert exc_info.value.code == "invalid_customer_reference"
+
+    def test_validate_terminal_party_identification_raises_when_customer_reference_is_case_different_from_expected(
+        self,
+    ):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_terminal_party_identification(
+                "cust-001", None, None, ptp_customer_reference="CUST-001"
+            )
+
+        assert exc_info.value.code == "invalid_customer_reference"

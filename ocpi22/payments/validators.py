@@ -34,12 +34,6 @@ def validate_eft_data(value: list) -> None:
             code="invalid_eft_data_type",
         )
 
-    if not value:
-        raise ValidationError(
-            _("EFT data must contain at least one item."),
-            code="empty_eft_data",
-        )
-
     for idx, item in enumerate(value):
         if not isinstance(item, str):
             raise ValidationError(
@@ -52,6 +46,41 @@ def validate_eft_data(value: list) -> None:
             )
 
         validate_ci_ascii_string(item, f"EFT data item at index {idx}")
+
+
+def validate_terminal_party_identification(
+    customer_reference: str | None,
+    country_code: str | None,
+    party_id: str | None,
+    ptp_customer_reference: str | None = None,
+) -> None:
+    if customer_reference:
+        if ptp_customer_reference and customer_reference != ptp_customer_reference:
+            raise ValidationError(
+                _(
+                    "customer_reference '%(received)s' does not match the configured value."
+                ),
+                code="invalid_customer_reference",
+                params={"received": customer_reference},
+            )
+        return
+
+    if bool(country_code) != bool(party_id):
+        raise ValidationError(
+            _(
+                "country_code and party_id must both be provided together or both omitted."
+            ),
+            code="incomplete_party_identification",
+        )
+
+    if not country_code and not party_id:
+        raise ValidationError(
+            _(
+                "A Terminal must have either a customer_reference "
+                "or both country_code and party_id."
+            ),
+            code="missing_party_identification",
+        )
 
 
 def validate_total_costs(excl_vat: float, incl_vat: float | None) -> None:
