@@ -17,8 +17,8 @@ from ocpi22.tests.factories import (
     EvseFactory,
 )
 
-TERMINALS_URL = "/ocpi/2.2.1/payments/terminals/"
-FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations/"
+TERMINALS_URL = "/ocpi/2.2.1/payments//terminals"
+FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations"
 
 
 @pytest.fixture
@@ -1291,7 +1291,7 @@ class TestCPOTerminalAPI:
         ],
     )
     def test_put_terminal_with_proper_credentials(
-            self, api_client, expected_status_code, request, db_terminal, location
+        self, api_client, expected_status_code, request, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-AUTH-001")
         payload = {
@@ -1302,16 +1302,14 @@ class TestCPOTerminalAPI:
 
         test_client = request.getfixturevalue(api_client)
         url = reverse("payments:put_terminal")
-        response = test_client.put(
-            url,
-            payload,
-            format="json"
-        )
+        response = test_client.put(url, payload, format="json")
 
         assert response.status_code == expected_status_code
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_no_terminal_id_returns_422(self, authenticated_user_client, method):
+    def test_update_terminal_with_no_terminal_id_returns_422(
+        self, authenticated_user_client, method
+    ):
         payload = {
             "location_uids": ["LOC-123"],
             "evse_uids": ["EVSE-123"],
@@ -1319,16 +1317,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_empty_location_or_evse_list_returns_422(self, authenticated_user_client, method):
+    def test_update_terminal_with_empty_location_or_evse_list_returns_422(
+        self, authenticated_user_client, method
+    ):
         payload = {
             "terminal_id": "TERM-001",
             "location_uids": None,
@@ -1337,16 +1333,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_invalid_location_or_evse_uids_returns_422(self, authenticated_user_client, db_terminal, method):
+    def test_update_terminal_with_invalid_location_or_evse_uids_returns_422(
+        self, authenticated_user_client, db_terminal, method
+    ):
         terminal = db_terminal(terminal_id="TERM-INVALID-UIDS")
         payload = {
             "terminal_id": terminal.terminal_id,
@@ -1356,18 +1350,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
         assert "invalid" in response.json().get("message", "").lower()
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_put_terminal_locations_updates_database_and_calls_ptp(
-            self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-001")
         terminal.credentials.url = "https://example.com/ocpi/cpo/2.2/"
@@ -1386,11 +1376,7 @@ class TestCPOTerminalAPI:
         assert terminal.evses.count() == 0
 
         url = reverse("payments:put_terminal")
-        response = authenticated_user_client.put(
-            url,
-            payload,
-            format="json"
-        )
+        response = authenticated_user_client.put(url, payload, format="json")
 
         assert response.status_code == 200
         data = response.json()
@@ -1412,7 +1398,7 @@ class TestCPOTerminalAPI:
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_patch_terminal_locations_updates_db_and_calls_external_api(
-            self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-002")
         terminal.credentials.url = "https://example.com/ocpi/cpo/2.2/"
@@ -1425,11 +1411,7 @@ class TestCPOTerminalAPI:
         }
 
         url = reverse("payments:patch_terminal")
-        response = authenticated_user_client.patch(
-            url,
-            payload,
-            format="json"
-        )
+        response = authenticated_user_client.patch(url, payload, format="json")
 
         assert response.status_code == 200
         data = response.json()
