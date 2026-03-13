@@ -17,8 +17,8 @@ from ocpi22.tests.factories import (
     EvseFactory,
 )
 
-TERMINALS_URL = "/ocpi/2.2.1/payments/terminals/"
-FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations/"
+TERMINALS_URL = "/ocpi/2.2.1/payments/terminals"
+FACS_URL = "/ocpi/2.2.1/payments/financial-advice-confirmations"
 
 
 @pytest.fixture
@@ -316,7 +316,7 @@ class TestTerminalGetAPI:
     ):
         db_terminal(terminal_id="TERM-GET-001", customer_reference="CUST-GET-001")
 
-        response = client.get(f"{TERMINALS_URL}TERM-GET-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-GET-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -332,7 +332,7 @@ class TestTerminalGetAPI:
     def test_get_terminal_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(f"{TERMINALS_URL}NONEXISTENT", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/NONEXISTENT", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -348,14 +348,14 @@ class TestTerminalGetAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(f"{TERMINALS_URL}TERM-OTHER-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-OTHER-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_terminal_without_auth_returns_401(self, client, db_terminal):
         db_terminal(terminal_id="TERM-NOAUTH-001")
 
-        response = client.get(f"{TERMINALS_URL}TERM-NOAUTH-001")
+        response = client.get(f"{TERMINALS_URL}/TERM-NOAUTH-001")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -368,7 +368,7 @@ class TestTerminalGetAPI:
             longitude="24.938379",
         )
 
-        response = client.get(f"{TERMINALS_URL}TERM-COORD-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-COORD-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -721,7 +721,7 @@ class TestFACGetAPI:
             capture_status_message="Capture successful at PSP",
         )
 
-        response = client.get(f"{FACS_URL}FAC-GET-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-GET-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -744,7 +744,7 @@ class TestFACGetAPI:
     ):
         db_fac(fac_id="FAC-GET-002")
 
-        response = client.get(f"{FACS_URL}FAC-GET-002", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-GET-002", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -757,7 +757,7 @@ class TestFACGetAPI:
     def test_get_fac_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(f"{FACS_URL}NONEXISTENT", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/NONEXISTENT", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -773,14 +773,14 @@ class TestFACGetAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(f"{FACS_URL}FAC-OTHER-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-OTHER-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_fac_without_auth_returns_401(self, client, db_fac):
         db_fac(fac_id="FAC-NOAUTH-001")
 
-        response = client.get(f"{FACS_URL}FAC-NOAUTH-001")
+        response = client.get(f"{FACS_URL}/FAC-NOAUTH-001")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -797,7 +797,7 @@ class TestFACGetAPI:
             capture_status_code="SUCCESS",
         )
 
-        response = client.get(f"{FACS_URL}FAC-COSTS-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-COSTS-001", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -1194,7 +1194,7 @@ class TestTerminalGetEdgeCases:
     ):
         db_terminal(terminal_id="TERM-NO-LATLON", latitude=None, longitude=None)
 
-        response = client.get(f"{TERMINALS_URL}TERM-NO-LATLON", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-NO-LATLON", **ocpi_headers)
 
         data = response.json()
         assert response.status_code == status.HTTP_200_OK
@@ -1205,7 +1205,7 @@ class TestTerminalGetEdgeCases:
     ):
         db_terminal(terminal_id="TERM-WITH-LOCS")
 
-        response = client.get(f"{TERMINALS_URL}TERM-WITH-LOCS", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-WITH-LOCS", **ocpi_headers)
 
         data = response.json()["data"]
         assert response.status_code == status.HTTP_200_OK
@@ -1291,7 +1291,7 @@ class TestCPOTerminalAPI:
         ],
     )
     def test_put_terminal_with_proper_credentials(
-            self, api_client, expected_status_code, request, db_terminal, location
+        self, api_client, expected_status_code, request, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-AUTH-001")
         payload = {
@@ -1302,16 +1302,14 @@ class TestCPOTerminalAPI:
 
         test_client = request.getfixturevalue(api_client)
         url = reverse("payments:put_terminal")
-        response = test_client.put(
-            url,
-            payload,
-            format="json"
-        )
+        response = test_client.put(url, payload, format="json")
 
         assert response.status_code == expected_status_code
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_no_terminal_id_returns_422(self, authenticated_user_client, method):
+    def test_update_terminal_with_no_terminal_id_returns_422(
+        self, authenticated_user_client, method
+    ):
         payload = {
             "location_uids": ["LOC-123"],
             "evse_uids": ["EVSE-123"],
@@ -1319,16 +1317,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_empty_location_or_evse_list_returns_422(self, authenticated_user_client, method):
+    def test_update_terminal_with_empty_location_or_evse_list_returns_422(
+        self, authenticated_user_client, method
+    ):
         payload = {
             "terminal_id": "TERM-001",
             "location_uids": None,
@@ -1337,16 +1333,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_invalid_location_or_evse_uids_returns_422(self, authenticated_user_client, db_terminal, method):
+    def test_update_terminal_with_invalid_location_or_evse_uids_returns_422(
+        self, authenticated_user_client, db_terminal, method
+    ):
         terminal = db_terminal(terminal_id="TERM-INVALID-UIDS")
         payload = {
             "terminal_id": terminal.terminal_id,
@@ -1356,18 +1350,14 @@ class TestCPOTerminalAPI:
 
         url = reverse(f"payments:{method}_terminal")
         function = getattr(authenticated_user_client, method.lower(), None)
-        response = function(
-            url,
-            payload,
-            format="json"
-        )
+        response = function(url, payload, format="json")
 
         assert response.status_code == 422
         assert "invalid" in response.json().get("message", "").lower()
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_put_terminal_locations_updates_database_and_calls_ptp(
-            self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-001")
         terminal.credentials.url = "https://example.com/ocpi/cpo/2.2/"
@@ -1386,11 +1376,7 @@ class TestCPOTerminalAPI:
         assert terminal.evses.count() == 0
 
         url = reverse("payments:put_terminal")
-        response = authenticated_user_client.put(
-            url,
-            payload,
-            format="json"
-        )
+        response = authenticated_user_client.put(url, payload, format="json")
 
         assert response.status_code == 200
         data = response.json()
@@ -1412,7 +1398,7 @@ class TestCPOTerminalAPI:
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_patch_terminal_locations_updates_db_and_calls_external_api(
-            self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
     ):
         terminal = db_terminal(terminal_id="TERM-002")
         terminal.credentials.url = "https://example.com/ocpi/cpo/2.2/"
@@ -1425,11 +1411,7 @@ class TestCPOTerminalAPI:
         }
 
         url = reverse("payments:patch_terminal")
-        response = authenticated_user_client.patch(
-            url,
-            payload,
-            format="json"
-        )
+        response = authenticated_user_client.patch(url, payload, format="json")
 
         assert response.status_code == 200
         data = response.json()
