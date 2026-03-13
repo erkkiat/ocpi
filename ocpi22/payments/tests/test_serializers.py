@@ -85,6 +85,7 @@ class TestTerminalSerializerIncoming:
             "terminal_id": "TERM001",
             "customer_reference": "CUST001",
             "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
+            "last_updated": "2026-01-01T00:00:00Z",
         }
 
         serializer = TerminalSerializer(data=data)
@@ -98,6 +99,7 @@ class TestTerminalSerializerIncoming:
         data = {
             "terminal_id": "TERM002",
             "customer_reference": "CUST002",
+            "last_updated": "2026-01-01T00:00:00Z",
         }
 
         serializer = TerminalSerializer(data=data)
@@ -147,6 +149,7 @@ class TestTerminalSerializerIncoming:
         data = {
             "terminal_id": "TERM005",
             "customer_reference": "CUST005",
+            "last_updated": "2026-01-01T00:00:00Z",
             extra_field: ["some-uid-1", "some-uid-2"],
         }
 
@@ -219,6 +222,7 @@ class TestTerminalSerializerRoundtrip:
             "address": "Mannerheimintie 1",
             "city": "Helsinki",
             "country": "FIN",
+            "last_updated": "2026-01-01T00:00:00Z",
         }
 
         write_serializer = TerminalSerializer(data=incoming_data)

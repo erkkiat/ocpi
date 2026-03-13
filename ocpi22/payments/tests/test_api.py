@@ -95,6 +95,7 @@ def valid_terminal_data():
     return {
         "terminal_id": "TERM-API-001",
         "customer_reference": "CUST-API-001",
+        "last_updated": "2026-01-15T12:00:00Z",
     }
 
 
@@ -108,6 +109,7 @@ def valid_terminal_data_with_coordinates():
         "city": "Amsterdam",
         "postal_code": "1015AA",
         "country": "NLD",
+        "last_updated": "2026-01-15T12:00:00Z",
     }
 
 
@@ -934,7 +936,11 @@ class TestTerminalPostEdgeCases:
     ):
         response = client.post(
             TERMINALS_URL,
-            data={"terminal_id": "TERM-NO-COORD"},
+            data={
+                "terminal_id": "TERM-NO-COORD",
+                "customer_reference": "CUST-NO-COORD",
+                "last_updated": "2026-01-15T12:00:00Z",
+            },
             format="json",
             **ocpi_headers,
         )
@@ -948,7 +954,12 @@ class TestTerminalPostEdgeCases:
     def test_post_terminal_with_null_coordinates_returns_201_without_coordinates(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        data = {"terminal_id": "TERM-NULL-COORD", "coordinates": None}
+        data = {
+            "terminal_id": "TERM-NULL-COORD",
+            "customer_reference": "CUST-NULL-COORD",
+            "coordinates": None,
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
 
         response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
 
@@ -963,7 +974,11 @@ class TestTerminalPostEdgeCases:
     ):
         response = client.post(
             TERMINALS_URL,
-            data={"terminal_id": "TERM-LOC-FIELDS"},
+            data={
+                "terminal_id": "TERM-LOC-FIELDS",
+                "customer_reference": "CUST-LOC-FIELDS",
+                "last_updated": "2026-01-15T12:00:00Z",
+            },
             format="json",
             **ocpi_headers,
         )

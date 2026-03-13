@@ -80,8 +80,11 @@ class TestValidateEftData:
 
         assert exc_info.value.code == "invalid_eft_data_type"
 
-    def test_validate_eft_data_passes_for_empty_list(self):
-        validate_eft_data([])
+    def test_validate_eft_data_raises_for_empty_list(self):
+        with pytest.raises(ValidationError) as exc_info:
+            validate_eft_data([])
+
+        assert exc_info.value.code == "empty_eft_data"
 
     @pytest.mark.parametrize(
         "value",

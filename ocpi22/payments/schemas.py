@@ -18,7 +18,7 @@ class TerminalIn(Schema):
     location_uids: List[str] = Field(default_factory=list)
     evse_uids: List[str] = Field(default_factory=list)
 
-    last_updated: datetime
+    last_updated: Optional[datetime] = Field(default=None)
 
 
 class TerminalOut(Schema):

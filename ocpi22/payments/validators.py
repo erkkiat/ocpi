@@ -34,6 +34,12 @@ def validate_eft_data(value: list) -> None:
             code="invalid_eft_data_type",
         )
 
+    if len(value) == 0:
+        raise ValidationError(
+            _("EFT data must contain at least one item."),
+            code="empty_eft_data",
+        )
+
     for idx, item in enumerate(value):
         if not isinstance(item, str):
             raise ValidationError(
