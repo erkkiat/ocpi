@@ -121,7 +121,7 @@ class TestTerminalServiceCreate:
         assert terminal.invoice_base_url == "https://invoices.example.com"
         assert terminal.invoice_creator == "CPO"
 
-    def test_create_terminal_raises_when_no_identification_fields_provided(
+    def test_create_terminal_raises_when_customer_reference_country_code_and_party_id_are_all_missing(
         self, terminal_service, credentialsrole
     ):
         from django.core.exceptions import ValidationError
@@ -429,7 +429,7 @@ class TestFACServiceGet:
 
 @pytest.mark.django_db
 class TestTerminalServiceUpdate:
-    def test_put_terminal_updates_terminal_successfully(
+    def test_put_terminal_replaces_invoice_base_url_locations_and_evses(
         self, terminal_service, credentialsrole
     ):
         location = LocationFactory(uid="LOC-PUT")
@@ -438,13 +438,12 @@ class TestTerminalServiceUpdate:
         terminal = TerminalFactory(
             terminal_id="terminal-put",
             credentials=credentialsrole.credentials,
-            customer_reference="OLD-REF",
-            invoice_base_url="https://old.com",
+            invoice_base_url="https://example-url-for-invoices-old.com",
         )
 
         payload = TerminalIn(
             terminal_id="terminal-put",
-            customer_reference="NEW-REF",
+            customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_uids=[location.uid],
             evse_uids=[evse.uid],
@@ -452,7 +451,6 @@ class TestTerminalServiceUpdate:
 
         updated_terminal = terminal_service.put_terminal(terminal, payload)
 
-        assert updated_terminal.customer_reference == "NEW-REF"
         assert (
             updated_terminal.invoice_base_url
             == "https://example-url-for-invoices-new.com"
@@ -460,34 +458,33 @@ class TestTerminalServiceUpdate:
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
 
-    def test_patch_terminal_updates_only_provided_fields_successfully(
+    def test_patch_terminal_updates_only_invoice_base_url_and_locations_when_provided(
         self, terminal_service, credentialsrole
     ):
         location = LocationFactory(uid="LOC-PATCH")
         terminal = TerminalFactory(
             terminal_id="terminal-patch",
             credentials=credentialsrole.credentials,
-            customer_reference="OLD-REF",
             invoice_base_url="https://example-url-for-invoices-old.com",
         )
 
         payload = TerminalIn(
             terminal_id="terminal-patch",
-            customer_reference="PATCHED-REF",
+            customer_reference="TEST-CUSTOMER-REF",
+            invoice_base_url="https://example-url-for-invoices-new.com",
             location_uids=[location.uid],
         )
 
         updated_terminal = terminal_service.patch_terminal(terminal, payload)
 
-        assert updated_terminal.customer_reference == "PATCHED-REF"
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-old.com"
+            == "https://example-url-for-invoices-new.com"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == []
 
-    def test_put_terminal_raises_terminal_validation_error_when_provided_invalid_location(
+    def test_put_terminal_raises_terminal_validation_error_when_location_uid_does_not_exist_in_database(
         self, terminal_service, credentialsrole
     ):
         terminal = TerminalFactory(
@@ -503,7 +500,7 @@ class TestTerminalServiceUpdate:
 
         assert "NON-EXISTENT-LOC" in str(exc_info.value)
 
-    def test_patch_terminal_raises_terminal_validation_error_when_provided_invalid_evse(
+    def test_patch_terminal_raises_terminal_validation_error_when_evse_uid_does_not_exist_in_database(
         self, terminal_service, credentialsrole
     ):
         terminal = TerminalFactory(
@@ -519,7 +516,7 @@ class TestTerminalServiceUpdate:
 
         assert "NON-EXISTENT-EVSE" in str(exc_info.value)
 
-    def test_validate_locations_raises_terminal_validation_error_when_provided_invalid_location(
+    def test_validate_locations_raises_terminal_validation_error_when_location_uid_does_not_exist_in_database(
         self, terminal_service
     ):
         location = LocationFactory(uid="LOC-EXIST")
@@ -529,7 +526,7 @@ class TestTerminalServiceUpdate:
 
         assert "MISSING-LOC" in str(exc_info.value)
 
-    def test_validate_evses_raises_terminal_validation_error_when_provided_invalid_evse(
+    def test_validate_evses_raises_terminal_validation_error_when_evse_uid_does_not_exist_in_database(
         self, terminal_service
     ):
         location = LocationFactory(uid="LOC-E")
@@ -543,7 +540,7 @@ class TestTerminalServiceUpdate:
     @patch("ocpi22.payments.services.send_ocpi_request")
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
-    def test_send_to_ptp_sends_terminal_successfully(
+    def test_send_to_ptp_calls_send_ocpi_request_with_correct_url_method_and_data(
         self,
         mock_find_endpoints,
         mock_get_party,

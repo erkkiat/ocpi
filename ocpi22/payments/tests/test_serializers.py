@@ -83,7 +83,7 @@ class TestTerminalSerializerIncoming:
     ):
         data = {
             "terminal_id": "TERM001",
-            "customer_reference": "CUST001",
+            "customer_reference": "TEST-CUSTOMER-REF",
             "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
             "last_updated": "2026-01-01T00:00:00Z",
         }
@@ -98,7 +98,7 @@ class TestTerminalSerializerIncoming:
     def test_terminal_serializer_accepts_incoming_data_without_coordinates(self):
         data = {
             "terminal_id": "TERM002",
-            "customer_reference": "CUST002",
+            "customer_reference": "TEST-CUSTOMER-REF",
             "last_updated": "2026-01-01T00:00:00Z",
         }
 
@@ -148,7 +148,7 @@ class TestTerminalSerializerIncoming:
     ):
         data = {
             "terminal_id": "TERM005",
-            "customer_reference": "CUST005",
+            "customer_reference": "TEST-CUSTOMER-REF",
             "last_updated": "2026-01-01T00:00:00Z",
             extra_field: ["some-uid-1", "some-uid-2"],
         }
@@ -217,7 +217,7 @@ class TestTerminalSerializerRoundtrip:
     ):
         incoming_data = {
             "terminal_id": "TERM_RT001",
-            "customer_reference": "CUST_RT001",
+            "customer_reference": "TEST-CUSTOMER-REF",
             "coordinates": {"latitude": "60.169857", "longitude": "24.938379"},
             "address": "Mannerheimintie 1",
             "city": "Helsinki",

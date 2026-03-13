@@ -94,7 +94,7 @@ def cpo_ocpi_headers(cpo_credentials, cpo_credentialsrole):
 def valid_terminal_data():
     return {
         "terminal_id": "TERM-API-001",
-        "customer_reference": "CUST-API-001",
+        "customer_reference": "TEST-CUSTOMER-REF",
         "last_updated": "2026-01-15T12:00:00Z",
     }
 
@@ -103,7 +103,7 @@ def valid_terminal_data():
 def valid_terminal_data_with_coordinates():
     return {
         "terminal_id": "TERM-API-002",
-        "customer_reference": "CUST-API-002",
+        "customer_reference": "TEST-CUSTOMER-REF",
         "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
         "address": "Keizersgracht 100",
         "city": "Amsterdam",
@@ -159,7 +159,7 @@ class TestTerminalPostAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-API-001"
-        assert body["data"]["customer_reference"] == "CUST-API-001"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["location_ids"] == []
         assert body["data"]["evse_uids"] == []
         assert "last_updated" in body["data"]
@@ -219,7 +219,7 @@ class TestTerminalPostAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-API-002"
-        assert body["data"]["customer_reference"] == "CUST-API-002"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["coordinates"]["latitude"] == "52.372294"
         assert body["data"]["coordinates"]["longitude"] == "4.898632"
         assert body["data"]["address"] == "Keizersgracht 100"
@@ -316,7 +316,7 @@ class TestTerminalGetAPI:
     def test_get_terminal_returns_200_with_terminal_data(
         self, client, ptp_credentialsrole, ocpi_headers, db_terminal
     ):
-        db_terminal(terminal_id="TERM-GET-001", customer_reference="CUST-GET-001")
+        db_terminal(terminal_id="TERM-GET-001", customer_reference="TEST-CUSTOMER-REF")
 
         response = client.get(f"{TERMINALS_URL}/TERM-GET-001", **ocpi_headers)
 
@@ -326,7 +326,7 @@ class TestTerminalGetAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-GET-001"
-        assert body["data"]["customer_reference"] == "CUST-GET-001"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["location_ids"] == []
         assert body["data"]["evse_uids"] == []
         assert "last_updated" in body["data"]
@@ -407,7 +407,7 @@ class TestTerminalListAPI:
     ):
         db_terminal(
             terminal_id="TERM-MINE-001",
-            customer_reference="CUST-MINE-001",
+            customer_reference="TEST-CUSTOMER-REF",
             address="Keizersgracht 100",
             city="Amsterdam",
             postal_code="1015AA",
@@ -427,7 +427,7 @@ class TestTerminalListAPI:
         assert body["status_code"] == 1000
         assert "status_message" not in body
         mine = next(t for t in body["data"] if t["terminal_id"] == "TERM-MINE-001")
-        assert mine["customer_reference"] == "CUST-MINE-001"
+        assert mine["customer_reference"] == "TEST-CUSTOMER-REF"
         assert mine["address"] == "Keizersgracht 100"
         assert mine["city"] == "Amsterdam"
         assert mine["postal_code"] == "1015AA"
@@ -938,7 +938,7 @@ class TestTerminalPostEdgeCases:
             TERMINALS_URL,
             data={
                 "terminal_id": "TERM-NO-COORD",
-                "customer_reference": "CUST-NO-COORD",
+                "customer_reference": "TEST-CUSTOMER-REF",
                 "last_updated": "2026-01-15T12:00:00Z",
             },
             format="json",
@@ -956,7 +956,7 @@ class TestTerminalPostEdgeCases:
     ):
         data = {
             "terminal_id": "TERM-NULL-COORD",
-            "customer_reference": "CUST-NULL-COORD",
+            "customer_reference": "TEST-CUSTOMER-REF",
             "coordinates": None,
             "last_updated": "2026-01-15T12:00:00Z",
         }
@@ -976,7 +976,7 @@ class TestTerminalPostEdgeCases:
             TERMINALS_URL,
             data={
                 "terminal_id": "TERM-LOC-FIELDS",
-                "customer_reference": "CUST-LOC-FIELDS",
+                "customer_reference": "TEST-CUSTOMER-REF",
                 "last_updated": "2026-01-15T12:00:00Z",
             },
             format="json",

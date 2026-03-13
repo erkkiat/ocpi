@@ -142,24 +142,19 @@ class TestValidateTotalCosts:
 
 
 class TestValidateTerminalPartyIdentification:
-    @pytest.mark.parametrize(
-        "customer_reference, country_code, party_id",
-        [
-            ("CUST-001", None, None),
-            (None, "FI", "CPO"),
-            ("CUST-001", "FI", "CPO"),
-            ("CUST-001", "FI", None),
-            ("CUST-001", None, "CPO"),
-        ],
-    )
-    def test_validate_terminal_party_identification_passes_for_valid_combinations(
-        self, customer_reference, country_code, party_id
+    def test_validate_terminal_party_identification_passes_when_country_code_and_party_id_are_provided(
+        self,
+    ):
+        validate_terminal_party_identification(None, "FI", "CPO")
+
+    def test_validate_terminal_party_identification_passes_when_customer_reference_matches_configured(
+        self,
     ):
         validate_terminal_party_identification(
-            customer_reference, country_code, party_id
+            "CUST-001", None, None, ptp_customer_reference="CUST-001"
         )
 
-    def test_validate_terminal_party_identification_raises_when_no_identification_provided(
+    def test_validate_terminal_party_identification_raises_when_customer_reference_country_code_and_party_id_are_all_none(
         self,
     ):
         with pytest.raises(ValidationError) as exc_info:
@@ -167,7 +162,7 @@ class TestValidateTerminalPartyIdentification:
 
         assert exc_info.value.code == "missing_party_identification"
 
-    def test_validate_terminal_party_identification_raises_when_empty_customer_reference_and_no_pair(
+    def test_validate_terminal_party_identification_raises_when_customer_reference_is_empty_and_country_code_and_party_id_are_missing(
         self,
     ):
         with pytest.raises(ValidationError) as exc_info:
@@ -205,13 +200,6 @@ class TestValidateTerminalPartyIdentification:
             validate_terminal_party_identification("", country_code, party_id)
 
         assert exc_info.value.code == "incomplete_party_identification"
-
-    def test_validate_terminal_party_identification_passes_when_customer_reference_matches_configured(
-        self,
-    ):
-        validate_terminal_party_identification(
-            "CUST-001", None, None, ptp_customer_reference="CUST-001"
-        )
 
     def test_validate_terminal_party_identification_raises_when_customer_reference_sent_but_ptp_customer_reference_not_configured(
         self,
