@@ -66,13 +66,22 @@ class LoggingMiddleware(MiddlewareMixin):
 
     def _resolve_view_name(self, view_func: Callable) -> str:
         unwrapped_func = view_func
-        while isinstance(unwrapped_func, functools.partial):
-            unwrapped_func = unwrapped_func.func
+
+        while True:
+            if isinstance(unwrapped_func, functools.partial):
+                unwrapped_func = unwrapped_func.func
+            elif hasattr(unwrapped_func, "__wrapped__"):
+                unwrapped_func = unwrapped_func.__wrapped__
+            else:
+                break
 
         try:
-            return f"{unwrapped_func.__module__}.{unwrapped_func.__name__}"
-        except AttributeError:
-            return f"{unwrapped_func.__module__}.{unwrapped_func.__class__.__name__}"
+            module = getattr(unwrapped_func, "__module__", "unknown_module")
+            name = getattr(
+                unwrapped_func, "__name__", unwrapped_func.__class__.__name__
+            )
+
+            return f"{module}.{name}"
         except Exception:
             return str(unwrapped_func)
 
