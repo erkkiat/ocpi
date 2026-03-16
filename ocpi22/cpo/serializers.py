@@ -544,6 +544,23 @@ class SolidTariffSerializer(SerializerCleanedUp):
     )
     last_updated = UTCDateTimeField(required=False)
 
+    def validate(self, attrs):
+        price_fields = [
+            "price_per_kwh",
+            "price_per_min",
+            "price_per_hr",
+            "price_flat",
+            "parking_price_per_min",
+            "parking_price_per_hr",
+        ]
+
+        if not any(attrs.get(field) is not None for field in price_fields):
+            raise serializers.ValidationError(
+                "At least one pricing field must be provided."
+            )
+
+        return super().validate(attrs)
+
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):
     allowed = serializers.ChoiceField(choices=AuthorizationEnum.choices)

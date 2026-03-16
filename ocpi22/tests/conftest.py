@@ -117,6 +117,7 @@ def smp1_solid_tariff_minimal_records_json():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
+        "price_flat": 1.0,
     }
 
 
@@ -145,7 +146,7 @@ def smp1_solid_tariff_with_minimal_records_response():
         "parking_grace_period": None,
         "parking_price_per_min": None,
         "parking_price_per_hr": None,
-        "price_flat": None,
+        "price_flat": "1.0",
         "price_per_kwh": None,
         "price_per_min": None,
         "price_per_hr": None,
