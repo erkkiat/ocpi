@@ -1,24 +1,17 @@
 {% load i18n static %}
 {% if cl.search_fields %}
-<div id="toolbar">
-    <form class="form row g-3 mb-3" id="changelist-search" method="get">
-        <div class="col-md-8 col-lg-5 input-group mb-3">
-            <input type="text" class="form-control" size="40" value="{{ cl.query }}" name="{{ search_var }}"
-                   id="searchbar" placeholder="{% trans 'Search terms' %}" aria-label="{% trans 'Search terms' %}"
-                   aria-describedby="">
-            <div class="input-group-append">
-                <button class="btn btn-primary" type="button">{% translate 'Search' %}</button>
-            </div>
-        </div>
-        <div class="col-auto">
-            {% if show_result_count %}
-            <span class="small quiet">{% blocktranslate count counter=cl.result_count %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktranslate %} (<a
-                    href="?{% if cl.is_popup %}_popup=1{% endif %}">{% if cl.show_full_result_count %}{% blocktranslate with full_result_count=cl.full_result_count %}{{ full_result_count }} total{% endblocktranslate %}{% else %}{% translate "Show all" %}{% endif %}</a>)</span>
-            {% endif %}
-            {% for pair in cl.params.items %}
-            {% if pair.0 != search_var %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
-            {% endfor %}
-        </div>
-    </form>
+<div id="changelist-search" style="border-left: 1px solid #dee2e6; padding-left: 1rem;">
+    <div class="input-group" style="width:320px;">
+        <input type="text" class="form-control" value="{{ cl.query }}" name="{{ search_var }}"
+               id="searchbar" placeholder="{% trans 'Search terms' %}" aria-label="{% trans 'Search terms' %}">
+        <button class="btn btn-primary" type="submit" formaction="" formmethod="get">{% translate 'Search' %}</button>
+    </div>
+    {% if show_result_count %}
+    <div class="small text-muted mt-1">{% blocktranslate count counter=cl.result_count %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktranslate %}
+    (<a href="?{% if cl.is_popup %}_popup=1{% endif %}">{% if cl.show_full_result_count %}{% blocktranslate with full_result_count=cl.full_result_count %}{{ full_result_count }} total{% endblocktranslate %}{% else %}{% translate "Show all" %}{% endif %}</a>)</div>
+    {% endif %}
+    {% for pair in cl.params.items %}
+    {% if pair.0 != search_var %}<input type="hidden" name="{{ pair.0 }}" value="{{ pair.1 }}">{% endif %}
+    {% endfor %}
 </div>
 {% endif %}
