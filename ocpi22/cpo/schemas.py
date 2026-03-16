@@ -36,7 +36,9 @@ from ocpi22.ocpi.util import Ocpi
 
 
 class BaseSchema(Schema):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, from_attributes=True
+    )
 
 
 class StatusSchedule(BaseSchema):
@@ -89,8 +91,8 @@ class OCPIImage(BaseSchema):
     ] = None
     category: ImageCategory
     type: Annotated[str, StringConstraints(min_length=1, max_length=20)]
-    width: NonNegativeInt
-    height: NonNegativeInt
+    width: Optional[NonNegativeInt] = None
+    height: Optional[NonNegativeInt] = None
 
 
 class BusinessDetails(BaseSchema):
