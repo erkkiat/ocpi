@@ -30,6 +30,7 @@ from ocpi22.choices import (
     EnvironmentalImpactCategory,
     EnergySourceCategory,
     TokenType,
+    ImageCategory,
 )
 from ocpi22.ocpi.util import Ocpi
 
@@ -86,7 +87,7 @@ class OCPIImage(BaseSchema):
     thumbnail: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
     ] = None
-    category: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    category: ImageCategory
     type: Annotated[str, StringConstraints(min_length=1, max_length=20)]
     width: NonNegativeInt
     height: NonNegativeInt
@@ -97,9 +98,7 @@ class BusinessDetails(BaseSchema):
     website: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
     ] = None
-    logo: Optional[Annotated[str, StringConstraints(min_length=1, max_length=20)]] = (
-        None
-    )
+    logo: Optional[OCPIImage] = None
 
 
 class RegularHours(BaseSchema):

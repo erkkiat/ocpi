@@ -562,3 +562,12 @@ class WEEKDAY_CHOICES(Enum):
 Everyday = {1, 2, 3, 4, 5, 6, 7}
 Workdays = {1, 2, 3, 4, 5}
 Weekend = {6, 7}
+
+class ImageCategory(str, Enum):
+    CHARGER = "CHARGER"
+    ENTRANCE = "ENTRANCE"
+    LOCATION = "LOCATION"
+    NETWORK = "NETWORK"
+    OPERATOR = "OPERATOR"
+    OTHER = "OTHER"
+    OWNER = "OWNER"
