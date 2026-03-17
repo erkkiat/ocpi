@@ -310,6 +310,25 @@ class TestTerminalPostAPI:
         assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-API-001").exists()
 
+    def test_post_terminal_with_null_country_code_and_party_id_in_body_succeeds_using_headers(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-NULL-PARTY",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "country_code": None,
+            "party_id": None,
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["data"]["terminal_id"] == "TERM-NULL-PARTY"
+        assert Terminal.objects.filter(terminal_id="TERM-NULL-PARTY").exists()
+
 
 @pytest.mark.django_db
 class TestTerminalGetAPI:
