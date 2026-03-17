@@ -174,7 +174,9 @@ class TestTerminalValidators:
             TerminalFactory(party_id=value)
 
     def test_save_succeeds_with_null_customer_reference(self):
-        terminal = TerminalFactory(customer_reference=None)
+        terminal = TerminalFactory(
+            customer_reference=None, country_code="NL", party_id="PAY"
+        )
         assert terminal.pk is not None
         assert terminal.customer_reference is None
 

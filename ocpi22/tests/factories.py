@@ -744,15 +744,18 @@ class TerminalFactory(factory.django.DjangoModelFactory):
         model = Terminal
 
     terminal_id = factory.Sequence(lambda n: f"TERM-{n:05d}")
-    customer_reference = factory.Sequence(lambda n: f"CUST-REF-{n:05d}")
-    party_id = "PAY"
-    country_code = "NL"
+    customer_reference = "TEST-CUSTOMER-REF"
+    # party_id = "PAY"
+    # country_code = "NL"
     address = "Keizersgracht 100"
     city = "Amsterdam"
     postal_code = "1015AA"
     country = "NLD"
     invoice_creator = "PTP"
     credentials = factory.SubFactory(CredentialsFactory)
+    last_updated = factory.LazyFunction(
+        lambda: datetime(2025, 1, 15, 12, 0, 0, tzinfo=ZoneInfo("UTC"))
+    )
 
 
 class FinancialAdviceConfirmationFactory(factory.django.DjangoModelFactory):
