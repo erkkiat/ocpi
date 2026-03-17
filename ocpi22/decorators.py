@@ -71,12 +71,20 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                     bool(kwargs.get("country_code") and kwargs.get("party_id")),
                 )
 
-            country_code = kwargs.get(
-                "country_code", data.get("country_code", sender_party.country_code)
+            sender_is_ptp = (
+                getattr(request, "ocpi_party", None) is not None
+                and request.ocpi_party.role == OcpiRolesEnum.PTP
             )
-            party_id = kwargs.get(
-                "party_id", data.get("party_id", sender_party.party_id)
-            )
+            if sender_is_ptp:
+                country_code = kwargs.get("country_code") or sender_party.country_code
+                party_id = kwargs.get("party_id") or sender_party.party_id
+            else:
+                country_code = kwargs.get(
+                    "country_code", data.get("country_code", sender_party.country_code)
+                )
+                party_id = kwargs.get(
+                    "party_id", data.get("party_id", sender_party.party_id)
+                )
             if not country_code or not party_id:
                 return OCPIBadRequestResponse("Country code and party ID are required")
             if request.user.is_superuser or (
