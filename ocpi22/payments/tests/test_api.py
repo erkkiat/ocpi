@@ -1378,7 +1378,7 @@ class TestCPOTerminalAPI:
 
         payload = {
             "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "location_ids": [location.uid],
             "evse_uids": [evse.uid],
         }
 
@@ -1407,7 +1407,7 @@ class TestCPOTerminalAPI:
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-001"
         assert kwargs["method"] == "put"
-        assert kwargs["data"]["location_uids"] == [location.uid]
+        assert kwargs["data"]["location_ids"] == [location.uid]
         assert kwargs["to_party_id"] == "PAY"
 
     @patch("ocpi22.payments.services.send_ocpi_request")
@@ -1421,7 +1421,7 @@ class TestCPOTerminalAPI:
 
         payload = {
             "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "location_ids": [location.uid],
         }
 
         url = reverse("payments:patch_terminal")
@@ -1445,4 +1445,4 @@ class TestCPOTerminalAPI:
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-002"
         assert kwargs["method"] == "patch"
-        assert kwargs["data"]["location_uids"] == [location.uid]
+        assert kwargs["data"]["location_ids"] == [location.uid]
