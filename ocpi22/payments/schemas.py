@@ -35,7 +35,7 @@ class TerminalIn(Schema):
     location_ids: List[Annotated[str, StringConstraints(min_length=1, max_length=36)]] = Field(default_factory=list)
     evse_uids: List[Annotated[str, StringConstraints(min_length=1, max_length=36)]] = Field(default_factory=list)
 
-    last_updated: Optional[datetime] = None
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(dt_timezone.utc))
 
     @model_validator(mode="after")
     def validate_location(self) -> "TerminalIn":
