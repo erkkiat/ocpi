@@ -4,7 +4,7 @@ from typing import Annotated, List, Optional
 from ninja import Schema
 from pydantic import ConfigDict, Field, StringConstraints, model_validator, HttpUrl
 
-from ocpi22.cpo.schemas import GeoLocation, validate_country
+from ocpi22.cpo.schemas import GeoLocation
 
 class TerminalIn(Schema):
 
@@ -22,9 +22,6 @@ class TerminalIn(Schema):
     def validate_location(self) -> "TerminalIn":
         if not self.location_ids and not self.evse_uids:
             raise ValueError("Either location_ids or evse_uids must be provided.")
-
-        if self.country:
-            validate_country(self.country)
 
         return self
 
