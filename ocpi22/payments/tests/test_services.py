@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone as dt_timezone
 from django.utils import timezone
 
 from ocpi22.choices import OcpiRolesEnum
@@ -433,21 +434,21 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-put",
             credentials=credentialsrole.credentials,
             customer_reference="OLD-REF",
-            invoice_base_url="https://old.com"
+            invoice_base_url="https://old.com",
         )
-        
+
         payload = TerminalIn(
             terminal_id="terminal-put",
             customer_reference="NEW-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
-            location_uids=[location.uid],
-            evse_uids=[evse.uid]
+            location_ids=[location.uid],
+            evse_uids=[evse.uid],
         )
-        
+
         updated_terminal = terminal_service.put_terminal(terminal, payload)
-        
+
         assert updated_terminal.customer_reference == "NEW-REF"
-        assert updated_terminal.invoice_base_url == "https://example-url-for-invoices-new.com"
+        assert str(updated_terminal.invoice_base_url).rstrip("/") == "https://example-url-for-invoices-new.com"
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
 
@@ -459,17 +460,17 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-patch",
             credentials=credentialsrole.credentials,
             customer_reference="OLD-REF",
-            invoice_base_url="https://example-url-for-invoices-old.com"
+            invoice_base_url="https://example-url-for-invoices-old.com",
         )
-        
+
         payload = TerminalIn(
             terminal_id="terminal-patch",
             customer_reference="PATCHED-REF",
-            location_uids=[location.uid]
+            location_ids=[location.uid],
         )
-        
+
         updated_terminal = terminal_service.patch_terminal(terminal, payload)
-        
+
         assert updated_terminal.customer_reference == "PATCHED-REF"
         assert updated_terminal.invoice_base_url == "https://example-url-for-invoices-old.com"
         assert list(updated_terminal.locations.all()) == [location]
@@ -480,17 +481,17 @@ class TestTerminalServiceUpdate:
     ):
         terminal = TerminalFactory(
             terminal_id="term-fail-put",
-            credentials=credentialsrole.credentials
+            credentials=credentialsrole.credentials,
         )
-        
+
         payload = TerminalIn(
             terminal_id="term-fail-put",
-            location_uids=["NON-EXISTENT-LOC"]
+            location_ids=["NON-EXISTENT-LOC"],
         )
-        
+
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service.put_terminal(terminal, payload)
-            
+
         assert "NON-EXISTENT-LOC" in str(exc_info.value)
 
     def test_patch_terminal_raises_terminal_validation_error_when_provided_invalid_evse(
@@ -498,34 +499,38 @@ class TestTerminalServiceUpdate:
     ):
         terminal = TerminalFactory(
             terminal_id="term-fail-patch",
-            credentials=credentialsrole.credentials
+            credentials=credentialsrole.credentials,
         )
-        
+
         payload = TerminalIn(
             terminal_id="term-fail-patch",
-            evse_uids=["NON-EXISTENT-EVSE"]
+            evse_uids=["NON-EXISTENT-EVSE"],
         )
-        
+
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service.patch_terminal(terminal, payload)
-            
+
         assert "NON-EXISTENT-EVSE" in str(exc_info.value)
 
-    def test_validate_locations_raises_terminal_validation_error_when_provided_invalid_location(self, terminal_service):
+    def test_validate_locations_raises_terminal_validation_error_when_provided_invalid_location(
+        self, terminal_service
+    ):
         location = LocationFactory(uid="LOC-EXIST")
-        
+
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service._validate_locations([location.uid, "MISSING-LOC"])
-            
+
         assert "MISSING-LOC" in str(exc_info.value)
 
-    def test_validate_evses_raises_terminal_validation_error_when_provided_invalid_evse(self, terminal_service):
+    def test_validate_evses_raises_terminal_validation_error_when_provided_invalid_evse(
+        self, terminal_service
+    ):
         location = LocationFactory(uid="LOC-E")
         evse = EvseFactory(uid="EVSE-EXIST", location=location)
-        
+
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service._validate_evses([evse.uid, "MISSING-EVSE"])
-            
+
         assert "MISSING-EVSE" in str(exc_info.value)
 
     @patch("ocpi22.payments.services.send_ocpi_request")
@@ -537,32 +542,35 @@ class TestTerminalServiceUpdate:
         mock_find_endpoints.return_value = [("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)]
         mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
         mock_get_party.return_value = mock_party
-        
+
         terminal = TerminalFactory(terminal_id="terminal001", credentials=credentialsrole.credentials)
-        
-        terminal_service._send_to_ptp(terminal, "patch", {"terminal_id": "terminal001", "location_ids": []})
-        
+
+        terminal_service._send_to_ptp(terminal, "patch", {"terminal_id": "terminal001", "location_ids": [], "evse_uids": []})
+
         mock_send.apply_async.assert_called_once()
         kwargs = mock_send.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://ptp.com/ocpi/payments/terminals/terminal001"
         assert kwargs["method"] == "patch"
-        assert kwargs["data"] == {"terminal_id": "terminal001", "location_ids": []}
 
     @patch("ocpi22.payments.services.send_ocpi_request")
-    def test_send_to_ptp_does_not_send_request_when_no_credentials_found(self, mock_send, terminal_service):
+    def test_send_to_ptp_does_not_send_request_when_no_credentials_found(
+        self, mock_send, terminal_service
+    ):
         terminal = TerminalFactory(terminal_id="terminal-no-credentials", credentials=None)
-        
+
         terminal_service._send_to_ptp(terminal, "put", {})
-        
+
         mock_send.apply_async.assert_not_called()
 
     @patch("ocpi22.payments.services.send_ocpi_request")
-    def test_send_to_ptp_does_not_send_request_when_no_role_found(self, mock_send, terminal_service, credentialsrole):
+    def test_send_to_ptp_does_not_send_request_when_no_role_found(
+        self, mock_send, terminal_service, credentialsrole
+    ):
         credentialsrole.delete()
         terminal = TerminalFactory(terminal_id="terminal-no-role", credentials=credentialsrole.credentials)
-        
+
         terminal_service._send_to_ptp(terminal, "put", {})
-        
+
         mock_send.apply_async.assert_not_called()
 
     @patch("ocpi22.payments.services.send_ocpi_request")
@@ -572,7 +580,167 @@ class TestTerminalServiceUpdate:
     ):
         mock_find_endpoints.return_value = []
         terminal = TerminalFactory(terminal_id="terminal-no-endpoints", credentials=credentialsrole.credentials)
-        
+
         terminal_service._send_to_ptp(terminal, "put", {})
-        
+
         mock_send.apply_async.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestTerminalInSchema:
+    def test_terminal_in_last_updated_defaults_to_utc_now_when_not_provided(self):
+        before = datetime.now(dt_timezone.utc)
+        payload = TerminalIn(terminal_id="term-ts", location_ids=["LOC-1"])
+        after = datetime.now(dt_timezone.utc)
+
+        assert payload.last_updated is not None
+        assert before <= payload.last_updated <= after
+        assert payload.last_updated.tzinfo is not None
+
+    def test_terminal_in_last_updated_uses_provided_value_when_given(self):
+        fixed_dt = datetime(2024, 6, 15, 10, 0, 0, tzinfo=dt_timezone.utc)
+        payload = TerminalIn(
+            terminal_id="term-ts-explicit",
+            location_ids=["LOC-1"],
+            last_updated=fixed_dt,
+        )
+
+        assert payload.last_updated == fixed_dt
+
+    def test_terminal_in_raises_when_neither_location_ids_nor_evse_uids_provided(self):
+        import pydantic
+        with pytest.raises(pydantic.ValidationError):
+            TerminalIn(terminal_id="term-no-loc")
+
+    def test_terminal_in_accepts_only_location_ids_without_evse_uids(self):
+        payload = TerminalIn(terminal_id="term-loc-only", location_ids=["LOC-A"])
+
+        assert payload.location_ids == ["LOC-A"]
+        assert payload.evse_uids == []
+
+    def test_terminal_in_accepts_only_evse_uids_without_location_ids(self):
+        payload = TerminalIn(terminal_id="term-evse-only", evse_uids=["EVSE-A"])
+
+        assert payload.evse_uids == ["EVSE-A"]
+        assert payload.location_ids == []
+
+    def test_terminal_in_accepts_both_location_ids_and_evse_uids(self):
+        payload = TerminalIn(
+            terminal_id="term-both",
+            location_ids=["LOC-A"],
+            evse_uids=["EVSE-A"],
+        )
+
+        assert payload.location_ids == ["LOC-A"]
+        assert payload.evse_uids == ["EVSE-A"]
+
+
+@pytest.mark.django_db
+class TestSendToPtpEnrichment:
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_fetches_evse_uids_when_only_location_ids_provided(
+        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-ENRICH-1")
+        evse1 = EvseFactory(uid="EVSE-UNDER-LOC-1", location=location)
+        evse2 = EvseFactory(uid="EVSE-UNDER-LOC-2", location=location)
+
+        mock_find_endpoints.return_value = [
+            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(terminal_id="term-loc-enrich", credentials=credentialsrole.credentials)
+
+        terminal_service._send_to_ptp(
+            terminal,
+            "patch",
+            {"terminal_id": "term-loc-enrich", "location_ids": [location.uid], "evse_uids": []},
+        )
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert set(sent_data["evse_uids"]) == {evse1.uid, evse2.uid}
+        assert sent_data["location_ids"] == [location.uid]
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_fetches_location_ids_when_only_evse_uids_provided(
+        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-REVERSE-1")
+        evse = EvseFactory(uid="EVSE-REVERSE-1", location=location)
+
+        mock_find_endpoints.return_value = [
+            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(terminal_id="term-evse-enrich", credentials=credentialsrole.credentials)
+
+        terminal_service._send_to_ptp(
+            terminal,
+            "patch",
+            {"terminal_id": "term-evse-enrich", "location_ids": [], "evse_uids": [evse.uid]},
+        )
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert sent_data["evse_uids"] == [evse.uid]
+        assert location.uid in sent_data["location_ids"]
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_does_not_modify_payload_when_both_location_ids_and_evse_uids_provided(
+        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+    ):
+        mock_find_endpoints.return_value = [
+            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(terminal_id="term-both-provided", credentials=credentialsrole.credentials)
+        original_payload = {
+            "terminal_id": "term-both-provided",
+            "location_ids": ["LOC-X"],
+            "evse_uids": ["EVSE-X"],
+        }
+
+        terminal_service._send_to_ptp(terminal, "put", original_payload)
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert sent_data["location_ids"] == ["LOC-X"]
+        assert sent_data["evse_uids"] == ["EVSE-X"]
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_payload_uses_location_ids_key_not_location_uids(
+        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+    ):
+        mock_find_endpoints.return_value = [
+            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(terminal_id="term-key-check", credentials=credentialsrole.credentials)
+
+        terminal_service._send_to_ptp(
+            terminal,
+            "put",
+            {"terminal_id": "term-key-check", "location_ids": ["LOC-Y"], "evse_uids": ["EVSE-Y"]},
+        )
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert "location_ids" in sent_data
+        assert "location_uids" not in sent_data

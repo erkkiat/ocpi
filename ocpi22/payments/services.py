@@ -66,7 +66,7 @@ class TerminalService:
         terminal.invoice_base_url = payload.invoice_base_url
         terminal.last_updated = payload.last_updated
 
-        locations = self._validate_locations(payload.location_uids)
+        locations = self._validate_locations(payload.location_ids)
         terminal.locations.set(locations)
 
         evses = self._validate_evses(payload.evse_uids)
@@ -85,8 +85,8 @@ class TerminalService:
         if "last_updated" in payload_dict:
             terminal.last_updated = payload_dict["last_updated"]
 
-        if "location_uids" in payload_dict:
-            locations = self._validate_locations(payload_dict["location_uids"])
+        if "location_ids" in payload_dict:
+            locations = self._validate_locations(payload_dict["location_ids"])
             terminal.locations.set(locations)
 
         if "evse_uids" in payload_dict:
@@ -118,6 +118,20 @@ class TerminalService:
         return evses
 
     def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
+        location_ids = payload.get("location_ids") or []
+        evse_uids = payload.get("evse_uids") or []
+
+        if location_ids and not evse_uids:
+            fetched_evse_uids = list(
+                Evse.objects.filter(location__uid__in=location_ids).values_list("uid", flat=True)
+            )
+            payload = {**payload, "evse_uids": fetched_evse_uids}
+        elif evse_uids and not location_ids:
+            fetched_location_ids = list(
+                Location.objects.filter(evses__uid__in=evse_uids).values_list("uid", flat=True).distinct()
+            )
+            payload = {**payload, "location_ids": fetched_location_ids}
+
         credentials = terminal.credentials
         if not credentials or not credentials.url:
             logger.error(f"Terminal {terminal.terminal_id} has no credentials.")
