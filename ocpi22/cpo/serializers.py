@@ -474,8 +474,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
     currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
     price_per_kwh = PriceKwhSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=2,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The price per kWh of electricity charged excluding tax",
