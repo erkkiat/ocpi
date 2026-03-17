@@ -8,6 +8,7 @@ Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 """
 
 from django.db import models
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from generic.validators import (
@@ -20,6 +21,7 @@ from ocpi22.payments.validators import (
     validate_ci_ascii_string,
     validate_currency_code,
     validate_eft_data,
+    validate_terminal_party_identification,
     validate_total_costs,
 )
 
@@ -202,9 +204,10 @@ class Terminal(models.Model):
     )
 
     last_updated = models.DateTimeField(
-        auto_now=True,
         verbose_name=_("Last Updated"),
-        help_text=_("Timestamp when this Terminal was last updated (or created)"),
+        help_text=_(
+            "Timestamp when this Terminal was last updated (or created). Set by the PTP."
+        ),
     )
 
     created = models.DateTimeField(
@@ -246,6 +249,12 @@ class Terminal(models.Model):
             validate_latitude(self.latitude)
         if self.longitude:
             validate_longitude(self.longitude)
+        validate_terminal_party_identification(
+            self.customer_reference,
+            self.country_code,
+            self.party_id,
+            ptp_customer_reference=settings.PTP_CUSTOMER_REFERENCE,
+        )
 
     def save(self, *args, **kwargs) -> None:
         self.clean()

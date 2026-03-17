@@ -19,7 +19,7 @@ urlpatterns = [
     path("", PaymentsRootView.as_view({"get": "list"}), name="payments-list"),
     # Terminals
     path(
-        "terminals/",
+        "terminals",
         TerminalViewSet.as_view({"get": "list", "post": "post"}),
         name="terminal-list",
     ),
@@ -30,7 +30,7 @@ urlpatterns = [
     ),
     # Financial Advice Confirmations
     path(
-        "financial-advice-confirmations/",
+        "financial-advice-confirmations",
         FinancialAdviceConfirmationViewSet.as_view({"get": "list", "post": "post"}),
         name="fac-list",
     ),
