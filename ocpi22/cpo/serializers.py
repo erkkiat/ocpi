@@ -428,10 +428,10 @@ class PriceSerializer(serializers.DecimalField):
         return solid_tariff.get_type(self.tariff_type)
 
     def to_internal_value(self, data):
-        result = {self.key: data}
-        if result is not None and float(data) < 0:
+        value = super().to_internal_value(data)
+        if value is not None and value < 0:
             raise ValidationError(f"{self.key} cannot be negative.")
-        return result
+        return {self.key: value}
 
 
 class PriceKwhSerializer(PriceSerializer):
