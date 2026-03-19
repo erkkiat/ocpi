@@ -57,6 +57,9 @@ class SolidTariffService:
             else parking_price_per_hr
         )
 
+        validated_data["price_per_hr"] = per_hr
+        validated_data["parking_price_per_hr"] = parking_price_per_hr
+
         self._set_missing_fields(validated_data)
 
         duplicate_solid_tariff = SolidTariff.objects.get_if_exists(**validated_data)

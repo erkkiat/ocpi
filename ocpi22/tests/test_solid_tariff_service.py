@@ -443,3 +443,51 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
     )
     assert price_components.first().price == 0
 
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+@pytest.mark.parametrize(
+    "validated_data",
+    [
+        pytest.param(
+            {
+                "external_id": "ZERO-PER-MIN-DEDUP-SMP1",
+                "currency": "EUR",
+                "price_per_min": 0,
+                "msp": None,
+                "last_updated": "2024-10-10T12:00:00Z",
+            },
+            id="zero_per_min_no_explicit_per_hr",
+        ),
+        pytest.param(
+            {
+                "external_id": "ZERO-PARKING-PER-MIN-DEDUP-SMP1",
+                "currency": "EUR",
+                "parking_price_per_min": 0,
+                "msp": None,
+                "last_updated": "2024-10-10T12:00:00Z",
+            },
+            id="zero_parking_per_min_no_explicit_parking_per_hr",
+        ),
+    ],
+)
+def test_create_solid_tariff_with_zero_per_min_does_not_create_duplicate_on_second_call(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+    validated_data,
+):
+    import copy
+
+    data_first = copy.deepcopy(validated_data)
+    data_first["ocpi_master"] = operator_fi_cpo
+    data_second = copy.deepcopy(validated_data)
+    data_second["ocpi_master"] = operator_fi_cpo
+
+    solid_tariff_service_instance.create(data_first)
+    solid_tariff_service_instance.create(data_second)
+
+    count = SolidTariff.objects.filter(external_id=validated_data["external_id"]).count()
+    assert count == 1, (
+        f"Expected 1 SolidTariff after two identical requests, got {count}"
+    )
+
