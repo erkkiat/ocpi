@@ -57,6 +57,9 @@ class SolidTariffService:
             else parking_price_per_hr
         )
 
+        validated_data["price_per_hr"] = per_hr
+        validated_data["parking_price_per_hr"] = parking_price_per_hr
+
         self._set_missing_fields(validated_data)
 
         duplicate_solid_tariff = SolidTariff.objects.get_if_exists(**validated_data)
@@ -127,7 +130,7 @@ class SolidTariffService:
 
     def _convert_to_hourly(self, per_minute_value):
         try:
-            return float(per_minute_value) * 60 if per_minute_value else None
+            return float(per_minute_value) * 60 if per_minute_value is not None else None
         except (ValueError, TypeError):
             return None
 
@@ -220,7 +223,7 @@ class SolidTariffService:
         ]
 
         for price_type, price in price_data:
-            if price:
+            if price is not None:
                 PriceComponent.objects.create(
                     tariff_element=tariff_element,
                     type=price_type,

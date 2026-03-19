@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.location import Connector
-from ocpi22.models.tariff import SolidTariff
+from ocpi22.models.tariff import SolidTariff, PriceComponent
 from ocpi22.tests.factories import ConnectorFactory, TariffFactory, SolidTariffFactory
 
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -99,6 +99,7 @@ def test_set_missing_fields(
 @pytest.mark.parametrize(
     "per_minute_value, expected_result",
     [
+        (0, 0.0),
         (0.5, 30.0),
         (1.0, 60.0),
         (None, None),
@@ -315,3 +316,178 @@ def test_set_missing_fields_handles_all_nullable_model_fields(
         f"Nullable fields changed! Expected: {expected_nullable_fields}, "
         f"Got: {actual_nullable_fields}. Update the _set_missing_fields method and this test."
     )
+
+
+@pytest.mark.django_db
+def test_create_price_components_with_zero_prices_creates_price_components(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+
+    solid_tariff_service_instance._create_price_components(
+        tariff=tariff,
+        per_kwh=0,
+        per_hr=0,
+        flat=0,
+        parking_price_per_hr=0,
+        vat=0,
+    )
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=tariff
+    )
+    assert price_components.count() == 4, (
+        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
+    )
+    for component in price_components:
+        assert component.price == 0
+
+
+@pytest.mark.django_db
+def test_create_price_components_with_zero_kwh_price_creates_single_price_component(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+
+    solid_tariff_service_instance._create_price_components(
+        tariff=tariff,
+        per_kwh=0,
+        per_hr=None,
+        flat=None,
+        parking_price_per_hr=None,
+        vat=0,
+    )
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=tariff
+    )
+    assert price_components.count() == 1, (
+        f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
+    )
+    component = price_components.first()
+    assert component.type == "ENERGY"
+    assert component.price == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+def test_create_solid_tariff_with_zero_prices_creates_price_components(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    validated_data = {
+        "external_id": "ZERO-PRICE-SMP1",
+        "currency": "EUR",
+        "price_per_kwh": 0,
+        "price_per_min": 0,
+        "price_per_hr": 0,
+        "price_flat": 0,
+        "parking_price_per_min": 0,
+        "parking_price_per_hr": 0,
+        "parking_grace_period": 0,
+        "vat_percentage": 0,
+        "ocpi_master": operator_fi_cpo,
+        "msp": None,
+    }
+
+    solid_tariff = solid_tariff_service_instance.create(validated_data)
+
+    assert solid_tariff is not None
+    assert solid_tariff.price_per_kwh == 0
+    assert solid_tariff.price_per_hr == 0
+    assert solid_tariff.price_flat == 0
+    assert solid_tariff.parking_price_per_hr == 0
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=solid_tariff.ocpi_tariff
+    )
+    assert price_components.count() == 4, (
+        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
+    )
+    for component in price_components:
+        assert component.price == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+):
+    validated_data = {
+        "external_id": "ZERO-PER-MIN-SMP1",
+        "currency": "EUR",
+        "price_per_min": 0,
+        "ocpi_master": operator_fi_cpo,
+        "msp": None,
+    }
+
+    solid_tariff = solid_tariff_service_instance.create(validated_data)
+
+    assert solid_tariff is not None
+    assert solid_tariff.price_per_min == 0
+    assert solid_tariff.price_per_hr == 0
+
+    price_components = PriceComponent.objects.filter(
+        tariff_element__tariff=solid_tariff.ocpi_tariff,
+        type="TIME",
+    )
+    assert price_components.count() == 1, (
+        f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
+    )
+    assert price_components.first().price == 0
+
+
+@pytest.mark.django_db
+@time_machine.travel("2024-10-10 12:00:00")
+@pytest.mark.parametrize(
+    "validated_data",
+    [
+        pytest.param(
+            {
+                "external_id": "ZERO-PER-MIN-DEDUP-SMP1",
+                "currency": "EUR",
+                "price_per_min": 0,
+                "msp": None,
+                "last_updated": "2024-10-10T12:00:00Z",
+            },
+            id="zero_per_min_no_explicit_per_hr",
+        ),
+        pytest.param(
+            {
+                "external_id": "ZERO-PARKING-PER-MIN-DEDUP-SMP1",
+                "currency": "EUR",
+                "parking_price_per_min": 0,
+                "msp": None,
+                "last_updated": "2024-10-10T12:00:00Z",
+            },
+            id="zero_parking_per_min_no_explicit_parking_per_hr",
+        ),
+    ],
+)
+def test_create_solid_tariff_with_zero_per_min_does_not_create_duplicate_on_second_call(
+    solid_tariff_service_instance,
+    operator_fi_cpo,
+    validated_data,
+):
+    import copy
+
+    data_first = copy.deepcopy(validated_data)
+    data_first["ocpi_master"] = operator_fi_cpo
+    data_second = copy.deepcopy(validated_data)
+    data_second["ocpi_master"] = operator_fi_cpo
+
+    solid_tariff_service_instance.create(data_first)
+    solid_tariff_service_instance.create(data_second)
+
+    count = SolidTariff.objects.filter(external_id=validated_data["external_id"]).count()
+    assert count == 1, (
+        f"Expected 1 SolidTariff after two identical requests, got {count}"
+    )
+
