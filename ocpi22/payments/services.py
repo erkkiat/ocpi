@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import Optional
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -84,7 +85,10 @@ class TerminalService:
         evses = self._validate_evses(payload.evse_uids)
         terminal.evses.set(evses)
 
-        terminal.save()
+        try:
+            terminal.save()
+        except DjangoValidationError as e:
+            raise TerminalValidationError(e.messages[0]) from e
         return terminal
 
     def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
@@ -130,7 +134,10 @@ class TerminalService:
             evses = self._validate_evses(payload_dict["evse_uids"])
             terminal.evses.set(evses)
 
-        terminal.save()
+        try:
+            terminal.save()
+        except DjangoValidationError as e:
+            raise TerminalValidationError(e.messages[0]) from e
         return terminal
 
     def _check_missing_uids(self, uids: list[str], uids_db: set[str]):
