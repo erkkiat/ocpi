@@ -7,12 +7,12 @@ Implements EVRF DirectPayment OCPI 2.2.1 extension specification.
 Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 
 URL Structure (CPO-side — inbound from PTP):
-    GET    /2.2.1/cpo/payments/terminals              - List terminals
-    POST   /2.2.1/cpo/payments/terminals              - Create terminal (PTP → CPO)
-    GET    /2.2.1/cpo/payments/terminals/{terminal_id} - Get terminal
-    GET    /2.2.1/cpo/payments/facs                   - List FACs
-    POST   /2.2.1/cpo/payments/facs                   - Create FAC (PTP → CPO)
-    GET    /2.2.1/cpo/payments/facs{fac_id}           - Get FAC
+    GET    /2.2.1/cpo/payments/terminals/               - List terminals
+    POST   /2.2.1/cpo/payments/terminals/               - Create terminal (PTP → CPO)
+    GET    /2.2.1/cpo/payments/terminals/{terminal_id}/ - Get terminal
+    GET    /2.2.1/cpo/payments/facs/                    - List FACs
+    POST   /2.2.1/cpo/payments/facs/                    - Create FAC (PTP → CPO)
+    GET    /2.2.1/cpo/payments/facs/{fac_id}/           - Get FAC
 
 Note: PATCH and PUT for terminals are PTP-side endpoints (Table 5.1).
 SolidRoam calls those outbound on Payter's system to assign locations.
@@ -212,8 +212,8 @@ class PaymentsRootView(GenericViewSet):
     This view exists solely to provide a named URL ("payments-list") that can be
     reversed during the OCPI credentials handshake in get_endpoints_dict(). The
     payments module root has no defined behaviour in the EVRF DirectPayment spec —
-    counterparties should use /payments/terminals and
-    /payments/financial-advice-confirmations directly.
+    counterparties should use /payments/terminals/ and
+    /payments/financial-advice-confirmations/ directly.
 
     The queryset is required by DjangoModelPermissions which is applied globally.
     """
