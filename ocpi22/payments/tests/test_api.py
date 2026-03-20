@@ -316,7 +316,7 @@ class TestTerminalGetAPI:
     ):
         db_terminal(terminal_id="TERM-GET-001", customer_reference="CUST-GET-001")
 
-        response = client.get(f"{TERMINALS_URL}/TERM-GET-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-GET-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -332,7 +332,7 @@ class TestTerminalGetAPI:
     def test_get_terminal_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(f"{TERMINALS_URL}/NONEXISTENT", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/NONEXISTENT/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -348,14 +348,14 @@ class TestTerminalGetAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(f"{TERMINALS_URL}/TERM-OTHER-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-OTHER-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_terminal_without_auth_returns_401(self, client, db_terminal):
         db_terminal(terminal_id="TERM-NOAUTH-001")
 
-        response = client.get(f"{TERMINALS_URL}/TERM-NOAUTH-001")
+        response = client.get(f"{TERMINALS_URL}/TERM-NOAUTH-001/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -368,7 +368,7 @@ class TestTerminalGetAPI:
             longitude="24.938379",
         )
 
-        response = client.get(f"{TERMINALS_URL}/TERM-COORD-001", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-COORD-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -721,7 +721,7 @@ class TestFACGetAPI:
             capture_status_message="Capture successful at PSP",
         )
 
-        response = client.get(f"{FACS_URL}/FAC-GET-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-GET-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -744,7 +744,7 @@ class TestFACGetAPI:
     ):
         db_fac(fac_id="FAC-GET-002")
 
-        response = client.get(f"{FACS_URL}/FAC-GET-002", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-GET-002/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -757,7 +757,7 @@ class TestFACGetAPI:
     def test_get_fac_returns_404_when_not_found(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(f"{FACS_URL}/NONEXISTENT", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/NONEXISTENT/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -773,14 +773,14 @@ class TestFACGetAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(f"{FACS_URL}/FAC-OTHER-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-OTHER-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_fac_without_auth_returns_401(self, client, db_fac):
         db_fac(fac_id="FAC-NOAUTH-001")
 
-        response = client.get(f"{FACS_URL}/FAC-NOAUTH-001")
+        response = client.get(f"{FACS_URL}/FAC-NOAUTH-001/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -797,7 +797,7 @@ class TestFACGetAPI:
             capture_status_code="SUCCESS",
         )
 
-        response = client.get(f"{FACS_URL}/FAC-COSTS-001", **ocpi_headers)
+        response = client.get(f"{FACS_URL}/FAC-COSTS-001/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -1194,7 +1194,7 @@ class TestTerminalGetEdgeCases:
     ):
         db_terminal(terminal_id="TERM-NO-LATLON", latitude=None, longitude=None)
 
-        response = client.get(f"{TERMINALS_URL}/TERM-NO-LATLON", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-NO-LATLON/", **ocpi_headers)
 
         data = response.json()
         assert response.status_code == status.HTTP_200_OK
@@ -1205,7 +1205,7 @@ class TestTerminalGetEdgeCases:
     ):
         db_terminal(terminal_id="TERM-WITH-LOCS")
 
-        response = client.get(f"{TERMINALS_URL}/TERM-WITH-LOCS", **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/TERM-WITH-LOCS/", **ocpi_headers)
 
         data = response.json()["data"]
         assert response.status_code == status.HTTP_200_OK

@@ -19,23 +19,23 @@ urlpatterns = [
     path("", PaymentsRootView.as_view({"get": "list"}), name="payments-list"),
     # Terminals
     path(
-        "terminals",
+        "terminals/",
         TerminalViewSet.as_view({"get": "list", "post": "post"}),
         name="terminal-list",
     ),
     path(
-        "terminals/<str:terminal_id>",
+        "terminals/<str:terminal_id>/",
         TerminalViewSet.as_view({"get": "get"}),
         name="terminal-detail",
     ),
     # Financial Advice Confirmations
     path(
-        "financial-advice-confirmations",
+        "financial-advice-confirmations/",
         FinancialAdviceConfirmationViewSet.as_view({"get": "list", "post": "post"}),
         name="fac-list",
     ),
     path(
-        "financial-advice-confirmations/<str:fac_id>",
+        "financial-advice-confirmations/<str:fac_id>/",
         FinancialAdviceConfirmationViewSet.as_view({"get": "get"}),
         name="fac-detail",
     ),
