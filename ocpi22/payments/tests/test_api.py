@@ -333,7 +333,9 @@ class TestTerminalPostAPI:
             "last_updated": "2026-01-15T12:00:00Z",
         }
 
-        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
+        )
 
         assert response.status_code == status.HTTP_201_CREATED
         body = response.json()
@@ -351,7 +353,7 @@ class TestTerminalPostAPI:
         }
 
         response = client.post(
-            TERMINALS_URL, data=data, format="json", **ocpi_headers_no_routing
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers_no_routing
         )
 
         assert response.status_code == status.HTTP_201_CREATED
