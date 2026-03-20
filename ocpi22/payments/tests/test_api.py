@@ -79,6 +79,14 @@ def ocpi_headers(ptp_credentials, ptp_credentialsrole):
 
 
 @pytest.fixture
+def ocpi_headers_no_routing(ptp_credentials, ptp_credentialsrole):
+    return {
+        "HTTP_AUTHORIZATION": f"Token {base64.b64encode(ptp_credentials.ours.encode()).decode()}",
+        "CONTENT_TYPE": "application/json",
+    }
+
+
+@pytest.fixture
 def cpo_ocpi_headers(cpo_credentials, cpo_credentialsrole):
     return {
         "HTTP_AUTHORIZATION": f"Token {base64.b64encode(cpo_credentials.ours.encode()).decode()}",
@@ -94,7 +102,8 @@ def cpo_ocpi_headers(cpo_credentials, cpo_credentialsrole):
 def valid_terminal_data():
     return {
         "terminal_id": "TERM-API-001",
-        "customer_reference": "CUST-API-001",
+        "customer_reference": "TEST-CUSTOMER-REF",
+        "last_updated": "2026-01-15T12:00:00Z",
     }
 
 
@@ -102,12 +111,13 @@ def valid_terminal_data():
 def valid_terminal_data_with_coordinates():
     return {
         "terminal_id": "TERM-API-002",
-        "customer_reference": "CUST-API-002",
+        "customer_reference": "TEST-CUSTOMER-REF",
         "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
         "address": "Keizersgracht 100",
         "city": "Amsterdam",
         "postal_code": "1015AA",
         "country": "NLD",
+        "last_updated": "2026-01-15T12:00:00Z",
     }
 
 
@@ -157,7 +167,7 @@ class TestTerminalPostAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-API-001"
-        assert body["data"]["customer_reference"] == "CUST-API-001"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["location_ids"] == []
         assert body["data"]["evse_uids"] == []
         assert "last_updated" in body["data"]
@@ -217,7 +227,7 @@ class TestTerminalPostAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-API-002"
-        assert body["data"]["customer_reference"] == "CUST-API-002"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["coordinates"]["latitude"] == "52.372294"
         assert body["data"]["coordinates"]["longitude"] == "4.898632"
         assert body["data"]["address"] == "Keizersgracht 100"
@@ -312,13 +322,52 @@ class TestTerminalPostAPI:
         assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-API-001").exists()
 
+    def test_post_terminal_with_null_country_code_and_party_id_in_body_succeeds_using_headers(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-NULL-PARTY",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "country_code": None,
+            "party_id": None,
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["data"]["terminal_id"] == "TERM-NULL-PARTY"
+        assert Terminal.objects.filter(terminal_id="TERM-NULL-PARTY").exists()
+
+    def test_post_terminal_without_routing_headers_succeeds_using_credentials_role_identity(
+        self, client, ptp_credentialsrole, ocpi_headers_no_routing
+    ):
+        data = {
+            "terminal_id": "TERM-NO-ROUTING",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
+
+        response = client.post(
+            TERMINALS_URL, data=data, format="json", **ocpi_headers_no_routing
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["data"]["terminal_id"] == "TERM-NO-ROUTING"
+        terminal = Terminal.objects.get(terminal_id="TERM-NO-ROUTING")
+        assert terminal.credentials == ptp_credentialsrole.credentials
+
 
 @pytest.mark.django_db
 class TestTerminalGetAPI:
     def test_get_terminal_returns_200_with_terminal_data(
         self, client, ptp_credentialsrole, ocpi_headers, db_terminal
     ):
-        db_terminal(terminal_id="TERM-GET-001", customer_reference="CUST-GET-001")
+        db_terminal(terminal_id="TERM-GET-001", customer_reference="TEST-CUSTOMER-REF")
 
         response = client.get(f"{TERMINALS_URL}/TERM-GET-001/", **ocpi_headers)
 
@@ -328,7 +377,7 @@ class TestTerminalGetAPI:
         assert body["status_message"] == "Success"
         assert "timestamp" in body
         assert body["data"]["terminal_id"] == "TERM-GET-001"
-        assert body["data"]["customer_reference"] == "CUST-GET-001"
+        assert body["data"]["customer_reference"] == "TEST-CUSTOMER-REF"
         assert body["data"]["location_ids"] == []
         assert body["data"]["evse_uids"] == []
         assert "last_updated" in body["data"]
@@ -409,7 +458,7 @@ class TestTerminalListAPI:
     ):
         db_terminal(
             terminal_id="TERM-MINE-001",
-            customer_reference="CUST-MINE-001",
+            customer_reference="TEST-CUSTOMER-REF",
             address="Keizersgracht 100",
             city="Amsterdam",
             postal_code="1015AA",
@@ -429,7 +478,7 @@ class TestTerminalListAPI:
         assert body["status_code"] == 1000
         assert "status_message" not in body
         mine = next(t for t in body["data"] if t["terminal_id"] == "TERM-MINE-001")
-        assert mine["customer_reference"] == "CUST-MINE-001"
+        assert mine["customer_reference"] == "TEST-CUSTOMER-REF"
         assert mine["address"] == "Keizersgracht 100"
         assert mine["city"] == "Amsterdam"
         assert mine["postal_code"] == "1015AA"
@@ -942,7 +991,11 @@ class TestTerminalPostEdgeCases:
     ):
         response = client.post(
             f"{TERMINALS_URL}/",
-            data={"terminal_id": "TERM-NO-COORD"},
+            data={
+                "terminal_id": "TERM-NO-COORD",
+                "customer_reference": "TEST-CUSTOMER-REF",
+                "last_updated": "2026-01-15T12:00:00Z",
+            },
             format="json",
             **ocpi_headers,
         )
@@ -956,7 +1009,12 @@ class TestTerminalPostEdgeCases:
     def test_post_terminal_with_null_coordinates_returns_201_without_coordinates(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        data = {"terminal_id": "TERM-NULL-COORD", "coordinates": None}
+        data = {
+            "terminal_id": "TERM-NULL-COORD",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "coordinates": None,
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
 
         response = client.post(
             f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
@@ -973,7 +1031,11 @@ class TestTerminalPostEdgeCases:
     ):
         response = client.post(
             f"{TERMINALS_URL}/",
-            data={"terminal_id": "TERM-LOC-FIELDS"},
+            data={
+                "terminal_id": "TERM-LOC-FIELDS",
+                "customer_reference": "TEST-CUSTOMER-REF",
+                "last_updated": "2026-01-15T12:00:00Z",
+            },
             format="json",
             **ocpi_headers,
         )

@@ -3,6 +3,7 @@ from typing import Optional
 
 from django.db import transaction
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
 from ocpi22.credentials.util import find_endpoints_by_roles
@@ -11,7 +12,8 @@ from ocpi22.models.location import Location, Evse
 from ocpi22.payments.exceptions import (
     TerminalAlreadyExistsError,
     FinancialAdviceConfirmationAlreadyExistsError,
-    FinancialAdviceConfirmationValidationError, TerminalValidationError,
+    FinancialAdviceConfirmationValidationError,
+    TerminalValidationError,
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.repositories import (
@@ -62,9 +64,10 @@ class TerminalService:
         return terminal
 
     def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
-        terminal.customer_reference = payload.customer_reference
+        if payload.customer_reference is not None:
+            terminal.customer_reference = payload.customer_reference
         terminal.invoice_base_url = payload.invoice_base_url
-        terminal.last_updated = payload.last_updated
+        terminal.last_updated = payload.last_updated or timezone.now()
 
         locations = self._validate_locations(payload.location_uids)
         terminal.locations.set(locations)
@@ -82,8 +85,7 @@ class TerminalService:
             terminal.customer_reference = payload_dict["customer_reference"]
         if "invoice_base_url" in payload_dict:
             terminal.invoice_base_url = payload_dict["invoice_base_url"]
-        if "last_updated" in payload_dict:
-            terminal.last_updated = payload_dict["last_updated"]
+        terminal.last_updated = payload_dict.get("last_updated") or timezone.now()
 
         if "location_uids" in payload_dict:
             locations = self._validate_locations(payload_dict["location_uids"])
@@ -103,7 +105,9 @@ class TerminalService:
 
         missing_uids = uids - uids_db
         if missing_uids:
-            raise TerminalValidationError(f"uids {', '.join(missing_uids)} are invalid.")
+            raise TerminalValidationError(
+                f"uids {', '.join(missing_uids)} are invalid."
+            )
 
     def _validate_locations(self, uids: list[str]) -> list[Location]:
         locations = list(Location.objects.filter(uid__in=uids))
@@ -125,7 +129,9 @@ class TerminalService:
 
         ptp_role = credentials.roles.first()
         if not ptp_role:
-            logger.warning(f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}")
+            logger.warning(
+                f"Missing role for credentials {credentials.id} and terminal {terminal.terminal_id}"
+            )
             return
 
         endpoints = find_endpoints_by_roles(
@@ -142,7 +148,9 @@ class TerminalService:
                 break
 
         if not url:
-            logger.warning(f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}")
+            logger.warning(
+                f"Failed to find PAYMENTS RECEIVER endpoint for terminal {terminal.terminal_id}"
+            )
             return
 
         sender_party = get_our_party()
