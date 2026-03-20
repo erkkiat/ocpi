@@ -40,8 +40,8 @@ any code task.
 
 ### Terminal rules
 - Terminal is already at project root — **never `cd ocpiconnector`**
-- **Always activate the virtualenv first**: `source .venv/bin/activate`
-- **Never use `&&` or `2>/dev/null`** in JetBrains terminal — use separate commands
+- **Always use `executeInShell: true`** and prefix commands with `source .venv/bin/activate &&`
+- **Never use `2>/dev/null`** — JetBrains terminal does not support POSIX redirects
 - Prefer `bash_tool` for file reads/greps; use JetBrains terminal for pytest/Docker/manage.py
 
 ---
