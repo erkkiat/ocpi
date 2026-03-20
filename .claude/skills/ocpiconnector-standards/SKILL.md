@@ -22,13 +22,13 @@ The JetBrains/PyCharm terminal is already at the project root.
   `jetbrains:execute_terminal_command` only for things that require the local
   project environment (running tests, Docker commands, `manage.py`)
 
-Always run commands with the virtualenv activated. Use `executeInShell: true` so
-that `source` works in the JetBrains terminal:
+Always run commands using the virtualenv binaries directly — do not rely on `source`
+or shell activation:
 
 ```
-source .venv/bin/activate && pytest ocpi22/path/to/test.py -v
-source .venv/bin/activate && pytest ocpi22/path/to/test.py::test_name -v
-source .venv/bin/activate && python manage.py <command>
+/Users/devndra.ghimire/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py -v
+/Users/devndra.ghimire/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py::test_name -v
+/Users/devndra.ghimire/ocpiconnector/.venv/bin/python manage.py <command>
 ```
 
 Docker restart (no venv needed):
