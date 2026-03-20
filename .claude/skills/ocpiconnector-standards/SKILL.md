@@ -27,9 +27,9 @@ Always run commands using the virtualenv binaries directly — do not rely on `s
 or shell activation:
 
 ```
-/Users/devndra.ghimire/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py -v
-/Users/devndra.ghimire/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py::test_name -v
-/Users/devndra.ghimire/ocpiconnector/.venv/bin/python manage.py <command>
+~/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py -v
+~/ocpiconnector/.venv/bin/pytest ocpi22/path/to/test.py::test_name -v
+~/ocpiconnector/.venv/bin/python manage.py <command>
 ```
 
 Docker restart (no venv needed):
