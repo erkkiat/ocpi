@@ -79,6 +79,14 @@ def ocpi_headers(ptp_credentials, ptp_credentialsrole):
 
 
 @pytest.fixture
+def ocpi_headers_no_routing(ptp_credentials, ptp_credentialsrole):
+    return {
+        "HTTP_AUTHORIZATION": f"Token {base64.b64encode(ptp_credentials.ours.encode()).decode()}",
+        "CONTENT_TYPE": "application/json",
+    }
+
+
+@pytest.fixture
 def cpo_ocpi_headers(cpo_credentials, cpo_credentialsrole):
     return {
         "HTTP_AUTHORIZATION": f"Token {base64.b64encode(cpo_credentials.ours.encode()).decode()}",
@@ -309,6 +317,45 @@ class TestTerminalPostAPI:
         assert body["status_code"] == 2001
         assert "timestamp" in body
         assert not Terminal.objects.filter(terminal_id="TERM-API-001").exists()
+
+    def test_post_terminal_with_null_country_code_and_party_id_in_body_succeeds_using_headers(
+        self, client, ptp_credentialsrole, ocpi_headers
+    ):
+        data = {
+            "terminal_id": "TERM-NULL-PARTY",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "country_code": None,
+            "party_id": None,
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
+
+        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["data"]["terminal_id"] == "TERM-NULL-PARTY"
+        assert Terminal.objects.filter(terminal_id="TERM-NULL-PARTY").exists()
+
+    def test_post_terminal_without_routing_headers_succeeds_using_credentials_role_identity(
+        self, client, ptp_credentialsrole, ocpi_headers_no_routing
+    ):
+        data = {
+            "terminal_id": "TERM-NO-ROUTING",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "last_updated": "2026-01-15T12:00:00Z",
+        }
+
+        response = client.post(
+            TERMINALS_URL, data=data, format="json", **ocpi_headers_no_routing
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        body = response.json()
+        assert body["status_code"] == 1000
+        assert body["data"]["terminal_id"] == "TERM-NO-ROUTING"
+        terminal = Terminal.objects.get(terminal_id="TERM-NO-ROUTING")
+        assert terminal.credentials == ptp_credentialsrole.credentials
 
 
 @pytest.mark.django_db

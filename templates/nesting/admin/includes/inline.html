@@ -5,10 +5,8 @@
     {% endif %}
     {% for line in fieldset %}
         <div class="{% if line.fields|length_is:'1' and line.errors %} errors{% endif %}{% if not line.has_visible_field %} hidden{% endif %}{% for field in line %}{% if field.field.name %} field-{{ field.field.name }}{% endif %}{% endfor %}{% if forloop.last and forloop.parentloop.last %} djn-form-row-last{% endif %}">
-            {% if line.fields|length_is:'1' %}{{ line.errors }}{% endif %}
             {% for field in line %}
                 <div class="row mb-3 {% if line.fields|length_is:'1' and field.is_checkbox %}checkbox-row{% else %}{% if not line.fields|length_is:'1' %}fieldBox{% if not field.is_readonly and field.errors %} errors{% endif %}{% if field.field.is_hidden %} hidden{% endif %} {% endif %}field-{{ field.field.name }}{% endif %}">
-                    {% if not line.fields|length_is:'1' and not field.is_readonly %}{{ field.errors }}{% endif %}
                     {% if field.is_checkbox %}
                     <div class="col-3">{{ field.field }}</div>
                     <div class="col-6">{{ field.label_tag }}</div>
@@ -19,6 +17,9 @@
                             <p>{{ field.contents }}</p>
                         {% else %}
                             {{ field.field }}
+                        {% endif %}
+                        {% if field.errors %}
+                            <div class="text-danger mt-1">{{ field.errors }}</div>
                         {% endif %}
                     </div>
                     {% endif %}
