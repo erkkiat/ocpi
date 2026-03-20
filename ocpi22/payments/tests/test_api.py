@@ -1358,7 +1358,8 @@ class TestCPOTerminalAPI:
         terminal = db_terminal(terminal_id="TERM-AUTH-001")
         payload = {
             "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "customer_reference": terminal.customer_reference,
+            "location_ids": [location.uid],
             "evse_uids": [location.evses.first().uid],
         }
 
@@ -1430,6 +1431,7 @@ class TestCPOTerminalAPI:
 
         payload = {
             "terminal_id": terminal.terminal_id,
+            "customer_reference": terminal.customer_reference,
             "location_ids": [location.uid],
             "evse_uids": [evse.uid],
         }
@@ -1490,3 +1492,162 @@ class TestCPOTerminalAPI:
         assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-002"
         assert kwargs["method"] == "patch"
         assert kwargs["data"]["location_ids"] == [location.uid]
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_put_terminal_sets_location_fields_address_city_postal_code_state_country(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(terminal_id="TERM-PUT-ADDR")
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "customer_reference": terminal.customer_reference,
+            "address": "Main Street 1",
+            "city": "Amsterdam",
+            "postal_code": "1015AA",
+            "state": "Noord-Holland",
+            "country": "NLD",
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:put_terminal")
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["address"] == "Main Street 1"
+        assert data["city"] == "Amsterdam"
+        assert data["postal_code"] == "1015AA"
+        assert data["state"] == "Noord-Holland"
+        assert data["country"] == "NLD"
+
+        terminal.refresh_from_db()
+        assert terminal.address == "Main Street 1"
+        assert terminal.city == "Amsterdam"
+        assert terminal.postal_code == "1015AA"
+        assert terminal.state == "Noord-Holland"
+        assert terminal.country == "NLD"
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_put_terminal_sets_coordinates(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(terminal_id="TERM-PUT-COORD")
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "customer_reference": terminal.customer_reference,
+            "coordinates": {"latitude": "52.372294", "longitude": "4.898632"},
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:put_terminal")
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coordinates"]["latitude"] == 52.372294
+        assert data["coordinates"]["longitude"] == 4.898632
+
+        terminal.refresh_from_db()
+        assert terminal.latitude == "52.372294"
+        assert terminal.longitude == "4.898632"
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_put_terminal_clears_coordinates_when_not_provided(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(
+            terminal_id="TERM-PUT-CLEAR-COORD",
+            latitude="60.169857",
+            longitude="24.938379",
+        )
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "customer_reference": terminal.customer_reference,
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:put_terminal")
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coordinates"] is None
+
+        terminal.refresh_from_db()
+        assert terminal.latitude is None
+        assert terminal.longitude is None
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_put_terminal_clears_address_fields_when_not_provided(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(
+            terminal_id="TERM-PUT-CLEAR-ADDR",
+            address="Old Street 1",
+            city="OldCity",
+        )
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "customer_reference": terminal.customer_reference,
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:put_terminal")
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == 200
+        terminal.refresh_from_db()
+        assert terminal.address is None
+        assert terminal.city is None
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_patch_terminal_updates_location_fields_without_clearing_others(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(
+            terminal_id="TERM-PATCH-ADDR",
+            address="Old Street 1",
+            city="OldCity",
+            postal_code="12345",
+        )
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "address": "New Street 99",
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:patch_terminal")
+        response = authenticated_user_client.patch(url, payload, format="json")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["address"] == "New Street 99"
+        assert data["city"] == "OldCity"
+        assert data["postal_code"] == "12345"
+
+        terminal.refresh_from_db()
+        assert terminal.address == "New Street 99"
+        assert terminal.city == "OldCity"
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    def test_patch_terminal_sets_coordinates(
+        self, mock_send_ocpi_request, authenticated_user_client, db_terminal, location
+    ):
+        terminal = db_terminal(terminal_id="TERM-PATCH-COORD")
+        payload = {
+            "terminal_id": terminal.terminal_id,
+            "coordinates": {"latitude": "60.169857", "longitude": "24.938379"},
+            "location_ids": [location.uid],
+        }
+
+        url = reverse("payments:patch_terminal")
+        response = authenticated_user_client.patch(url, payload, format="json")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coordinates"]["latitude"] == 60.169857
+        assert data["coordinates"]["longitude"] == 24.938379
+
+        terminal.refresh_from_db()
+        assert terminal.latitude == "60.169857"
+        assert terminal.longitude == "24.938379"

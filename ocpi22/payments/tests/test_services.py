@@ -12,6 +12,7 @@ from ocpi22.payments.exceptions import (
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
 from ocpi22.payments.schemas import TerminalIn
+from ocpi22.cpo.schemas import GeoLocation
 from unittest.mock import patch
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
@@ -445,7 +446,7 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-put",
             customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
-            location_uids=[location.uid],
+            location_ids=[location.uid],
             evse_uids=[evse.uid],
         )
 
@@ -453,7 +454,7 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
@@ -472,14 +473,14 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-patch",
             customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
-            location_uids=[location.uid],
+            location_ids=[location.uid],
         )
 
         updated_terminal = terminal_service.patch_terminal(terminal, payload)
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == []
@@ -492,7 +493,7 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="term-fail-put", location_uids=["NON-EXISTENT-LOC"]
+            terminal_id="term-fail-put", location_ids=["NON-EXISTENT-LOC"]
         )
 
         with pytest.raises(TerminalValidationError) as exc_info:
@@ -536,6 +537,184 @@ class TestTerminalServiceUpdate:
             terminal_service._validate_evses([evse.uid, "MISSING-EVSE"])
 
         assert "MISSING-EVSE" in str(exc_info.value)
+
+    def test_put_terminal_sets_location_fields_address_city_postal_code_state_country(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-put-addr",
+            credentials=credentialsrole.credentials,
+            address="Old Street 1",
+            city="OldCity",
+        )
+        location = LocationFactory(uid="LOC-ADDR")
+
+        payload = TerminalIn(
+            terminal_id="term-put-addr",
+            customer_reference="TEST-CUSTOMER-REF",
+            address="New Street 99",
+            city="Helsinki",
+            postal_code="00100",
+            state="Uusimaa",
+            country="FIN",
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert updated.address == "New Street 99"
+        assert updated.city == "Helsinki"
+        assert updated.postal_code == "00100"
+        assert updated.state == "Uusimaa"
+        assert updated.country == "FIN"
+
+    def test_put_terminal_sets_coordinates_from_coordinates_field(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-put-coord", credentials=credentialsrole.credentials
+        )
+        location = LocationFactory(uid="LOC-COORD")
+
+        payload = TerminalIn(
+            terminal_id="term-put-coord",
+            customer_reference="TEST-CUSTOMER-REF",
+            coordinates=GeoLocation(latitude="60.169857", longitude="24.938379"),
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert updated.latitude == "60.169857"
+        assert updated.longitude == "24.938379"
+
+    def test_put_terminal_clears_coordinates_when_not_provided(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-put-clear-coord",
+            credentials=credentialsrole.credentials,
+            latitude="60.169857",
+            longitude="24.938379",
+        )
+        location = LocationFactory(uid="LOC-CLEAR-COORD")
+
+        payload = TerminalIn(
+            terminal_id="term-put-clear-coord",
+            customer_reference="TEST-CUSTOMER-REF",
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert updated.latitude is None
+        assert updated.longitude is None
+
+    def test_put_terminal_clears_location_fields_when_not_provided(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-put-clear-addr",
+            credentials=credentialsrole.credentials,
+            address="Old Street 1",
+            city="OldCity",
+        )
+        location = LocationFactory(uid="LOC-CLEAR-ADDR")
+
+        payload = TerminalIn(
+            terminal_id="term-put-clear-addr",
+            customer_reference="TEST-CUSTOMER-REF",
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert updated.address is None
+        assert updated.city is None
+
+    def test_patch_terminal_updates_only_address_when_provided(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-patch-addr",
+            credentials=credentialsrole.credentials,
+            address="Old Street 1",
+            city="Helsinki",
+        )
+        location = LocationFactory(uid="LOC-PATCH-ADDR")
+
+        payload = TerminalIn(
+            terminal_id="term-patch-addr",
+            address="New Street 99",
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert updated.address == "New Street 99"
+        assert updated.city == "Helsinki"
+
+    def test_patch_terminal_updates_coordinates_when_provided(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-patch-coord", credentials=credentialsrole.credentials
+        )
+        location = LocationFactory(uid="LOC-PATCH-COORD")
+
+        payload = TerminalIn(
+            terminal_id="term-patch-coord",
+            coordinates=GeoLocation(latitude="52.372294", longitude="4.898632"),
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert updated.latitude == "52.372294"
+        assert updated.longitude == "4.898632"
+
+    def test_patch_terminal_clears_coordinates_when_null_provided(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-patch-null-coord",
+            credentials=credentialsrole.credentials,
+            latitude="60.169857",
+            longitude="24.938379",
+        )
+        location = LocationFactory(uid="LOC-PATCH-NULL-COORD")
+
+        payload = TerminalIn(
+            terminal_id="term-patch-null-coord",
+            coordinates=None,
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert updated.latitude is None
+        assert updated.longitude is None
+
+    def test_patch_terminal_does_not_clear_location_fields_when_not_in_payload(
+        self, terminal_service, credentialsrole
+    ):
+        terminal = TerminalFactory(
+            terminal_id="term-patch-keep-addr",
+            credentials=credentialsrole.credentials,
+            address="Preserved Street 1",
+            city="PreservedCity",
+        )
+        location = LocationFactory(uid="LOC-PATCH-KEEP")
+
+        payload = TerminalIn(
+            terminal_id="term-patch-keep-addr",
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert updated.address == "Preserved Street 1"
+        assert updated.city == "PreservedCity"
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     @patch("ocpi22.payments.services.get_our_party")
