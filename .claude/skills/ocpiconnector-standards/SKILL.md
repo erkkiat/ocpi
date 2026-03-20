@@ -22,6 +22,11 @@ The JetBrains/PyCharm terminal is already at the project root.
   `jetbrains:execute_terminal_command` only for things that require the local
   project environment (running tests, Docker commands, `manage.py`)
 
+Always activate the virtualenv before running any command:
+```
+source .venv/bin/activate
+```
+
 Docker restart command:
 ```
 docker-compose -f ./docker-composes/docker-compose.dev.yml restart django-app
@@ -29,6 +34,7 @@ docker-compose -f ./docker-composes/docker-compose.dev.yml restart django-app
 
 Run tests:
 ```
+source .venv/bin/activate
 pytest ocpi22/path/to/test.py -v
 pytest ocpi22/path/to/test.py::test_name -v
 ```
