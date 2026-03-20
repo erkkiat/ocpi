@@ -148,7 +148,7 @@ class TestTerminalPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_terminal_data
     ):
         response = client.post(
-            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+            f"{TERMINALS_URL}/", data=valid_terminal_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -168,7 +168,7 @@ class TestTerminalPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_terminal_data
     ):
         client.post(
-            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+            f"{TERMINALS_URL}/", data=valid_terminal_data, format="json", **ocpi_headers
         )
 
         terminal = Terminal.objects.get(terminal_id="TERM-API-001")
@@ -182,7 +182,7 @@ class TestTerminalPostAPI:
         valid_terminal_data_with_coordinates,
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data=valid_terminal_data_with_coordinates,
             format="json",
             **ocpi_headers,
@@ -205,7 +205,7 @@ class TestTerminalPostAPI:
         valid_terminal_data_with_coordinates,
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data=valid_terminal_data_with_coordinates,
             format="json",
             **ocpi_headers,
@@ -239,7 +239,7 @@ class TestTerminalPostAPI:
         db_terminal(terminal_id="TERM-API-001")
 
         response = client.post(
-            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+            f"{TERMINALS_URL}/", data=valid_terminal_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -262,7 +262,7 @@ class TestTerminalPostAPI:
         )
 
         response = client.post(
-            TERMINALS_URL, data=valid_terminal_data, format="json", **ocpi_headers
+            f"{TERMINALS_URL}/", data=valid_terminal_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -279,7 +279,9 @@ class TestTerminalPostAPI:
             "coordinates": {"latitude": "999.0", "longitude": "4.898632"},
         }
 
-        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -288,7 +290,9 @@ class TestTerminalPostAPI:
         assert not Terminal.objects.filter(terminal_id="TERM-BAD-001").exists()
 
     def test_post_terminal_without_auth_returns_401(self, client, valid_terminal_data):
-        response = client.post(TERMINALS_URL, data=valid_terminal_data, format="json")
+        response = client.post(
+            f"{TERMINALS_URL}/", data=valid_terminal_data, format="json"
+        )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -296,7 +300,7 @@ class TestTerminalPostAPI:
         self, client, cpo_credentialsrole, cpo_ocpi_headers, valid_terminal_data
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data=valid_terminal_data,
             format="json",
             **cpo_ocpi_headers,
@@ -386,7 +390,7 @@ class TestTerminalListAPI:
     def test_list_terminals_returns_200_with_empty_list(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(TERMINALS_URL, **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -418,7 +422,7 @@ class TestTerminalListAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(TERMINALS_URL, **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -441,7 +445,7 @@ class TestTerminalListAPI:
         assert "TERM-OTHER-001" not in returned_ids
 
     def test_list_terminals_without_auth_returns_401(self, client):
-        response = client.get(TERMINALS_URL)
+        response = client.get(f"{TERMINALS_URL}/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -452,7 +456,7 @@ class TestFACPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -474,7 +478,7 @@ class TestFACPostAPI:
     def test_post_fac_persists_with_correct_credentials(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
-        client.post(FACS_URL, data=valid_fac_data, format="json", **ocpi_headers)
+        client.post(f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers)
 
         fac = FinancialAdviceConfirmation.objects.get(fac_id="FAC-API-001")
         assert fac.credentials == ptp_credentialsrole.credentials
@@ -482,7 +486,7 @@ class TestFACPostAPI:
     def test_post_fac_maps_spec_id_field_to_fac_id_model_field(
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
-        client.post(FACS_URL, data=valid_fac_data, format="json", **ocpi_headers)
+        client.post(f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers)
 
         assert FinancialAdviceConfirmation.objects.filter(fac_id="FAC-API-001").exists()
 
@@ -490,7 +494,7 @@ class TestFACPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         body = response.json()
@@ -501,7 +505,7 @@ class TestFACPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -525,7 +529,7 @@ class TestFACPostAPI:
         terminal = db_terminal(terminal_id="TERM-FOR-FAC-001")
         data = {**valid_fac_data, "terminal_id": "TERM-FOR-FAC-001"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
         body = response.json()
@@ -547,7 +551,7 @@ class TestFACPostAPI:
         self, client, ptp_credentialsrole, ocpi_headers, valid_fac_data
     ):
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -571,7 +575,7 @@ class TestFACPostAPI:
     ):
         data = {**valid_fac_data, "terminal_id": "NONEXISTENT-TERM"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -595,7 +599,7 @@ class TestFACPostAPI:
         )
         data = {**valid_fac_data, "terminal_id": "TERM-OTHER-PARTY"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -611,7 +615,7 @@ class TestFACPostAPI:
         db_fac(fac_id="FAC-API-001")
 
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -628,7 +632,7 @@ class TestFACPostAPI:
     ):
         data = {k: v for k, v in valid_fac_data.items() if k != "total_costs"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -643,7 +647,7 @@ class TestFACPostAPI:
     ):
         data = {k: v for k, v in valid_fac_data.items() if k != "currency"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -654,7 +658,7 @@ class TestFACPostAPI:
         ).exists()
 
     def test_post_fac_without_auth_returns_401(self, client, valid_fac_data):
-        response = client.post(FACS_URL, data=valid_fac_data, format="json")
+        response = client.post(f"{FACS_URL}/", data=valid_fac_data, format="json")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -662,7 +666,7 @@ class TestFACPostAPI:
         self, client, cpo_credentialsrole, cpo_ocpi_headers, valid_fac_data
     ):
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **cpo_ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **cpo_ocpi_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -690,7 +694,7 @@ class TestFACPostAPI:
             "capture_status_code": capture_status_code,
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
         body = response.json()
@@ -820,7 +824,7 @@ class TestFACListAPI:
     def test_list_facs_returns_200_with_empty_list(
         self, client, ptp_credentialsrole, ocpi_headers
     ):
-        response = client.get(FACS_URL, **ocpi_headers)
+        response = client.get(f"{FACS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -852,7 +856,7 @@ class TestFACListAPI:
             credentials=other_ptp_credentialsrole.credentials,
         )
 
-        response = client.get(FACS_URL, **ocpi_headers)
+        response = client.get(f"{FACS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         body = response.json()
@@ -874,7 +878,7 @@ class TestFACListAPI:
         assert "FAC-OTHER-001" not in returned_ids
 
     def test_list_facs_without_auth_returns_401(self, client):
-        response = client.get(FACS_URL)
+        response = client.get(f"{FACS_URL}/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -885,7 +889,7 @@ class TestTerminalPostEdgeCases:
         self, client, ptp_credentialsrole, ocpi_headers
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data={"customer_reference": "CUST-NO-ID"},
             format="json",
             **ocpi_headers,
@@ -905,7 +909,9 @@ class TestTerminalPostEdgeCases:
             "coordinates": {"latitude": "60.169857"},
         }
 
-        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -921,7 +927,9 @@ class TestTerminalPostEdgeCases:
             "coordinates": {"longitude": "24.938379"},
         }
 
-        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
+        )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -933,7 +941,7 @@ class TestTerminalPostEdgeCases:
         self, client, ptp_credentialsrole, ocpi_headers
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data={"terminal_id": "TERM-NO-COORD"},
             format="json",
             **ocpi_headers,
@@ -950,7 +958,9 @@ class TestTerminalPostEdgeCases:
     ):
         data = {"terminal_id": "TERM-NULL-COORD", "coordinates": None}
 
-        response = client.post(TERMINALS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(
+            f"{TERMINALS_URL}/", data=data, format="json", **ocpi_headers
+        )
 
         body = response.json()
         assert response.status_code == status.HTTP_201_CREATED
@@ -962,7 +972,7 @@ class TestTerminalPostEdgeCases:
         self, client, ptp_credentialsrole, ocpi_headers
     ):
         response = client.post(
-            TERMINALS_URL,
+            f"{TERMINALS_URL}/",
             data={"terminal_id": "TERM-LOC-FIELDS"},
             format="json",
             **ocpi_headers,
@@ -987,7 +997,7 @@ class TestFACPostEdgeCases:
             "total_costs": {"excl_vat": 8.00},
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
         body = response.json()
@@ -1013,7 +1023,7 @@ class TestFACPostEdgeCases:
             "total_costs": {"excl_vat": 8.00},
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_201_CREATED
         body = response.json()
@@ -1038,7 +1048,7 @@ class TestFACPostEdgeCases:
             "capture_status_code": "INVALID_CODE",
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1053,7 +1063,7 @@ class TestFACPostEdgeCases:
     ):
         data = {**valid_fac_data, "id": "FAC-BAD-CURRENCY", "currency": "INVALID"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1068,7 +1078,7 @@ class TestFACPostEdgeCases:
     ):
         data = {k: v for k, v in valid_fac_data.items() if k != "id"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1082,7 +1092,7 @@ class TestFACPostEdgeCases:
             k: v for k, v in valid_fac_data.items() if k != "authorization_reference"
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1097,7 +1107,7 @@ class TestFACPostEdgeCases:
     ):
         data = {k: v for k, v in valid_fac_data.items() if k != "last_updated"}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1112,7 +1122,7 @@ class TestFACPostEdgeCases:
     ):
         data = {**valid_fac_data, "id": "FAC-EMPTY-EFT", "eft_data": []}
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1131,7 +1141,7 @@ class TestFACPostEdgeCases:
             "total_costs": {"excl_vat": -1.00, "incl_vat": -0.50},
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1150,7 +1160,7 @@ class TestFACPostEdgeCases:
             "total_costs": {"excl_vat": 20.00, "incl_vat": 10.00},
         }
 
-        response = client.post(FACS_URL, data=data, format="json", **ocpi_headers)
+        response = client.post(f"{FACS_URL}/", data=data, format="json", **ocpi_headers)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         body = response.json()
@@ -1174,7 +1184,7 @@ class TestFACPostEdgeCases:
         )
 
         response = client.post(
-            FACS_URL, data=valid_fac_data, format="json", **ocpi_headers
+            f"{FACS_URL}/", data=valid_fac_data, format="json", **ocpi_headers
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -1221,7 +1231,7 @@ class TestListPaginationHeaders:
         db_terminal(terminal_id="TERM-PAGE-001")
         db_terminal(terminal_id="TERM-PAGE-002")
 
-        response = client.get(TERMINALS_URL, **ocpi_headers)
+        response = client.get(f"{TERMINALS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         assert "X-Total-Count" in response
@@ -1232,7 +1242,7 @@ class TestListPaginationHeaders:
         db_fac(fac_id="FAC-PAGE-001")
         db_fac(fac_id="FAC-PAGE-002")
 
-        response = client.get(FACS_URL, **ocpi_headers)
+        response = client.get(f"{FACS_URL}/", **ocpi_headers)
 
         assert response.status_code == status.HTTP_200_OK
         assert "X-Total-Count" in response
