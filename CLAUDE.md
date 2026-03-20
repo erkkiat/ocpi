@@ -40,10 +40,10 @@ any code task.
 
 ### Terminal rules
 - Terminal is already at project root — **never `cd ocpiconnector`**
-- **Always use venv binaries directly** — no `source`, no shell activation:
-  `/Users/devndra.ghimire/ocpiconnector/.venv/bin/pytest ...`
-  `/Users/devndra.ghimire/ocpiconnector/.venv/bin/python manage.py ...`
+- **Always pass `projectPath: ~/ocpiconnector`** to every JetBrains tool call
+- **Always use `executeInShell: true`** and prefix commands with `source .venv/bin/activate &&`
 - **Never use `2>/dev/null`** — JetBrains terminal does not support POSIX redirects
+- Prefer `bash_tool` for file reads/greps; use JetBrains terminal for pytest/Docker/manage.py
 - Prefer `bash_tool` for file reads/greps; use JetBrains terminal for pytest/Docker/manage.py
 
 ---

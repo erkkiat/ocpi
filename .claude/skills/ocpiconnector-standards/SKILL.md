@@ -16,8 +16,9 @@ description: >
 
 The JetBrains/PyCharm terminal is already at the project root.
 - **Never** `cd ocpiconnector` or prefix paths with the project name
-- **Never** chain commands with `&&` or use `2>/dev/null` — JetBrains terminal does
-  not support POSIX redirects; use separate tool calls instead
+- **Always pass `projectPath: ~/ocpiconnector`** to every JetBrains tool call
+- **Always use `executeInShell: true`** for commands that need the shell environment
+- **Never use `2>/dev/null`** — JetBrains terminal does not support POSIX redirects
 - Prefer `bash_tool` for file reads, greps, and output inspection; use
   `jetbrains:execute_terminal_command` only for things that require the local
   project environment (running tests, Docker commands, `manage.py`)
