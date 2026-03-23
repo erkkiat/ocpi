@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
 from django.db.models import Subquery, OuterRef
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from nested_admin.nested import (
     NestedModelAdmin,
     NestedStackedInline,
@@ -912,8 +912,10 @@ class TariffAdmin(SolidNestedModelAdmin):
         entries = obj.tariff_alt_text.all()
         if not entries:
             return "-"
-        return format_html(
-            "<br>".join(f"<b>[{dt.language}]</b> {dt.text}" for dt in entries)
+        return format_html_join(
+            "<br>",
+            "<b>[{}]</b> {}",
+            ((dt.language, dt.text) for dt in entries),
         )
 
     def get_readonly_fields(self, request, obj=None) -> list:
