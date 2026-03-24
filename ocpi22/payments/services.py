@@ -94,22 +94,20 @@ class TerminalService:
     def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
         payload_dict = payload.dict(exclude_unset=True)
 
-        if "customer_reference" in payload_dict:
-            terminal.customer_reference = payload_dict["customer_reference"]
-        if "country_code" in payload_dict:
-            terminal.country_code = payload_dict["country_code"]
-        if "party_id" in payload_dict:
-            terminal.party_id = payload_dict["party_id"]
-        if "address" in payload_dict:
-            terminal.address = payload_dict["address"]
-        if "city" in payload_dict:
-            terminal.city = payload_dict["city"]
-        if "postal_code" in payload_dict:
-            terminal.postal_code = payload_dict["postal_code"]
-        if "state" in payload_dict:
-            terminal.state = payload_dict["state"]
-        if "country" in payload_dict:
-            terminal.country = payload_dict["country"]
+        terminal_fields = [
+            "customer_reference",
+            "country_code",
+            "party_id",
+            "address",
+            "city",
+            "postal_code",
+            "state",
+            "country",
+        ]
+        for field in terminal_fields:
+            if field in payload_dict:
+                setattr(terminal, field, payload_dict[field])
+
         if "coordinates" in payload_dict:
             coords = payload_dict["coordinates"]
             if coords is not None:
