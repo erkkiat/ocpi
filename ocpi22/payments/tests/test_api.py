@@ -1480,12 +1480,12 @@ class TestCPOTerminalAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["location_ids"] == [location.uid]
-        assert data["evse_uids"] == []
+        assert data["evse_uids"] == ["EVSE-123"]
 
         terminal.refresh_from_db()
         assert terminal.locations.count() == 1
         assert terminal.locations.first() == location
-        assert terminal.evses.count() == 0
+        assert terminal.evses.count() == 1
 
         mock_send_ocpi_request.apply_async.assert_called_once()
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
