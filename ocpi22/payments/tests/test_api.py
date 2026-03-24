@@ -1407,7 +1407,8 @@ class TestCPOTerminalAPI:
         terminal = db_terminal(terminal_id="TERM-INVALID-UIDS")
         payload = {
             "terminal_id": terminal.terminal_id,
-            "location_uids": ["NON-EXISTENT-LOC"],
+            "customer_reference": terminal.customer_reference,
+            "location_ids": ["NON-EXISTENT-LOC"],
             "evse_uids": ["NON-EXISTENT-EVSE"],
         }
 

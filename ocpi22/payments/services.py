@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import Optional
 
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import QuerySet
@@ -16,6 +17,7 @@ from ocpi22.payments.exceptions import (
     FinancialAdviceConfirmationValidationError,
     TerminalValidationError,
 )
+from ocpi22.payments.validators import validate_terminal_party_identification
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.repositories import (
     TerminalRepository,
@@ -68,6 +70,15 @@ class TerminalService:
         terminal.customer_reference = payload.customer_reference
         terminal.country_code = payload.country_code
         terminal.party_id = payload.party_id
+        try:
+            validate_terminal_party_identification(
+                terminal.customer_reference,
+                terminal.country_code,
+                terminal.party_id,
+                ptp_customer_reference=settings.PTP_CUSTOMER_REFERENCE,
+            )
+        except DjangoValidationError as e:
+            raise TerminalValidationError(e.messages[0]) from e
         terminal.address = payload.address
         terminal.city = payload.city
         terminal.postal_code = payload.postal_code
@@ -105,6 +116,17 @@ class TerminalService:
         for field in terminal_fields:
             if field in payload_dict:
                 setattr(terminal, field, payload_dict[field])
+
+        if any(f in payload_dict for f in ("customer_reference", "country_code", "party_id")):
+            try:
+                validate_terminal_party_identification(
+                    terminal.customer_reference,
+                    terminal.country_code,
+                    terminal.party_id,
+                    ptp_customer_reference=settings.PTP_CUSTOMER_REFERENCE,
+                )
+            except DjangoValidationError as e:
+                raise TerminalValidationError(e.messages[0]) from e
 
         if "coordinates" in payload_dict:
             coords = payload_dict["coordinates"]

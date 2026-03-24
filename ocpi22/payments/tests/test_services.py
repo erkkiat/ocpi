@@ -494,7 +494,9 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="term-fail-put", location_ids=["NON-EXISTENT-LOC"]
+            terminal_id="term-fail-put",
+            customer_reference=terminal.customer_reference,
+            location_ids=["NON-EXISTENT-LOC"],
         )
 
         with pytest.raises(TerminalValidationError) as exc_info:
