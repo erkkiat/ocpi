@@ -407,14 +407,6 @@ class LocationAdmin(SolidNestedModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class EvseAdminForm(forms.ModelForm):
-    def clean_uid(self):
-        # if Evse.objects.filter(uid=self.data['uid']).count():
-        #     # Todo: Recognize if it's the same object, and allow it
-        #     raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
-        return self.cleaned_data["uid"]
-
-
 class EvseAdmin(SolidNestedModelAdmin):
     form = EvseAdminForm
     model = Evse
