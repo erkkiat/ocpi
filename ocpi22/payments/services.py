@@ -86,7 +86,7 @@ class TerminalService:
         terminal.country = payload.country
         terminal.latitude = str(payload.coordinates.latitude) if payload.coordinates is not None else None
         terminal.longitude = str(payload.coordinates.longitude) if payload.coordinates is not None else None
-        terminal.invoice_base_url = str(payload.invoice_base_url) if payload.invoice_base_url is not None else None
+        terminal.invoice_base_url = str(payload.invoice_base_url).rstrip("/") if payload.invoice_base_url is not None else None
         terminal.invoice_creator = payload.invoice_creator.value if payload.invoice_creator is not None else None
         terminal.last_updated = payload.last_updated or timezone.now()
 
@@ -138,7 +138,7 @@ class TerminalService:
                 terminal.longitude = None
         if "invoice_base_url" in payload_dict:
             url = payload_dict["invoice_base_url"]
-            terminal.invoice_base_url = str(url) if url is not None else None
+            terminal.invoice_base_url = str(url).rstrip("/") if url is not None else None
         if "invoice_creator" in payload_dict:
             creator = payload_dict["invoice_creator"]
             terminal.invoice_creator = creator.value if creator is not None else None

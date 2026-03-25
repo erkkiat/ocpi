@@ -454,7 +454,7 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com/"
+            == "https://example-url-for-invoices-new.com"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
@@ -481,7 +481,7 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com/"
+            == "https://example-url-for-invoices-new.com"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
