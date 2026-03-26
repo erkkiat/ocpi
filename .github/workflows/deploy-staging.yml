@@ -19,7 +19,6 @@ permissions:
 
 jobs:
 
-  # ── Gate ──────────────────────────────────────────────────────────────────
   lint:
     name: Lint Code
     environment: staging
@@ -186,7 +185,6 @@ jobs:
           echo "IMAGE_TAG=${IMAGE_TAG}"
           echo "DEPLOYID=${DEPLOYID}"
 
-  # ── ECR branch ────────────────────────────────────────────────────────────
   build-staging-aws:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
@@ -391,11 +389,10 @@ jobs:
           set_commits: auto
           finalize: true
 
-  # ── Cloud Run branch ──────────────────────────────────────────────────────
   build-staging-gcp:
     name: Build and Push Docker Image to GCP Artifact Registry
     environment: staging
-    runs-on: ubuntu-latest  # needs gcloud CLI — ubuntu-latest has it pre-installed
+    runs-on: ubuntu-latest
     needs: [set-tag]
     if: github.event_name == 'push'
     outputs:
@@ -441,7 +438,7 @@ jobs:
   migrate-staging-gcp:
     name: Run Django Migrations on Cloud Run
     environment: staging
-    runs-on: ubuntu-latest  # needs gcloud CLI
+    runs-on: ubuntu-latest
     needs: build-staging-gcp
     if: github.event_name == 'push'
 
@@ -479,7 +476,7 @@ jobs:
   deploy-staging-gcp:
     name: Deploy ${{ matrix.service }} to Cloud Run
     environment: staging
-    runs-on: ubuntu-latest  # needs gcloud CLI
+    runs-on: ubuntu-latest
     needs: [build-staging-gcp, migrate-staging-gcp]
     if: github.event_name == 'push'
 
