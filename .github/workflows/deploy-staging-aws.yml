@@ -1,4 +1,4 @@
-name: Build and Push to Staging
+name: Deploy to Staging (AWS)
 
 on:
   pull_request:
@@ -11,11 +11,6 @@ on:
 permissions:
   id-token: write
   contents: read
-
-# ── Tag strategy (Cloud Run, single repo solidroam/solidroam-app) ──────────
-# <branch>-<sha>   immutable — used for all deploys and rollbacks
-# Production promotion re-tags the same immutable sha — no rebuild.
-# ──────────────────────────────────────────────────────────────────────────
 
 jobs:
 
@@ -101,99 +96,15 @@ jobs:
           name: HTML Coverage Report
           path: htmlcov/
 
-  test-amd64:
-    name: Run Tests (amd64 / Cloud Run)
-    environment: staging
-    runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis:latest
-        ports:
-          - 6379:6379
-        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
-      postgres:
-        image: postgres:13
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: test_db
-        options: >-
-          --health-cmd "pg_isready -U test_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Load Environment Variables from test.env
-        run: |
-          if [ -f test.env ]; then
-            export $(cat test.env | xargs)
-          fi
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run Pytest in Parallel
-        run: pytest -n auto
-
-  set-tag:
-    name: Set Image Tag
-    runs-on: linux-arm64
-    needs: [lint, test, test-amd64]
-    if: github.event_name == 'push'
-    outputs:
-      image_tag: ${{ steps.set_tag.outputs.image_tag }}
-      deploy_id: ${{ steps.set_tag.outputs.deploy_id }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Derive tag and deploy ID
-        id: set_tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
-          DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-          echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
-          echo "IMAGE_TAG=${IMAGE_TAG}"
-          echo "DEPLOYID=${DEPLOYID}"
-
   build-staging-aws:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
     runs-on: linux-arm64
-    needs: [set-tag]
+    needs: [lint, test]
     if: github.event_name == 'push'
     outputs:
-      image_tag: ${{ needs.set-tag.outputs.image_tag }}
-      deploy_id: ${{ needs.set-tag.outputs.deploy_id }}
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
+      deploy_id: ${{ steps.set_tag.outputs.deploy_id }}
 
     env:
       AWS_REGION: ${{ secrets.SMAPPEE_AWS_REGION }}
@@ -222,10 +133,22 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Derive Image Tag
+        id: set_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+          DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
+
       - name: Build and Push Image to Each Farm
         run: |
           set -euo pipefail
-          IMAGE_TAG="${{ needs.set-tag.outputs.image_tag }}"
+          IMAGE_TAG="${{ steps.set_tag.outputs.image_tag }}"
 
           docker buildx build \
             --platform linux/arm64 \
@@ -388,135 +311,3 @@ jobs:
           release: ${{ env.IMAGE_TAG }}
           set_commits: auto
           finalize: true
-
-  build-staging-gcp:
-    name: Build and Push Docker Image to GCP Artifact Registry
-    environment: staging
-    runs-on: ubuntu-latest
-    needs: [set-tag]
-    if: github.event_name == 'push'
-    outputs:
-      image_tag: ${{ needs.set-tag.outputs.image_tag }}
-
-    env:
-      GCP_REGION: ${{ secrets.GCP_REGION }}
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      - name: Build and Push Image
-        shell: bash
-        run: |
-          set -euo pipefail
-          IMAGE_TAG="${{ needs.set-tag.outputs.image_tag }}"
-
-          docker buildx build \
-            --platform linux/amd64 \
-            --cache-from=type=gha,scope=cloud-run-build \
-            --cache-to=type=gha,mode=max,scope=cloud-run-build \
-            -f ./Dockerfile \
-            -t "${IMAGE_REPO}:${IMAGE_TAG}" \
-            --push .
-
-          echo "✅ Pushed ${IMAGE_REPO}:${IMAGE_TAG}"
-
-  migrate-staging-gcp:
-    name: Run Django Migrations on Cloud Run
-    environment: staging
-    runs-on: ubuntu-latest
-    needs: build-staging-gcp
-    if: github.event_name == 'push'
-
-    env:
-      GCP_REGION: ${{ secrets.GCP_REGION }}
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app:${{ needs.build-staging-gcp.outputs.image_tag }}
-
-    steps:
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Run migrations as Cloud Run Job
-        run: |
-          set -euo pipefail
-          gcloud run jobs deploy solidroam-migrate-staging \
-            --image="${IMAGE}" \
-            --entrypoint="python" \
-            --args="manage.py,migrate,--noinput" \
-            --region="${GCP_REGION}" \
-            --project="${GCP_PROJECT_ID}" \
-            --max-retries=0 \
-            --task-timeout=300s \
-            --quiet
-
-          gcloud run jobs execute solidroam-migrate-staging \
-            --region="${GCP_REGION}" \
-            --project="${GCP_PROJECT_ID}" \
-            --wait \
-            --quiet
-
-  deploy-staging-gcp:
-    name: Deploy ${{ matrix.service }} to Cloud Run
-    environment: staging
-    runs-on: ubuntu-latest
-    needs: [build-staging-gcp, migrate-staging-gcp]
-    if: github.event_name == 'push'
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - service: solidroam-django-staging
-            command: django-app
-          - service: solidroam-celery-django-staging
-            command: celery-django
-
-    env:
-      GCP_REGION: ${{ secrets.GCP_REGION }}
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      # Always deploy the immutable commit-pinned tag
-      IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app:${{ needs.build-staging-gcp.outputs.image_tag }}
-
-    steps:
-      - name: Authenticate to Google Cloud (OIDC)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Deploy ${{ matrix.service }} to Cloud Run
-        run: |
-          set -euo pipefail
-          gcloud run deploy ${{ matrix.service }} \
-            --image="${IMAGE}" \
-            --args="${{ matrix.command }}" \
-            --region="${GCP_REGION}" \
-            --project="${GCP_PROJECT_ID}" \
-            --platform=managed \
-            --allow-unauthenticated \
-            --quiet
-
-      - name: Show deployed service URL
-        run: |
-          gcloud run services describe ${{ matrix.service }} \
-            --region="${GCP_REGION}" \
-            --project="${GCP_PROJECT_ID}" \
-            --format="value(status.url)"
