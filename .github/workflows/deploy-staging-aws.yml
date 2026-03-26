@@ -1,4 +1,4 @@
-name: Deploy to Staging (AWS)
+name: Build and Push to Staging ECR
 
 on:
   pull_request:
@@ -13,7 +13,6 @@ permissions:
   contents: read
 
 jobs:
-
   lint:
     name: Lint Code
     environment: staging
@@ -96,7 +95,7 @@ jobs:
           name: HTML Coverage Report
           path: htmlcov/
 
-  build-staging-aws:
+  build-staging:
     name: Build and Push Docker Image to Staging ECR
     environment: staging
     runs-on: linux-arm64
@@ -133,43 +132,55 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Derive Image Tag
+      - name: Set Docker Image Tag + Deploy ID
         id: set_tag
         shell: bash
         run: |
           set -euo pipefail
           BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"   # develop-<shortsha>
           DEPLOYID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "deploy_id=${DEPLOYID}" >> $GITHUB_OUTPUT
 
-      - name: Build and Push Image to Each Farm
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "DEPLOYID=${DEPLOYID}"
+
+      - name: Build Base Image Once
         run: |
           set -euo pipefail
-          IMAGE_TAG="${{ steps.set_tag.outputs.image_tag }}"
-
+          echo "Building base image once with tag: ${{ steps.set_tag.outputs.image_tag }}"
           docker buildx build \
             --platform linux/arm64 \
-            -t "$ECR_REPO_URL/solidroam-base:${IMAGE_TAG}" \
+            -t "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" \
             -f ./Dockerfile \
             --cache-from=type=gha,scope=staging-build \
             --cache-to=type=gha,mode=max,scope=staging-build \
             --load .
 
+      - name: Tag and Push Base Image to Each Farm
+        run: |
+          set -euo pipefail
           for farm in $FARMS; do
-            full_image_url_with_tag="$ECR_REPO_URL/solidroam-django-app-$farm:${IMAGE_TAG}"
-            docker tag "$ECR_REPO_URL/solidroam-base:${IMAGE_TAG}" "$full_image_url_with_tag"
-            docker push "$full_image_url_with_tag"
-            echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
+              repo_url="$ECR_REPO_URL/solidroam-django-app-$farm"
+              full_image_url_with_tag="$repo_url:${{ steps.set_tag.outputs.image_tag }}"
+
+              echo "Tagging base image for farm $farm..."
+              docker tag "$ECR_REPO_URL/solidroam-base:${{ steps.set_tag.outputs.image_tag }}" "$full_image_url_with_tag"
+
+              echo "Pushing image to ECR: $full_image_url_with_tag"
+              docker push "$full_image_url_with_tag"
+
+              echo "✅ Pushed image for farm $farm: $full_image_url_with_tag"
           done
 
-  deploy-staging-aws:
+  deploy-staging:
     name: Deploy to Staging via SSM
     environment: staging
     runs-on: linux-arm64
-    needs: build-staging-aws
+    needs: build-staging
     if: github.event_name == 'push'
 
     env:
@@ -178,10 +189,13 @@ jobs:
       TARGET_TAG_COMPONENT: solidroam
       TARGET_TAG_STAGE: farm3
       AWS_PAGER: ""
-      IMAGE_TAG: ${{ needs.build-staging-aws.outputs.image_tag }}
-      DEPLOYID: ${{ needs.build-staging-aws.outputs.deploy_id }}
+      IMAGE_TAG: ${{ needs.build-staging.outputs.image_tag }}
+      DEPLOYID: ${{ needs.build-staging.outputs.deploy_id }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -215,6 +229,7 @@ jobs:
           echo "SSM CommandId=${COMMAND_ID}"
           echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
 
+          # ---- 5-minute bounded wait for terminal state ----
           TIMEOUT_SECONDS=300
           POLL_INTERVAL=10
           DEADLINE=$((SECONDS + TIMEOUT_SECONDS))
@@ -272,9 +287,9 @@ jobs:
             echo "No COMMAND_ID captured (send-command likely failed)."
             exit 0
           fi
-
+          
           echo "=== SSM Logs (CommandId=${COMMAND_ID}) ==="
-
+          
           INSTANCE_IDS=$(
             aws ssm list-command-invocations \
               --command-id "${COMMAND_ID}" \
@@ -282,7 +297,7 @@ jobs:
               --query "CommandInvocations[].InstanceId" \
               --output text
           )
-
+          
           for iid in ${INSTANCE_IDS}; do
             data=$(
               aws ssm get-command-invocation \
@@ -292,6 +307,7 @@ jobs:
                 --query '{Status:Status,StatusDetails:StatusDetails,ResponseCode:ResponseCode,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
                 --output json || true
             )
+          
             echo
             echo "----- ${iid} -----"
             echo "$data" | jq -r '
