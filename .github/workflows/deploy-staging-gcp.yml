@@ -187,7 +187,7 @@ jobs:
             --quiet
 
   deploy-staging-gcp:
-    name: Deploy ${{ matrix.service }} to Cloud Run
+    name: Deploy ${{ matrix.service }}
     environment: staging
     runs-on: ubuntu-latest
     needs: migrate-staging-gcp
@@ -197,10 +197,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: solidroam-django-staging
-            command: django-app
-          - service: solidroam-celery-django-staging
-            command: celery-django
+          - service: django-app
+            role: web
+            cpu: "1"
+            memory: "1Gi"
+            min_instances: "1"
+            max_instances: "5"
+            no_cpu_throttling: True
+          - service: celery-django
+            role: worker
+            cpu: "1"
+            memory: "2Gi"
+            min_instances: "1"
+            max_instances: "1"
+            no_cpu_throttling: true
 
     env:
       GCP_REGION: ${{ secrets.GCP_REGION }}
@@ -208,7 +218,7 @@ jobs:
       IMAGE: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app:${{ needs.migrate-staging-gcp.outputs.image_tag }}
 
     steps:
-      - name: Authenticate to Google Cloud (OIDC)
+      - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
@@ -217,18 +227,29 @@ jobs:
       - name: Deploy ${{ matrix.service }} to Cloud Run
         run: |
           set -euo pipefail
+          
+          # We explicitly map the matrix service name to the entrypoint argument
+          # django-app -> django-app
+          # celery-django -> celery-django
+          
           gcloud run deploy ${{ matrix.service }} \
             --image="${IMAGE}" \
-            --args="${{ matrix.command }}" \
+            --args="${{ matrix.service }}" \
             --region="${GCP_REGION}" \
             --project="${GCP_PROJECT_ID}" \
-            --platform=managed \
+            --cpu="${{ matrix.cpu }}" \
+            --memory="${{ matrix.memory }}" \
+            --min-instances="${{ matrix.min_instances }}" \
+            --max-instances="${{ matrix.max_instances }}" \
+            --cpu-boost \
+            --no-cpu-throttling \
+            --ingress=${{ matrix.role == 'web' && 'all' || 'internal' }} \
             --allow-unauthenticated \
             --quiet
 
-      - name: Show deployed service URL
+      - name: Verify Service
         run: |
           gcloud run services describe ${{ matrix.service }} \
             --region="${GCP_REGION}" \
             --project="${GCP_PROJECT_ID}" \
-            --format="value(status.url)"
+            --format="value(status.conditions[0].status)"
