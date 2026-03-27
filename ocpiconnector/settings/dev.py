@@ -2,7 +2,6 @@ from distutils.util import strtobool
 
 from ocpiconnector.settings.base import *  # noqa
 import os  # noqa
-from urllib.parse import urlparse
 
 ENV = os.getenv("ENV", "development").lower()
 
@@ -26,23 +25,8 @@ SMAPPEE_METER_VALUES_TOPIC = os.getenv(
     "SMAPPEE_METER_VALUES_TOPIC", "$share/session_group/session/+/statusupdates"
 )
 
-#  Refactor this
-url = urlparse(DATABASE_URL)  # noqa
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql"
-        if url.scheme == "postgres"
-        else "django.db.backends.mysql",
-        "NAME": url.path[1:],  # Remove the leading '/'
-        "USER": url.username,
-        "PASSWORD": url.password,
-        "HOST": url.hostname,
-        "PORT": url.port,
-    }
-}
-
-DATABASES.update({"gdpr_log": DATABASES.get("default")})
+DATABASES.update({"gdpr_log": DATABASES.get("default")})  # noqa
+DATABASES["default"]["OPTIONS"] = {}  # noqa
 
 HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
 
