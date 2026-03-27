@@ -17,7 +17,7 @@ jobs:
   lint:
     name: Lint Code
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,7 +36,7 @@ jobs:
   test:
     name: Run Tests
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     services:
       redis:
         image: redis:latest
@@ -93,7 +93,7 @@ jobs:
   build-staging-gcp:
     name: Build and Push Docker Image to GCP Artifact Registry
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: [lint, test]
     if: github.event_name == 'push'
     outputs:
@@ -149,7 +149,7 @@ jobs:
   migrate-staging-gcp:
     name: Run Django Migrations on Cloud Run
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: build-staging-gcp
     if: github.event_name == 'push'
     outputs:
@@ -189,7 +189,7 @@ jobs:
   deploy-staging-gcp:
     name: Deploy ${{ matrix.service }}
     environment: staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     needs: migrate-staging-gcp
     if: github.event_name == 'push'
 
