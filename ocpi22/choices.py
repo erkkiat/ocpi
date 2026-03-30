@@ -101,6 +101,7 @@ class OcpiModuleEnum(Enum):
     SESSIONS = "sessions"
     HUBCLIENTINFO = "hubclientinfo"
     PAYMENTS = "payments"
+    CHARGINGPROFILES = "chargingprofiles"
 
     def get_owner(self):
         return {
@@ -562,6 +563,7 @@ class WEEKDAY_CHOICES(Enum):
 Everyday = {1, 2, 3, 4, 5, 6, 7}
 Workdays = {1, 2, 3, 4, 5}
 Weekend = {6, 7}
+
 
 class ImageCategory(str, Enum):
     CHARGER = "CHARGER"
