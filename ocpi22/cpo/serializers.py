@@ -163,7 +163,7 @@ class OcppStatusSerializer(fields.ChoiceField):
     def to_internal_value(self, data):
         result = {
             OcppStatusChoices.AVAILABLE: "AVAILABLE",
-            OcppStatusChoices.PREPARING: "CHARGING",
+            OcppStatusChoices.PREPARING: "AVAILABLE",
             OcppStatusChoices.CHARGING: "CHARGING",
             OcppStatusChoices.SUSPENDEDEV: "CHARGING",
             OcppStatusChoices.SUSPENDEDEVSE: "CHARGING",
