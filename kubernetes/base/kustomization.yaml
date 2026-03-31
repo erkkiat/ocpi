@@ -8,6 +8,4 @@ resources:
   - service-django-app.yaml
   - deployment-django-app.yaml
   - deployment-celery-django.yaml
-  - deployment-celery-mqtt.yaml
-  - deployment-mqtt-subscriber.yaml
   - job-migrate.yaml
