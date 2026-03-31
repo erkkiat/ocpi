@@ -1,0 +1,302 @@
+name: Deploy to Production (GKE)
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: read
+
+jobs:
+
+  lint:
+    name: Lint Code
+    environment: production
+    runs-on: ubuntu-latest-m
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff Linting
+        run: ruff check .
+
+  test:
+    name: Run Tests
+    environment: production
+    runs-on: ubuntu-latest-m
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Load Environment Variables from test.env
+        run: |
+          if [ -f test.env ]; then
+            export $(cat test.env | xargs)
+          fi
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest in Parallel
+        run: pytest -n auto
+
+  tag-and-release-draft:
+    name: Create Draft Release
+    environment: production
+    runs-on: ubuntu-latest-m
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    outputs:
+      release_tag: ${{ steps.draft_release.outputs.tag_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Create Draft Release
+        id: draft_release
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Release Tag
+        run: |
+          RELEASE_TAG="${{ steps.draft_release.outputs.tag_name }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "Error: Release tag missing!"
+            exit 1
+          fi
+          echo "Release tag created: $RELEASE_TAG"
+
+  build-production-gke:
+    name: Build and Push Docker Image to GCP Artifact Registry
+    environment: production
+    runs-on: ubuntu-latest-m
+    needs: tag-and-release-draft
+    if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ needs.tag-and-release-draft.outputs.release_tag }}
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+      IMAGE_TAG: ${{ needs.tag-and-release-draft.outputs.release_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker buildx build \
+            --platform linux/amd64 \
+            --cache-from=type=gha,scope=gke-production-build \
+            --cache-to=type=gha,mode=max,scope=gke-production-build \
+            -f ./Dockerfile \
+            -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+            --push .
+
+          echo "✅ Pushed ${IMAGE_REPO}:${IMAGE_TAG}"
+
+  migrate-production-gke:
+    name: Run Django Migrations on GKE
+    environment: production
+    runs-on: ubuntu-latest-m
+    needs: build-production-gke
+    if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ needs.build-production-gke.outputs.image_tag }}
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+      IMAGE_TAG: ${{ needs.build-production-gke.outputs.image_tag }}
+
+    steps:
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --location=${{ secrets.GKE_CLUSTER_LOCATION }} \
+            --project="${GCP_PROJECT_ID}" \
+            --quiet
+
+      - name: Run Migration Job
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOB_NAME="django-migrate-${GITHUB_RUN_ID}"
+
+          kubectl create job "${JOB_NAME}" \
+            --image="${IMAGE_REPO}:${IMAGE_TAG}" \
+            --namespace=production \
+            -- python manage.py migrate --noinput
+
+          echo "Waiting for migration job ${JOB_NAME} to complete..."
+          kubectl wait job/"${JOB_NAME}" \
+            --for=condition=complete \
+            --timeout=300s \
+            --namespace=production
+
+          echo "✅ Migrations complete"
+          kubectl delete job "${JOB_NAME}" --namespace=production
+
+  deploy-production-gke:
+    name: Deploy to GKE Production
+    environment: production
+    runs-on: ubuntu-latest-m
+    needs: migrate-production-gke
+    if: github.event_name == 'push'
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+      IMAGE_TAG: ${{ needs.migrate-production-gke.outputs.image_tag }}
+      NAMESPACE: production
+      OVERLAY: kubernetes/overlays/production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --location=${{ secrets.GKE_CLUSTER_LOCATION }} \
+            --project="${GCP_PROJECT_ID}" \
+            --quiet
+
+      - name: Set up Kustomize
+        run: |
+          curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+          chmod u+x ./kustomize
+          sudo mv ./kustomize /usr/local/bin/kustomize
+
+      - name: Deploy
+        run: |
+          cd $OVERLAY
+          kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
+          kubectl apply -k .
+          kubectl rollout status deployment -n $NAMESPACE --timeout=300s
+
+      - name: Create Sentry Release (production)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          release: ${{ env.IMAGE_TAG }}
+          set_commits: auto
+          finalize: true
+
+  publish-release:
+    name: Tag and Publish GitHub Release
+    environment: production
+    runs-on: ubuntu-latest-m
+    needs: [build-production-gke, deploy-production-gke]
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set Release Tag
+        run: echo "RELEASE_TAG=${{ needs.build-production-gke.outputs.image_tag }}" >> $GITHUB_ENV
+
+      - name: Push Git Tag
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+      - name: Publish Draft Release
+        run: |
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          gh release edit "$RELEASE_TAG" --draft=false

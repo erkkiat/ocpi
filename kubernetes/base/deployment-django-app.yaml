@@ -27,7 +27,7 @@ spec:
               secretProviderClass: ocpiconnector-secrets
       containers:
         - name: django-app
-          image: solidroam-app:latest
+          image: solidroam-app
           args: ["django-app"]
           ports:
             - name: http

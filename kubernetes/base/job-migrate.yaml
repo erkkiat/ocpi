@@ -18,7 +18,7 @@ spec:
               secretProviderClass: ocpiconnector-secrets
       containers:
         - name: migrate
-          image: solidroam-app:latest
+          image: solidroam-app
           command: ["python", "manage.py", "migrate", "--noinput"]
           volumeMounts:
             - name: secrets-store

@@ -10,7 +10,7 @@ resources:
 images:
   - name: solidroam-app
     newName: REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/solidroam-app
-    newTag: latest  # replaced by CI with immutable tag
+    newTag: v0.0.0  # replaced by CI with immutable release tag from release-drafter
 
 patches:
   # ServiceAccount — Workload Identity binding for production GCP SA

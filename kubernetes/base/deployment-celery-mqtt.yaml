@@ -27,7 +27,7 @@ spec:
               secretProviderClass: ocpiconnector-secrets
       containers:
         - name: celery-mqtt
-          image: solidroam-app:latest
+          image: solidroam-app
           args: ["celery-mqtt"]
           volumeMounts:
             - name: secrets-store

@@ -31,7 +31,7 @@ spec:
               secretProviderClass: ocpiconnector-secrets
       containers:
         - name: celery-django
-          image: solidroam-app:latest
+          image: solidroam-app
           args: ["celery-django"]
           volumeMounts:
             - name: secrets-store

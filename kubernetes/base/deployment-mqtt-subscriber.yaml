@@ -30,7 +30,7 @@ spec:
               secretProviderClass: ocpiconnector-secrets
       containers:
         - name: mqtt-subscriber
-          image: solidroam-app:latest
+          image: solidroam-app
           args: ["mqtt-subscriber"]
           volumeMounts:
             - name: secrets-store
