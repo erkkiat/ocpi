@@ -14,13 +14,11 @@ metadata:
   namespace: production
   annotations:
     kubernetes.io/ingress.class: "gce"
-    networking.gke.io/managed-certificates: "ocpiconnector-cert"
-    # Create the static IP first:
-    # gcloud compute addresses create ocpiconnector-production-ip --global --project=PROJECT_ID
-    kubernetes.io/ingress.global-static-ip-name: "ocpiconnector-production-ip"
+    networking.gke.io/managed-certificates: "production-bia"
+    kubernetes.io/ingress.global-static-ip-name: "production-bia"
 spec:
   rules:
-    - host: api.ocpi-gateway.solidroam.fi  # replace with your actual production domain
+    - host: biapower.evroaming.eu
       http:
         paths:
           - path: /
