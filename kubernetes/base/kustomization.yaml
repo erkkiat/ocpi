@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - secret-provider-class.yaml
+  - service-django-app.yaml
+  - deployment-django-app.yaml
+  - deployment-celery-django.yaml
+  - deployment-celery-mqtt.yaml
+  - deployment-mqtt-subscriber.yaml
+  - job-migrate.yaml

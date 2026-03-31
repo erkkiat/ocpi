@@ -1,0 +1,32 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: ocpiconnector-cert
+  namespace: production
+spec:
+  domains:
+    - api.ocpi-gateway.solidroam.fi  # replace with your actual production domain
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-app-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "ocpiconnector-cert"
+    # Create the static IP first:
+    # gcloud compute addresses create ocpiconnector-production-ip --global --project=PROJECT_ID
+    kubernetes.io/ingress.global-static-ip-name: "ocpiconnector-production-ip"
+spec:
+  rules:
+    - host: api.ocpi-gateway.solidroam.fi  # replace with your actual production domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django-app
+                port:
+                  number: 80
