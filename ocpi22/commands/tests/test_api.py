@@ -800,12 +800,17 @@ class TestStartSessionAPI:
         assert payload["connector_id"] == "CONN001"
         assert payload["session_id"] == session.uid
 
+    @pytest.fixture(autouse=True)
+    def clear_credentials_role_cache(self):
+        get_credentialsrole.cache_clear()
+        yield
+        get_credentialsrole.cache_clear()
+
     @pytest.mark.django_db
     @responses.activate
     def test_start_session_via_hub_creates_non_existing_emp_credentials_role(
         self, client, valid_start_session_data, active_start_webhook
     ):
-        get_credentialsrole.cache_clear()
         hub_credentials_role = CredentialsRoleFactory(
             role="HUB", country_code="DE", party_id="HUB"
         )
