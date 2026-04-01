@@ -1609,11 +1609,6 @@ class TestStartCommandServiceStartSession:
 
         assert CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first() is None
 
-        # Simulate what requires_sender_role / _start_session does: create=True for unknown party
-        billed_to = get_credentialsrole(
-            party=Party(country_code="NL", party_id="MSP"), create=True
-        )
-
         validated_data = {
             "token": {
                 "uid": "TOKEN_MSP",
@@ -1630,7 +1625,7 @@ class TestStartCommandServiceStartSession:
         }
 
         StartCommandService().start_session(
-            billed_to=billed_to,
+            billed_to=Party(country_code="NL", party_id="MSP"),
             credentials=connection_credentials_role.credentials,
             validated_data=validated_data,
         )

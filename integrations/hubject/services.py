@@ -1084,14 +1084,9 @@ class HubjectService:
             logger.error("Hubject Remote Start failed: No hubject credentials found")
             raise HubjectRemoteCommandError("021", "Credentials not found for Hubject")
 
-        # billed_to is the EMP (sender_party from ProviderID), not the Hubject hub itself
-        billed_to = get_credentialsrole(
-            credentials=None, party=sender_party, create=True
-        )
-
         service = StartCommandService()
         response = service.start_session(
-            billed_to=billed_to,
+            billed_to=sender_party,
             credentials=hubject_credentials_role.credentials,
             validated_data=validated_data,
             hub_session_id=remote_start_command.session_id.root,
