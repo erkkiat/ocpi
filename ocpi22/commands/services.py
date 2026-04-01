@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Dict, Any, NamedTuple, Union
+from typing import Dict, Any, NamedTuple
 import requests
 from celery import shared_task
 from requests.exceptions import RequestException, Timeout, ConnectionError
@@ -46,7 +46,6 @@ from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.sessions.util import create_session
 from ocpi22.models import enum
 
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpiconnector.party import Party
 from ocpiconnector.ocpi_identities import get_our_party
 
@@ -439,13 +438,11 @@ class StartCommandService(RemoteCommandServices):
 
     def start_session(
         self,
-        billed_to: Union[Party, CredentialsRole],
+        billed_to: CredentialsRole,
         credentials: Credentials,
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
     ) -> OCPIResponse:
-        if isinstance(billed_to, Party):
-            billed_to = get_credentialsrole(party=billed_to, create=True)
         active_session = self.session_repo.find_active_session_by_evse_uid(
             evse_uid=validated_data.get("evse_uid"),
         )

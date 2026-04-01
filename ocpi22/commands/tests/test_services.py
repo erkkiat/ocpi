@@ -19,11 +19,9 @@ from ocpi22.exceptions import (
     EvseOccupiedError,
     ConnectorNotFoundError,
 )
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.ocpi.auth import get_credentialsrole
-from ocpiconnector.party import Party
 from ocpi22.ocpi.util import Ocpi
 from ocpi22.tests.factories import (
     EvseFactory,
@@ -1592,44 +1590,3 @@ class TestStartCommandServiceStartSession:
 
         mock_create_callback.assert_called_once()
 
-    @pytest.mark.django_db
-    @patch("ocpi22.commands.services.build_absolute_uri")
-    @patch("ocpi22.commands.services.StartCommandService.send_start_command_webhook")
-    def test_start_session_creates_non_existing_msp_credentials_role(
-        self, mock_send_webhook, mock_build_uri
-    ):
-        get_credentialsrole.cache_clear()
-        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH_MSP/"
-        mock_send_webhook.return_value = {"data": {"result": "ACCEPTED"}}
-
-        location = LocationFactory(uid="LOC_MSP")
-        evse = EvseFactory(uid="EVSE_MSP", location=location, status=Evse.AVAILABLE)
-        connector = ConnectorFactory(uid="CONN_MSP", evse=evse)
-        connection_credentials_role = CredentialsRoleFactory()
-
-        assert CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first() is None
-
-        validated_data = {
-            "token": {
-                "uid": "TOKEN_MSP",
-                "type": "RFID",
-                "country_code": "NL",
-                "party_id": "MSP",
-                "contract_id": "CONTRACT_MSP",
-            },
-            "authorization_reference": "AUTH_MSP",
-            "evse_uid": evse.uid,
-            "connector_id": connector.uid,
-            "location_id": location.uid,
-            "response_url": "http://localhost/commands/results/AUTH_MSP/",
-        }
-
-        StartCommandService().start_session(
-            billed_to=Party(country_code="NL", party_id="MSP"),
-            credentials=connection_credentials_role.credentials,
-            validated_data=validated_data,
-        )
-
-        nl_msp_role = CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first()
-        assert nl_msp_role is not None
-        assert Session.objects.filter(billed_to=nl_msp_role).exists()

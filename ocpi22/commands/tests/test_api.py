@@ -7,8 +7,10 @@ import responses
 from rest_framework import status
 from responses import matchers
 
+from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.tests.factories import (
     CredentialsFactory,
     CredentialsRoleFactory,
@@ -797,6 +799,46 @@ class TestStartSessionAPI:
         assert payload["evse_uid"] == "EVSE001"
         assert payload["connector_id"] == "CONN001"
         assert payload["session_id"] == session.uid
+
+    @pytest.mark.django_db
+    @responses.activate
+    def test_start_session_via_hub_creates_non_existing_emp_credentials_role(
+        self, client, valid_start_session_data, active_start_webhook
+    ):
+        get_credentialsrole.cache_clear()
+        hub_credentials_role = CredentialsRoleFactory(
+            role="HUB", country_code="DE", party_id="HUB"
+        )
+        client.credentials(
+            HTTP_AUTHORIZATION=f"Token {base64.b64encode(hub_credentials_role.credentials.ours.encode()).decode()}"
+        )
+
+        location = LocationFactory(uid=valid_start_session_data["location_id"])
+        evse = EvseFactory(
+            uid=valid_start_session_data["evse_uid"], location=location, status="AVAILABLE"
+        )
+        ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
+
+        assert CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first() is None
+
+        responses.add(
+            responses.POST, active_start_webhook.url, json={"data": {"result": "ACCEPTED"}}, status=200
+        )
+
+        response = client.post(
+            "/ocpi/2.2.1/commands/START_SESSION",
+            data=valid_start_session_data,
+            format="json",
+            HTTP_OCPI_FROM_COUNTRY_CODE="NL",
+            HTTP_OCPI_FROM_PARTY_ID="MSP",
+            HTTP_OCPI_TO_COUNTRY_CODE="FI",
+            HTTP_OCPI_TO_PARTY_ID="CPO",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        nl_msp_role = CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first()
+        assert nl_msp_role is not None
+        assert Session.objects.filter(billed_to=nl_msp_role).exists()
 
 
 class TestStopSessionAPI:
