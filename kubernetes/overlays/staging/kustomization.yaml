@@ -11,7 +11,7 @@ resources:
 
 images:
   - name: solidroam-app
-    newName: REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/solidroam-app
+    newName: europe-southwest1-docker.pkg.dev/solidroam-staging/solidroam-docker/solidroam-app
     newTag: develop-000000  # replaced by CI with immutable tag: {branch}-{sha}
 
 patches:
@@ -23,7 +23,7 @@ patches:
       - op: replace
         path: /metadata/annotations
         value:
-          iam.gke.io/gcp-service-account: ocpiconnector-staging@PROJECT_ID.iam.gserviceaccount.com
+          iam.gke.io/gcp-service-account: ocpiconnector-staging@solidroam-staging.iam.gserviceaccount.com
 
   # SecretProviderClass — staging secrets from GCP Secret Manager
   - target:
@@ -33,21 +33,21 @@ patches:
       - op: replace
         path: /spec/parameters/secrets
         value: |
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-DATABASE_URL/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-DATABASE_URL/versions/latest"
             fileName: "DATABASE_URL"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-REDIS_URL/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-REDIS_URL/versions/latest"
             fileName: "REDIS_URL"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-SECRET_KEY/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-SECRET_KEY/versions/latest"
             fileName: "SECRET_KEY"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-ALLOWED_HOSTS/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-ALLOWED_HOSTS/versions/latest"
             fileName: "ALLOWED_HOSTS"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_CLIENT_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CLIENT_CERTIFICATE"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_PRIVATE_KEY/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_PRIVATE_KEY/versions/latest"
             fileName: "HUBJECT_PRIVATE_KEY"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_CA_CERTIFICATE/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_CA_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CA_CERTIFICATE"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-SENTRY_DSN/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-SENTRY_DSN/versions/latest"
             fileName: "SENTRY_DSN"
 
   # django-app — 1 replica is enough for staging
