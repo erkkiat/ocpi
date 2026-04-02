@@ -70,7 +70,7 @@ def configure_database():
 
     if parsed_url.scheme == "mysql":
         db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
-        engine = "django.db.backends.mysql"
+        engine = "ocpiconnector.db_backends.mysql"
         user = db_user
         password = db_token
         host = db_url
