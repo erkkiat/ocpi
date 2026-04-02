@@ -5,6 +5,8 @@ namespace: staging
 
 resources:
   - ../../base
+  - namespace.yaml
+  - configmap.yaml
   - ingress.yaml
 
 images:
@@ -35,11 +37,18 @@ patches:
             fileName: "DATABASE_URL"
           - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-REDIS_URL/versions/latest"
             fileName: "REDIS_URL"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-DJANGO_SECRET_KEY/versions/latest"
-            fileName: "DJANGO_SECRET_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-SECRET_KEY/versions/latest"
+            fileName: "SECRET_KEY"
           - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-ALLOWED_HOSTS/versions/latest"
             fileName: "ALLOWED_HOSTS"
-          # Add the rest of your env vars here following the same pattern
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+            fileName: "HUBJECT_CLIENT_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_PRIVATE_KEY/versions/latest"
+            fileName: "HUBJECT_PRIVATE_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-HUBJECT_CA_CERTIFICATE/versions/latest"
+            fileName: "HUBJECT_CA_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-staging-SENTRY_DSN/versions/latest"
+            fileName: "SENTRY_DSN"
 
   # django-app — 1 replica is enough for staging
   - target:

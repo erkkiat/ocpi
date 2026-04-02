@@ -38,6 +38,8 @@ spec:
               mountPath: /mnt/secrets
               readOnly: true
           envFrom:
+            - configMapRef:
+                name: ocpiconnector-config
             - secretRef:
                 name: ocpiconnector-env
           env:
@@ -45,8 +47,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: CELERY_QUEUE_NAME
-              value: "default"
           resources:
             requests:
               cpu: "250m"

@@ -1,11 +1,11 @@
 apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
 metadata:
-  name: ocpiconnector-cert
+  name: staging-bia
   namespace: staging
 spec:
   domains:
-    - staging.api.ocpi-gateway.solidroam.fi  # replace with your actual staging domain
+    - staging.evroaming.eu
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

@@ -1,11 +1,11 @@
 apiVersion: networking.gke.io/v1
 kind: ManagedCertificate
 metadata:
-  name: ocpiconnector-cert
+  name: production-bia
   namespace: production
 spec:
   domains:
-    - api.ocpi-gateway.solidroam.fi  # replace with your actual production domain
+    - biapower.evroaming.eu
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

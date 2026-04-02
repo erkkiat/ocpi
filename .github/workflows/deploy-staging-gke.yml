@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - develop
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -95,7 +96,7 @@ jobs:
     environment: staging
     runs-on: ubuntu-latest-m
     needs: [lint, test]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     outputs:
       image_tag: ${{ steps.set_tag.outputs.image_tag }}
 
@@ -151,7 +152,7 @@ jobs:
     environment: staging
     runs-on: ubuntu-latest-m
     needs: build-staging-gke
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     outputs:
       image_tag: ${{ needs.build-staging-gke.outputs.image_tag }}
 
@@ -175,32 +176,42 @@ jobs:
             --project="${GCP_PROJECT_ID}" \
             --quiet
 
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Kustomize
+        run: |
+          curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xzf kustomize
+          sudo mv kustomize /usr/local/bin/kustomize
+
       - name: Run Migration Job
         shell: bash
         run: |
           set -euo pipefail
-          JOB_NAME="django-migrate-${GITHUB_RUN_ID}"
 
-          kubectl create job "${JOB_NAME}" \
-            --image="${IMAGE_REPO}:${IMAGE_TAG}" \
-            --namespace=staging \
-            -- python manage.py migrate --noinput
+          # Delete previous migration job if it's still around (TTL may not have expired)
+          kubectl delete job django-migrate --namespace=staging --ignore-not-found=true
 
-          echo "Waiting for migration job ${JOB_NAME} to complete..."
-          kubectl wait job/"${JOB_NAME}" \
+          # Apply all base resources with the correct image (includes job-migrate.yaml)
+          cd kubernetes/overlays/staging
+          kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
+          kustomize build . | kubectl apply -f -
+
+          echo "Waiting for migration job django-migrate to complete..."
+          kubectl wait job/django-migrate \
             --for=condition=complete \
             --timeout=300s \
             --namespace=staging
 
           echo "✅ Migrations complete"
-          kubectl delete job "${JOB_NAME}" --namespace=staging
 
   deploy-staging-gke:
     name: Deploy to GKE Staging
     environment: staging
     runs-on: ubuntu-latest-m
     needs: migrate-staging-gke
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     env:
       GCP_REGION: ${{ secrets.GCP_REGION }}
@@ -229,13 +240,25 @@ jobs:
 
       - name: Set up Kustomize
         run: |
-          curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
-          chmod u+x ./kustomize
-          sudo mv ./kustomize /usr/local/bin/kustomize
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
 
       - name: Deploy
+        env:
+          HOSTNAME: ${{ vars.HOSTNAME }}
+          BUSINESS_NAME: ${{ vars.BUSINESS_NAME }}
+          CPO: ${{ vars.CPO }}
+          EMSP: ${{ vars.EMSP }}
+          SIMULATOR: ${{ vars.SIMULATOR }}
+          BACKGROUND_SEND: ${{ vars.BACKGROUND_SEND }}
+          LOCAL_STATIC: ${{ vars.LOCAL_STATIC }}
+          REFRESH_RDS_TOKEN_FOR_TASKS: ${{ vars.REFRESH_RDS_TOKEN_FOR_TASKS }}
+          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+          CELERY_QUEUE_NAME: ${{ vars.CELERY_QUEUE_NAME }}
         run: |
           cd $OVERLAY
+          envsubst < configmap.yaml > configmap.yaml.tmp && mv configmap.yaml.tmp configmap.yaml
           kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
           kubectl apply -k .
           kubectl rollout status deployment -n $NAMESPACE --timeout=300s

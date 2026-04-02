@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocpiconnector-config
+  namespace: production
+data:
+  DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
+  HOSTNAME: "${HOSTNAME}"
+  SCHEME: "https"
+  ENV: "production"
+  DEBUG: "False"
+  PYTHONUNBUFFERED: "1"
+  BACKGROUND_SEND: "${BACKGROUND_SEND}"
+  LOCAL_STATIC: "${LOCAL_STATIC}"
+  SIMULATOR: "${SIMULATOR}"
+  BUSINESS_NAME: "${BUSINESS_NAME}"
+  CPO: "${CPO}"
+  EMSP: "${EMSP}"
+  REFRESH_RDS_TOKEN_FOR_TASKS: "${REFRESH_RDS_TOKEN_FOR_TASKS}"
+  CSRF_TRUSTED_ORIGINS: "${CSRF_TRUSTED_ORIGINS}"
+  CELERY_QUEUE_NAME: "${CELERY_QUEUE_NAME}"

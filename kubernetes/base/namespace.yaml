@@ -1,9 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: staging
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: production
+  name: ocpiconnector  # overridden by overlay namespace.yaml

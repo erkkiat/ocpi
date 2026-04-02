@@ -25,6 +25,8 @@ spec:
               mountPath: /mnt/secrets
               readOnly: true
           envFrom:
+            - configMapRef:
+                name: ocpiconnector-config
             - secretRef:
                 name: ocpiconnector-env
           resources:

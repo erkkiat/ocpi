@@ -66,6 +66,7 @@ def configure_database():
     database_url = os.getenv("DATABASE_URL")
     assert database_url, "Database URL must be set in environment variables"
     parsed_url = urlparse(database_url)
+    db_name = parsed_url.path.lstrip("/") or "ocpi"
 
     if parsed_url.scheme == "mysql":
         db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
@@ -80,13 +81,13 @@ def configure_database():
         user = parsed_url.username
         password = parsed_url.password
         host = parsed_url.hostname
-        port = parsed_url.port
+        port = parsed_url.port or 5432
         options = {"sslmode": "require"}
 
     database = {
         "default": {
             "ENGINE": engine,
-            "NAME": "ocpi",
+            "NAME": db_name,
             "USER": user,
             "PASSWORD": password,
             "HOST": host,
