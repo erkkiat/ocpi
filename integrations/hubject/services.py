@@ -1076,16 +1076,23 @@ class HubjectService:
 
         hubject_party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
         # There is no hub authentication in OCPI 2.x
-        credentials_role = get_credentialsrole(credentials=None, party=hubject_party)
-        if not credentials_role:
+        hubject_credentials_role = get_credentialsrole(
+            credentials=None, party=hubject_party
+        )
+        if not hubject_credentials_role:
             # This should be created as the part of the setup manually.
             logger.error("Hubject Remote Start failed: No hubject credentials found")
             raise HubjectRemoteCommandError("021", "Credentials not found for Hubject")
 
+        # billed_to is the EMP (sender_party from ProviderID), not the Hubject hub itself
+        billed_to = get_credentialsrole(
+            credentials=None, party=sender_party, create=True
+        )
+
         service = StartCommandService()
         response = service.start_session(
-            sender_party=sender_party,
-            credentials=credentials_role.credentials,
+            billed_to=billed_to,
+            credentials=hubject_credentials_role.credentials,
             validated_data=validated_data,
             hub_session_id=remote_start_command.session_id.root,
         )

@@ -1408,19 +1408,12 @@ class TestHubjectAuthorizeRemoteStart:
         hubject_credentials,
         start_session_webhook,
     ):
-        with patch(
-            "ocpi22.commands.services.StartCommandService.start_session",
-            return_value=OCPIResponse(
-                status_code=Ocpi.OK,
-                http_status=status.HTTP_200_OK,
-            ),
-        ):
-            responses.add(
-                responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/start-session/",
-                json={"data": {"result": "ACCEPTED"}},
-                status=200,
-            )
+        responses.add(
+            responses.POST,
+            "http://localhost/api/cpo/v2/chargepoint/start-session/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
         result = self.hubject_service.process_remote_start_command(
             mock_remote_start_command
         )
@@ -1520,19 +1513,12 @@ class TestHubjectAuthorizeRemoteStart:
         hubject_credentials,
         start_session_webhook,
     ):
-        with patch(
-            "ocpi22.commands.services.StartCommandService.start_session",
-            return_value=OCPIResponse(
-                status_code=Ocpi.OK,
-                http_status=status.HTTP_200_OK,
-            ),
-        ):
-            responses.add(
-                responses.POST,
-                "http://localhost/api/cpo/v2/chargepoint/start-session/",
-                json={"data": {"result": "ACCEPTED"}},
-                status=200,
-            )
+        responses.add(
+            responses.POST,
+            "http://localhost/api/cpo/v2/chargepoint/start-session/",
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
+        )
         evse.status = "OUTOFORDER"
         evse.save()
         result = self.hubject_service.process_remote_start_command(

@@ -9,7 +9,6 @@ from ocpi22.commands.serializers import (
     CommandResponseType,
 )
 from ocpi22.commands.services import (
-    InvalidSenderPartyError,
     RemoteCommandServices,
     StartCommandService,
     StopCommandServices,
@@ -24,7 +23,7 @@ from ocpi22.exceptions import (
 )
 from ocpi22.models.session import Session
 from ocpi22.ocpi.auth import OCPIPermission
-from ocpi22.ocpi.util import OCPIResponse, options_message, OCPIBadRequestResponse
+from ocpi22.ocpi.util import OCPIResponse, options_message
 from ocpi22.util import OCPIVersioning
 from ocpiconnector.exception_handler import ocpi_exception_handler
 
@@ -58,16 +57,8 @@ class CommandsViewSet(GenericViewSet):
         start_command_service = StartCommandService()
 
         try:
-            sender_party = start_command_service.get_validated_sender_party(
-                request.META
-            )
-        except InvalidSenderPartyError as e:
-            logger.exception(e)
-            return OCPIBadRequestResponse(status_message=e.args[0])
-
-        try:
             ocpi_response = start_command_service.start_session(
-                sender_party=sender_party,
+                billed_to=request.credentialsrole,
                 credentials=request.credentials,
                 validated_data=serializer.validated_data,
             )

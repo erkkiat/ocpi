@@ -29,11 +29,9 @@ from ocpi22.exceptions import (
 )
 from ocpi22.models.location import Evse, Location, Connector
 from ocpi22.models.session import Session
-from ocpi22.models.credentials import Credentials
+from ocpi22.models.credentials import Credentials, CredentialsRole
 from ocpi22.ocpi.util import OCPIResponse, Ocpi
-from ocpi22.ocpi.util_party import get_sender_party
 from ocpi22.choices import MessageTexts, OcpiRolesEnum
-from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.headers import make_headers
 from ocpi22.tasks import get_certificate_loaded_request
 
@@ -329,20 +327,7 @@ def send_callback(
     return
 
 
-class InvalidSenderPartyError(Exception):
-    pass
-
-
 class RemoteCommandServices:
-    def get_validated_sender_party(self, request_meta: Dict[str, Any]) -> Party | None:
-        sender_party = get_sender_party(request_meta)
-
-        if not isinstance(sender_party, Party) and len(str(sender_party)) != 6:
-            raise InvalidSenderPartyError(
-                f"Sender party must be a Party object, got: {type(sender_party)}"
-            )
-        return sender_party
-
     def create_ocpi_response(self, result: str, message: str | None = None):
         timeout = 60
 
@@ -453,7 +438,7 @@ class StartCommandService(RemoteCommandServices):
 
     def start_session(
         self,
-        sender_party: Party,
+        billed_to: CredentialsRole,
         credentials: Credentials,
         validated_data: Dict[str, Any],
         hub_session_id: str = None,
@@ -482,7 +467,6 @@ class StartCommandService(RemoteCommandServices):
             connector = self._get_first_connector_if_missing(
                 evse, connector_id=validated_data.get("connector_id")
             )
-            billed_to = get_credentialsrole(party=sender_party, create=True)
             ad_hoc_token = AdhocToken(
                 billed_to=billed_to.get_party(),
                 ocpi_master=billed_to,

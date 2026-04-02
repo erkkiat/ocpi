@@ -37,6 +37,7 @@ def connector_without_tariff():
 
 @pytest.fixture(autouse=True)
 def hubject_credentials():
+    get_credentialsrole.cache_clear()
     return CredentialsRoleFactory(
         country_code="DE",
         party_id="ICE",
