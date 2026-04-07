@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-subscriber
+  labels:
+    app: mqtt-subscriber
+    component: subscriber
+spec:
+  # Multiple replicas would consume every MQTT message N times — always 1.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mqtt-subscriber
+  template:
+    metadata:
+      labels:
+        app: mqtt-subscriber
+        component: subscriber
+    spec:
+      serviceAccountName: ocpiconnector-ksa
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
+      containers:
+        - name: mqtt-subscriber
+          image: solidroam-app
+          args: ["mqtt-subscriber"]
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+          envFrom:
+            - secretRef:
+                name: ocpiconnector-env
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

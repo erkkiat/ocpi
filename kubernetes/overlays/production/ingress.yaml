@@ -1,0 +1,30 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: production-bia
+  namespace: production
+spec:
+  domains:
+    - biapower.evroaming.eu
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-app-ingress
+  namespace: production
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "production-bia"
+    kubernetes.io/ingress.global-static-ip-name: "production-bia"
+spec:
+  rules:
+    - host: biapower.evroaming.eu
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django-app
+                port:
+                  number: 80

@@ -64,36 +64,18 @@ class CustomJsonFormatter(pythonjsonlogger.json.JsonFormatter):
 
 def configure_database():
     database_url = os.getenv("DATABASE_URL")
-    assert database_url, "Database URL must be set in environment variables"
+    assert database_url, "DATABASE_URL must be set in environment variables"
     parsed_url = urlparse(database_url)
-
-    if parsed_url.scheme == "mysql":
-        db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
-        engine = "django.db.backends.mysql"
-        user = db_user
-        password = db_token
-        host = db_url
-        port = 3306
-        options = {"ssl_mode": "REQUIRED"}
-    else:
-        engine = "django.db.backends.postgresql"
-        user = parsed_url.username
-        password = parsed_url.password
-        host = parsed_url.hostname
-        port = parsed_url.port
-        options = {"sslmode": "require"}
-
-    database = {
+    return {
         "default": {
-            "ENGINE": engine,
-            "NAME": "ocpi",
-            "USER": user,
-            "PASSWORD": password,
-            "HOST": host,
-            "PORT": port,
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed_url.path.lstrip("/"),
+            "USER": parsed_url.username,
+            "PASSWORD": parsed_url.password,
+            "HOST": parsed_url.hostname,
+            "PORT": parsed_url.port or 5432,
             "CONN_MAX_AGE": 300,
-            "OPTIONS": options,
+            "OPTIONS": {"sslmode": "require"},
             "CONN_HEALTH_CHECKS": True,
         }
     }
-    return database
