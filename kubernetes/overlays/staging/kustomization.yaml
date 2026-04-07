@@ -23,7 +23,7 @@ patches:
       - op: replace
         path: /metadata/annotations
         value:
-          iam.gke.io/gcp-service-account: ocpiconnector-staging@solidroam-staging.iam.gserviceaccount.com
+          iam.gke.io/gcp-service-account: ocpiconnector-app@solidroam-staging.iam.gserviceaccount.com
 
   # SecretProviderClass — staging secrets from GCP Secret Manager
   - target:
@@ -33,21 +33,21 @@ patches:
       - op: replace
         path: /spec/parameters/secrets
         value: |
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-DATABASE_URL/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/DATABASE_URL/versions/latest"
             fileName: "DATABASE_URL"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-REDIS_URL/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/REDIS_URL/versions/latest"
             fileName: "REDIS_URL"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-SECRET_KEY/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/SECRET_KEY/versions/latest"
             fileName: "SECRET_KEY"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-ALLOWED_HOSTS/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/ALLOWED_HOSTS/versions/latest"
             fileName: "ALLOWED_HOSTS"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/HUBJECT_CLIENT_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CLIENT_CERTIFICATE"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_PRIVATE_KEY/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/HUBJECT_PRIVATE_KEY/versions/latest"
             fileName: "HUBJECT_PRIVATE_KEY"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-HUBJECT_CA_CERTIFICATE/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/HUBJECT_CA_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CA_CERTIFICATE"
-          - resourceName: "projects/1085904235718/secrets/ocpi-gateway-staging-SENTRY_DSN/versions/latest"
+          - resourceName: "projects/1085904235718/secrets/SENTRY_DSN/versions/latest"
             fileName: "SENTRY_DSN"
 
   # django-app — 1 replica is enough for staging

@@ -7,7 +7,7 @@ import os  # noqa
 
 from ocpiconnector.settings.infra_services import (
     get_allowed_hosts,
-    configure_database,
+    RDSTokenManager,
 )
 
 ENV = os.getenv("ENV", "production").lower()
@@ -58,4 +58,17 @@ CACHES = {
 }
 
 
-DATABASES = configure_database()
+db_url, db_user, db_token = RDSTokenManager.get_db_url_user_and_token()
+DATABASES = {
+    "default": {
+        "ENGINE": "ocpiconnector.db_backends.mysql",
+        "NAME": "ocpi",
+        "USER": db_user,
+        "PASSWORD": db_token,
+        "HOST": db_url,
+        "PORT": "3306",
+        "CONN_MAX_AGE": 300,
+        "OPTIONS": {"ssl_mode": "REQUIRED"},
+        "CONN_HEALTH_CHECKS": True,
+    }
+}

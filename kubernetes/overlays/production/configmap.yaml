@@ -4,7 +4,7 @@ metadata:
   name: ocpiconnector-config
   namespace: production
 data:
-  DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.production"
+  DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.gke"
   HOSTNAME: "${HOSTNAME}"
   SCHEME: "https"
   ENV: "production"

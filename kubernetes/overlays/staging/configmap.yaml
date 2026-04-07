@@ -4,7 +4,7 @@ metadata:
   name: ocpiconnector-config
   namespace: staging
 data:
-  DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.staging"
+  DJANGO_SETTINGS_MODULE: "ocpiconnector.settings.gke"
   HOSTNAME: "${HOSTNAME}"
   SCHEME: "https"
   ENV: "staging"

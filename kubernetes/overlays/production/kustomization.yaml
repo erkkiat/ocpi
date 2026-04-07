@@ -33,21 +33,21 @@ patches:
       - op: replace
         path: /spec/parameters/secrets
         value: |
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-DATABASE_URL/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/DATABASE_URL/versions/latest"
             fileName: "DATABASE_URL"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-REDIS_URL/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/REDIS_URL/versions/latest"
             fileName: "REDIS_URL"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-SECRET_KEY/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SECRET_KEY/versions/latest"
             fileName: "SECRET_KEY"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-ALLOWED_HOSTS/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ALLOWED_HOSTS/versions/latest"
             fileName: "ALLOWED_HOSTS"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CLIENT_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CLIENT_CERTIFICATE"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-HUBJECT_PRIVATE_KEY/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_PRIVATE_KEY/versions/latest"
             fileName: "HUBJECT_PRIVATE_KEY"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-HUBJECT_CA_CERTIFICATE/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CA_CERTIFICATE/versions/latest"
             fileName: "HUBJECT_CA_CERTIFICATE"
-          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ocpi-gateway-production-SENTRY_DSN/versions/latest"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SENTRY_DSN/versions/latest"
             fileName: "SENTRY_DSN"
 
   # django-app — scale up replicas for production
