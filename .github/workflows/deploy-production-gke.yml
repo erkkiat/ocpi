@@ -207,6 +207,17 @@ jobs:
           sudo mv kustomize /usr/local/bin/kustomize
 
       - name: Run Migration Job
+        env:
+          HOSTNAME: ${{ vars.HOSTNAME }}
+          BUSINESS_NAME: ${{ vars.BUSINESS_NAME }}
+          CPO: ${{ vars.CPO }}
+          EMSP: ${{ vars.EMSP }}
+          SIMULATOR: ${{ vars.SIMULATOR }}
+          BACKGROUND_SEND: ${{ vars.BACKGROUND_SEND }}
+          LOCAL_STATIC: ${{ vars.LOCAL_STATIC }}
+          REFRESH_RDS_TOKEN_FOR_TASKS: ${{ vars.REFRESH_RDS_TOKEN_FOR_TASKS }}
+          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+          CELERY_QUEUE_NAME: ${{ vars.CELERY_QUEUE_NAME }}
         shell: bash
         run: |
           set -euo pipefail
@@ -216,6 +227,7 @@ jobs:
 
           # Apply all base resources with the correct image (includes job-migrate.yaml)
           cd kubernetes/overlays/production
+          envsubst < configmap.yaml > configmap.yaml.tmp && mv configmap.yaml.tmp configmap.yaml
           kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
           kustomize build . | kubectl apply -f -
 
