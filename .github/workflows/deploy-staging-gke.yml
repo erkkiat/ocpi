@@ -169,8 +169,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Install gke-gcloud-auth-plugin
-        run: sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
 
       - name: Get GKE Credentials
         run: |
@@ -246,8 +248,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Install gke-gcloud-auth-plugin
-        run: sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
 
       - name: Get GKE Credentials
         run: |
