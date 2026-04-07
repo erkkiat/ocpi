@@ -169,6 +169,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+      - name: Install gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
+
       - name: Get GKE Credentials
         run: |
           gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
@@ -181,8 +184,8 @@ jobs:
 
       - name: Set up Kustomize
         run: |
-          curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
-          tar -xzf kustomize
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
           sudo mv kustomize /usr/local/bin/kustomize
 
       - name: Run Migration Job
@@ -242,6 +245,9 @@ jobs:
         with:
           workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Install gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
 
       - name: Get GKE Credentials
         run: |
