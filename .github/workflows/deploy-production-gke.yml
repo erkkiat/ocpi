@@ -242,7 +242,7 @@ jobs:
             --timeout=300s \
             --namespace=production
 
-          echo "✅ Migrations complete"
+          echo "✅ Migrations complete ✅"
 
   deploy-production-gke:
     name: Deploy to GKE Production
