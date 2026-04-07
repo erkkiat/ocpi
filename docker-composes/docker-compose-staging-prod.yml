@@ -29,7 +29,7 @@ services:
         condition: service_completed_successfully
 
   mqtt-subscriber:
-    image: "${MQTT_SUBSCRIBER_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: mqtt-subscriber
     env_file:
       - ./mqtt-subscriber.env
@@ -43,7 +43,7 @@ services:
         condition: service_completed_successfully
 
   celery-mqtt:
-    image: "${CELERY_MQTT_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: celery-mqtt
     env_file:
       - ./celery-mqtt.env
@@ -57,10 +57,10 @@ services:
         condition: service_completed_successfully
 
   celery-django:
-    image: "${CELERY_DJANGO_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: celery-django
     env_file:
-      - ./celery-mqtt.env
+      - ./celery-django.env
     volumes:
       - celery_logs:/var/log/celery
     command: [ "celery-django" ]

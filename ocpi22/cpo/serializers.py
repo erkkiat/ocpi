@@ -163,7 +163,7 @@ class OcppStatusSerializer(fields.ChoiceField):
     def to_internal_value(self, data):
         result = {
             OcppStatusChoices.AVAILABLE: "AVAILABLE",
-            OcppStatusChoices.PREPARING: "CHARGING",
+            OcppStatusChoices.PREPARING: "AVAILABLE",
             OcppStatusChoices.CHARGING: "CHARGING",
             OcppStatusChoices.SUSPENDEDEV: "CHARGING",
             OcppStatusChoices.SUSPENDEDEVSE: "CHARGING",
@@ -428,10 +428,10 @@ class PriceSerializer(serializers.DecimalField):
         return solid_tariff.get_type(self.tariff_type)
 
     def to_internal_value(self, data):
-        result = {self.key: data}
-        if result is not None and float(data) < 0:
+        value = super().to_internal_value(data)
+        if value is not None and value < 0:
             raise ValidationError(f"{self.key} cannot be negative.")
-        return result
+        return {self.key: value}
 
 
 class PriceKwhSerializer(PriceSerializer):
@@ -474,8 +474,8 @@ class SolidTariffSerializer(SerializerCleanedUp):
     currency = serializers.ChoiceField(choices=CURRENCY_CHOICES)
     price_per_kwh = PriceKwhSerializer(
         source="*",
-        max_digits=8,
-        decimal_places=2,
+        max_digits=12,
+        decimal_places=6,
         required=False,
         allow_null=True,
         help_text="The price per kWh of electricity charged excluding tax",
@@ -543,6 +543,23 @@ class SolidTariffSerializer(SerializerCleanedUp):
         help_text="The OCPI identifier of the tariff",
     )
     last_updated = UTCDateTimeField(required=False)
+
+    def validate(self, attrs):
+        price_fields = [
+            "price_per_kwh",
+            "price_per_min",
+            "price_per_hr",
+            "price_flat",
+            "parking_price_per_min",
+            "parking_price_per_hr",
+        ]
+
+        if not any(attrs.get(field) is not None for field in price_fields):
+            raise serializers.ValidationError(
+                "At least one pricing field must be provided."
+            )
+
+        return super().validate(attrs)
 
 
 class CPOAuthorizationResponseSerializer(serializers.Serializer):

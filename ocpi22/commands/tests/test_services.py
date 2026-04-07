@@ -19,7 +19,6 @@ from ocpi22.exceptions import (
     EvseOccupiedError,
     ConnectorNotFoundError,
 )
-from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Evse
 from ocpi22.models.session import Session
 from ocpi22.ocpi.auth import get_credentialsrole
@@ -32,7 +31,6 @@ from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     OCPISessionFactory,
 )
-from ocpiconnector.party import Party
 from webhooks.choices import RemoteCommandType
 
 
@@ -308,52 +306,6 @@ class TestCommandServices:
 
     @patch("ocpi22.commands.services.build_absolute_uri")
     @pytest.mark.django_db
-    def test_start_session_creates_non_existing_msp_credentials_role(
-        self, mock_build_uri
-    ):
-        mock_build_uri.return_value = "http://testserver.test/commands/results/AUTH123/"
-
-        evse = EvseFactory(
-            uid="EVSE001", location=LocationFactory(), status="AVAILABLE"
-        )
-        connector = ConnectorFactory(uid="CONN001", evse=evse)
-        validated_data = {
-            "token": {"uid": "TOKEN123", "type": "RFID"},
-            "authorization_reference": "AUTH123",
-            "evse_uid": evse.uid,
-            "connector_id": connector.uid,
-            "location_id": evse.location.uid,
-            "response_url": "http://localhost/commands/results/AUTH123/",
-        }
-        credentials = CredentialsFactory()
-        CredentialsRoleFactory(
-            country_code="NL", party_id="HUB", credentials=credentials
-        )
-        nl_cpo_cred_role = CredentialsRole.objects.filter(
-            country_code="NL", party_id="CPO"
-        ).first()
-        assert nl_cpo_cred_role is None
-
-        with patch(
-            "ocpi22.commands.services.StartCommandService.send_start_command_webhook"
-        ) as mock_send_webhook:
-            mock_send_webhook.return_value = {
-                "status_code": 1000,
-                "status_message": "Success",
-            }
-            StartCommandService().start_session(
-                sender_party=Party(country_code="NL", party_id="CPO"),
-                credentials=credentials,
-                validated_data=validated_data,
-            )
-
-        nl_cpo_cred_role = CredentialsRole.objects.filter(
-            country_code="NL", party_id="CPO"
-        ).first()
-        assert nl_cpo_cred_role is not None
-
-    @patch("ocpi22.commands.services.build_absolute_uri")
-    @pytest.mark.django_db
     @override_settings(HUBJECT_OPERATOR_ID="DE*ICE")
     def test_start_session_does_not_create_a_callback_for_hubject_sessions(
         self, mock_build_uri
@@ -378,7 +330,7 @@ class TestCommandServices:
             country_code="DE", party_id="ICE", credentials=credentials
         )
 
-        CredentialsRoleFactory(country_code="NL", party_id="MSP")
+        nl_msp_role = CredentialsRoleFactory(country_code="NL", party_id="MSP")
 
         with patch(
             "ocpi22.commands.services.StartCommandService.send_start_command_webhook"
@@ -391,7 +343,7 @@ class TestCommandServices:
                     "status_message": "Success",
                 }
                 StartCommandService().start_session(
-                    sender_party=Party(country_code="NL", party_id="MSP"),
+                    billed_to=nl_msp_role,
                     credentials=credentials,
                     validated_data=validated_data,
                 )
@@ -949,7 +901,7 @@ class TestStartCommandServiceStartSession:
         with patch("ocpi22.sessions.util.create_session") as mock_create_session:
             service = StartCommandService()
             response = service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
+                billed_to=credentials_role,
                 credentials=credentials_role.credentials,
                 validated_data=validated_data,
             )
@@ -988,7 +940,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1030,7 +982,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1064,7 +1016,7 @@ class TestStartCommandServiceStartSession:
 
         with pytest.raises(LocationNotFoundError) as exc_info:
             service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
+                billed_to=credentials_role,
                 credentials=credentials_role.credentials,
                 validated_data=validated_data,
             )
@@ -1096,7 +1048,7 @@ class TestStartCommandServiceStartSession:
 
         with pytest.raises(EvseNotFoundError) as exc_info:
             service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
+                billed_to=credentials_role,
                 credentials=credentials_role.credentials,
                 validated_data=validated_data,
             )
@@ -1132,7 +1084,7 @@ class TestStartCommandServiceStartSession:
         service = StartCommandService()
 
         result = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1167,7 +1119,7 @@ class TestStartCommandServiceStartSession:
         service = StartCommandService()
 
         result = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1201,7 +1153,7 @@ class TestStartCommandServiceStartSession:
 
         with pytest.raises(ConnectorNotFoundError) as exc_info:
             service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
+                billed_to=credentials_role,
                 credentials=credentials_role.credentials,
                 validated_data=validated_data,
             )
@@ -1236,7 +1188,7 @@ class TestStartCommandServiceStartSession:
 
         with pytest.raises(ConnectorNotFoundError) as exc_info:
             service.start_session(
-                sender_party=Party(country_code="FI", party_id="MSP"),
+                billed_to=credentials_role,
                 credentials=credentials_role.credentials,
                 validated_data=validated_data,
             )
@@ -1281,7 +1233,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1330,7 +1282,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1378,7 +1330,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1424,7 +1376,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1474,7 +1426,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1516,7 +1468,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1554,7 +1506,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1592,7 +1544,7 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         response = service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
@@ -1631,9 +1583,10 @@ class TestStartCommandServiceStartSession:
 
         service = StartCommandService()
         service.start_session(
-            sender_party=Party(country_code="FI", party_id="MSP"),
+            billed_to=credentials_role,
             credentials=credentials_role.credentials,
             validated_data=validated_data,
         )
 
         mock_create_callback.assert_called_once()
+

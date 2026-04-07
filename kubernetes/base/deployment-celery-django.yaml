@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-django
+  labels:
+    app: celery-django
+    component: worker
+spec:
+  # Beat scheduler runs inside this worker (--beat in entrypoint).
+  # Always exactly 1 replica to avoid duplicate scheduled tasks.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: celery-django
+  template:
+    metadata:
+      labels:
+        app: celery-django
+        component: worker
+    spec:
+      serviceAccountName: ocpiconnector-ksa
+      terminationGracePeriodSeconds: 120
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
+      containers:
+        - name: celery-django
+          image: solidroam-app
+          args: ["celery-django"]
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+          envFrom:
+            - configMapRef:
+                name: ocpiconnector-config
+            - secretRef:
+                name: ocpiconnector-env
+          env:
+            - name: WORKER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "celery -A ocpi22.tasks inspect ping -d celery-django@$HOSTNAME --timeout 10"
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3

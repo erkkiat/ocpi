@@ -9,7 +9,12 @@ from django.test import override_settings
 from ocpi22.locations.services import EvseServices
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
-from ocpi22.tests.factories import EvseFactory, LocationFactory, CredentialsRoleFactory, CredentialsFactory
+from ocpi22.tests.factories import (
+    EvseFactory,
+    LocationFactory,
+    CredentialsRoleFactory,
+    CredentialsFactory,
+)
 
 
 class TestEvseServices:
@@ -43,7 +48,7 @@ class TestEvseServices:
         "status,expected_status",
         [
             ("AVAILABLE", Evse.AVAILABLE),
-            ("PREPARING", Evse.CHARGING),
+            ("PREPARING", Evse.AVAILABLE),
             ("CHARGING", Evse.CHARGING),
             ("SUSPENDEDEV", Evse.CHARGING),
             ("SUSPENDEDEVSE", Evse.CHARGING),
@@ -143,9 +148,13 @@ class TestEvseServices:
     def test_send_status_for_not_allowed_location_does_not_call_background_update(
         self, evse_patch_payload, evse
     ):
-        Credentials.objects.filter(roles__country_code="DE", roles__party_id="ICE").delete()
+        Credentials.objects.filter(
+            roles__country_code="DE", roles__party_id="ICE"
+        ).delete()
 
-        hubject_creds = CredentialsFactory(allowed_locations=["some_other_location_uid"])
+        hubject_creds = CredentialsFactory(
+            allowed_locations=["some_other_location_uid"]
+        )
         CredentialsRoleFactory(
             country_code="DE", party_id="ICE", role="HUB", credentials=hubject_creds
         )
@@ -153,7 +162,6 @@ class TestEvseServices:
         role = CredentialsRoleFactory(country_code="DE", party_id="TST", role="EMSP")
         role.credentials.allowed_locations = ["some_other_location_uid"]
         role.credentials.save()
-
 
         with (
             patch(

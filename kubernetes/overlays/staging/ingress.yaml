@@ -1,0 +1,30 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: staging-bia
+  namespace: staging
+spec:
+  domains:
+    - staging.evroaming.eu
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: django-app-ingress
+  namespace: staging
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "staging-bia"
+    kubernetes.io/ingress.global-static-ip-name: "staging-bia"
+spec:
+  rules:
+    - host: staging.evroaming.eu  # replace with your actual staging domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: django-app
+                port:
+                  number: 80

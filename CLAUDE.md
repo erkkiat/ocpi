@@ -1,6 +1,6 @@
 # CLAUDE.md - Guide for Agentic Coding in OCPI Connector
 
-## 🚀 Quick Start (NEW!)
+## 🚀 Quick Start
 
 Before starting any work session, generate fresh context:
 
@@ -23,6 +23,28 @@ This gives Claude instant understanding of:
 - [.claude/README.md](.claude/README.md) - System overview
 - [.claude/docs/CLAUDE_QUICK_START.md](.claude/docs/CLAUDE_QUICK_START.md) - Quick reference
 - [.claude/docs/CLAUDE_CONTEXT_README.md](.claude/docs/CLAUDE_CONTEXT_README.md) - Full guide
+
+---
+
+## Skills (ALWAYS load before writing code)
+
+Skills live in `.claude/skills/`. They work alongside context files — context gives
+project state, skills give reference knowledge. Load the relevant skill(s) before
+any code task.
+
+| Skill | When to load |
+|---|---|
+| `.claude/skills/ocpiconnector-standards/SKILL.md` | **Every code task** — naming, serializer patterns, anti-patterns, test rules, terminal rules, API framework |
+| `.claude/skills/ocpi-spec/SKILL.md` | Any task touching credentials, tokens, sessions, CDRs, locations, commands, hub routing |
+| `.claude/skills/directpayment-spec/SKILL.md` | Any task touching `ocpi22/payments/` — Terminal, FAC, PTP role, wire format |
+
+### Terminal rules
+- Terminal is already at project root — **never `cd ocpiconnector`**
+- **Always pass `projectPath: ~/ocpiconnector`** to every JetBrains tool call
+- **Always use `executeInShell: true`** and prefix commands with `source .venv/bin/activate &&`
+- **Never use `2>/dev/null`** — JetBrains terminal does not support POSIX redirects
+- Prefer `bash_tool` for file reads/greps; use JetBrains terminal for pytest/Docker/manage.py
+- Prefer `bash_tool` for file reads/greps; use JetBrains terminal for pytest/Docker/manage.py
 
 ---
 
@@ -235,26 +257,32 @@ make claude-context
 Then in Claude:
 ```
 "Read .claude_context.md and .claude_context_auto.md"
+"Read .claude/skills/ocpiconnector-standards/SKILL.md"
 "I need to add a new MQTT message type for remote diagnostics. Guide me."
 ```
 
-### 2. Understanding Existing Code
-```bash
-make claude-flow FLOW=authorization_flow
+### 2. Working on payments/DirectPayment
 ```
-Then in Claude:
-```
-"Explain how the authorization_flow works"
+"Read .claude_context.md and .claude_context_auto.md"
+"Read .claude/skills/ocpiconnector-standards/SKILL.md"
+"Read .claude/skills/directpayment-spec/SKILL.md"
 ```
 
-### 3. Generating Tests
+### 3. Debugging OCPI protocol issues
+```
+"Read .claude_context.md and .claude_context_auto.md"
+"Read .claude/skills/ocpi-spec/SKILL.md"
+```
+
+### 4. Generating Tests
 ```
 "Read .claude_context.md"
+"Read .claude/skills/ocpiconnector-standards/SKILL.md"
 "Read ocpi22/cpo/mqtt/tasks.py"
 "Generate unit tests for process_authorization_request following my test preferences"
 ```
 
-### 4. Debugging Issues
+### 5. Debugging Issues
 ```
 "Read .claude_context_auto.md - what changed recently?"
 "The authorization flow is failing. Based on recent changes, what might be wrong?"
@@ -264,28 +292,16 @@ Then in Claude:
 
 ## Key Reminders for Claude
 
-1. **Always regenerate context** before starting work: `make claude-context`
-2. **Use flows** instead of reading entire modules
-3. **Follow test preferences** strictly (see `.claude_context.md`)
-4. **Never mock business logic** - only mock boundaries
-5. **Use real DB/Redis/MQTT** in integration tests
-6. **Parametrize tests** - no ifs/loops in test code
-7. **Clear test names** that describe intention (no comments needed)
-
----
-
-## Terminal Context
-
-The PyCharm terminal is already at the project root (`ocpiconnector/`), so you don't need to `cd` into subdirectories when running commands.
-
-```bash
-# ✅ Correct
-pytest ocpi22/tests/test_auth.py
-
-# ❌ Not needed
-cd ocpiconnector
-pytest ocpi22/tests/test_auth.py
-```
+1. **Always load `ocpiconnector-standards` skill** before writing any code
+2. **Always regenerate context** before starting work: `make claude-context`
+3. **Use flows** instead of reading entire modules
+4. **Follow test preferences** strictly (see `.claude_context.md`)
+5. **Never mock business logic** - only mock boundaries
+6. **Use real DB/Redis/MQTT** in integration tests
+7. **Parametrize tests** - no ifs/loops in test code
+8. **Clear test names** that describe intention (no comments needed)
+9. **Never `cd ocpiconnector`** - terminal is already at project root
+10. **Never use `&&` or `2>/dev/null`** in JetBrains terminal
 
 ---
 

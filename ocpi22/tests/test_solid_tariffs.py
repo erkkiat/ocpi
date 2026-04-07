@@ -113,13 +113,13 @@ def smp1_update_tariff_without_msp_response():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
-        "price_per_kwh": "0.703",
-        "parking_price_per_min": "0.54",
-        "parking_price_per_hr": "0.8",
+        "price_per_kwh": 0.703,
+        "parking_price_per_min": 0.54,
+        "parking_price_per_hr": 0.8,
         "parking_grace_period": 100,
-        "price_per_min": "0.42",
-        "price_per_hr": "0.6",
-        "price_flat": "0.56",
+        "price_per_min": 0.42,
+        "price_per_hr": 0.6,
+        "price_flat": 0.56,
         "vat_percentage": "20.0",
         "last_updated": "2024-09-22T12:30:30Z",
     }
@@ -130,12 +130,12 @@ def smp1_update_response():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
-        "price_per_kwh": "0.703",
-        "price_per_min": "0.42",
-        "price_per_hr": "0.6",
-        "price_flat": "0.56",
-        "parking_price_per_min": "0.54",
-        "parking_price_per_hr": "0.8",
+        "price_per_kwh": 0.703,
+        "price_per_min": 0.42,
+        "price_per_hr": 0.6,
+        "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_price_per_hr": 0.8,
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "msp": "DE*ICE",
@@ -148,12 +148,12 @@ def smp1_create_response_no_msp():
     return {
         "external_id": "SMP1",
         "currency": "EUR",
-        "price_per_kwh": "0.69",
-        "price_per_min": "0.42",
-        "price_per_hr": "0.6",
-        "price_flat": "0.56",
-        "parking_price_per_min": "0.54",
-        "parking_price_per_hr": "0.8",
+        "price_per_kwh": 0.69,
+        "price_per_min": 0.42,
+        "price_per_hr": 0.6,
+        "price_flat": 0.56,
+        "parking_price_per_min": 0.54,
+        "parking_price_per_hr": 0.8,
         "parking_grace_period": 100,
         "vat_percentage": "20.0",
         "last_updated": "2024-09-22T12:30:30Z",
@@ -189,19 +189,19 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "post",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_401_UNAUTHORIZED,
                 id="unauthenticated_user_cannot_post_solid_tariff",
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_401_UNAUTHORIZED,
                 id="unauthenticated_user_cannot_put_solid_tariff",
             ),
             pytest.param(
                 "delete",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_401_UNAUTHORIZED,
                 id="unauthenticated_user_cannot_delete_solid_tariff",
             ),
@@ -232,19 +232,19 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "post",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_405_METHOD_NOT_ALLOWED,
                 id="authenticated_user_cannot_post_solid_tariff",
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_200_OK,
                 id="authenticated_user_can_put_solid_tariff",
             ),
             pytest.param(
                 "delete",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_403_FORBIDDEN,
                 id="authenticated_user_cannot_delete_solid_tariff",
             ),
@@ -276,19 +276,19 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "post",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_405_METHOD_NOT_ALLOWED,
                 id="admin_user_cannot_post_solid_tariff",
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_200_OK,
                 id="admin_user_can_put_solid_tariff",
             ),
             pytest.param(
                 "delete",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_403_FORBIDDEN,
                 id="admin_user_cannot_delete_solid_tariff",
             ),
@@ -320,19 +320,19 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "post",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_405_METHOD_NOT_ALLOWED,
                 id="super_user_cannot_post_solid_tariff",
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_200_OK,
                 id="super_user_can_put_solid_tariff",
             ),
             pytest.param(
                 "delete",
-                {"external_id": "SMP1", "currency": "EUR"},
+                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
                 status.HTTP_403_FORBIDDEN,
                 id="super_user_cannot_delete_solid_tariff",
             ),
@@ -475,6 +475,24 @@ class TestSolidTariffs:
         assert response_json == smp1_solid_tariff_with_zero_pricing_response
 
     @pytest.mark.django_db
+    def test_put_solid_tariffs_with_no_pricing_returns_status_code_400(
+        self,
+        authenticated_user_client,
+        msp_de_ice,
+    ):
+        url = reverse("solid-tariff-list")
+        payload = {
+            "external_id": "SMP1",
+            "currency": "EUR",
+            "vat_percentage": 20.0,
+            "msp": "DE*ICE",
+        }
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "At least one pricing field must be provided." in str(response.json())
+
+    @pytest.mark.django_db
     def test_put_solid_tariff_with_minus_pricing_returns_status_code_400(
         self,
         authenticated_user_client,
@@ -489,6 +507,34 @@ class TestSolidTariffs:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == smp1_solid_tariff_with_minus_pricing_response
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize(
+        "pricing_type, price",
+        [
+            pytest.param("price_per_kwh", "9999999.9999999", id="price_per_kwh exceeds 12 max_digits"),
+            pytest.param("price_per_kwh", "0.1234567", id="price_per_kwh exceeds 6 decimal_places"),
+            pytest.param("price_per_min", "0.12345678901", id="price_per_min exceeds 10 decimal_places"),
+        ],
+    )
+    def test_put_solid_tariff_with_too_many_digits_returns_status_code_400(
+        self,
+        authenticated_user_client,
+        msp_de_ice,
+        pricing_type,
+        price,
+    ):
+        url = reverse("solid-tariff-list")
+        payload = {
+            "external_id": "SMP1",
+            "currency": "EUR",
+            "msp": "DE*ICE",
+            pricing_type: price,
+        }
+        response = authenticated_user_client.put(url, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert pricing_type in response.json()
 
     @pytest.mark.django_db
     def test_get_solid_tariffs_returns_expected_data_records(

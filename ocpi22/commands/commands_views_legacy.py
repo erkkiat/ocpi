@@ -424,9 +424,9 @@ class CommandsViewSetLegacy(GenericViewSet):
                 unlock_connector=request.build_absolute_uri(
                     reverse("commands-unlock-connector", request=request)
                 ),
-                reserve_now=request.build_absolute_uri(
-                    reverse("commands-reserve-now", request=request)
-                ),
+                # reserve_now=request.build_absolute_uri(
+                #     reverse("commands-reserve-now", request=request)
+                # ),
                 # command_result=request.build_absolute_uri(reverse('commands-command-result')),
             )
         )
