@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from django.contrib.auth.models import Permission
@@ -871,3 +871,93 @@ class TestSolidTariffs:
             saved_data == expected_json,
             f"Mismatch:\nExpected: {expected_json}\nActual: {saved_data}",
         )
+
+
+@pytest.fixture
+def five_solid_tariffs(operator_fi_cpo):
+    return [
+        SolidTariffFactory(
+            external_id=f"TARIFF-{i:02d}",
+            currency="EUR",
+            price_per_kwh=float(i) * 0.1,
+            operator=operator_fi_cpo,
+            last_updated=datetime(2024, 1, i, tzinfo=timezone.utc),
+        )
+        for i in range(1, 6)
+    ]
+
+
+class TestSolidTariffListPagination:
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_without_limit_returns_all_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url)
+
+        data = response.json()
+        results = data["results"] if "results" in data else data
+        assert response.status_code == status.HTTP_200_OK
+        assert len(results) == 5
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_limit_2_returns_2_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 2})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert len(data["results"]) == 2
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_limit_2_returns_paginated_response_details(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 2})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert "count" in data
+        assert "results" in data
+        assert "next" in data
+        assert "previous" in data
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_offset_3_returns_2_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 10, "offset": 3})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert len(data["results"]) == 2
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_page_1_and_page_2_do_not_overlap(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        page1 = authenticated_user_client.get(url, {"limit": 2, "offset": 0}).json()
+        page2 = authenticated_user_client.get(url, {"limit": 2, "offset": 2}).json()
+
+        page1_ids = {r["external_id"] for r in page1["results"]}
+        page2_ids = {r["external_id"] for r in page2["results"]}
+        assert page1_ids.isdisjoint(page2_ids)
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_offset_beyond_total_returns_empty_results(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 10, "offset": 100})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert data["results"] == []
