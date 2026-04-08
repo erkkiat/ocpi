@@ -543,46 +543,22 @@ class HubjectService:
             PricingProductData=pricing_product_data,
         )
 
-    def post_pricing_products_full_load(
-        self, operator_id: str, payload: ERoamingPushPricingProductData
-    ) -> dict:
-        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
+    def post_pricing_products(
+        self, payload: ERoamingPushPricingProductData
+    ) -> None:
+        operator_id = payload.PricingProductData.OperatorID.root
+        url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
 
         try:
             payload_json = payload.model_dump(mode="json")
+        except PydanticSerializationError:
+            logger.exception("Failed to serialize pricing product payload")
+            return
 
-            response = HubjectService._get_request().post(
-                full_load_url,
-                json=payload_json,
-                timeout=HubjectService.FULL_LOAD_TIMEOUT,
-            )
-            if response.status_code == 200:
-                return response.json()
-            else:
-                try:
-                    response_json = response.json()
-                    formatted_errors = HubjectService.parse_hubject_validation_errors(
-                        response_json, payload
-                    )
-                except JSONDecodeError:
-                    formatted_errors = f"{response.status_code} : {response.text}"
-
-                logger.error(
-                    f"Hubject Pricing Product full load failed with status code {response.status_code}",
-                    extra={"response_text": formatted_errors},
-                )
-                return {
-                    "success": False,
-                    "errorType": "HTTP Error",
-                    "error": formatted_errors,
-                }
-        except PydanticSerializationError as e:
-            logger.exception("Pydantic validation failed")
-            return {
-                "success": False,
-                "errorType": "Pydantic validation failed",
-                "error": str(e),
-            }
+        credentials_id = HubjectService._get_hubject_credentials_id()
+        send_hubject_request.delay(
+            payload_json, url, self.FULL_LOAD_TIMEOUT, credentials_id, method="post"
+        )
 
     def evse_product_id_map_generator(self, evses: QuerySet) -> defaultdict:
         evse_pricing_product_id_map = defaultdict(list)
