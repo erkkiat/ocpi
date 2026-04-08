@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - serviceaccount.yaml
-  - secret-provider-class.yaml
+  - external-secret.yaml
   - service-django-app.yaml
   - deployment-django-app.yaml
   - deployment-celery-django.yaml
