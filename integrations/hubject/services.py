@@ -600,6 +600,65 @@ class HubjectService:
 
         return evse_pricing_product_id_map
 
+    def get_pricing_product_insert_payload(
+        self, solid_tariff: SolidTariff
+    ) -> ERoamingPushPricingProductData:
+        default_tariff = self.get_default_tariffs()
+        operator_name = solid_tariff.operator.business_details.name
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
+        pricing_product_data: PricingProductData = self.converter.convert_to_pricing_product_data(
+            [solid_tariff],
+            default_tariff,
+            operator_id,
+            operator_name,
+        )
+        return self.get_push_pricing_product_data_payload(
+            pricing_product_data, ActionType.insert
+        )
+
+    def get_evse_pricing_update_payload_for_tariff(
+        self, solid_tariff: SolidTariff
+    ) -> ERoamingPushEVSEPricing | None:
+        from ocpi22.cpo.repositories import EvseRepository
+
+        evses = EvseRepository.find_evses_by_ocpi_tariff(solid_tariff.ocpi_tariff)
+        if not evses.exists():
+            logger.info(
+                f"No EVSEs found for SolidTariff {solid_tariff.external_id}, skipping EVSE pricing update"
+            )
+            return None
+
+        evse_product_id_map = self.evse_product_id_map_generator(evses)
+        evse_pricing_items = [
+            EVSEPricingItem(
+                EvseID=evse_id,
+                ProviderID=ProviderIDAsterisk("*"),
+                EvseIDProductList=product_ids,
+            )
+            for evse_id, product_ids in evse_product_id_map.items()
+        ]
+        return ERoamingPushEVSEPricing(
+            ActionType=ActionType.update, EVSEPricing=evse_pricing_items
+        )
+
+    def post_evse_pricing_update_for_tariff(self, solid_tariff: SolidTariff) -> None:
+        try:
+            payload = self.get_evse_pricing_update_payload_for_tariff(solid_tariff)
+        except (ValueError, ValidationError):
+            logger.error("Failed to build EVSE pricing update payload", exc_info=True)
+            return
+
+        if payload is None:
+            return
+
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
+        url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
+        payload_json = payload.model_dump(mode="json")
+        cred_id = HubjectService._get_hubject_credentials_id()
+        send_hubject_request.delay(
+            payload_json, url, self.FULL_LOAD_TIMEOUT, cred_id, method="post"
+        )
+
     def get_evse_pricing_product_data_full_load_payload(
         self, evse_product_id_map: dict
     ) -> ERoamingPushEVSEPricing:
