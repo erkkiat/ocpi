@@ -18,6 +18,7 @@ from integrations.hubject.schemas import (
 )
 from integrations.hubject.services import HubjectService
 from ocpi22.choices import OcpiRolesEnum
+from ocpi22.cpo.schemas import Error
 from ocpi22.models.tariff import SolidTariff
 from ocpiconnector.ocpi_identities import get_our_party, get_our_identity
 from integrations.hubject.urls import api, remote_command_router
@@ -38,9 +39,9 @@ def update_oicp_evses_by_operator(request):
 
 
 @api.post(
-    "/pricing-products/full-load/", url_name="hubject-pricing-full-load", response=Dict
+    "/pricing-products/full-load/", url_name="hubject-pricing-full-load", response={202: Dict, 400: Error, 404: Error}
 )
-def start_pricing_product_full_load(request) -> dict:
+def start_pricing_product_full_load(request):
     party = get_our_party(OcpiRolesEnum.CPO)
     try:
         pricing_product_data: PricingProductData = (
@@ -51,13 +52,12 @@ def start_pricing_product_full_load(request) -> dict:
             pricing_product_data, ActionType.fullLoad
         )
 
-        return hubject_service.post_pricing_products_full_load(
-            get_our_identity(OcpiRolesEnum.CPO.value), payload
-        )
+        hubject_service.post_pricing_products(payload)
+        return 202, {"message": "Pricing product full load is accepted"}
     except SolidTariff.DoesNotExist:
-        return {"success": False, "message": f"No Solid Tariffs found for {str(party)}"}
+        return 404, Error(message=f"No Solid Tariffs found for {str(party)}")
     except ValidationError as e:
-        return {"success": False, "message": f"Validation error: {str(e)}"}
+        return 400, Error(message=f"Validation error: {str(e)}")
 
 
 @api.post(
