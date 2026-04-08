@@ -120,22 +120,16 @@ class TestHubjectApi:
         response = authenticated_user_client.post(url)
         assert response.status_code == 202
 
-    @responses.activate
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_200_OK(
-        self, authenticated_user_client, hubject_successful_response, smp1_solid_tariff
+        self, authenticated_user_client, smp1_solid_tariff
     ):
-        responses.add(
-            responses.POST,
-            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/FI*CPO/pricing-products",
-            json=hubject_successful_response,
-            status=200,
-        )
-
         url = "/api/hubject/2.3/pricing-products/full-load/"
-        response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == hubject_successful_response
+        with patch("ocpi22.tasks.send_hubject_request.delay"):
+            response = authenticated_user_client.post(url)
+
+        assert response.status_code == 202
+        assert response.json() == {"message": "Pricing product full load is accepted"}
 
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_no_solid_tariffs_found(
