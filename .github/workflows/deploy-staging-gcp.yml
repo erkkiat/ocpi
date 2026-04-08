@@ -172,7 +172,7 @@ jobs:
           set -euo pipefail
           gcloud run jobs deploy solidroam-migrate-staging \
             --image="${IMAGE}" \
-            --entrypoint="python" \
+            --command="python" \
             --args="manage.py,migrate,--noinput" \
             --region="${GCP_REGION}" \
             --project="${GCP_PROJECT_ID}" \
