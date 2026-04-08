@@ -163,6 +163,9 @@ jobs:
       IMAGE_TAG: ${{ needs.build-staging-gke.outputs.image_tag }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Authenticate to Google Cloud (OIDC)
         uses: google-github-actions/auth@v2
         with:
@@ -180,9 +183,6 @@ jobs:
             --location=${{ secrets.GKE_CLUSTER_LOCATION }} \
             --project="${GCP_PROJECT_ID}" \
             --quiet
-
-      - name: Checkout code
-        uses: actions/checkout@v3
 
       - name: Set up Kustomize
         run: |
