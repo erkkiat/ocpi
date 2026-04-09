@@ -1,7 +1,6 @@
 import pytest
 
-from ocpi22.cpo.services import SolidTariffService
-from ocpi22.cpo.tariff_alt_text import build_tariff_alt_text
+from ocpi22.cpo.services import SolidTariffService, build_tariff_alt_text
 
 
 def _build(**overrides):
