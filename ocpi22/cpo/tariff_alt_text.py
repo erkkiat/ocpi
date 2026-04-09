@@ -121,11 +121,15 @@ def build_tariff_alt_text(
 ) -> List[Tuple[str, str]]:
     """Return a list of `(language, text)` tuples for EN/FR/NL.
 
-    Returns an empty list when all components are None. Zero values are
-    treated as valid (e.g. free time-based charging) and are included.
+    Always returns one entry per supported language. Zero values are treated
+    as valid (e.g. free time-based charging) and are included. Raises
+    ``ValueError`` if all components are None — callers must ensure at least
+    one component is set before calling.
     """
     if not has_price_components(per_kwh, per_hr, flat, parking_per_hr):
-        return []
+        raise ValueError(
+            "At least one price component must be set (per_kwh, per_hr, flat, or parking_per_hr)"
+        )
 
     return [
         (

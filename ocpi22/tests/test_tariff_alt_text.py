@@ -105,16 +105,16 @@ def test_build_tariff_alt_text(kwargs, expected_en, expected_fr, expected_nl):
     assert result["nl"] == expected_nl
 
 
-def test_build_tariff_alt_text_returns_empty_when_no_components():
-    result = build_tariff_alt_text(
-        per_kwh=None,
-        per_hr=None,
-        flat=None,
-        parking_per_hr=None,
-        parking_grace_minutes=None,
-        currency="EUR",
-    )
-    assert result == []
+def test_build_tariff_alt_text_raises_when_no_components():
+    with pytest.raises(ValueError, match="price component"):
+        build_tariff_alt_text(
+            per_kwh=None,
+            per_hr=None,
+            flat=None,
+            parking_per_hr=None,
+            parking_grace_minutes=None,
+            currency="EUR",
+        )
 
 
 def test_build_tariff_alt_text_zero_additives_are_displayed():
