@@ -12,7 +12,9 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
 
 from ocpi22.cpo.repositories import SolidTariffRepository
+from ocpi22.cpo.tariff_alt_text import build_tariff_alt_text, has_price_components
 from ocpi22.models.cdrlocation import CdrLocation
+from ocpi22.models.displaytext import DisplayText
 from ocpi22.models.session import ChargingPeriodSerializer
 from ocpi22.models.tariff import SolidTariff, Tariff, TariffElement, PriceComponent
 from ocpi22.ocpi.util import generate_cdr_uid
@@ -56,6 +58,16 @@ class SolidTariffService:
             if parking_price_per_hr is None
             else parking_price_per_hr
         )
+
+        # The Payter terminal requires a non-empty tariff_alt_text, which we
+        # build from the price fields below. A SolidTariff with no price
+        # components would produce an empty alt_text and break the terminal,
+        # so reject it here before any DB writes happen.
+        if not has_price_components(per_kwh, per_hr, flat, parking_price_per_hr):
+            raise ValidationError(
+                "At least one of price_per_kwh, price_per_min/hr, price_flat, "
+                "or parking_price_per_min/hr is required"
+            )
 
         validated_data["price_per_hr"] = per_hr
         validated_data["parking_price_per_hr"] = parking_price_per_hr
@@ -130,7 +142,9 @@ class SolidTariffService:
 
     def _convert_to_hourly(self, per_minute_value):
         try:
-            return float(per_minute_value) * 60 if per_minute_value is not None else None
+            return (
+                float(per_minute_value) * 60 if per_minute_value is not None else None
+            )
         except (ValueError, TypeError):
             return None
 
@@ -177,6 +191,16 @@ class SolidTariffService:
 
             self._create_price_components(
                 ocpi_tariff, per_kwh, per_hr, flat, parking_price_per_hr, vat
+            )
+
+            self._set_tariff_alt_text(
+                ocpi_tariff,
+                per_kwh=per_kwh,
+                per_hr=per_hr,
+                flat=flat,
+                parking_per_hr=parking_price_per_hr,
+                parking_grace_minutes=grace_period,
+                currency=currency,
             )
 
             ocpi_tariff.post_process_after_update_or_create()
@@ -231,6 +255,33 @@ class SolidTariffService:
                     vat=vat,
                     step_size=1,
                 )
+
+    def _set_tariff_alt_text(
+        self,
+        tariff: Tariff,
+        *,
+        per_kwh: Optional[float],
+        per_hr: Optional[float],
+        flat: Optional[float],
+        parking_per_hr: Optional[float],
+        parking_grace_minutes: Optional[int],
+        currency: str,
+    ) -> None:
+        """Populate `tariff.tariff_alt_text` with one DisplayText per supported
+        language. The OCPI tariff is brand new (a fresh UUID is minted on every
+        SolidTariff create/update), so no clear-existing step is needed.
+        """
+        entries = build_tariff_alt_text(
+            per_kwh=per_kwh,
+            per_hr=per_hr,
+            flat=flat,
+            parking_per_hr=parking_per_hr,
+            parking_grace_minutes=parking_grace_minutes,
+            currency=currency,
+        )
+        for language, text in entries:
+            display_text = DisplayText.objects.create(language=language, text=text)
+            tariff.tariff_alt_text.add(display_text)
 
     def _send_updates_to_attached_connectors(self, old_solid_tariff, new_solid_tariff):
         for connector in old_solid_tariff.ocpi_tariff.connectors.all():
