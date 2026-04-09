@@ -18,6 +18,13 @@ spec:
     spec:
       serviceAccountName: ocpiconnector-ksa
       terminationGracePeriodSeconds: 60
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
       containers:
         - name: django-app
           image: solidroam-app
@@ -26,6 +33,10 @@ spec:
             - name: http
               containerPort: 8000
               protocol: TCP
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
           envFrom:
             - configMapRef:
                 name: ocpiconnector-config

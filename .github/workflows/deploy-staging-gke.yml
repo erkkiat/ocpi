@@ -215,13 +215,6 @@ jobs:
           kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
           kustomize build . | kubectl apply -f -
 
-          # Wait for External Secrets Operator to sync ocpiconnector-env secret before migration runs
-          echo "Waiting for ExternalSecret to sync..."
-          kubectl wait externalsecret/ocpiconnector-secrets \
-            --for=condition=Ready \
-            --namespace=staging \
-            --timeout=60s
-
           echo "Waiting for migration job django-migrate to complete..."
           kubectl wait job/django-migrate \
             --for=condition=complete \
