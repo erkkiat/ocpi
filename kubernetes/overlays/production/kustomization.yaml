@@ -25,14 +25,30 @@ patches:
         value:
           iam.gke.io/gcp-service-account: ocpiconnector-production@PROJECT_ID.iam.gserviceaccount.com
 
-  # SecretStore — production GCP project for External Secrets Operator
+  # SecretProviderClass — production secrets from GCP Secret Manager
   - target:
-      kind: SecretStore
-      name: ocpiconnector-secret-store
+      kind: SecretProviderClass
+      name: ocpiconnector-secrets
     patch: |-
       - op: replace
-        path: /spec/provider/gcpsm/projectID
-        value: REPLACE_WITH_PROJECT_ID
+        path: /spec/parameters/secrets
+        value: |
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/DATABASE_URL/versions/latest"
+            fileName: "DATABASE_URL"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/REDIS_URL/versions/latest"
+            fileName: "REDIS_URL"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SECRET_KEY/versions/latest"
+            fileName: "SECRET_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ALLOWED_HOSTS/versions/latest"
+            fileName: "ALLOWED_HOSTS"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+            fileName: "HUBJECT_CLIENT_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_PRIVATE_KEY/versions/latest"
+            fileName: "HUBJECT_PRIVATE_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CA_CERTIFICATE/versions/latest"
+            fileName: "HUBJECT_CA_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SENTRY_DSN/versions/latest"
+            fileName: "SENTRY_DSN"
 
   # django-app — scale up replicas for production
   - target:

@@ -9,10 +9,21 @@ spec:
     spec:
       serviceAccountName: ocpiconnector-ksa
       restartPolicy: Never
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
       containers:
         - name: migrate
           image: solidroam-app
           command: ["python", "manage.py", "migrate", "--noinput"]
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
           envFrom:
             - configMapRef:
                 name: ocpiconnector-config

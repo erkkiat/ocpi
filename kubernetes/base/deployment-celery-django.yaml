@@ -22,10 +22,21 @@ spec:
     spec:
       serviceAccountName: ocpiconnector-ksa
       terminationGracePeriodSeconds: 120
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
       containers:
         - name: celery-django
           image: solidroam-app
           args: ["celery-django"]
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
           envFrom:
             - configMapRef:
                 name: ocpiconnector-config
