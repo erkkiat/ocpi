@@ -606,9 +606,7 @@ class TestStartSessionAPI:
             location=location,
             status="AVAILABLE",
         )
-        ConnectorFactory(
-            uid=valid_start_session_data["connector_id"], evse=evse
-        )
+        ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
         response = client.post(
             "/ocpi/2.2.1/commands/START_SESSION",
@@ -820,14 +818,22 @@ class TestStartSessionAPI:
 
         location = LocationFactory(uid=valid_start_session_data["location_id"])
         evse = EvseFactory(
-            uid=valid_start_session_data["evse_uid"], location=location, status="AVAILABLE"
+            uid=valid_start_session_data["evse_uid"],
+            location=location,
+            status="AVAILABLE",
         )
         ConnectorFactory(uid=valid_start_session_data["connector_id"], evse=evse)
 
-        assert CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first() is None
+        assert (
+            CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first()
+            is None
+        )
 
         responses.add(
-            responses.POST, active_start_webhook.url, json={"data": {"result": "ACCEPTED"}}, status=200
+            responses.POST,
+            active_start_webhook.url,
+            json={"data": {"result": "ACCEPTED"}},
+            status=200,
         )
 
         response = client.post(
@@ -841,7 +847,9 @@ class TestStartSessionAPI:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        nl_msp_role = CredentialsRole.objects.filter(country_code="NL", party_id="MSP").first()
+        nl_msp_role = CredentialsRole.objects.filter(
+            country_code="NL", party_id="MSP"
+        ).first()
         assert nl_msp_role is not None
         assert Session.objects.filter(billed_to=nl_msp_role).exists()
 

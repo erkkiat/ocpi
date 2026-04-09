@@ -77,7 +77,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self) -> str:
         if hasattr(self, "kwargs") and "terminal_id" in self.kwargs:
-            return f'Terminal {self.kwargs.get("terminal_id")}'
+            return f"Terminal {self.kwargs.get('terminal_id')}"
         return "Payment Terminals"
 
     def get_queryset(self):

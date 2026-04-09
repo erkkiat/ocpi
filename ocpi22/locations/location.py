@@ -51,7 +51,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Location {self.kwargs.get("uid")}'
+            return f"Location {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Locations"
@@ -169,8 +169,8 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if serializer.is_valid():
             created = bool(not existing_location)
             logger.info(
-                f'{"Creating" if created else "Updating"}'
-                f' Location {credentialsrole} - {uid}.'
+                f"{'Creating' if created else 'Updating'}"
+                f" Location {credentialsrole} - {uid}."
             )
             saved_location = serializer.save(ocpi_master=credentialsrole)
             saved_location.send_hub_updates()
@@ -219,7 +219,7 @@ class ConnectorViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Connector {self.kwargs.get("uid")}'
+            return f"Connector {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Connectors"
@@ -314,7 +314,7 @@ class EvseViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Evse {self.kwargs.get("uid")}'
+            return f"Evse {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Evse"

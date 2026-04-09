@@ -118,8 +118,8 @@ class StripePayments:
         )
         if not payment:
             logger.error(
-                f'Reservation has been made, but cannot create Payment in local database for '
-                f'user {user.pk} for amount {amount}: {pi.get("id")}'
+                f"Reservation has been made, but cannot create Payment in local database for "
+                f"user {user.pk} for amount {amount}: {pi.get('id')}"
             )
             return HttpResponse(
                 "Reservation was made, but storing it to local database failed. Capture will not work",
@@ -186,7 +186,7 @@ class PaymentViewSet(viewsets.ViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Payment {self.kwargs.get("uid")}'
+            return f"Payment {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Payments"

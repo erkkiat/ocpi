@@ -162,7 +162,9 @@ class SolidEvse(BaseSchema):
     connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
-    floor_level: SkipJsonSchema[Optional[Annotated[str, StringConstraints(max_length=4)]]] = None
+    floor_level: SkipJsonSchema[
+        Optional[Annotated[str, StringConstraints(max_length=4)]]
+    ] = None
     coordinates: SkipJsonSchema[Optional[GeoLocation]] = None
     physical_reference: SkipJsonSchema[
         Optional[Annotated[str, StringConstraints(max_length=16)]]

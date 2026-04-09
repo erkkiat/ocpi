@@ -1589,4 +1589,3 @@ class TestStartCommandServiceStartSession:
         )
 
         mock_create_callback.assert_called_once()
-

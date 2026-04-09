@@ -46,8 +46,8 @@ class FlowchartViewSet(viewsets.GenericViewSet):
         )
         result = (
             f'<div class="mermaid" style="min-width: 800px">\n{self.message}\n\nflowchart LR;'
-            '\nlinkStyle default stroke-width:3px;\n'
-            f'{"".join(steps)}\n{self.flowchart["process"]}\n'
-            f'{"".join(colors)}\n{"".join(links)}</div>'
+            "\nlinkStyle default stroke-width:3px;\n"
+            f"{''.join(steps)}\n{self.flowchart['process']}\n"
+            f"{''.join(colors)}\n{''.join(links)}</div>"
         )
         return result
