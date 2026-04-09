@@ -852,8 +852,7 @@ expected_get_headers = {
         "Content-Length": "835",
         "Content-Language": "en",
         "Content-Type": "application/json",
-        "Link": "<http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3; "
-        'rel="next">',
+        "Link": '<http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3; rel="next">',
         "Vary": "Accept, Accept-Language, Cookie, origin",
         "X-Frame-Options": "DENY",
         "X-Limit": "50",
@@ -1441,7 +1440,7 @@ class StopTransactionResponses:
                 [
                     ("id", "HELSINKI-1"),
                     ("address", "Helsinki 12"),
-                    ("name", "Helsinki " "Supercharger"),
+                    ("name", "Helsinki Supercharger"),
                     ("city", "Helsinki"),
                     ("postal_code", "-"),
                     ("country", "FIN"),
@@ -1553,7 +1552,7 @@ class StopTransactionResponses:
                 [
                     ("id", "HELSINKI-1"),
                     ("address", "Helsinki 12"),
-                    ("name", "Helsinki " "Supercharger"),
+                    ("name", "Helsinki Supercharger"),
                     ("city", "Helsinki"),
                     ("postal_code", "-"),
                     ("country", "FIN"),

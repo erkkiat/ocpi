@@ -111,7 +111,7 @@ class TokenAdmin(SolidModelAdmin):
 
         return format_html(
             f'<a href="{reverse("admin:auth_user_change", args=[obj.customer.pk])}">'
-            f'{obj.customer.first_name} {obj.customer.last_name}</a>'
+            f"{obj.customer.first_name} {obj.customer.last_name}</a>"
         )
 
     fieldsets = [

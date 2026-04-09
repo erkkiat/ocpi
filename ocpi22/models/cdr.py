@@ -262,9 +262,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     def total_cost(self):
         return (
-            f'{"-" if self.credit else ""}'
-            f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}'
-            f'{" (credited)" if self.credit else ""}'
+            f"{'-' if self.credit else ''}"
+            f"{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}"
+            f"{' (credited)' if self.credit else ''}"
         )
 
     def total_session_time(self):

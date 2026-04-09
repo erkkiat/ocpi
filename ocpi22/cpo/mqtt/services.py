@@ -177,7 +177,9 @@ def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topi
         token=token if isinstance(token, Token) else None,
     )
     try:
-        authorization: TokenAuthorization = authorize_token(token_dto, evse.location, evse_id=evse.evse_id)
+        authorization: TokenAuthorization = authorize_token(
+            token_dto, evse.location, evse_id=evse.evse_id
+        )
         if not authorization or authorization.allowed != AuthorizationEnum.ALLOWED:
             logger.warning(
                 f"Authorization was not allowed by any msps for provided token: {token_auth_message.token_id}"

@@ -441,10 +441,10 @@ class DefaultTariffs(models.Model):
 
     def __str__(self):
         # noinspection PyUnresolvedReferences
-        return f'{self.get_standard_display()} defaults to tariffs {", ".join(str(t) for t in self.tariffs.all())}'
+        return f"{self.get_standard_display()} defaults to tariffs {', '.join(str(t) for t in self.tariffs.all())}"
 
     def tariff_list(self):
-        return f'{", ".join(str(t) for t in self.tariffs.all())}'
+        return f"{', '.join(str(t) for t in self.tariffs.all())}"
 
 
 @receiver(pre_save, sender=Tariff)

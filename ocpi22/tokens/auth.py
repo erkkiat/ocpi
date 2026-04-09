@@ -206,7 +206,9 @@ def authorize_token(
                 )
 
         # Not AD HOC, so Token should be found from database
-        authorization: TokenAuthorization = _authorize_token(token_dto, location, request=request, evse_id=evse_id)
+        authorization: TokenAuthorization = _authorize_token(
+            token_dto, location, request=request, evse_id=evse_id
+        )
         if (
             authorization
             and authorization.is_positive
@@ -241,7 +243,9 @@ def _authorize_token(
     Request authorization for a token we know, and consider that authorization valid for the next 15 minutes
     (OCPI requirement)
     """
-    parties = find_authorize_party_details(request, token_dto, location.uid if location else "")
+    parties = find_authorize_party_details(
+        request, token_dto, location.uid if location else ""
+    )
     if token_dto.adhoc:
         # This is an unfamiliar Token, send OCPI Authorize request to all MSPs and see if anyone knows it
         messages.info(
@@ -282,9 +286,7 @@ def _authorize_token(
     return authorize_with_msps_sync(token_dto, parties, location)
 
 
-def find_authorize_party_details(
-    request, token_dto: TokenDto, location_uid: str
-):
+def find_authorize_party_details(request, token_dto: TokenDto, location_uid: str):
     if token_dto.adhoc:
         return find_endpoints_by_roles(
             (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
