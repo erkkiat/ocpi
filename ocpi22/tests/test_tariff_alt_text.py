@@ -1,6 +1,6 @@
 import pytest
 
-from ocpi22.cpo.services import SolidTariffService, build_tariff_alt_text
+from ocpi22.cpo.services import SolidTariffService, TariffAltTextGenerator
 
 
 def _build(**overrides):
@@ -13,7 +13,7 @@ def _build(**overrides):
         currency="EUR",
     )
     defaults.update(overrides)
-    return dict(build_tariff_alt_text(**defaults))
+    return dict(TariffAltTextGenerator.build(**defaults))
 
 
 @pytest.mark.parametrize(
@@ -106,7 +106,7 @@ def test_build_tariff_alt_text(kwargs, expected_en, expected_fr, expected_nl):
 
 def test_build_tariff_alt_text_raises_when_no_components():
     with pytest.raises(ValueError, match="price component"):
-        build_tariff_alt_text(
+        TariffAltTextGenerator.build(
             per_kwh=None,
             per_hr=None,
             flat=None,
@@ -118,7 +118,7 @@ def test_build_tariff_alt_text_raises_when_no_components():
 
 def test_build_tariff_alt_text_zero_additives_are_displayed():
     result = dict(
-        build_tariff_alt_text(
+        TariffAltTextGenerator.build(
             per_kwh=None,
             per_hr=0.0,
             flat=None,

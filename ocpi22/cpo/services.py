@@ -21,136 +21,128 @@ from ocpi22.models.session import Session
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Tariff alt-text helpers
-# Build short, multi-language strings for display on payment terminals (e.g.
-# Payter). Format: energy → time → flat → parking.
-# ---------------------------------------------------------------------------
 
-_TARIFF_ALT_TEXT_LANGUAGES: Tuple[str, ...] = ("en", "fr", "nl")
+class TariffAltTextGenerator:
+    _LANGUAGES: Tuple[str, ...] = ("en", "fr", "nl")
+    _LABELS = {
+        "en": {
+            "hour_unit": "h",
+            "time_suffix": " charging",
+            "flat_suffix": " starting fee",
+            "parking_suffix": " parking",
+            "parking_grace": " parking after {minutes}min",
+        },
+        "fr": {
+            "hour_unit": "h",
+            "time_suffix": " recharge",
+            "flat_suffix": " frais de démarrage",
+            "parking_suffix": " stationnement",
+            "parking_grace": " stationnement après {minutes}min",
+        },
+        "nl": {
+            "hour_unit": "u",
+            "time_suffix": " opladen",
+            "flat_suffix": " startkost",
+            "parking_suffix": " parkeren",
+            "parking_grace": " parkeren na {minutes}min",
+        },
+    }
 
-_TARIFF_ALT_TEXT_LABELS = {
-    "en": {
-        "hour_unit": "h",
-        "time_suffix": " charging",
-        "flat_suffix": " starting fee",
-        "parking_suffix": " parking",
-        "parking_grace": " parking after {minutes}min",
-    },
-    "fr": {
-        "hour_unit": "h",
-        "time_suffix": " recharge",
-        "flat_suffix": " frais de démarrage",
-        "parking_suffix": " stationnement",
-        "parking_grace": " stationnement après {minutes}min",
-    },
-    "nl": {
-        "hour_unit": "u",
-        "time_suffix": " opladen",
-        "flat_suffix": " startkost",
-        "parking_suffix": " parkeren",
-        "parking_grace": " parkeren na {minutes}min",
-    },
-}
+    @staticmethod
+    def has_price_components(
+        per_kwh: Optional[float],
+        per_hr: Optional[float],
+        flat: Optional[float],
+        parking_per_hr: Optional[float],
+    ) -> bool:
+        return any(v is not None for v in (per_kwh, per_hr, flat, parking_per_hr))
 
+    @classmethod
+    def _fmt_amount(cls, amount: float, currency: str, language: str) -> str:
+        decimal_sep = "." if language == "en" else ","
+        formatted = f"{amount:.2f}".replace(".", decimal_sep)
+        if currency == "EUR":
+            return f"{formatted}€" if language == "fr" else f"€{formatted}"
+        return f"{currency} {formatted}"
 
-def _fmt_tariff_amount(amount: float, currency: str, language: str) -> str:
-    decimal_sep = "." if language == "en" else ","
-    formatted = f"{amount:.2f}".replace(".", decimal_sep)
-    if currency == "EUR":
-        return f"{formatted}€" if language == "fr" else f"€{formatted}"
-    return f"{currency} {formatted}"
+    @classmethod
+    def _fmt_rate(cls, amount: float, unit: str, currency: str, language: str) -> str:
+        return f"{cls._fmt_amount(amount, currency, language)}/{unit}"
 
+    @classmethod
+    def _build_for_language(
+        cls,
+        language: str,
+        *,
+        per_kwh: Optional[float],
+        per_hr: Optional[float],
+        flat: Optional[float],
+        parking_per_hr: Optional[float],
+        parking_grace_minutes: Optional[int],
+        currency: str,
+    ) -> str:
+        labels = cls._LABELS[language]
+        components: List[str] = []
 
-def _fmt_tariff_rate(amount: float, unit: str, currency: str, language: str) -> str:
-    return f"{_fmt_tariff_amount(amount, currency, language)}/{unit}"
+        if per_kwh is not None:
+            components.append(cls._fmt_rate(per_kwh, "kWh", currency, language))
 
-
-def has_price_components(
-    per_kwh: Optional[float],
-    per_hr: Optional[float],
-    flat: Optional[float],
-    parking_per_hr: Optional[float],
-) -> bool:
-    return any(v is not None for v in (per_kwh, per_hr, flat, parking_per_hr))
-
-
-def _build_alt_text_for_language(
-    language: str,
-    *,
-    per_kwh: Optional[float],
-    per_hr: Optional[float],
-    flat: Optional[float],
-    parking_per_hr: Optional[float],
-    parking_grace_minutes: Optional[int],
-    currency: str,
-) -> str:
-    labels = _TARIFF_ALT_TEXT_LABELS[language]
-    components: List[str] = []
-
-    if per_kwh is not None:
-        components.append(_fmt_tariff_rate(per_kwh, "kWh", currency, language))
-
-    if per_hr is not None:
-        components.append(
-            _fmt_tariff_rate(per_hr, labels["hour_unit"], currency, language)
-            + labels["time_suffix"]
-        )
-
-    if flat is not None:
-        components.append(
-            _fmt_tariff_amount(flat, currency, language) + labels["flat_suffix"]
-        )
-
-    if parking_per_hr is not None:
-        rate = _fmt_tariff_rate(parking_per_hr, labels["hour_unit"], currency, language)
-        if parking_grace_minutes and parking_grace_minutes > 0:
+        if per_hr is not None:
             components.append(
-                rate + labels["parking_grace"].format(minutes=parking_grace_minutes)
+                cls._fmt_rate(per_hr, labels["hour_unit"], currency, language)
+                + labels["time_suffix"]
             )
-        else:
-            components.append(rate + labels["parking_suffix"])
 
-    return " + ".join(components)
+        if flat is not None:
+            components.append(
+                cls._fmt_amount(flat, currency, language) + labels["flat_suffix"]
+            )
 
+        if parking_per_hr is not None:
+            rate = cls._fmt_rate(
+                parking_per_hr, labels["hour_unit"], currency, language
+            )
+            if parking_grace_minutes and parking_grace_minutes > 0:
+                components.append(
+                    rate + labels["parking_grace"].format(minutes=parking_grace_minutes)
+                )
+            else:
+                components.append(rate + labels["parking_suffix"])
 
-def build_tariff_alt_text(
-    *,
-    per_kwh: Optional[float],
-    per_hr: Optional[float],
-    flat: Optional[float],
-    parking_per_hr: Optional[float],
-    parking_grace_minutes: Optional[int],
-    currency: str,
-) -> List[Tuple[str, str]]:
-    """Return one ``(language, text)`` tuple per supported language (EN/FR/NL).
+        return " + ".join(components)
 
-    Raises ``ValueError`` if all components are None — callers must ensure at
-    least one component is set. Zero values are valid (e.g. free charging).
-    """
-    if not has_price_components(per_kwh, per_hr, flat, parking_per_hr):
-        raise ValueError(
-            "At least one price component must be set (per_kwh, per_hr, flat, or parking_per_hr)"
-        )
+    @classmethod
+    def build(
+        cls,
+        *,
+        per_kwh: Optional[float],
+        per_hr: Optional[float],
+        flat: Optional[float],
+        parking_per_hr: Optional[float],
+        parking_grace_minutes: Optional[int],
+        currency: str,
+    ) -> List[Tuple[str, str]]:
+        if not cls.has_price_components(per_kwh, per_hr, flat, parking_per_hr):
+            raise ValueError(
+                "At least one price component must be set (per_kwh, per_hr, flat, or parking_per_hr)"
+            )
 
-    return [
-        (
-            language,
-            _build_alt_text_for_language(
+        return [
+            (
                 language,
-                per_kwh=per_kwh,
-                per_hr=per_hr,
-                flat=flat,
-                parking_per_hr=parking_per_hr,
-                parking_grace_minutes=parking_grace_minutes,
-                currency=currency,
-            ),
-        )
-        for language in _TARIFF_ALT_TEXT_LANGUAGES
-    ]
+                cls._build_for_language(
+                    language,
+                    per_kwh=per_kwh,
+                    per_hr=per_hr,
+                    flat=flat,
+                    parking_per_hr=parking_per_hr,
+                    parking_grace_minutes=parking_grace_minutes,
+                    currency=currency,
+                ),
+            )
+            for language in cls._LANGUAGES
+        ]
 
-
-# ---------------------------------------------------------------------------
 
 if typing.TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
@@ -193,7 +185,9 @@ class SolidTariffService:
         # build from the price fields below. A SolidTariff with no price
         # components would produce an empty alt_text and break the terminal,
         # so reject it here before any DB writes happen.
-        if not has_price_components(per_kwh, per_hr, flat, parking_price_per_hr):
+        if not TariffAltTextGenerator.has_price_components(
+            per_kwh, per_hr, flat, parking_price_per_hr
+        ):
             raise ValidationError(
                 "At least one of price_per_kwh, price_per_min/hr, price_flat, "
                 "or parking_price_per_min/hr is required"
@@ -397,11 +391,7 @@ class SolidTariffService:
         parking_grace_minutes: Optional[int],
         currency: str,
     ) -> None:
-        """Populate `tariff.tariff_alt_text` with one DisplayText per supported
-        language. The OCPI tariff is brand new (a fresh UUID is minted on every
-        SolidTariff create/update), so no clear-existing step is needed.
-        """
-        entries = build_tariff_alt_text(
+        entries = TariffAltTextGenerator.build(
             per_kwh=per_kwh,
             per_hr=per_hr,
             flat=flat,
