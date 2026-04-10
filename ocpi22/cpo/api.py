@@ -515,17 +515,16 @@ class ChargePointViewSet(FlowchartViewSet):
                     next_url = reverse("chargepoint-start-transaction")
 
                     evse: Evse = serializer.validated_data.get("evse")
-                    token: Union[Token, str] = (
-                        serializer.validated_data.get("token")
-                    )
+                    token: Union[Token, str] = serializer.validated_data.get("token")
                     data["token"] = get_token_id(token)
                     token_dto = TokenDto(
                         uid=data["token"],
                         adhoc=isinstance(token, str),
                         token=token if isinstance(token, Token) else None,
                     )
-                    authorization: TokenAuthorization = authorize_token(token_dto, evse.location, request=request,
-                                                                        evse_id=evse.evse_id)
+                    authorization: TokenAuthorization = authorize_token(
+                        token_dto, evse.location, request=request, evse_id=evse.evse_id
+                    )
 
                     if (
                         not authorization
@@ -679,14 +678,19 @@ class ChargePointViewSet(FlowchartViewSet):
                         return Response(session_serializer.data)
 
                     # For AUTH_REQUEST and WHITELIST methods, perform full transaction start
-                    token = Token.get_if_exists(uid__iexact=session.cdr_token.uid) or session.cdr_token.uid
+                    token = (
+                        Token.get_if_exists(uid__iexact=session.cdr_token.uid)
+                        or session.cdr_token.uid
+                    )
                     token_dto = TokenDto(
                         uid=token.uid if isinstance(token, Token) else token,
                         adhoc=isinstance(token, str),
                         token=token if isinstance(token, Token) else None,
                     )
-                    authorization: TokenAuthorization = authorize_token(token_dto,
-                                                                        evse_id=session.evse.evse_id if session.evse else None)
+                    authorization: TokenAuthorization = authorize_token(
+                        token_dto,
+                        evse_id=session.evse.evse_id if session.evse else None,
+                    )
 
                     if not authorization:
                         return Response(
@@ -1324,7 +1328,9 @@ def update_location(request, location: SolidLocation):
         saved_location = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
             saved_location
         )
-        location_out = LocationOut.model_validate(saved_location).model_dump(exclude_none=True)
+        location_out = LocationOut.model_validate(saved_location).model_dump(
+            exclude_none=True
+        )
 
         return status_code, location_out
     except ValidationError as e:

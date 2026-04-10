@@ -39,8 +39,8 @@ def log_ocpi_activity(host: str) -> None:
 
 def log_error(request=None, s: str = None, **kwargs) -> None:
     error_message = (
-        f'{s} ({str(get_sender_party(request.META)) if request and getattr(request, "META", None) else ""} '
-        f'server: {settings.HOSTNAME})'
+        f"{s} ({str(get_sender_party(request.META)) if request and getattr(request, 'META', None) else ''} "
+        f"server: {settings.HOSTNAME})"
     )
     if SLACK_WEBHOOK:
         requests.post(url=SLACK_WEBHOOK, json=dict(text=error_message))

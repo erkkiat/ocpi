@@ -337,12 +337,10 @@ def test_create_price_components_with_zero_prices_creates_price_components(
         vat=0,
     )
 
-    price_components = PriceComponent.objects.filter(
-        tariff_element__tariff=tariff
-    )
-    assert price_components.count() == 4, (
-        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
-    )
+    price_components = PriceComponent.objects.filter(tariff_element__tariff=tariff)
+    assert (
+        price_components.count() == 4
+    ), f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
     for component in price_components:
         assert component.price == 0
 
@@ -365,12 +363,10 @@ def test_create_price_components_with_zero_kwh_price_creates_single_price_compon
         vat=0,
     )
 
-    price_components = PriceComponent.objects.filter(
-        tariff_element__tariff=tariff
-    )
-    assert price_components.count() == 1, (
-        f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
-    )
+    price_components = PriceComponent.objects.filter(tariff_element__tariff=tariff)
+    assert (
+        price_components.count() == 1
+    ), f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
     component = price_components.first()
     assert component.type == "ENERGY"
     assert component.price == 0
@@ -408,9 +404,9 @@ def test_create_solid_tariff_with_zero_prices_creates_price_components(
     price_components = PriceComponent.objects.filter(
         tariff_element__tariff=solid_tariff.ocpi_tariff
     )
-    assert price_components.count() == 4, (
-        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
-    )
+    assert (
+        price_components.count() == 4
+    ), f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
     for component in price_components:
         assert component.price == 0
 
@@ -439,9 +435,9 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
         tariff_element__tariff=solid_tariff.ocpi_tariff,
         type="TIME",
     )
-    assert price_components.count() == 1, (
-        f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
-    )
+    assert (
+        price_components.count() == 1
+    ), f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
     assert price_components.first().price == 0
 
 
@@ -487,10 +483,12 @@ def test_create_solid_tariff_with_zero_per_min_does_not_create_duplicate_on_seco
     solid_tariff_service_instance.create(data_first)
     solid_tariff_service_instance.create(data_second)
 
-    count = SolidTariff.objects.filter(external_id=validated_data["external_id"]).count()
-    assert count == 1, (
-        f"Expected 1 SolidTariff after two identical requests, got {count}"
-    )
+    count = SolidTariff.objects.filter(
+        external_id=validated_data["external_id"]
+    ).count()
+    assert (
+        count == 1
+    ), f"Expected 1 SolidTariff after two identical requests, got {count}"
 
 
 @pytest.mark.django_db

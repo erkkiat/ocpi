@@ -34,7 +34,7 @@ class CommandsHubViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'HUB Command {self.kwargs.get("uid")}'
+            return f"HUB Command {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "HUB Commands"

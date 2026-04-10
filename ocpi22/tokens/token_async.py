@@ -102,7 +102,7 @@ def process_task_result(successful_task) -> dict | None:
         response_data["responding_party"] = task_name
         token = response_data.get("token", {})
         response_data["msp"] = (
-            f'{token.get("country_code", "")}*{token.get("party_id", "")}'
+            f"{token.get('country_code', '')}*{token.get('party_id', '')}"
         )
         return response_data
     return None

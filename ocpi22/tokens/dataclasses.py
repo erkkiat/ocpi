@@ -16,6 +16,7 @@ class PartyDetails:
     task_name: str
     auth_priority: int
 
+
 @dataclass
 class TokenDto:
     uid: str

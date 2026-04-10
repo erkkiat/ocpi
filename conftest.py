@@ -150,6 +150,7 @@ def hubject_credentials() -> Credentials:
         credentials=credentials,
     ).credentials
 
+
 @pytest.fixture
 async def hubject_credentials_async():
     HubjectService._get_hubject_credentials_id.cache_clear()
@@ -158,10 +159,11 @@ async def hubject_credentials_async():
         party_id="ICE",
         role=OcpiRolesEnum.HUB.value,
         business_details__name="Hubject",
-        credentials__auth_priority=2
+        credentials__auth_priority=2,
     )
     yield creds_role
     await sync_to_async(creds_role.credentials.delete)()
+
 
 @pytest.fixture
 def clear_hubject_credentials_role():
@@ -173,9 +175,9 @@ def clear_hubject_credentials_role():
     get_our_credentialsrole.cache_clear()
     get_credentialsrole.cache_clear()
     find_credentials.cache_clear()
-    
+
     country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
-    
+
     roles = CredentialsRole.objects.filter(
         country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
     )

@@ -217,7 +217,7 @@ class TestSolidTariffs:
     def test_unauthenticated_user_cannot_delete_solid_tariff_by_external_id_returns_401_unauthorized(
         self, client
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = client.delete(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -264,7 +264,7 @@ class TestSolidTariffs:
     def test_authenticated_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, authenticated_user_client, smp1_solid_tariff_with_all_records_json
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = authenticated_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -308,7 +308,7 @@ class TestSolidTariffs:
     def test_admin_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, admin_user_client, smp1_solid_tariff_with_all_records_json
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = admin_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -359,7 +359,7 @@ class TestSolidTariffs:
     ):
         permission = Permission.objects.get(codename="delete_solidtariff")
         super_user.user_permissions.set([permission])
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
@@ -369,7 +369,7 @@ class TestSolidTariffs:
         delete_permissions_for_super_user,
         solid_tariff_smp1_msp1,
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -380,7 +380,7 @@ class TestSolidTariffs:
         solid_tariff_smp1_msp1,
         super_user_with_delete_solid_tariff_permission,
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
@@ -512,9 +512,21 @@ class TestSolidTariffs:
     @pytest.mark.parametrize(
         "pricing_type, price",
         [
-            pytest.param("price_per_kwh", "9999999.9999999", id="price_per_kwh exceeds 12 max_digits"),
-            pytest.param("price_per_kwh", "0.1234567", id="price_per_kwh exceeds 6 decimal_places"),
-            pytest.param("price_per_min", "0.12345678901", id="price_per_min exceeds 10 decimal_places"),
+            pytest.param(
+                "price_per_kwh",
+                "9999999.9999999",
+                id="price_per_kwh exceeds 12 max_digits",
+            ),
+            pytest.param(
+                "price_per_kwh",
+                "0.1234567",
+                id="price_per_kwh exceeds 6 decimal_places",
+            ),
+            pytest.param(
+                "price_per_min",
+                "0.12345678901",
+                id="price_per_min exceeds 10 decimal_places",
+            ),
         ],
     )
     def test_put_solid_tariff_with_too_many_digits_returns_status_code_400(
@@ -574,7 +586,7 @@ class TestSolidTariffs:
     def test_retrieve_nonexistent_solid_tariff_returns_404(
         self, authenticated_user_client
     ):
-        url = f'{reverse("solid-tariff-list")}NONEXISTENT/'
+        url = f"{reverse('solid-tariff-list')}NONEXISTENT/"
         response = authenticated_user_client.get(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -594,7 +606,7 @@ class TestSolidTariffs:
         invalid_country_code = "ZM"
         invalid_party_id = "SPP"
         url = (
-            f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
+            f"{reverse('solid-tariff-list')}{invalid_country_code}/{invalid_party_id}/"
         )
         response = authenticated_user_client.get(url)
 
@@ -615,7 +627,7 @@ class TestSolidTariffs:
         invalid_country_code = "ZM"
         invalid_party_id = "SPP"
         url = (
-            f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
+            f"{reverse('solid-tariff-list')}{invalid_country_code}/{invalid_party_id}/"
         )
         response = authenticated_user_client.get(url)
 

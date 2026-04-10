@@ -51,7 +51,7 @@ class OCPIHubMiddleware:
                 # Ok, it's not JSON, we can't route it over OCPI
                 pass
             except Exception as e:
-                logging.error(f'Unable to route to {to if to else ""}: {e}')
+                logging.error(f"Unable to route to {to if to else ''}: {e}")
                 return JsonResponse(
                     data=format_ocpi_response(
                         status_message="Unable to route this message due to unknown reason",
