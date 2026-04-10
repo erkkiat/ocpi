@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal, InvalidOperation
 import typing
 import uuid
 from datetime import datetime
@@ -154,9 +155,11 @@ class SolidTariffService:
     def _convert_to_hourly(self, per_minute_value):
         try:
             return (
-                float(per_minute_value) * 60 if per_minute_value is not None else None
+                Decimal(str(per_minute_value)) * 60
+                if per_minute_value is not None
+                else None
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, InvalidOperation):
             return None
 
     def _set_missing_fields(self, validated_data):

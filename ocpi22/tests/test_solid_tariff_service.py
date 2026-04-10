@@ -1,4 +1,5 @@
 import copy
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -100,9 +101,9 @@ def test_set_missing_fields(
 @pytest.mark.parametrize(
     "per_minute_value, expected_result",
     [
-        (0, 0.0),
-        (0.5, 30.0),
-        (1.0, 60.0),
+        (0, Decimal("0")),
+        (0.5, Decimal("30.0")),
+        (1.0, Decimal("60.0")),
         (None, None),
         ("", None),
         (
