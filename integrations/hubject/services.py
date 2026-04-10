@@ -543,9 +543,7 @@ class HubjectService:
             PricingProductData=pricing_product_data,
         )
 
-    def post_pricing_products(
-        self, payload: ERoamingPushPricingProductData
-    ) -> None:
+    def post_pricing_products(self, payload: ERoamingPushPricingProductData) -> None:
         operator_id = payload.PricingProductData.OperatorID.root
         url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
 
@@ -606,11 +604,13 @@ class HubjectService:
         default_tariff = self.get_default_tariffs()
         operator_name = solid_tariff.operator.business_details.name
         operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
-        pricing_product_data: PricingProductData = self.converter.convert_to_pricing_product_data(
-            [solid_tariff],
-            default_tariff,
-            operator_id,
-            operator_name,
+        pricing_product_data: PricingProductData = (
+            self.converter.convert_to_pricing_product_data(
+                [solid_tariff],
+                default_tariff,
+                operator_id,
+                operator_name,
+            )
         )
         return self.get_push_pricing_product_data_payload(
             pricing_product_data, ActionType.insert
@@ -653,7 +653,11 @@ class HubjectService:
 
         operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
         url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
-        payload_json = payload.model_dump(mode="json")
+        try:
+            payload_json = payload.model_dump(mode="json")
+        except PydanticSerializationError:
+            logger.exception("Failed to serialize EVSE pricing update payload")
+            return
         cred_id = HubjectService._get_hubject_credentials_id()
         send_hubject_request.delay(
             payload_json, url, self.FULL_LOAD_TIMEOUT, cred_id, method="post"
