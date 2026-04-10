@@ -165,7 +165,7 @@ class LocationService:
         raise ValidationError(serializer.errors)
 
     def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
-        for evse in location.get("evses") or []:
+        for evse in location.get("evses") or ():
             for connector in evse["connectors"]:
                 if connector.get("tariff_ids"):
                     solid_tariff_ids = []

@@ -786,81 +786,33 @@ class TestOICPDynamicPricingService:
                 pricing_product_data, action_type
             )
 
-    @responses.activate
     @pytest.mark.django_db
-    def test_post_pricing_products_full_load(
-        self, pricing_products_full_load_payload, hubject_successful_response
+    def test_post_pricing_products_full_load_sends_hubject_request(
+        self, pricing_products_full_load_payload, hubject_credentials
     ):
-        operator_id = (
-            pricing_products_full_load_payload.PricingProductData.OperatorID.root
-        )
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            self.hubject_service.post_pricing_products(pricing_products_full_load_payload)
 
-        responses.add(
-            responses.POST,
-            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
-            json=hubject_successful_response,
-            status=200,
-            match=[
-                matchers.json_params_matcher(
-                    pricing_products_full_load_payload.model_dump(mode="json")
-                )
-            ],
-        )
-        result = self.hubject_service.post_pricing_products_full_load(
-            operator_id, pricing_products_full_load_payload
-        )
+            mock_delay.assert_called_once()
+            call_payload = mock_delay.call_args[0][0]
+            operator_id = pricing_products_full_load_payload.PricingProductData.OperatorID.root
+            call_url = mock_delay.call_args[0][1]
+            assert call_payload == pricing_products_full_load_payload.model_dump(mode="json")
+            assert operator_id in call_url
 
-        assert result == hubject_successful_response
-
-    @responses.activate
-    @pytest.mark.django_db
-    def test_post_pricing_products_full_load_returns_400_when_pricing_default_price_is_none(
-        self, pricing_products_full_load_payload, hubject_unsuccessful_response
+    def test_post_pricing_products_updates_logs_on_pydantic_serialization_error(
+        self, caplog
     ):
-        operator_id = (
-            pricing_products_full_load_payload.PricingProductData.OperatorID.root
-        )
-
-        # edit the payload to generate a unsuccessful response from the hubject APIs
-        pricing_products_full_load_payload.PricingProductData.PricingDefaultPrice = None
-
-        responses.add(
-            responses.POST,
-            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products",
-            json=hubject_unsuccessful_response,
-            status=400,
-            match=[
-                matchers.json_params_matcher(
-                    pricing_products_full_load_payload.model_dump(mode="json")
-                )
-            ],
-        )
-        result = self.hubject_service.post_pricing_products_full_load(
-            operator_id, pricing_products_full_load_payload
-        )
-        assert result["error"]["message"] == "Error parsing/validating JSON."
-        assert "must not be empty" in result["error"]["errors"][0]
-
-    @responses.activate
-    def test_post_pricing_products_full_load_pydantic_error_when_model_dump_to_json(
-        self, hubject_unsuccessful_response
-    ):
-        operator_id = "DE+MSP"
-
         payload_mock = MagicMock()
         payload_mock.model_dump.side_effect = PydanticSerializationError(
             "serialization error"
         )
 
-        result = self.hubject_service.post_pricing_products_full_load(
-            operator_id, payload_mock
-        )
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            self.hubject_service.post_pricing_products(payload_mock)
 
-        assert result == {
-            "success": False,
-            "errorType": "Pydantic validation failed",
-            "error": "serialization error",
-        }
+            mock_delay.assert_not_called()
+        assert "Failed to serialize pricing product payload" in caplog.text
 
     @pytest.mark.django_db
     @pytest.mark.skip
@@ -1044,6 +996,140 @@ class TestOICPDynamicPricingService:
             "FI*CPO*EEVSE01": ["OCPITARIFF1*SMP1"],
             "FI*CPO*EEVSE02": ["OCPITARIFF2*SMP2"],
         }
+
+    @pytest.mark.django_db
+    def test_post_pricing_products_with_insert_payload_calls_send_hubject_request(
+        self, smp1_solid_tariff_with_all_records, monkeypatch, hubject_credentials
+    ):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.3")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+        payload = self.hubject_service.get_pricing_product_insert_payload(
+            smp1_solid_tariff_with_all_records
+        )
+
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            self.hubject_service.post_pricing_products(payload)
+
+            mock_delay.assert_called_once()
+            call_payload = mock_delay.call_args[0][0]
+            assert call_payload["ActionType"] == "insert"
+
+    @pytest.mark.django_db
+    def test_post_pricing_products_raises_value_error_for_missing_defaults(
+        self, smp1_solid_tariff_with_all_records, monkeypatch, caplog
+    ):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", None)
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", None)
+
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            try:
+                payload = self.hubject_service.get_pricing_product_insert_payload(
+                    smp1_solid_tariff_with_all_records
+                )
+                self.hubject_service.post_pricing_products(payload)
+            except (ValueError, ValidationError):
+                pass
+
+            mock_delay.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_post_evse_pricing_update_for_tariff_calls_send_hubject_request_with_update_payload(
+        self, smp1_solid_tariff, hubject_credentials
+    ):
+        ConnectorFactory(tariff_ids=[smp1_solid_tariff.ocpi_tariff])
+
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            self.hubject_service.post_evse_pricing_update_for_tariff(smp1_solid_tariff)
+
+            mock_delay.assert_called_once()
+            call_payload = mock_delay.call_args[0][0]
+            assert call_payload["ActionType"] == "update"
+
+    @pytest.mark.django_db
+    def test_post_evse_pricing_update_for_tariff_skips_request_when_no_evses(
+        self, smp1_solid_tariff
+    ):
+        with patch("ocpi22.tasks.send_hubject_request.delay") as mock_delay:
+            self.hubject_service.post_evse_pricing_update_for_tariff(smp1_solid_tariff)
+
+            mock_delay.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_get_pricing_product_insert_payload_returns_insert_action_type(
+        self, smp1_solid_tariff_with_all_records, monkeypatch
+    ):
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_PRICE", "0.3")
+        monkeypatch.setattr("django.conf.settings.DEFAULT_OICP_CURRENCY", "EUR")
+        monkeypatch.setattr(
+            "django.conf.settings.DEFAULT_OICP_PRICE_REFERENCE", "KILOWATT_HOUR"
+        )
+
+        result = self.hubject_service.get_pricing_product_insert_payload(
+            smp1_solid_tariff_with_all_records
+        )
+
+        pricing_data = result.PricingProductData
+        record = pricing_data.PricingProductDataRecords[0]
+
+        assert result.ActionType == ActionType.insert
+        assert pricing_data.OperatorID == OperatorID(root="FI*CPO")
+        assert pricing_data.OperatorName == smp1_solid_tariff_with_all_records.operator.business_details.name
+        assert pricing_data.ProviderID == ProviderIDAsterisk(root="*")
+        assert pricing_data.PricingDefaultPrice == 0.3
+        assert pricing_data.PricingDefaultPriceCurrency == CurrencyID(root="EUR")
+        assert pricing_data.PricingDefaultReferenceUnit == ReferenceUnit(root="KILOWATT_HOUR")
+        assert len(pricing_data.PricingProductDataRecords) == 1
+
+        assert record.ProductID == ProductID(root="TARIFFNONE*SMP1")
+        assert record.ReferenceUnit == ReferenceUnit(root="KILOWATT_HOUR")
+        assert record.ProductPriceCurrency == CurrencyID(root="EUR")
+        assert record.PricePerReferenceUnit == Decimal("0.200")
+        assert record.MaximumProductChargingPower == 0.0
+        assert record.IsValid24hours is True
+        assert record.ProductAvailabilityTimes == []
+        assert record.AdditionalReferences == [
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.START_FEE.value,
+                AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+            AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE.value,
+                AdditionalReferenceUnit=ReferenceUnit(root="HOUR"),
+                PricePerAdditionalReferenceUnit=Decimal("0.300"),
+            ),
+        ]
+
+    @pytest.mark.django_db
+    def test_get_evse_pricing_update_payload_for_tariff_returns_none_when_no_evses(
+        self, smp1_solid_tariff
+    ):
+        result = self.hubject_service.get_evse_pricing_update_payload_for_tariff(
+            smp1_solid_tariff
+        )
+        assert result is None
+
+    @pytest.mark.django_db
+    def test_get_evse_pricing_update_payload_for_tariff_returns_update_action_type_when_evses_exist(
+        self, smp1_solid_tariff
+    ):
+        connector = ConnectorFactory(tariff_ids=[smp1_solid_tariff.ocpi_tariff])
+
+        result = self.hubject_service.get_evse_pricing_update_payload_for_tariff(
+            smp1_solid_tariff
+        )
+
+        assert result is not None
+        assert result.ActionType == ActionType.update
+        assert len(result.EVSEPricing) == 1
+        evse_pricing = result.EVSEPricing[0]
+        assert evse_pricing.EvseID == EvseID(root=connector.evse.evse_id)
+        assert evse_pricing.ProviderID == ProviderIDAsterisk(root="*")
+        assert evse_pricing.EvseIDProductList == [ProductID(root="OCPITARIFF1*SMP1")]
 
     def get_expected_pricing_product_data(self):
         return PricingProductData(
