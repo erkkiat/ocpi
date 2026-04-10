@@ -107,7 +107,13 @@ class SolidTariffService:
                     saved_solid_tariff.external_id,
                     exc_info=True,
                 )
-            service.post_evse_pricing_update_for_tariff(saved_solid_tariff)
+            try:
+                service.post_evse_pricing_update_for_tariff(saved_solid_tariff)
+            except (ValueError, ValidationError):
+                logger.error(
+                    f"Failed to post EVSE pricing update for SolidTariff {saved_solid_tariff.external_id}",
+                    exc_info=True,
+                )
 
         return saved_solid_tariff
 
