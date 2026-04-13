@@ -116,16 +116,13 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "No tools available. Tools will be added in separate PRs.",
-                            }
-                        ]
+                    "error": {
+                        "code": -32601,
+                        "message": "No tools available in foundation branch",
                     },
                     "id": request_id,
-                }
+                },
+                status=400,
             )
 
         else:

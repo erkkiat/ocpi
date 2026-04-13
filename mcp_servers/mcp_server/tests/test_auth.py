@@ -126,3 +126,25 @@ class TestApiKeyAuthentication:
         with pytest.raises(Exception):  # IntegrityError
             api_key2 = ApiKey(user=user, name="Test Key 2", key=api_key1.key)
             api_key2.save()
+
+    def test_api_key_str_representation(self):
+        """Test that ApiKey string representation is correct"""
+        user = User.objects.create_user(username="testuser", password="testpass")
+        api_key = ApiKey.objects.create(user=user, name="Test Key")
+
+        assert str(api_key) == "Test Key (testuser)"
+
+    def test_api_key_update_last_used_method(self):
+        """Test the update_last_used method directly"""
+        user = User.objects.create_user(username="testuser", password="testpass")
+        api_key = ApiKey.objects.create(user=user, name="Test Key")
+
+        # Initially last_used should be None
+        assert api_key.last_used is None
+
+        # Call update_last_used directly
+        api_key.update_last_used()
+
+        # Refresh from database
+        api_key.refresh_from_db()
+        assert api_key.last_used is not None

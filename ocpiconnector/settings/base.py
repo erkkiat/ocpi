@@ -324,6 +324,7 @@ INSTALLED_APPS = [
     "ninja_jwt",
     "ninja_extra",
     "axes",
+    "mcp_servers.mcp_server",
 ]
 
 CORS_ORIGIN_ALLOW_ALL = env_bool("CORS_ALLOW_ALL_ORIGINS", False)

@@ -159,12 +159,12 @@ class TestMCPEndpoint:
         assert "Method not found" in data["error"]["message"]
 
     def test_tools_call_unknown_tool(self, api_client):
-        """Test tools/call with unknown tool returns error"""
+        """Test tools/call returns error in foundation branch (no tools)"""
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "unknown_tool",
+                "name": "any_tool",
                 "arguments": {},
             },
             "id": 1,
@@ -178,7 +178,7 @@ class TestMCPEndpoint:
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
         assert data["error"]["code"] == -32601
-        assert "Unknown tool" in data["error"]["message"]
+        assert "No tools available in foundation branch" in data["error"]["message"]
 
     def test_authentication_required(self):
         """Test that authentication is required"""
@@ -222,115 +222,6 @@ class TestMCPEndpoint:
         response = client.get("/api/cpo/v2/tariffs/")
         assert response.status_code in [401, 403]  # Unauthorized or forbidden
 
-    def test_tools_call_get_cdr_with_uid(self, api_client):
-        """Test tools/call get_cdr with uid parameter"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {"uid": "NONEXISTENT"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-        assert "Error" in data["result"]["content"][0]["text"]
-
-    def test_tools_call_get_cdr_with_session_id(self, api_client):
-        """Test tools/call get_cdr with session_id parameter"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {"session_id": "NONEXISTENT"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-        assert "Error" in data["result"]["content"][0]["text"]
-
-    def test_tools_call_get_cdr_with_legacy_query(self, api_client):
-        """Test tools/call get_cdr with legacy query parameter"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {"query": "uid:NONEXISTENT"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-        assert "Error" in data["result"]["content"][0]["text"]
-
-    def test_tools_call_list_cdrs_by_token(self, api_client):
-        """Test tools/call list_cdrs_by_token"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "list_cdrs_by_token",
-                "arguments": {"query": "NONEXISTENT"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-        assert "No CDRs found" in data["result"]["content"][0]["text"]
-
-    def test_tools_call_list_cdrs_by_token_empty_query(self, api_client):
-        """Test tools/call list_cdrs_by_token with empty query"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "list_cdrs_by_token",
-                "arguments": {"query": ""},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "Error" in data["result"]["content"][0]["text"]
-
     def test_missing_jsonrpc_field(self, api_client):
         """Test missing jsonrpc field returns 400"""
         payload = {
@@ -356,66 +247,3 @@ class TestMCPEndpoint:
         )
 
         assert response.status_code == 400
-
-    def test_tools_call_get_cdr_with_pipe_separated(self, api_client):
-        """Test tools/call get_cdr with pipe-separated legacy format"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {"query": "uid1|session1"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-
-    def test_tools_call_get_cdr_session_id_prefix(self, api_client):
-        """Test tools/call get_cdr with session_id: prefix"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {"query": "session_id:TEST123"},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "content" in data["result"]
-
-    def test_tools_call_get_cdr_no_params(self, api_client):
-        """Test tools/call get_cdr without any parameters"""
-        payload = {
-            "jsonrpc": "2.0",
-            "method": "tools/call",
-            "params": {
-                "name": "get_cdr",
-                "arguments": {},
-            },
-            "id": 1,
-        }
-        response = api_client.post(
-            "/mcp/", data=json.dumps(payload), content_type="application/json"
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["jsonrpc"] == "2.0"
-        assert "result" in data
-        assert "Error" in data["result"]["content"][0]["text"]

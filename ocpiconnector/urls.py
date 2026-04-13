@@ -118,6 +118,7 @@ urlpatterns = [
     path("_nested_admin/", include("nested_admin.urls")),
     path("api/hubject/2.3/", hubject_api.urls),
     path("/health-check", health_check_api.urls),
+    path("mcp/", include("mcp_servers.mcp_server.urls")),
 ]
 
 if settings.SERVE_STATIC_FILES or settings.DEBUG:
