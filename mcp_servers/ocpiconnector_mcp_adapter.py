@@ -11,9 +11,6 @@ Following the adapter integration principles:
 - Implement async tool functions that call the HTTP endpoint
 - Forward tool parameters to the Django endpoint via JSON-RPC
 - Parse response and return text content
-
-Note: Tools are added in separate PRs. This foundation provides the infrastructure
-for the adapter without any specific tool implementations.
 """
 
 import os
@@ -55,6 +52,74 @@ async def call_http_endpoint(method: str, params: dict | None = None) -> dict:
         return response.json()
     except httpx.HTTPError as e:
         raise Exception(f"HTTP error: {str(e)}")
+
+
+@mcp.tool()
+async def get_cdr(uid: str | None = None, session_id: str | None = None) -> str:
+    """
+    Retrieve Charge Detail Record (CDR) information by UID or session ID.
+
+    Args:
+        uid: The unique identifier of the CDR (optional if session_id is provided)
+        session_id: The session ID (optional if uid is provided)
+
+    Returns:
+        Markdown formatted CDR details including timing, token details, location,
+        EVSE information, session data, costs, and associated tariffs.
+    """
+    if not uid and not session_id:
+        raise ValueError("Either uid or session_id must be provided")
+
+    try:
+        result = await call_http_endpoint(
+            "tools/call",
+            {"name": "get_cdr", "arguments": {"uid": uid, "session_id": session_id}},
+        )
+
+        if "result" in result:
+            content = result["result"].get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "No data returned")
+        elif "error" in result:
+            raise Exception(
+                f"Error from server: {result['error'].get('message', 'Unknown error')}"
+            )
+
+        return "No data returned"
+    except Exception as e:
+        raise Exception(f"Failed to retrieve CDR: {str(e)}")
+
+
+@mcp.tool()
+async def list_cdrs_by_token(query: str) -> str:
+    """
+    List Charge Detail Records (CDRs) filtered by RFID token with server-side paging.
+
+    Args:
+        query: Pipe-separated parameters: "rfid_token|last_cdr_uid"
+               Example: "TOKEN001" for first page, "TOKEN001|CDR-005" for next page
+
+    Returns:
+        Markdown formatted list of CDRs with next page query if available.
+    """
+    try:
+        result = await call_http_endpoint(
+            "tools/call",
+            {"name": "list_cdrs_by_token", "arguments": {"query": query}},
+        )
+
+        if "result" in result:
+            content = result["result"].get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "No data returned")
+        elif "error" in result:
+            raise Exception(
+                f"Error from server: {result['error'].get('message', 'Unknown error')}"
+            )
+
+        return "No data returned"
+    except Exception as e:
+        raise Exception(f"Failed to list CDRs: {str(e)}")
 
 
 if __name__ == "__main__":

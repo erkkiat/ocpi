@@ -85,7 +85,7 @@ class TestMCPEndpoint:
         assert response.status_code == 204
 
     def test_tools_list_method(self, api_client):
-        """Test tools/list method returns empty tools list (foundation PR)"""
+        """Test tools/list method returns available tools"""
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/list",
@@ -102,7 +102,10 @@ class TestMCPEndpoint:
         assert "result" in data
         assert "tools" in data["result"]
         tools = data["result"]["tools"]
-        assert len(tools) == 0
+        assert len(tools) == 2
+        tool_names = [tool["name"] for tool in tools]
+        assert "get_cdr" in tool_names
+        assert "list_cdrs_by_token" in tool_names
         assert data["id"] == 1
 
     def test_invalid_json(self, api_client):

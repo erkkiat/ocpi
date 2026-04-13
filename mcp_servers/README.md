@@ -4,7 +4,7 @@ This directory contains an internal MCP (Model Context Protocol) server implemen
 
 ## Overview
 
-The MCP server provides AI agents with access to OCPI data through the MCP protocol. Tools are added in separate PRs - this foundation PR provides the infrastructure (authentication, JSON-RPC endpoint, tool registration framework) without any specific tool implementations.
+The MCP server provides AI agents with access to OCPI data through the MCP protocol. The first available tool retrieves Charge Detail Records (CDR) by UID or session ID, including related tariffs and session information in a human/AI-readable markdown format.
 
 ## Implementation Principles
 
@@ -66,7 +66,7 @@ curl -X POST http://localhost:8000/mcp/ \
   }'
 ```
 
-**Example: Call Tool (No Tools Available)**
+**Example: Call CDR Tool**
 ```bash
 curl -X POST http://localhost:8000/mcp/ \
   -H "Authorization: Bearer <your_api_key>" \
@@ -75,14 +75,34 @@ curl -X POST http://localhost:8000/mcp/ \
     "jsonrpc": "2.0",
     "method": "tools/call",
     "params": {
-      "name": "any_tool",
-      "arguments": {}
+      "name": "get_cdr",
+      "arguments": {
+        "uid": "CDR001"
+      }
     },
     "id": 1
   }'
 ```
 
-Note: Tools are added in separate PRs. The `tools/call` endpoint will return "No tools available" until tools are implemented.
+## Available Tools
+
+### get_cdr
+
+Retrieves Charge Detail Record (CDR) information by UID or session ID.
+
+**Parameters:**
+- `uid` (string, optional): The unique identifier of the CDR
+- `session_id` (string, optional): The session ID
+
+**Returns:** Markdown formatted CDR details including:
+- Timing information (start, end, duration)
+- Token information (UID, type, contract ID)
+- Location information (address, coordinates)
+- EVSE information (connector details)
+- Session details (status, energy charged)
+- Cost information (currency, total cost)
+- Associated tariffs with pricing details
+- OCPI metadata
 
 ## File Structure
 
@@ -93,8 +113,8 @@ mcp-servers/
 │   ├── apps.py                # Django app configuration
 │   ├── models.py              # ApiKey model
 │   ├── authentication.py      # API key authentication class
-│   ├── server.py              # MCP server implementation (tool registration)
-│   ├── tools.py               # Tool implementations (empty in foundation PR)
+│   ├── server.py              # MCP server implementation
+│   ├── tools.py               # CDR tool implementation
 │   ├── views.py               # Django view for MCP endpoint
 │   ├── urls.py                # URL routing
 │   ├── admin.py               # Django admin configuration
@@ -104,13 +124,10 @@ mcp-servers/
 │   └── tests/                 # Pytest tests
 │       ├── __init__.py
 │       ├── test_auth.py
-│       ├── test_server.py
-│       └── test_views.py
-├── ocpiconnector_mcp_adapter.py  # Claude Desktop adapter (empty in foundation PR)
-├── IMPLEMENTATION_PRINCIPLES.md  # Tool implementation guidelines
-├── claude_desktop_config.json    # Claude Desktop configuration
-├── .env                         # Environment variables
-└── README.md                    # This file
+│       └── test_cdr_tool.py
+├── .env                       # Environment variables
+├── venv/                      # Virtual environment (can be removed)
+└── README.md                  # This file
 ```
 
 ## Testing
@@ -139,14 +156,12 @@ Tests follow the detailed guidelines in `IMPLEMENTATION_PRINCIPLES.md`, includin
 
 ## Future Enhancements
 
-Tools will be added in separate PRs. Potential tool additions:
-- CDR tools (Charge Detail Records)
-- Session tools
-- Location tools
-- Tariff tools
-- Other OCPI data access tools
-
-Each tool will be added as an independent PR that depends only on this foundation infrastructure, allowing tools to be merged in any order.
+Potential additions:
+- Additional MCP tools for other OCPI data (Sessions, Locations, Tariffs)
+- Rate limiting for API keys
+- API key expiration
+- Audit logging
+- Resource-based permissions
 
 ## Dependencies
 
