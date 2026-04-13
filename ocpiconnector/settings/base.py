@@ -320,6 +320,7 @@ INSTALLED_APPS = [
     "gdpr_assist",
     "corsheaders",
     "payment",
+    "mcp_servers.mcp_server",
     "drf_yasg",
     "ninja_jwt",
     "ninja_extra",
