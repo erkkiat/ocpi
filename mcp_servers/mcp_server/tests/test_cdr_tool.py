@@ -33,6 +33,7 @@ class TestGetCdrDetails:
             get_cdr_details(uid="", session_id="")
         assert "Either uid or session_id must be provided" in str(exc_info.value)
 
+    @pytest.mark.django_db
     def test_get_cdr_details_object_does_not_exist(self):
         """Test get_cdr_details raises ObjectDoesNotExist for non-existent CDR"""
         with pytest.raises(ObjectDoesNotExist):

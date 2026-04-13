@@ -162,12 +162,12 @@ class TestMCPEndpoint:
         assert "Method not found" in data["error"]["message"]
 
     def test_tools_call_unknown_tool(self, api_client):
-        """Test tools/call returns error in foundation branch (no tools)"""
+        """Test tools/call with unknown tool returns error"""
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "any_tool",
+                "name": "unknown_tool",
                 "arguments": {},
             },
             "id": 1,
@@ -181,7 +181,7 @@ class TestMCPEndpoint:
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
         assert data["error"]["code"] == -32601
-        assert "No tools available in foundation branch" in data["error"]["message"]
+        assert "Unknown tool" in data["error"]["message"]
 
     def test_authentication_required(self):
         """Test that authentication is required"""

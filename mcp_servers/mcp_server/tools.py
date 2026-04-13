@@ -235,6 +235,8 @@ def list_cdrs_by_token(query: str) -> str:
         ValueError: If rfid_token is not provided
     """
     # Parse query parameter
+    if query is None:
+        raise ValueError("RFID token must be provided in query parameter")
     parts = query.split("|")
     rfid_token = parts[0].strip() if parts else ""
     last_cdr_uid = parts[1].strip() if len(parts) > 1 and parts[1].strip() else None
@@ -308,8 +310,17 @@ def format_cdrs_list_as_markdown(cdrs, rfid_token, last_cdr_uid=None, has_more=F
         lines.append("No CDRs found for this RFID token.")
         lines.append("")
         lines.append("---")
-        lines.append("**End of results**")
-        lines.append("")
+        if has_more and last_cdr_uid:
+            next_query = f"{rfid_token}|{last_cdr_uid}"
+            lines.append("## Next Page")
+            lines.append("To get the next page, use:")
+            lines.append("``")
+            lines.append(f"list_cdrs_by_token(query='{next_query}')")
+            lines.append("``")
+            lines.append("")
+        else:
+            lines.append("**End of results**")
+            lines.append("")
         return "\n".join(lines)
 
     # List each CDR

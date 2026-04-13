@@ -39,7 +39,6 @@ class ApiKey(models.Model):
     last_used = models.DateTimeField(null=True, blank=True, verbose_name=_("Last used"))
 
     class Meta:
-        app_label = "mcp_server"
         verbose_name = _("API Key")
         verbose_name_plural = _("API Keys")
         ordering = ("-created_at",)

@@ -6,8 +6,9 @@ HOSTNAME = "testserver.test"  # Remove this hostname later once the allowed host
 
 ALLOWED_HOSTS = ["testserver.test", "localhost", "127.0.0.1"]
 # noqa
+# Use existing docker PostgreSQL database
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgres://test_user:test_password@localhost:5432/test_db"
+    "DATABASE_URL", "postgres://ocpi:ocpiocpi@localhost:5432/ocpi"
 )
 SECRET_KEY = "BESTONEEVER"
 
