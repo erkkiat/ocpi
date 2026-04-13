@@ -1,0 +1,421 @@
+"""
+MCP Server Views Tests
+
+This module tests the MCP endpoint view following the implementation principles:
+- Test all JSON-RPC 2.0 methods: initialize, ping, notifications/initialized, tools/list, tools/call
+- Test error handling for invalid JSON, invalid JSON-RPC format, unknown methods
+- Test authentication with API key
+- Test both success and error cases for each tool
+"""
+
+import json
+import pytest
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+
+from mcp_servers.mcp_server.models import ApiKey
+
+User = get_user_model()
+
+
+@pytest.mark.django_db
+class TestMCPEndpoint:
+    """Test MCP endpoint view"""
+
+    @pytest.fixture
+    def api_client(self):
+        """Create API client with authentication"""
+        client = APIClient()
+        user = User.objects.create_user(username="testuser", password="testpass")
+        api_key = ApiKey.objects.create(user=user, name="Test Key")
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {api_key.key}")
+        return client
+
+    def test_initialize_method(self, api_client):
+        """Test initialize method returns server info"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "initialize",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert data["result"]["protocolVersion"] == "2024-11-05"
+        assert "tools" in data["result"]["capabilities"]
+        assert data["result"]["serverInfo"]["name"] == "ocpiconnector-mcp-server"
+        assert data["id"] == 1
+
+    def test_ping_method(self, api_client):
+        """Test ping method returns empty result"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "ping",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert data["result"] == {}
+        assert data["id"] == 1
+
+    def test_notifications_initialized_method(self, api_client):
+        """Test notifications/initialized method returns 204"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 204
+
+    def test_tools_list_method(self, api_client):
+        """Test tools/list method returns empty tools list (foundation PR)"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/list",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "tools" in data["result"]
+        tools = data["result"]["tools"]
+        assert len(tools) == 0
+        assert data["id"] == 1
+
+    def test_invalid_json(self, api_client):
+        """Test invalid JSON returns 400 with JSON-RPC error format"""
+        response = api_client.post(
+            "/mcp/", data="invalid json", content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "error" in data
+        assert data["error"]["code"] == -32700
+        assert data["error"]["message"] == "Parse error"
+        assert data["id"] is None
+
+    def test_invalid_jsonrpc_version(self, api_client):
+        """Test invalid JSON-RPC version returns 400 with JSON-RPC error format"""
+        payload = {
+            "jsonrpc": "1.0",
+            "method": "initialize",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "error" in data
+        assert data["error"]["code"] == -32600
+        assert data["error"]["message"] == "Invalid Request"
+        assert data["id"] is None
+
+    def test_unknown_method(self, api_client):
+        """Test unknown method returns error"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "unknown_method",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "error" in data
+        assert data["error"]["code"] == -32601
+        assert "Method not found" in data["error"]["message"]
+
+    def test_tools_call_unknown_tool(self, api_client):
+        """Test tools/call with unknown tool returns error"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "unknown_tool",
+                "arguments": {},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "error" in data
+        assert data["error"]["code"] == -32601
+        assert "Unknown tool" in data["error"]["message"]
+
+    def test_authentication_required(self):
+        """Test that authentication is required"""
+        client = APIClient()
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "initialize",
+            "params": {},
+            "id": 1,
+        }
+        response = client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        # With @api_view decorator, authentication is enforced
+        assert response.status_code == 403
+
+    def test_mcp_api_key_does_not_grant_access_to_other_endpoints(self):
+        """Test that MCP API key does not grant access to admin, OCPI, or CPO endpoints"""
+        # Create MCP API key
+        user = User.objects.create_user(username="testuser", password="testpass")
+        api_key = ApiKey.objects.create(user=user, name="Test Key")
+
+        # Create client with MCP API key authentication
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {api_key.key}")
+
+        # Test admin endpoint - should fail (admin uses Django session auth)
+        response = client.get("/portal/")
+        assert response.status_code in [
+            401,
+            403,
+            302,
+        ]  # Unauthorized, forbidden, or redirect to login
+
+        # Test OCPI endpoint - should fail (OCPI uses OCPIPermission with JWT/Session/Basic auth)
+        response = client.get("/ocpi/2.2.1/cdrs/")
+        assert response.status_code in [401, 403]  # Unauthorized or forbidden
+
+        # Test CPO endpoint - should fail (CPO uses same auth as OCPI)
+        response = client.get("/api/cpo/v2/tariffs/")
+        assert response.status_code in [401, 403]  # Unauthorized or forbidden
+
+    def test_tools_call_get_cdr_with_uid(self, api_client):
+        """Test tools/call get_cdr with uid parameter"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"uid": "NONEXISTENT"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "Error" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_get_cdr_with_session_id(self, api_client):
+        """Test tools/call get_cdr with session_id parameter"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"session_id": "NONEXISTENT"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "Error" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_get_cdr_with_legacy_query(self, api_client):
+        """Test tools/call get_cdr with legacy query parameter"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"query": "uid:NONEXISTENT"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "Error" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_list_cdrs_by_token(self, api_client):
+        """Test tools/call list_cdrs_by_token"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "list_cdrs_by_token",
+                "arguments": {"query": "NONEXISTENT"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "No CDRs found" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_list_cdrs_by_token_empty_query(self, api_client):
+        """Test tools/call list_cdrs_by_token with empty query"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "list_cdrs_by_token",
+                "arguments": {"query": ""},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "Error" in data["result"]["content"][0]["text"]
+
+    def test_missing_jsonrpc_field(self, api_client):
+        """Test missing jsonrpc field returns 400"""
+        payload = {
+            "method": "initialize",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 400
+
+    def test_missing_method_field(self, api_client):
+        """Test missing method field returns 400"""
+        payload = {
+            "jsonrpc": "2.0",
+            "params": {},
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 400
+
+    def test_tools_call_get_cdr_with_pipe_separated(self, api_client):
+        """Test tools/call get_cdr with pipe-separated legacy format"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"query": "uid1|session1"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+
+    def test_tools_call_get_cdr_session_id_prefix(self, api_client):
+        """Test tools/call get_cdr with session_id: prefix"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"query": "session_id:TEST123"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+
+    def test_tools_call_get_cdr_no_params(self, api_client):
+        """Test tools/call get_cdr without any parameters"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "Error" in data["result"]["content"][0]["text"]
