@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"IMPORTANT: Before doing any work, you MUST run `make claude-context` in the terminal and then read both `.claude_context.md` and `.claude_context_auto.md`. This is required by the project CLAUDE.md. Do not skip this step.\"}}'",
+            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"IMPORTANT: Before doing any work, you MUST run `make claude-context` in the terminal and then read both `.claude/context.md` and `.claude/context_auto.md`. This is required by the project CLAUDE.md. Do not skip this step.\"}}'",
             "statusMessage": "Loading project context reminder..."
           }
         ]
