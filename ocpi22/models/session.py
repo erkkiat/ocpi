@@ -382,7 +382,7 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         if connector:
             tariffs = tariffs or connector.get_tariffs()
         if not connector or not tariffs:
-            msg = f'Unable to calculate price for EVSE {connector.evse if connector else "N/A"} connector {connector}.'
+            msg = f"Unable to calculate price for EVSE {connector.evse if connector else 'N/A'} connector {connector}."
             logging.error(msg)
             # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
             # Todo: Even better, mark the EVSE inoperative, or prevent making it available

@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal, InvalidOperation
 import typing
 import uuid
 from datetime import datetime
@@ -228,6 +229,29 @@ class SolidTariffService:
                 old_solid_tariff, saved_solid_tariff
             )
 
+        if settings.ENABLE_HUBJECT:
+            from integrations.hubject.services import HubjectService
+
+            service = HubjectService()
+            try:
+                pricing_payload = service.get_pricing_product_insert_payload(
+                    saved_solid_tariff
+                )
+                service.post_pricing_products(pricing_payload)
+            except (ValueError, ValidationError):
+                logger.error(
+                    "Failed to build pricing product payload for SolidTariff %s",
+                    saved_solid_tariff.external_id,
+                    exc_info=True,
+                )
+            try:
+                service.post_evse_pricing_update_for_tariff(saved_solid_tariff)
+            except (ValueError, ValidationError):
+                logger.error(
+                    f"Failed to post EVSE pricing update for SolidTariff {saved_solid_tariff.external_id}",
+                    exc_info=True,
+                )
+
         return saved_solid_tariff
 
     def _extract_pricing_data(self, validated_data):
@@ -267,9 +291,11 @@ class SolidTariffService:
     def _convert_to_hourly(self, per_minute_value):
         try:
             return (
-                float(per_minute_value) * 60 if per_minute_value is not None else None
+                Decimal(str(per_minute_value)) * 60
+                if per_minute_value is not None
+                else None
             )
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, InvalidOperation):
             return None
 
     def _set_missing_fields(self, validated_data):

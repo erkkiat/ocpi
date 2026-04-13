@@ -576,7 +576,7 @@ class ApiPutTests(TestCase):
                             f"Unable to fetch Location {uid} created from file {filename}."
                         )
                         self.fail(
-                            f'Possible options are: {", ".join([location.uid for location in Location.objects.all()])}'
+                            f"Possible options are: {', '.join([location.uid for location in Location.objects.all()])}"
                         )
                 method_calls = list(
                     map(lambda x: x.kwargs, simulation.webhook_requests.method_calls)
@@ -599,7 +599,7 @@ class ApiPutTests(TestCase):
         self.assertEqual(
             response.status_code,
             status.HTTP_400_BAD_REQUEST,
-            "A Tariff request should require OCPI authentication. " f"{response.data}",
+            f"A Tariff request should require OCPI authentication. {response.data}",
         )
         self.assertEqual(
             response.data["status_code"],
@@ -2558,7 +2558,7 @@ class TestCpoApi(TestCase):
                 self.assertDictEqual(
                     cpo_response.data,
                     case.get("response"),
-                    f'Case request {case.get("request")}, response {case.get("response")}',
+                    f"Case request {case.get('request')}, response {case.get('response')}",
                 )
                 if cpo_response.status_code != 404:
                     evse = Evse.objects.get(uid=case.get("request").get("evse_uid"))
@@ -2846,7 +2846,7 @@ class TestCpoApi(TestCase):
                 self.assertEqual(
                     cpo_response.status_code,
                     expected_status,
-                    f'Expecting HTTP status {expected_status} for {case.get("request")}',
+                    f"Expecting HTTP status {expected_status} for {case.get('request')}",
                 )
                 self.assertTrue(
                     compare_dicts_recursively(
@@ -2854,7 +2854,7 @@ class TestCpoApi(TestCase):
                         case.get("expected_response"),
                         label=data.get("kwh"),
                     ),
-                    f'Case request {case.get("request")}, response {cpo_response.data}',
+                    f"Case request {case.get('request')}, response {cpo_response.data}",
                 )
 
                 # Make sure the updated session was sent after meter_values was called

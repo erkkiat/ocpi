@@ -543,46 +543,20 @@ class HubjectService:
             PricingProductData=pricing_product_data,
         )
 
-    def post_pricing_products_full_load(
-        self, operator_id: str, payload: ERoamingPushPricingProductData
-    ) -> dict:
-        full_load_url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
+    def post_pricing_products(self, payload: ERoamingPushPricingProductData) -> None:
+        operator_id = payload.PricingProductData.OperatorID.root
+        url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/pricing-products"
 
         try:
             payload_json = payload.model_dump(mode="json")
+        except PydanticSerializationError:
+            logger.exception("Failed to serialize pricing product payload")
+            return
 
-            response = HubjectService._get_request().post(
-                full_load_url,
-                json=payload_json,
-                timeout=HubjectService.FULL_LOAD_TIMEOUT,
-            )
-            if response.status_code == 200:
-                return response.json()
-            else:
-                try:
-                    response_json = response.json()
-                    formatted_errors = HubjectService.parse_hubject_validation_errors(
-                        response_json, payload
-                    )
-                except JSONDecodeError:
-                    formatted_errors = f"{response.status_code} : {response.text}"
-
-                logger.error(
-                    f"Hubject Pricing Product full load failed with status code {response.status_code}",
-                    extra={"response_text": formatted_errors},
-                )
-                return {
-                    "success": False,
-                    "errorType": "HTTP Error",
-                    "error": formatted_errors,
-                }
-        except PydanticSerializationError as e:
-            logger.exception("Pydantic validation failed")
-            return {
-                "success": False,
-                "errorType": "Pydantic validation failed",
-                "error": str(e),
-            }
+        credentials_id = HubjectService._get_hubject_credentials_id()
+        send_hubject_request.delay(
+            payload_json, url, self.FULL_LOAD_TIMEOUT, credentials_id, method="post"
+        )
 
     def evse_product_id_map_generator(self, evses: QuerySet) -> defaultdict:
         evse_pricing_product_id_map = defaultdict(list)
@@ -623,6 +597,71 @@ class HubjectService:
         evse_pricing_product_id_map = self.evse_product_id_map_generator(evses)
 
         return evse_pricing_product_id_map
+
+    def get_pricing_product_insert_payload(
+        self, solid_tariff: SolidTariff
+    ) -> ERoamingPushPricingProductData:
+        default_tariff = self.get_default_tariffs()
+        operator_name = solid_tariff.operator.business_details.name
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
+        pricing_product_data: PricingProductData = (
+            self.converter.convert_to_pricing_product_data(
+                [solid_tariff],
+                default_tariff,
+                operator_id,
+                operator_name,
+            )
+        )
+        return self.get_push_pricing_product_data_payload(
+            pricing_product_data, ActionType.insert
+        )
+
+    def get_evse_pricing_update_payload_for_tariff(
+        self, solid_tariff: SolidTariff
+    ) -> ERoamingPushEVSEPricing | None:
+        from ocpi22.cpo.repositories import EvseRepository
+
+        evses = EvseRepository.find_evses_by_ocpi_tariff(solid_tariff.ocpi_tariff)
+        if not evses.exists():
+            logger.info(
+                f"No EVSEs found for SolidTariff {solid_tariff.external_id}, skipping EVSE pricing update"
+            )
+            return None
+
+        evse_product_id_map = self.evse_product_id_map_generator(evses)
+        evse_pricing_items = [
+            EVSEPricingItem(
+                EvseID=evse_id,
+                ProviderID=ProviderIDAsterisk("*"),
+                EvseIDProductList=product_ids,
+            )
+            for evse_id, product_ids in evse_product_id_map.items()
+        ]
+        return ERoamingPushEVSEPricing(
+            ActionType=ActionType.update, EVSEPricing=evse_pricing_items
+        )
+
+    def post_evse_pricing_update_for_tariff(self, solid_tariff: SolidTariff) -> None:
+        try:
+            payload = self.get_evse_pricing_update_payload_for_tariff(solid_tariff)
+        except (ValueError, ValidationError):
+            logger.error("Failed to build EVSE pricing update payload", exc_info=True)
+            return
+
+        if payload is None:
+            return
+
+        operator_id = get_our_identity(OcpiRolesEnum.CPO.value)
+        url = f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/{operator_id}/evse-pricing"
+        try:
+            payload_json = payload.model_dump(mode="json")
+        except PydanticSerializationError:
+            logger.exception("Failed to serialize EVSE pricing update payload")
+            return
+        cred_id = HubjectService._get_hubject_credentials_id()
+        send_hubject_request.delay(
+            payload_json, url, self.FULL_LOAD_TIMEOUT, cred_id, method="post"
+        )
 
     def get_evse_pricing_product_data_full_load_payload(
         self, evse_product_id_map: dict

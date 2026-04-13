@@ -46,7 +46,9 @@ class TestFindAuthorizePartyDetails:
         location_uid = "loc123"
         mock_find_route.return_value = None
 
-        result = find_authorize_party_details(request, TokenDto(uid=token.uid, adhoc=False, token=token), location_uid)
+        result = find_authorize_party_details(
+            request, TokenDto(uid=token.uid, adhoc=False, token=token), location_uid
+        )
         assert (
             "Route (None) or Token (US*XYZ: RFID KNOWN_TOKEN_WITH_NO_ROUTE) missing, cannot authorize Token"
             in caplog.text

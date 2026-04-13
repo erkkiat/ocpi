@@ -97,7 +97,7 @@ class TestProcessMeterValuesData:
 
         assert result is None
         assert any(
-            f"Failed to parse message from topic { smappee_meter_message.topic}"
+            f"Failed to parse message from topic {smappee_meter_message.topic}"
             in record.message
             for record in caplog.records
         )
@@ -778,7 +778,7 @@ class TestAuthorizeAndPublish:
         ):
             _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
-            token_dto = TokenDto(uid='TEST_TOKEN_123', adhoc=True, token=None)
+            token_dto = TokenDto(uid="TEST_TOKEN_123", adhoc=True, token=None)
             mock_authorize_token.assert_called_once_with(
                 token_dto, evse.location, evse_id=evse.evse_id
             )
@@ -1179,9 +1179,7 @@ class TestCreateAndSaveSession:
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
             _authorize_and_publish(token_auth_message, auth_request_message.topic)
-            token_dto = TokenDto(
-                uid=token.uid, adhoc=False, token=token
-            )
+            token_dto = TokenDto(uid=token.uid, adhoc=False, token=token)
             mock_authorize_token.assert_called_once_with(
                 token_dto, evse.location, evse_id=evse.evse_id
             )

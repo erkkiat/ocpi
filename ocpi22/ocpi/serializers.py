@@ -485,8 +485,8 @@ def update_charging_periods(session, chargingperiods):
         dimensions = chargingperiod.pop("dimensions", None)
         if not dimensions:
             raise ValidationError(
-                f'Chargingperiod {chargingperiod.get("start_date_time", None)} '
-                f'is missing CdrDimensions'
+                f"Chargingperiod {chargingperiod.get('start_date_time', None)} "
+                f"is missing CdrDimensions"
             )
 
         # Do we need to update an existing one?

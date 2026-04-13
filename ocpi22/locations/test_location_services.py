@@ -107,7 +107,8 @@ class TestLocationServices:
         location_data = {"evses": [{"connectors": [{"tariff_ids": ["ocpi_tariff_1"]}]}]}
 
         with pytest.raises(
-            ValidationError, match="SolidTariff for OCPI tariff 'ocpi_tariff_1' not found"
+            ValidationError,
+            match="SolidTariff for OCPI tariff 'ocpi_tariff_1' not found",
         ):
             location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location_data)
 

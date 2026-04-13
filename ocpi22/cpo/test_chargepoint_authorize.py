@@ -73,7 +73,13 @@ def test_authorize_successful_with_200(
 
 
 def test_authorize_with_non_existent_credentialsrole_fails_with_404(
-    monkeypatch, evse, token, ocpi_master, caplog, admin_user_client, clear_hubject_credentials_role
+    monkeypatch,
+    evse,
+    token,
+    ocpi_master,
+    caplog,
+    admin_user_client,
+    clear_hubject_credentials_role,
 ):
     _authorize_token.cache_clear()
     auth = TokenAuthorization(

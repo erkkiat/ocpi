@@ -119,7 +119,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Token {self.kwargs.get("uid")}'
+            return f"Token {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Tokens"
@@ -169,7 +169,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
-            logger.info(f'{"Creating" if created else "Updating"} {created_token}')
+            logger.info(f"{'Creating' if created else 'Updating'} {created_token}")
             created_token.post_process_after_update_or_create()
             created_token.send_hub_updates()
             return OCPIResponse(
@@ -332,7 +332,9 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
             adhoc=isinstance(token, str),
             token=token if isinstance(token, Token) else None,
         )
-        authorization: TokenAuthorization = authorize_token(token_dto, location, request=request)
+        authorization: TokenAuthorization = authorize_token(
+            token_dto, location, request=request
+        )
         return make_ocpi_response(authorization)
 
 
@@ -355,19 +357,19 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Cdr.objects.all().order_by("created")
-        
+
         role = getattr(self.request, "credentialsrole", None) or getattr(
             self.request, "ocpi_party", None
         )
         if role:
-            return Cdr.objects.filter(
-                Q(ocpi_master=role) | Q(billed_to=role)
-            ).order_by("created")
+            return Cdr.objects.filter(Q(ocpi_master=role) | Q(billed_to=role)).order_by(
+                "created"
+            )
         return Cdr.objects.none()
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'CDR {self.kwargs.get("uid")}'
+            return f"CDR {self.kwargs.get('uid')}"
         if self.name:
             return f"CDR {self.name.lower()}"
         return "Charge Detail Records"
@@ -558,7 +560,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Tariff {self.kwargs.get("uid")}'
+            return f"Tariff {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Tariffs"
@@ -635,7 +637,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logger.info(
-                f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.'
+                f"{'Creating' if created else 'Updating'} Tariff {credentialsrole} - {uid}."
             )
             created_tariff = serializer.save(ocpi_master=credentialsrole)
             created_tariff.send_hub_updates()
@@ -729,7 +731,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Session.objects.all().order_by("created")
-        
+
         role = getattr(self.request, "credentialsrole", None) or getattr(
             self.request, "ocpi_party", None
         )
@@ -741,7 +743,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Session {self.kwargs.get("uid")}'
+            return f"Session {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Sessions"
@@ -806,7 +808,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logger.info(
-                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.'
+                f"{'Creating' if created else 'Updating'} Session {country_code}*{party_id} - {uid}."
             )
             session = serializer.save(ocpi_master=request.credentialsrole)
             update_authorization(request, session)
@@ -833,8 +835,8 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
             )
 
         logger.error(
-            'Problem with PUT Session from '
-            f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}'
+            "Problem with PUT Session from "
+            f"{request.credentials if hasattr(request, 'credentials') else '?'}: {serializer.errors}"
         )
         return OCPIResponse(
             errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST
@@ -860,7 +862,7 @@ class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "id" in self.kwargs:
-            return f'HubClientInfo {self.kwargs.get("id")}'
+            return f"HubClientInfo {self.kwargs.get('id')}"
         return "HubClientInfo"
 
     def get_queryset(self):

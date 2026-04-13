@@ -34,7 +34,7 @@ async def hubject_credentials_async():
         party_id="ICE",
         role=OcpiRolesEnum.HUB.value,
         business_details__name="Hubject",
-        credentials__auth_priority=2
+        credentials__auth_priority=2,
     )
     yield creds_role
     await sync_to_async(creds_role.credentials.delete)()
@@ -71,8 +71,9 @@ class TestHubjectFeatureFlag:
                             )
                             await authorize_with_msps(token_dto, sample_auth_data, [])
 
-                            mock_create_hubject_task.assert_called_once_with("TEST_TOKEN_123", ANY)
-
+                            mock_create_hubject_task.assert_called_once_with(
+                                "TEST_TOKEN_123", ANY
+                            )
 
     @pytest.mark.asyncio
     @pytest.mark.django_db
@@ -93,9 +94,7 @@ class TestHubjectFeatureFlag:
                         "ocpi22.tokens.services.CredentialsService.is_location_allowed",
                         return_value=True,
                     ):
-                        token_dto = TokenDto(
-                            uid="SOME_TOKEN", adhoc=True, token=None
-                        )
+                        token_dto = TokenDto(uid="SOME_TOKEN", adhoc=True, token=None)
                         await authorize_with_msps(token_dto, sample_auth_data, [])
 
                         mock_post_authorize.assert_not_called()
