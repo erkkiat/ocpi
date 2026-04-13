@@ -51,7 +51,42 @@ async def call_http_endpoint(method: str, params: dict | None = None) -> dict:
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as e:
-        raise Exception(f"HTTP error: {str(e)}")
+        raise RuntimeError(f"HTTP error: {str(e)}")
+
+
+@mcp.tool()
+async def get_tariff(id: str) -> str:
+    """
+    Retrieve tariff information by SolidTariff external ID or OCPI Tariff UID.
+
+    Args:
+        id: The external ID of the SolidTariff or the UID of the OCPI Tariff
+
+    Returns:
+        Markdown formatted tariff details including SolidTariff master data
+        and corresponding OCPI Tariff data with clear section headers.
+    """
+    if not id:
+        raise ValueError("ID parameter is required")
+
+    try:
+        result = await call_http_endpoint(
+            "tools/call",
+            {"name": "get_tariff", "arguments": {"id": id}},
+        )
+
+        if "result" in result:
+            content = result["result"].get("content", [])
+            if content and len(content) > 0:
+                return content[0].get("text", "No data returned")
+        elif "error" in result:
+            raise RuntimeError(
+                f"Error from server: {result['error'].get('message', 'Unknown error')}"
+            )
+
+        return "No data returned"
+    except Exception as e:
+        raise RuntimeError(f"Failed to retrieve tariff: {str(e)}")
 
 
 @mcp.tool()

@@ -8,6 +8,9 @@ This module handles JSON-RPC 2.0 protocol in the mcp_endpoint view following the
 - Return JSON-RPC 2.0 formatted responses with jsonrpc: "2.0" and id from request
 - Use appropriate HTTP status codes (400 for client errors, 500 for server errors)
 - Return errors in JSON-RPC format: {"error": {"code": -32601, "message": "..."}}
+
+Note: Tools are added in separate PRs. This foundation provides the infrastructure
+for tool handling without any specific tool implementations.
 """
 
 import json
@@ -24,7 +27,7 @@ from rest_framework.decorators import (
 from rest_framework.permissions import IsAuthenticated
 
 from .authentication import ApiKeyAuthentication
-from .tools import get_cdr_details, list_cdrs_by_token
+from .tools import get_cdr_details, list_cdrs_by_token, get_tariff_details
 from mcp.types import (
     INTERNAL_ERROR,
     INVALID_REQUEST,
@@ -62,7 +65,7 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {"code": PARSE_ERROR, "message": "Parse error"},
+                    "error": {"code": -32700, "message": "Parse error"},
                     "id": None,
                 },
                 status=400,
@@ -73,7 +76,7 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {"code": INVALID_REQUEST, "message": "Invalid Request"},
+                    "error": {"code": -32600, "message": "Invalid Request"},
                     "id": None,
                 },
                 status=400,
@@ -141,6 +144,20 @@ def mcp_endpoint(request):
                             },
                         },
                         "required": ["query"],
+                    },
+                },
+                {
+                    "name": "get_tariff",
+                    "description": "Retrieve tariff information by SolidTariff external_id or OCPI Tariff uid. Returns both the SolidTariff (master data from CPMS) and the corresponding OCPI Tariff with clear labeling to distinguish the data sources. Auto-detects the ID type.",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "Either SolidTariff external_id or OCPI Tariff uid",
+                            },
+                        },
+                        "required": ["id"],
                     },
                 },
             ]
@@ -297,12 +314,63 @@ def mcp_endpoint(request):
                         },
                         status=500,
                     )
+            elif tool_name == "get_tariff":
+                try:
+                    tariff_id = tool_args.get("id")
+                    result = get_tariff_details(id=tariff_id)
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "result": {"content": [{"type": "text", "text": result}]},
+                            "id": request_id,
+                        }
+                    )
+                except ValueError as e:
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {"type": "text", "text": f"Error: {str(e)}"}
+                                ]
+                            },
+                            "id": request_id,
+                        }
+                    )
+                except ObjectDoesNotExist:
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Error: Tariff not found with the provided ID",
+                                    }
+                                ]
+                            },
+                            "id": request_id,
+                        }
+                    )
+                except Exception as e:
+                    logger.exception("Error in get_tariff tool")
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32603,
+                                "message": f"Error retrieving tariff: {str(e)}",
+                            },
+                            "id": request_id,
+                        },
+                        status=500,
+                    )
             else:
                 return JsonResponse(
                     {
                         "jsonrpc": "2.0",
                         "error": {
-                            "code": METHOD_NOT_FOUND,
+                            "code": -32601,
                             "message": f"Unknown tool: {tool_name}",
                         },
                         "id": request_id,
@@ -314,10 +382,7 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {
-                        "code": METHOD_NOT_FOUND,
-                        "message": f"Method not found: {method}",
-                    },
+                    "error": {"code": -32601, "message": f"Method not found: {method}"},
                     "id": request_id,
                 },
                 status=400,
@@ -328,10 +393,7 @@ def mcp_endpoint(request):
         return JsonResponse(
             {
                 "jsonrpc": "2.0",
-                "error": {
-                    "code": INTERNAL_ERROR,
-                    "message": f"Internal error: {str(e)}",
-                },
+                "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
                 "id": data.get("id") if "data" in locals() else None,
             },
             status=500,

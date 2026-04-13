@@ -13,6 +13,176 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.session import Session
+from ocpi22.models.tariff import SolidTariff, Tariff
+
+
+def get_tariff_details(id: str) -> str:
+    """
+    Retrieve tariff details by SolidTariff external_id or OCPI Tariff uid.
+
+    Auto-detects ID type and returns both SolidTariff (master data) and
+    corresponding OCPI Tariff with clear labeling.
+
+    Args:
+        id: SolidTariff external_id or OCPI Tariff uid
+
+    Returns:
+        str: Markdown formatted tariff details
+
+    Raises:
+        ValueError: If id is not provided
+        ObjectDoesNotExist: If tariff not found
+    """
+    if not id:
+        raise ValueError("ID parameter is required")
+
+    # Try SolidTariff by external_id first
+    try:
+        solid_tariff = (
+            SolidTariff.objects.select_related(
+                "operator", "msp", "ocpi_tariff__ocpi_master"
+            )
+            .prefetch_related("ocpi_tariff__tariff_elements__price_components")
+            .get(external_id=id)
+        )
+        return format_tariff_as_markdown(solid_tariff)
+    except SolidTariff.DoesNotExist:
+        pass
+
+    # Try OCPI Tariff by uid
+    try:
+        ocpi_tariff = (
+            Tariff.objects.select_related("ocpi_master")
+            .prefetch_related("tariff_elements__price_components")
+            .get(uid=id)
+        )
+        # Get the SolidTariff that references this OCPI Tariff
+        solid_tariff = (
+            SolidTariff.objects.select_related("operator", "msp")
+            .filter(ocpi_tariff=ocpi_tariff)
+            .first()
+        )
+        if solid_tariff:
+            return format_tariff_as_markdown(solid_tariff)
+        else:
+            raise ObjectDoesNotExist(
+                f"OCPI Tariff {id} exists but is not referenced by any SolidTariff"
+            )
+    except Tariff.DoesNotExist:
+        pass
+
+    raise ObjectDoesNotExist(f"Tariff not found with ID: {id}")
+
+
+def format_tariff_as_markdown(solid_tariff) -> str:
+    """
+    Format SolidTariff and linked OCPI Tariff as human/AI-readable markdown.
+
+    Uses clear section headers to distinguish master data from OCPI representation.
+    """
+    lines = []
+
+    # Header
+    lines.append("# Tariff Information")
+    lines.append("")
+
+    # SolidTariff Section (Master Data)
+    lines.append("## SolidTariff (Master Data from CPMS)")
+    lines.append(f"**External ID:** `{solid_tariff.external_id}`")
+    lines.append(f"**Currency:** {solid_tariff.currency}")
+
+    # Pricing details
+    if solid_tariff.price_per_kwh is not None:
+        lines.append(f"- **Price per kWh:** {solid_tariff.price_per_kwh}")
+    if solid_tariff.price_per_hr is not None:
+        lines.append(f"- **Price per Hour:** {solid_tariff.price_per_hr}")
+    if solid_tariff.price_flat is not None:
+        lines.append(f"- **Flat Price:** {solid_tariff.price_flat}")
+    if solid_tariff.parking_price_per_hr is not None:
+        lines.append(
+            f"- **Parking Price per Hour:** {solid_tariff.parking_price_per_hr}"
+        )
+    if solid_tariff.parking_grace_period is not None:
+        lines.append(
+            f"- **Parking Grace Period:** {solid_tariff.parking_grace_period} seconds"
+        )
+    if solid_tariff.vat_percentage is not None:
+        lines.append(f"- **VAT Percentage:** {solid_tariff.vat_percentage}%")
+
+    # Operator/MSP details
+    if solid_tariff.operator:
+        lines.append(
+            f"**Operator:** {solid_tariff.operator.country_code}*{solid_tariff.operator.party_id}"
+        )
+    if solid_tariff.msp:
+        lines.append(
+            f"**MSP:** {solid_tariff.msp.country_code}*{solid_tariff.msp.party_id}"
+        )
+
+    lines.append(f"**Last Updated:** {solid_tariff.last_updated or 'N/A'}")
+    lines.append(f"**Created:** {solid_tariff.created_at}")
+    lines.append("")
+
+    # OCPI Tariff Section
+    if solid_tariff.ocpi_tariff:
+        lines.append("## Corresponding OCPI Tariff")
+        lines.append(f"**UID:** `{solid_tariff.ocpi_tariff.uid}`")
+        lines.append(f"**Currency:** {solid_tariff.ocpi_tariff.currency}")
+
+        if solid_tariff.ocpi_tariff.type:
+            lines.append(f"**Type:** {solid_tariff.ocpi_tariff.type}")
+
+        if (
+            solid_tariff.ocpi_tariff.min_price_incl_vat
+            or solid_tariff.ocpi_tariff.min_price_excl_vat
+        ):
+            lines.append(
+                f"**Min Price:** {solid_tariff.ocpi_tariff.min_price_incl_vat or solid_tariff.ocpi_tariff.min_price_excl_vat}"
+            )
+
+        if (
+            solid_tariff.ocpi_tariff.max_price_incl_vat
+            or solid_tariff.ocpi_tariff.max_price_excl_vat
+        ):
+            lines.append(
+                f"**Max Price:** {solid_tariff.ocpi_tariff.max_price_incl_vat or solid_tariff.ocpi_tariff.max_price_excl_vat}"
+            )
+
+        lines.append(
+            f"**Last Updated:** {solid_tariff.ocpi_tariff.last_updated or 'N/A'}"
+        )
+        lines.append("")
+
+        # Tariff Elements
+        if solid_tariff.ocpi_tariff.tariff_elements.exists():
+            lines.append("### Tariff Elements")
+            for element in solid_tariff.ocpi_tariff.tariff_elements.all():
+                lines.append("**Element:**")
+                if element.start_time:
+                    lines.append(
+                        f"- Time Range: {element.start_time} - {element.end_time or '24:00'}"
+                    )
+                if element.day_of_week:
+                    lines.append(f"- Days: {', '.join(element.day_of_week)}")
+
+                # Price Components
+                for pc in element.price_components.all():
+                    lines.append(f"- **Price Component:** {pc.type}")
+                    lines.append(
+                        f"  - Price: {pc.price} {solid_tariff.ocpi_tariff.currency}"
+                    )
+                    lines.append(f"  - VAT: {pc.vat or 0}%")
+                    lines.append(f"  - Step Size: {pc.step_size}")
+                lines.append("")
+        else:
+            lines.append("No tariff elements defined for this OCPI Tariff.")
+            lines.append("")
+    else:
+        lines.append("## Corresponding OCPI Tariff")
+        lines.append("No OCPI Tariff linked to this SolidTariff.")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 def get_cdr_details(uid=None, session_id=None):

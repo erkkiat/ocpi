@@ -19,6 +19,9 @@ from mcp.types import (
     METHOD_NOT_FOUND,
     PARSE_ERROR,
 )
+from ocpi22.models.credentials import CredentialsRole
+from ocpi22.models.tariff import SolidTariff, Tariff
+from ocpi22.models.business_details import BusinessDetails
 
 User = get_user_model()
 
@@ -36,7 +39,7 @@ class TestMCPEndpoint:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {api_key.key}")
         return client
 
-    def test_initialize_method_returns_server_info(self, api_client):
+    def test_initialize_method(self, api_client):
         """Test initialize method returns server info"""
         payload = {
             "jsonrpc": "2.0",
@@ -57,7 +60,7 @@ class TestMCPEndpoint:
         assert data["result"]["serverInfo"]["name"] == "ocpiconnector-mcp-server"
         assert data["id"] == 1
 
-    def test_ping_method_returns_empty_result(self, api_client):
+    def test_ping_method(self, api_client):
         """Test ping method returns empty result"""
         payload = {
             "jsonrpc": "2.0",
@@ -75,7 +78,7 @@ class TestMCPEndpoint:
         assert data["result"] == {}
         assert data["id"] == 1
 
-    def test_notifications_initialized_method_returns_204(self, api_client):
+    def test_notifications_initialized_method(self, api_client):
         """Test notifications/initialized method returns 204"""
         payload = {
             "jsonrpc": "2.0",
@@ -89,7 +92,7 @@ class TestMCPEndpoint:
 
         assert response.status_code == 204
 
-    def test_tools_list_method_returns_available_tools(self, api_client):
+    def test_tools_list_method(self, api_client):
         """Test tools/list method returns available tools"""
         payload = {
             "jsonrpc": "2.0",
@@ -107,13 +110,14 @@ class TestMCPEndpoint:
         assert "result" in data
         assert "tools" in data["result"]
         tools = data["result"]["tools"]
-        assert len(tools) == 2
+        assert len(tools) == 3
         tool_names = [tool["name"] for tool in tools]
         assert "get_cdr" in tool_names
         assert "list_cdrs_by_token" in tool_names
+        assert "get_tariff" in tool_names
         assert data["id"] == 1
 
-    def test_invalid_json_returns_400_with_jsonrpc_error_format(self, api_client):
+    def test_invalid_json(self, api_client):
         """Test invalid JSON returns 400 with JSON-RPC error format"""
         response = api_client.post(
             "/mcp/", data="invalid json", content_type="application/json"
@@ -123,13 +127,11 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == PARSE_ERROR
+        assert data["error"]["code"] == -32700
         assert data["error"]["message"] == "Parse error"
         assert data["id"] is None
 
-    def test_invalid_jsonrpc_version_returns_400_with_jsonrpc_error_format(
-        self, api_client
-    ):
+    def test_invalid_jsonrpc_version(self, api_client):
         """Test invalid JSON-RPC version returns 400 with JSON-RPC error format"""
         payload = {
             "jsonrpc": "1.0",
@@ -145,11 +147,11 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == INVALID_REQUEST
+        assert data["error"]["code"] == -32600
         assert data["error"]["message"] == "Invalid Request"
         assert data["id"] is None
 
-    def test_unknown_method_returns_error(self, api_client):
+    def test_unknown_method(self, api_client):
         """Test unknown method returns error"""
         payload = {
             "jsonrpc": "2.0",
@@ -165,16 +167,16 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == METHOD_NOT_FOUND
+        assert data["error"]["code"] == -32601
         assert "Method not found" in data["error"]["message"]
 
-    def test_tools_call_unknown_tool_returns_error(self, api_client):
-        """Test tools/call with unknown tool returns error"""
+    def test_tools_call_unknown_tool(self, api_client):
+        """Test tools/call returns error in foundation branch (no tools)"""
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "unknown_tool",
+                "name": "any_tool",
                 "arguments": {},
             },
             "id": 1,
@@ -187,10 +189,10 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == METHOD_NOT_FOUND
-        assert "Unknown tool" in data["error"]["message"]
+        assert data["error"]["code"] == -32601
+        assert "No tools available in foundation branch" in data["error"]["message"]
 
-    def test_authentication_required_returns_403(self):
+    def test_authentication_required(self):
         """Test that authentication is required"""
         client = APIClient()
         payload = {
@@ -232,7 +234,7 @@ class TestMCPEndpoint:
         response = client.get("/api/cpo/v2/tariffs/")
         assert response.status_code in [401, 403]  # Unauthorized or forbidden
 
-    def test_missing_jsonrpc_field_returns_400(self, api_client):
+    def test_missing_jsonrpc_field(self, api_client):
         """Test missing jsonrpc field returns 400"""
         payload = {
             "method": "initialize",
@@ -245,7 +247,7 @@ class TestMCPEndpoint:
 
         assert response.status_code == 400
 
-    def test_missing_method_field_returns_400(self, api_client):
+    def test_missing_method_field(self, api_client):
         """Test missing method field returns 400"""
         payload = {
             "jsonrpc": "2.0",
@@ -291,3 +293,167 @@ class TestMCPEndpoint:
         assert "result" in data
         assert "data integrity issue" in data["result"]["content"][0]["text"]
         assert "Multiple CDRs found" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_get_tariff_by_solid_tariff_id(self, api_client):
+        """Test tools/call get_tariff with SolidTariff external_id"""
+        # Create test data
+        operator_bd = BusinessDetails.objects.create(name="Operator CPO")
+        msp_bd = BusinessDetails.objects.create(name="MSP EMSP")
+        ocpi_bd = BusinessDetails.objects.create(name="OCPI Master")
+
+        operator = CredentialsRole.objects.create(
+            country_code="FI", party_id="CPO", role="CPO", business_details=operator_bd
+        )
+        msp = CredentialsRole.objects.create(
+            country_code="FI", party_id="MSP", role="EMSP", business_details=msp_bd
+        )
+        ocpi_master = CredentialsRole.objects.create(
+            country_code="FI", party_id="OC1", role="CPO", business_details=ocpi_bd
+        )
+
+        # Create OCPI Tariff
+        tariff = Tariff.objects.create(
+            uid="TARIFF001",
+            currency="EUR",
+            ocpi_master=ocpi_master,
+            type="REGULAR",
+        )
+
+        # Create SolidTariff
+        _solid_tariff = SolidTariff.objects.create(
+            external_id="SOLID001",
+            currency="EUR",
+            price_per_kwh=0.25,
+            operator=operator,
+            msp=msp,
+            ocpi_tariff=tariff,
+        )
+
+        # Call the tool
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_tariff",
+                "arguments": {"id": "SOLID001"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert len(data["result"]["content"]) == 1
+        assert data["result"]["content"][0]["type"] == "text"
+        # Check that the markdown contains expected sections
+        text = data["result"]["content"][0]["text"]
+        assert "SolidTariff (Master Data from CPMS)" in text
+        assert "SOLID001" in text
+        assert "Corresponding OCPI Tariff" in text
+
+    def test_tools_call_get_tariff_by_ocpi_tariff_id(self, api_client):
+        """Test tools/call get_tariff with OCPI Tariff uid"""
+        # Create test data
+        operator_bd = BusinessDetails.objects.create(name="Operator CPO 2")
+        msp_bd = BusinessDetails.objects.create(name="MSP EMSP 2")
+        ocpi_bd = BusinessDetails.objects.create(name="OCPI Master 2")
+
+        operator = CredentialsRole.objects.create(
+            country_code="FI", party_id="CPO", role="CPO", business_details=operator_bd
+        )
+        msp = CredentialsRole.objects.create(
+            country_code="FI", party_id="MSP", role="EMSP", business_details=msp_bd
+        )
+        ocpi_master = CredentialsRole.objects.create(
+            country_code="FI", party_id="OC2", role="CPO", business_details=ocpi_bd
+        )
+
+        # Create OCPI Tariff
+        tariff = Tariff.objects.create(
+            uid="TARIFF002",
+            currency="EUR",
+            ocpi_master=ocpi_master,
+            type="REGULAR",
+        )
+
+        # Create SolidTariff
+        _solid_tariff = SolidTariff.objects.create(
+            external_id="SOLID002",
+            currency="EUR",
+            price_per_kwh=0.30,
+            operator=operator,
+            msp=msp,
+            ocpi_tariff=tariff,
+        )
+
+        # Call the tool with OCPI Tariff uid
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_tariff",
+                "arguments": {"id": "TARIFF002"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        text = data["result"]["content"][0]["text"]
+        assert "SolidTariff (Master Data from CPMS)" in text
+        assert "SOLID002" in text
+
+    def test_tools_call_get_tariff_not_found(self, api_client):
+        """Test tools/call get_tariff with nonexistent ID"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_tariff",
+                "arguments": {"id": "NONEXISTENT"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "Error: Tariff not found" in data["result"]["content"][0]["text"]
+
+    def test_tools_call_get_tariff_missing_param(self, api_client):
+        """Test tools/call get_tariff without id parameter"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_tariff",
+                "arguments": {},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "content" in data["result"]
+        assert "Error: ID parameter is required" in data["result"]["content"][0]["text"]
