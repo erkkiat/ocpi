@@ -110,23 +110,17 @@ class TestListCdrsByToken:
 
     @pytest.mark.django_db
     def test_list_cdrs_by_token_with_duplicate_uid_cursor_falls_back_to_beginning(self):
-        _rfid_token = "TEST_TOKEN_DUPLICATE"
+        rfid_token = "TEST_TOKEN_DUPLICATE"
         # Create CDRs with the same token and unique session_ids
-        CdrFactory(
-            cdr_token_uid=_rfid_token, uid="DUPLICATE_UID", session_id="SESSION1"
-        )
-        CdrFactory(
-            cdr_token_uid=_rfid_token, uid="DIFFERENT_UID", session_id="SESSION2"
-        )
-        # Manually create a second CDR with the same UID to simulate duplicate
-        CdrFactory(
-            cdr_token_uid=_rfid_token, uid="DUPLICATE_UID", session_id="SESSION3"
-        )
+        CdrFactory(cdr_token_uid=rfid_token, uid="DUPLICATE_UID", session_id="SESSION1")
+        CdrFactory(cdr_token_uid=rfid_token, uid="DIFFERENT_UID", session_id="SESSION2")
+        # Manually create a second CDR with the same UID as cdr1 to simulate duplicate
+        CdrFactory(cdr_token_uid=rfid_token, uid="DUPLICATE_UID", session_id="SESSION3")
         # Call with the duplicate UID as cursor - should fall back to beginning without error
-        result = list_cdrs_by_token(query=f"{_rfid_token}|DUPLICATE_UID")
+        result = list_cdrs_by_token(query=f"{rfid_token}|DUPLICATE_UID")
         assert isinstance(result, str)
         # Should return results starting from the beginning
-        assert f"for RFID Token: `{_rfid_token}`" in result
+        assert f"for RFID Token: `{rfid_token}`" in result
 
 
 class TestFormatCdrAsMarkdown:
