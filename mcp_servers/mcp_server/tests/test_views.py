@@ -252,3 +252,37 @@ class TestMCPEndpoint:
         )
 
         assert response.status_code == 400
+
+    def test_get_cdr_multiple_objects_returned_returns_data_integrity_error(
+        self, api_client, monkeypatch
+    ):
+        """Test get_cdr tool handles MultipleObjectsReturned with specific error message"""
+        from django.core.exceptions import MultipleObjectsReturned
+
+        # Monkeypatch get_cdr_details to raise MultipleObjectsReturned
+        def mock_get_cdr_details(*args, **kwargs):
+            raise MultipleObjectsReturned()
+
+        monkeypatch.setattr(
+            "mcp_servers.mcp_server.views.get_cdr_details", mock_get_cdr_details
+        )
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": "get_cdr",
+                "arguments": {"uid": "DUPLICATE_UID"},
+            },
+            "id": 1,
+        }
+        response = api_client.post(
+            "/mcp/", data=json.dumps(payload), content_type="application/json"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["jsonrpc"] == "2.0"
+        assert "result" in data
+        assert "data integrity issue" in data["result"]["content"][0]["text"]
+        assert "Multiple CDRs found" in data["result"]["content"][0]["text"]

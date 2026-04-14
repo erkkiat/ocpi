@@ -12,7 +12,7 @@ This module handles JSON-RPC 2.0 protocol in the mcp_endpoint view following the
 
 import json
 import logging
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import (
@@ -198,6 +198,21 @@ def mcp_endpoint(request):
                             "id": request_id,
                         }
                     )
+                except MultipleObjectsReturned:
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
+                                    }
+                                ]
+                            },
+                            "id": request_id,
+                        }
+                    )
                 except Exception as e:
                     logger.exception("Error in get_cdr tool")
                     return JsonResponse(
@@ -242,6 +257,21 @@ def mcp_endpoint(request):
                             "result": {
                                 "content": [
                                     {"type": "text", "text": "Error: CDR not found"}
+                                ]
+                            },
+                            "id": request_id,
+                        }
+                    )
+                except MultipleObjectsReturned:
+                    return JsonResponse(
+                        {
+                            "jsonrpc": "2.0",
+                            "result": {
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
+                                    }
                                 ]
                             },
                             "id": request_id,
