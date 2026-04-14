@@ -9,6 +9,7 @@ This module contains tool functions following the MCP tool implementation princi
 - All tools return markdown-formatted strings for AI readability
 """
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.session import Session
@@ -271,11 +272,14 @@ def list_cdrs_by_token(query: str) -> str:
             # If cursor doesn't exist, start from beginning
             pass
 
-    # Limit to 5 results per page
-    cdrs = queryset[:6]  # Fetch 6 to determine if there's a next page
+    # Limit to configured page size
+    page_size = settings.MCP_SERVER_PAGE_SIZE
+    cdrs = queryset[
+        : page_size + 1
+    ]  # Fetch page_size + 1 to determine if there's a next page
     cdrs_list = list(cdrs)
-    has_more = len(cdrs_list) > 5
-    cdrs_list = cdrs_list[:5]
+    has_more = len(cdrs_list) > page_size
+    cdrs_list = cdrs_list[:page_size]
 
     # Format results
     return format_cdrs_list_as_markdown(

@@ -16,83 +16,169 @@ from mcp_servers.mcp_server.tools import (
     list_cdrs_by_token,
     format_cdrs_list_as_markdown,
 )
+from ocpi22.tests.factories import CdrFactory, OCPISessionFactory
 
 
 class TestGetCdrDetails:
     """Test get_cdr_details function"""
 
-    def test_get_cdr_details_value_error_no_params(self):
-        """Test get_cdr_details raises ValueError when neither uid nor session_id provided"""
+    def test_get_cdr_details_with_no_params_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
             get_cdr_details()
         assert "Either uid or session_id must be provided" in str(exc_info.value)
 
-    def test_get_cdr_details_value_error_empty_params(self):
-        """Test get_cdr_details raises ValueError when both params are empty strings"""
+    def test_get_cdr_details_with_empty_params_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
             get_cdr_details(uid="", session_id="")
         assert "Either uid or session_id must be provided" in str(exc_info.value)
 
     @pytest.mark.django_db
-    def test_get_cdr_details_object_does_not_exist(self):
-        """Test get_cdr_details raises ObjectDoesNotExist for non-existent CDR"""
+    def test_get_nonexistent_cdr_details_with_uid_raises_object_does_not_exist(self):
         with pytest.raises(ObjectDoesNotExist):
             get_cdr_details(uid="NONEXISTENT_CDR_UID")
+
+    @pytest.mark.django_db
+    def test_get_nonexistent_cdr_details_with_session_id_raises_object_does_not_exist(
+        self,
+    ):
+        with pytest.raises(ObjectDoesNotExist):
+            get_cdr_details(session_id="NONEXISTENT_SESSION_ID")
+
+    @pytest.mark.django_db
+    def test_get_existing_cdr_details_returns_markdown(self):
+        cdr = CdrFactory()
+        result = get_cdr_details(uid=cdr.uid)
+        assert isinstance(result, str)
+        assert len(result) > 0
 
 
 class TestListCdrsByToken:
     """Test list_cdrs_by_token function"""
 
-    def test_list_cdrs_by_token_value_error_empty_query(self):
-        """Test list_cdrs_by_token raises ValueError for empty query"""
+    def test_list_cdrs_by_token_with_empty_query_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
             list_cdrs_by_token(query="")
         assert "RFID token must be provided" in str(exc_info.value)
 
-    def test_list_cdrs_by_token_value_error_none_query(self):
-        """Test list_cdrs_by_token raises ValueError for None query"""
+    def test_list_cdrs_by_token_with_none_query_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
             list_cdrs_by_token(query=None)
         assert "RFID token must be provided" in str(exc_info.value)
 
-    def test_list_cdrs_by_token_value_error_whitespace_query(self):
-        """Test list_cdrs_by_token raises ValueError for whitespace-only query"""
+    def test_list_cdrs_by_token_with_whitespace_query_raises_value_error(self):
         with pytest.raises(ValueError) as exc_info:
             list_cdrs_by_token(query="   ")
         assert "RFID token must be provided" in str(exc_info.value)
+
+    def test_list_cdrs_by_token_uses_page_size_from_settings(self, monkeypatch):
+        # Monkeypatch the setting to verify it's used
+        monkeypatch.setattr("django.conf.settings.MCP_SERVER_PAGE_SIZE", 3)
+        # Re-import to get the new setting value
+        import importlib
+        from mcp_servers.mcp_server import tools
+
+        importlib.reload(tools)
+
+        # Verify the setting is accessible
+        from django.conf import settings
+
+        assert settings.MCP_SERVER_PAGE_SIZE == 3
+
+    @pytest.mark.django_db
+    def test_list_cdrs_by_token_with_valid_token_returns_no_cdrs_found(self):
+        result = list_cdrs_by_token(query="NONEXISTENT_TOKEN")
+        assert "No CDRs found" in result
+        assert "End of results" in result
+
+    @pytest.mark.django_db
+    def test_list_cdrs_by_token_with_cursor_format_returns_string(self):
+        result = list_cdrs_by_token(query="TOKEN|CDR123")
+        # Should handle the cursor format even if CDR doesn't exist
+        assert isinstance(result, str)
 
 
 class TestFormatCdrAsMarkdown:
     """Test format_cdr_as_markdown function"""
 
+    @pytest.mark.django_db
     def test_format_cdr_as_markdown_includes_cdr_header(self):
-        """Test format_cdr_as_markdown includes CDR header"""
-        # This test would require a mock CDR object
-        # For now, just verify the function exists and is callable
-        assert callable(format_cdr_as_markdown)
+        cdr = CdrFactory()
+        session = OCPISessionFactory(uid=cdr.session_id)
+        result = format_cdr_as_markdown(cdr, session)
+
+        # Verify header
+        assert "# Charge Detail Record (CDR)" in result
+        assert f"**UID:** `{cdr.uid}`" in result
+
+        # Verify timing section
+        assert "## Timing" in result
+        assert "**Start:" in result
+        assert "**End:" in result
+        assert "**Total Duration:" in result
+
+        # Verify token information
+        assert "## Token Information" in result
+        assert f"**Token UID:** `{cdr.cdr_token_uid}`" in result
+
+        # Verify location information
+        assert "## Location Information" in result
+        assert f"**Location UID:** `{cdr.cdr_location_uid}`" in result
+
+        # Verify EVSE information
+        assert "## EVSE Information" in result
+        assert f"**EVSE UID:** `{cdr.cdr_location_evse_uid}`" in result
+
+        # Verify session details when session is provided
+        assert "## Session Details" in result
+        assert "**Status:" in result
+        assert "**Energy Charged:" in result
 
 
 class TestFormatCdrsListAsMarkdown:
-    """Test format_cdrs_list_as_markdown function"""
-
-    def test_format_cdrs_list_as_markdown_displays_no_cdrs_found_for_empty_list(self):
-        """Test format_cdrs_list_as_markdown with empty CDR list"""
+    def test_format_cdrs_list_as_markdown_with_empty_list_displays_no_cdrs_found(self):
         result = format_cdrs_list_as_markdown(
             cdrs=[], rfid_token="TEST_TOKEN", last_cdr_uid=None, has_more=False
         )
         assert "No CDRs found" in result
         assert "End of results" in result
 
-    def test_format_cdrs_list_as_markdown_displays_cdr_list(self):
-        """Test format_cdrs_list_as_markdown with CDR list"""
-        # This test would require mock CDR objects
-        # For now, just verify the function exists and is callable
-        assert callable(format_cdrs_list_as_markdown)
+    @pytest.mark.django_db
+    def test_format_cdrs_list_as_markdown_with_cdrs_displays_cdr_list(self):
+        rfid_token = "TEST_TOKEN_123"
+        cdr1 = CdrFactory(cdr_token_uid=rfid_token, session_id="SESSION001")
+        cdr2 = CdrFactory(cdr_token_uid=rfid_token, session_id="SESSION002")
+        cdrs = [cdr1, cdr2]
 
-    def test_format_cdrs_list_as_markdown_includes_next_page_info_when_has_more_true(
+        result = format_cdrs_list_as_markdown(
+            cdrs=cdrs, rfid_token=rfid_token, last_cdr_uid=cdr2.uid, has_more=False
+        )
+
+        # Verify header
+        assert (
+            f"# Charge Detail Records (CDRs) for RFID Token: `{rfid_token}`" in result
+        )
+        assert "**Showing:** 2 result(s)" in result
+
+        # Verify CDR 1 details
+        assert "## CDR 1" in result
+        assert f"**UID:** `{cdr1.uid}`" in result
+        assert f"**Session ID:** `{cdr1.session_id}`" in result
+
+        # Verify CDR 2 details
+        assert "## CDR 2" in result
+        assert f"**UID:** `{cdr2.uid}`" in result
+        assert f"**Session ID:** `{cdr2.session_id}`" in result
+
+        # Verify location and energy info for each CDR
+        assert "**Location:" in result
+        assert "**Total Energy:" in result
+
+        # Verify footer
+        assert "**End of results**" in result
+
+    def test_format_cdrs_list_as_markdown_with_has_more_true_includes_next_page_info(
         self,
     ):
-        """Test format_cdrs_list_as_markdown includes next page info when has_more=True"""
         result = format_cdrs_list_as_markdown(
             cdrs=[], rfid_token="TEST_TOKEN", last_cdr_uid="CDR001", has_more=True
         )

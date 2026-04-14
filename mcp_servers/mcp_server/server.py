@@ -10,6 +10,7 @@ This module handles MCP server tool registration following the implementation pr
 - Log unexpected exceptions with logger.exception()
 """
 
+from django.conf import settings
 from mcp.server import Server
 from mcp.types import Tool, TextContent
 import logging
@@ -47,7 +48,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="list_cdrs_by_token",
-            description="List Charge Detail Records (CDRs) filtered by RFID token with server-side paging (page size 20). Returns a paginated list of CDRs ordered by start_date_time with the exact query string for the next page if more results exist.",
+            description=f"List Charge Detail Records (CDRs) filtered by RFID token with server-side paging (page size {settings.MCP_SERVER_PAGE_SIZE}). Returns a paginated list of CDRs ordered by start_date_time with the exact query string for the next page if more results exist.",
             inputSchema={
                 "type": "object",
                 "properties": {

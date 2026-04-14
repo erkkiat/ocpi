@@ -12,6 +12,7 @@ This module handles JSON-RPC 2.0 protocol in the mcp_endpoint view following the
 
 import json
 import logging
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -124,7 +125,7 @@ def mcp_endpoint(request):
                 },
                 {
                     "name": "list_cdrs_by_token",
-                    "description": "List Charge Detail Records (CDRs) filtered by RFID token with server-side paging (page size 20). Returns a paginated list of CDRs ordered by start_date_time with the exact query string for the next page if more results exist.",
+                    "description": f"List Charge Detail Records (CDRs) filtered by RFID token with server-side paging (page size {settings.MCP_SERVER_PAGE_SIZE}). Returns a paginated list of CDRs ordered by start_date_time with the exact query string for the next page if more results exist.",
                     "inputSchema": {
                         "type": "object",
                         "properties": {
