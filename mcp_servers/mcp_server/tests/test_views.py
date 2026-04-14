@@ -31,7 +31,7 @@ class TestMCPEndpoint:
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {api_key.key}")
         return client
 
-    def test_initialize_method(self, api_client):
+    def test_initialize_method_returns_server_info(self, api_client):
         """Test initialize method returns server info"""
         payload = {
             "jsonrpc": "2.0",
@@ -52,7 +52,7 @@ class TestMCPEndpoint:
         assert data["result"]["serverInfo"]["name"] == "ocpiconnector-mcp-server"
         assert data["id"] == 1
 
-    def test_ping_method(self, api_client):
+    def test_ping_method_returns_empty_result(self, api_client):
         """Test ping method returns empty result"""
         payload = {
             "jsonrpc": "2.0",
@@ -70,7 +70,7 @@ class TestMCPEndpoint:
         assert data["result"] == {}
         assert data["id"] == 1
 
-    def test_notifications_initialized_method(self, api_client):
+    def test_notifications_initialized_method_returns_204(self, api_client):
         """Test notifications/initialized method returns 204"""
         payload = {
             "jsonrpc": "2.0",
@@ -84,7 +84,7 @@ class TestMCPEndpoint:
 
         assert response.status_code == 204
 
-    def test_tools_list_method(self, api_client):
+    def test_tools_list_method_returns_available_tools(self, api_client):
         """Test tools/list method returns available tools"""
         payload = {
             "jsonrpc": "2.0",
@@ -108,7 +108,7 @@ class TestMCPEndpoint:
         assert "list_cdrs_by_token" in tool_names
         assert data["id"] == 1
 
-    def test_invalid_json(self, api_client):
+    def test_invalid_json_returns_400_with_jsonrpc_error_format(self, api_client):
         """Test invalid JSON returns 400 with JSON-RPC error format"""
         response = api_client.post(
             "/mcp/", data="invalid json", content_type="application/json"
@@ -122,7 +122,9 @@ class TestMCPEndpoint:
         assert data["error"]["message"] == "Parse error"
         assert data["id"] is None
 
-    def test_invalid_jsonrpc_version(self, api_client):
+    def test_invalid_jsonrpc_version_returns_400_with_jsonrpc_error_format(
+        self, api_client
+    ):
         """Test invalid JSON-RPC version returns 400 with JSON-RPC error format"""
         payload = {
             "jsonrpc": "1.0",
@@ -142,7 +144,7 @@ class TestMCPEndpoint:
         assert data["error"]["message"] == "Invalid Request"
         assert data["id"] is None
 
-    def test_unknown_method(self, api_client):
+    def test_unknown_method_returns_error(self, api_client):
         """Test unknown method returns error"""
         payload = {
             "jsonrpc": "2.0",
@@ -161,7 +163,7 @@ class TestMCPEndpoint:
         assert data["error"]["code"] == -32601
         assert "Method not found" in data["error"]["message"]
 
-    def test_tools_call_unknown_tool(self, api_client):
+    def test_tools_call_unknown_tool_returns_error(self, api_client):
         """Test tools/call with unknown tool returns error"""
         payload = {
             "jsonrpc": "2.0",
@@ -183,7 +185,7 @@ class TestMCPEndpoint:
         assert data["error"]["code"] == -32601
         assert "Unknown tool" in data["error"]["message"]
 
-    def test_authentication_required(self):
+    def test_authentication_required_returns_403(self):
         """Test that authentication is required"""
         client = APIClient()
         payload = {
@@ -225,7 +227,7 @@ class TestMCPEndpoint:
         response = client.get("/api/cpo/v2/tariffs/")
         assert response.status_code in [401, 403]  # Unauthorized or forbidden
 
-    def test_missing_jsonrpc_field(self, api_client):
+    def test_missing_jsonrpc_field_returns_400(self, api_client):
         """Test missing jsonrpc field returns 400"""
         payload = {
             "method": "initialize",
@@ -238,7 +240,7 @@ class TestMCPEndpoint:
 
         assert response.status_code == 400
 
-    def test_missing_method_field(self, api_client):
+    def test_missing_method_field_returns_400(self, api_client):
         """Test missing method field returns 400"""
         payload = {
             "jsonrpc": "2.0",

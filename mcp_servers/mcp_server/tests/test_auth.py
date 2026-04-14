@@ -20,7 +20,7 @@ User = get_user_model()
 class TestApiKeyModel:
     """Test ApiKey model"""
 
-    def test_api_key_generation(self):
+    def test_api_key_generation_generates_key_automatically(self):
         """Test that API keys are generated automatically"""
         user = User.objects.create_user(username="testuser", password="testpass")
         api_key = ApiKey.objects.create(user=user, name="Test Key")
@@ -29,7 +29,7 @@ class TestApiKeyModel:
         assert len(api_key.key) == 64
         assert api_key.is_active is True
 
-    def test_api_key_update_last_used(self):
+    def test_api_key_update_last_used_updates_timestamp(self):
         """Test that last_used timestamp can be updated"""
         user = User.objects.create_user(username="testuser", password="testpass")
         api_key = ApiKey.objects.create(user=user, name="Test Key")
@@ -44,7 +44,7 @@ class TestApiKeyModel:
         api_key.refresh_from_db()
         assert api_key.last_used is not None
 
-    def test_api_key_unique_constraint(self):
+    def test_api_key_unique_constraint_enforced(self):
         """Test that API keys must be unique"""
         user = User.objects.create_user(username="testuser", password="testpass")
 
@@ -56,14 +56,14 @@ class TestApiKeyModel:
             api_key2 = ApiKey(user=user, name="Test Key 2", key=api_key1.key)
             api_key2.save()
 
-    def test_api_key_str_representation(self):
+    def test_api_key_str_representation_returns_correct_format(self):
         """Test that ApiKey string representation is correct"""
         user = User.objects.create_user(username="testuser", password="testpass")
         api_key = ApiKey.objects.create(user=user, name="Test Key")
 
         assert str(api_key) == "Test Key (testuser)"
 
-    def test_api_key_update_last_used_method(self):
+    def test_api_key_update_last_used_method_updates_timestamp(self):
         """Test the update_last_used method directly"""
         user = User.objects.create_user(username="testuser", password="testpass")
         api_key = ApiKey.objects.create(user=user, name="Test Key")
@@ -77,8 +77,8 @@ class TestApiKeyModel:
         # Refresh from database
         api_key.refresh_from_db()
         assert api_key.last_used is not None
-        
-    def test_api_key_ordering(self):
+
+    def test_api_key_ordering_orders_by_created_at_descending(self):
         """Test that API keys are ordered by created_at descending"""
         user = User.objects.create_user(username="testuser", password="testpass")
         api_key1 = ApiKey.objects.create(user=user, name="Test Key 1")

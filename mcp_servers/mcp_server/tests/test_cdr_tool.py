@@ -65,7 +65,7 @@ class TestListCdrsByToken:
 class TestFormatCdrAsMarkdown:
     """Test format_cdr_as_markdown function"""
 
-    def test_format_cdr_as_markdown_includes_header(self):
+    def test_format_cdr_as_markdown_includes_cdr_header(self):
         """Test format_cdr_as_markdown includes CDR header"""
         # This test would require a mock CDR object
         # For now, just verify the function exists and is callable
@@ -75,7 +75,7 @@ class TestFormatCdrAsMarkdown:
 class TestFormatCdrsListAsMarkdown:
     """Test format_cdrs_list_as_markdown function"""
 
-    def test_format_cdrs_list_as_markdown_empty_list(self):
+    def test_format_cdrs_list_as_markdown_displays_no_cdrs_found_for_empty_list(self):
         """Test format_cdrs_list_as_markdown with empty CDR list"""
         result = format_cdrs_list_as_markdown(
             cdrs=[], rfid_token="TEST_TOKEN", last_cdr_uid=None, has_more=False
@@ -83,13 +83,15 @@ class TestFormatCdrsListAsMarkdown:
         assert "No CDRs found" in result
         assert "End of results" in result
 
-    def test_format_cdrs_list_as_markdown_with_cdrs(self):
+    def test_format_cdrs_list_as_markdown_displays_cdr_list(self):
         """Test format_cdrs_list_as_markdown with CDR list"""
         # This test would require mock CDR objects
         # For now, just verify the function exists and is callable
         assert callable(format_cdrs_list_as_markdown)
 
-    def test_format_cdrs_list_as_markdown_with_paging(self):
+    def test_format_cdrs_list_as_markdown_includes_next_page_info_when_has_more_true(
+        self,
+    ):
         """Test format_cdrs_list_as_markdown includes next page info when has_more=True"""
         result = format_cdrs_list_as_markdown(
             cdrs=[], rfid_token="TEST_TOKEN", last_cdr_uid="CDR001", has_more=True

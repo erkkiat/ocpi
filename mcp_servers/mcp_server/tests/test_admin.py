@@ -18,7 +18,7 @@ User = get_user_model()
 class TestApiKeyAdmin:
     """Test ApiKey admin configuration"""
 
-    def test_admin_list_display(self):
+    def test_admin_list_display_configured_correctly(self):
         """Test that admin list_display is configured correctly"""
         admin = ApiKeyAdmin(ApiKey, AdminSite())
         expected_fields = (
@@ -31,25 +31,25 @@ class TestApiKeyAdmin:
         )
         assert admin.list_display == expected_fields
 
-    def test_admin_list_filter(self):
+    def test_admin_list_filter_configured_correctly(self):
         """Test that admin list_filter is configured correctly"""
         admin = ApiKeyAdmin(ApiKey, AdminSite())
         expected_filters = ("is_active", "created_at")
         assert admin.list_filter == expected_filters
 
-    def test_admin_search_fields(self):
+    def test_admin_search_fields_configured_correctly(self):
         """Test that admin search_fields is configured correctly"""
         admin = ApiKeyAdmin(ApiKey, AdminSite())
         expected_fields = ("name", "user__username", "key")
         assert admin.search_fields == expected_fields
 
-    def test_admin_readonly_fields(self):
+    def test_admin_readonly_fields_configured_correctly(self):
         """Test that admin readonly_fields is configured correctly"""
         admin = ApiKeyAdmin(ApiKey, AdminSite())
         expected_fields = ("key", "created_at", "last_used")
         assert admin.readonly_fields == expected_fields
 
-    def test_admin_fieldsets(self):
+    def test_admin_fieldsets_configured_correctly(self):
         """Test that admin fieldsets are configured correctly"""
         admin = ApiKeyAdmin(ApiKey, AdminSite())
         assert len(admin.fieldsets) == 2
