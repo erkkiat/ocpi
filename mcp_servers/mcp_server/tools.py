@@ -10,7 +10,7 @@ This module contains tool functions following the MCP tool implementation princi
 """
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.session import Session
 
@@ -58,8 +58,9 @@ def get_cdr_details(uid=None, session_id=None):
             if cdr.session_id
             else None
         )
-    except ObjectDoesNotExist:
-        # Session may not exist for this CDR; proceed with CDR-only output.
+    except (ObjectDoesNotExist, MultipleObjectsReturned):
+        # Session may not exist or multiple sessions found with same uid;
+        # proceed with CDR-only output.
         session = None
 
     return format_cdr_as_markdown(cdr, session)

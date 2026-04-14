@@ -51,6 +51,18 @@ class TestGetCdrDetails:
         assert isinstance(result, str)
         assert len(result) > 0
 
+    @pytest.mark.django_db
+    def test_get_cdr_details_with_multiple_sessions_same_uid_returns_cdr_only(self):
+        cdr = CdrFactory()
+        # Create multiple sessions with the same uid
+        OCPISessionFactory(uid=cdr.session_id)
+        OCPISessionFactory(uid=cdr.session_id)
+        # Should still return CDR details without raising exception
+        result = get_cdr_details(uid=cdr.uid)
+        assert isinstance(result, str)
+        assert len(result) > 0
+        assert "# Charge Detail Record (CDR)" in result
+
 
 class TestListCdrsByToken:
     """Test list_cdrs_by_token function"""
