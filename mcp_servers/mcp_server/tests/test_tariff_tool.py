@@ -7,6 +7,7 @@ from ocpi22.models.business_details import BusinessDetails
 from mcp_servers.mcp_server.tools import (
     get_tariff_details,
     format_tariff_as_markdown,
+    format_orphan_tariff_as_markdown,
 )
 
 
@@ -181,7 +182,7 @@ class TestTariffTool:
             assert len(queries) <= 5, f"Expected at most 5 queries, got {len(queries)}"
 
     def test_ocpi_tariff_without_solid_tariff(self, setup_data):
-        """Test that error is raised when OCPI tariff exists but no SolidTariff references it"""
+        """Test that orphan OCPI tariff is returned with explanatory message"""
         tariff = setup_data["tariff"]
         # Create a new OCPI tariff that's not referenced by any SolidTariff
         new_tariff = Tariff.objects.create(
@@ -191,7 +192,26 @@ class TestTariffTool:
             type="REGULAR",
         )
 
-        with pytest.raises(
-            ObjectDoesNotExist, match="is not referenced by any SolidTariff"
-        ):
-            get_tariff_details(id=new_tariff.uid)
+        result = get_tariff_details(id=new_tariff.uid)
+
+        # Should return the orphan tariff with warning message
+        assert "This is an orphan tariff" in result
+        assert "no SolidTariff associated with it" in result
+        assert "possibly generated as test data" in result
+        assert f"**UID:** `{new_tariff.uid}`" in result
+
+    def test_format_orphan_tariff_as_markdown(self, setup_data):
+        """Test that orphan tariff is formatted with explanatory message"""
+        tariff = setup_data["tariff"]
+
+        result = format_orphan_tariff_as_markdown(tariff)
+
+        # Check for orphan warning
+        assert "This is an orphan tariff" in result
+        assert "no SolidTariff associated with it" in result
+        assert "possibly generated as test data" in result
+
+        # Check for tariff details
+        assert "# Tariff Information" in result
+        assert "## OCPI Tariff (Orphan)" in result
+        assert tariff.uid in result

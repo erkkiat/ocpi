@@ -65,13 +65,79 @@ def get_tariff_details(id: str) -> str:
         if solid_tariff:
             return format_tariff_as_markdown(solid_tariff)
         else:
-            raise ObjectDoesNotExist(
-                f"OCPI Tariff {id} exists but is not referenced by any SolidTariff"
-            )
+            # Return orphan tariff with explanatory message
+            return format_orphan_tariff_as_markdown(ocpi_tariff)
     except Tariff.DoesNotExist:
         pass
 
     raise ObjectDoesNotExist(f"Tariff not found with ID: {id}")
+
+
+def format_orphan_tariff_as_markdown(ocpi_tariff) -> str:
+    """
+    Format an orphan OCPI Tariff (no SolidTariff references) as markdown.
+
+    Includes an explanatory message that this is an orphan tariff possibly
+    generated as test data.
+    """
+    lines = []
+
+    # Header
+    lines.append("# Tariff Information")
+    lines.append("")
+
+    # Orphan warning
+    lines.append(
+        "> ⚠️ **This is an orphan tariff which has no SolidTariff associated with it, and it was possibly generated as test data.**"
+    )
+    lines.append("")
+
+    # OCPI Tariff Section
+    lines.append("## OCPI Tariff (Orphan)")
+    lines.append(f"**UID:** `{ocpi_tariff.uid}`")
+    lines.append(f"**Currency:** {ocpi_tariff.currency}")
+
+    if ocpi_tariff.type:
+        lines.append(f"**Type:** {ocpi_tariff.type}")
+
+    if ocpi_tariff.min_price_incl_vat or ocpi_tariff.min_price_excl_vat:
+        lines.append(
+            f"**Min Price:** {ocpi_tariff.min_price_incl_vat or ocpi_tariff.min_price_excl_vat}"
+        )
+
+    if ocpi_tariff.max_price_incl_vat or ocpi_tariff.max_price_excl_vat:
+        lines.append(
+            f"**Max Price:** {ocpi_tariff.max_price_incl_vat or ocpi_tariff.max_price_excl_vat}"
+        )
+
+    lines.append(f"**Last Updated:** {ocpi_tariff.last_updated or 'N/A'}")
+    lines.append(f"**Created:** {ocpi_tariff.created}")
+    lines.append("")
+
+    # Tariff Elements
+    if ocpi_tariff.tariff_elements.exists():
+        lines.append("### Tariff Elements")
+        for element in ocpi_tariff.tariff_elements.all():
+            lines.append("**Element:**")
+            if element.start_time:
+                lines.append(
+                    f"- Time Range: {element.start_time} - {element.end_time or '24:00'}"
+                )
+            if element.day_of_week:
+                lines.append(f"- Days: {', '.join(element.day_of_week)}")
+
+            # Price Components
+            for pc in element.price_components.all():
+                lines.append(f"- **Price Component:** {pc.type}")
+                lines.append(f"  - Price: {pc.price} {ocpi_tariff.currency}")
+                lines.append(f"  - VAT: {pc.vat or 0}%")
+                lines.append(f"  - Step Size: {pc.step_size}")
+            lines.append("")
+    else:
+        lines.append("No tariff elements defined for this OCPI Tariff.")
+        lines.append("")
+
+    return "\n".join(lines)
 
 
 def format_tariff_as_markdown(solid_tariff) -> str:
