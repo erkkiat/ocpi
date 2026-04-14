@@ -106,29 +106,23 @@ class TestFormatCdrAsMarkdown:
         session = OCPISessionFactory(uid=cdr.session_id)
         result = format_cdr_as_markdown(cdr, session)
 
-        # Verify header
         assert "# Charge Detail Record (CDR)" in result
         assert f"**UID:** `{cdr.uid}`" in result
 
-        # Verify timing section
         assert "## Timing" in result
         assert "**Start:" in result
         assert "**End:" in result
         assert "**Total Duration:" in result
 
-        # Verify token information
         assert "## Token Information" in result
         assert f"**Token UID:** `{cdr.cdr_token_uid}`" in result
 
-        # Verify location information
         assert "## Location Information" in result
         assert f"**Location UID:** `{cdr.cdr_location_uid}`" in result
 
-        # Verify EVSE information
         assert "## EVSE Information" in result
         assert f"**EVSE UID:** `{cdr.cdr_location_evse_uid}`" in result
 
-        # Verify session details when session is provided
         assert "## Session Details" in result
         assert "**Status:" in result
         assert "**Energy Charged:" in result
@@ -153,27 +147,22 @@ class TestFormatCdrsListAsMarkdown:
             cdrs=cdrs, rfid_token=rfid_token, last_cdr_uid=cdr2.uid, has_more=False
         )
 
-        # Verify header
         assert (
             f"# Charge Detail Records (CDRs) for RFID Token: `{rfid_token}`" in result
         )
         assert "**Showing:** 2 result(s)" in result
 
-        # Verify CDR 1 details
         assert "## CDR 1" in result
         assert f"**UID:** `{cdr1.uid}`" in result
         assert f"**Session ID:** `{cdr1.session_id}`" in result
 
-        # Verify CDR 2 details
         assert "## CDR 2" in result
         assert f"**UID:** `{cdr2.uid}`" in result
         assert f"**Session ID:** `{cdr2.session_id}`" in result
 
-        # Verify location and energy info for each CDR
         assert "**Location:" in result
         assert "**Total Energy:" in result
 
-        # Verify footer
         assert "**End of results**" in result
 
     def test_format_cdrs_list_as_markdown_with_has_more_true_includes_next_page_info(
