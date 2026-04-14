@@ -269,8 +269,8 @@ def list_cdrs_by_token(query: str) -> str:
                 start_date_time=last_cdr.start_date_time, uid__gt=last_cdr.uid
             )
             queryset = queryset.order_by("start_date_time", "uid")
-        except Cdr.DoesNotExist:
-            # If cursor doesn't exist, start from beginning
+        except (Cdr.DoesNotExist, MultipleObjectsReturned):
+            # If cursor doesn't exist or has duplicate UIDs, start from beginning
             pass
 
     # Limit to configured page size
