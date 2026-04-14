@@ -100,15 +100,33 @@ def format_orphan_tariff_as_markdown(ocpi_tariff) -> str:
     if ocpi_tariff.type:
         lines.append(f"**Type:** {ocpi_tariff.type}")
 
-    if ocpi_tariff.min_price_incl_vat or ocpi_tariff.min_price_excl_vat:
-        lines.append(
-            f"**Min Price:** {ocpi_tariff.min_price_incl_vat or ocpi_tariff.min_price_excl_vat}"
+    if (
+        ocpi_tariff.min_price_incl_vat is not None
+        or ocpi_tariff.min_price_excl_vat is not None
+    ):
+        min_price = (
+            ocpi_tariff.min_price_incl_vat
+            if ocpi_tariff.min_price_incl_vat is not None
+            else ocpi_tariff.min_price_excl_vat
         )
+        min_price_type = (
+            "incl. VAT" if ocpi_tariff.min_price_incl_vat is not None else "excl. VAT"
+        )
+        lines.append(f"**Min Price:** {min_price} ({min_price_type})")
 
-    if ocpi_tariff.max_price_incl_vat or ocpi_tariff.max_price_excl_vat:
-        lines.append(
-            f"**Max Price:** {ocpi_tariff.max_price_incl_vat or ocpi_tariff.max_price_excl_vat}"
+    if (
+        ocpi_tariff.max_price_incl_vat is not None
+        or ocpi_tariff.max_price_excl_vat is not None
+    ):
+        max_price = (
+            ocpi_tariff.max_price_incl_vat
+            if ocpi_tariff.max_price_incl_vat is not None
+            else ocpi_tariff.max_price_excl_vat
         )
+        max_price_type = (
+            "incl. VAT" if ocpi_tariff.max_price_incl_vat is not None else "excl. VAT"
+        )
+        lines.append(f"**Max Price:** {max_price} ({max_price_type})")
 
     lines.append(f"**Last Updated:** {ocpi_tariff.last_updated or 'N/A'}")
     lines.append(f"**Created:** {ocpi_tariff.created}")
@@ -199,20 +217,36 @@ def format_tariff_as_markdown(solid_tariff) -> str:
             lines.append(f"**Type:** {solid_tariff.ocpi_tariff.type}")
 
         if (
-            solid_tariff.ocpi_tariff.min_price_incl_vat
-            or solid_tariff.ocpi_tariff.min_price_excl_vat
+            solid_tariff.ocpi_tariff.min_price_incl_vat is not None
+            or solid_tariff.ocpi_tariff.min_price_excl_vat is not None
         ):
-            lines.append(
-                f"**Min Price:** {solid_tariff.ocpi_tariff.min_price_incl_vat or solid_tariff.ocpi_tariff.min_price_excl_vat}"
+            min_price = (
+                solid_tariff.ocpi_tariff.min_price_incl_vat
+                if solid_tariff.ocpi_tariff.min_price_incl_vat is not None
+                else solid_tariff.ocpi_tariff.min_price_excl_vat
             )
+            min_price_type = (
+                "incl. VAT"
+                if solid_tariff.ocpi_tariff.min_price_incl_vat is not None
+                else "excl. VAT"
+            )
+            lines.append(f"**Min Price:** {min_price} ({min_price_type})")
 
         if (
-            solid_tariff.ocpi_tariff.max_price_incl_vat
-            or solid_tariff.ocpi_tariff.max_price_excl_vat
+            solid_tariff.ocpi_tariff.max_price_incl_vat is not None
+            or solid_tariff.ocpi_tariff.max_price_excl_vat is not None
         ):
-            lines.append(
-                f"**Max Price:** {solid_tariff.ocpi_tariff.max_price_incl_vat or solid_tariff.ocpi_tariff.max_price_excl_vat}"
+            max_price = (
+                solid_tariff.ocpi_tariff.max_price_incl_vat
+                if solid_tariff.ocpi_tariff.max_price_incl_vat is not None
+                else solid_tariff.ocpi_tariff.max_price_excl_vat
             )
+            max_price_type = (
+                "incl. VAT"
+                if solid_tariff.ocpi_tariff.max_price_incl_vat is not None
+                else "excl. VAT"
+            )
+            lines.append(f"**Max Price:** {max_price} ({max_price_type})")
 
         lines.append(
             f"**Last Updated:** {solid_tariff.ocpi_tariff.last_updated or 'N/A'}"
@@ -400,14 +434,36 @@ def format_cdr_as_markdown(cdr, session=None):
             lines.append(f"### Tariff: `{tariff.uid}`")
             lines.append(f"- **Currency:** {tariff.currency}")
             lines.append(f"- **Type:** {tariff.type or 'Regular'}")
-            if tariff.min_price_incl_vat or tariff.min_price_excl_vat:
-                lines.append(
-                    f"- **Min Price:** {tariff.min_price_incl_vat or tariff.min_price_excl_vat}"
+            if (
+                tariff.min_price_incl_vat is not None
+                or tariff.min_price_excl_vat is not None
+            ):
+                min_price = (
+                    tariff.min_price_incl_vat
+                    if tariff.min_price_incl_vat is not None
+                    else tariff.min_price_excl_vat
                 )
-            if tariff.max_price_incl_vat or tariff.max_price_excl_vat:
-                lines.append(
-                    f"- **Max Price:** {tariff.max_price_incl_vat or tariff.max_price_excl_vat}"
+                min_price_type = (
+                    "incl. VAT"
+                    if tariff.min_price_incl_vat is not None
+                    else "excl. VAT"
                 )
+                lines.append(f"- **Min Price:** {min_price} ({min_price_type})")
+            if (
+                tariff.max_price_incl_vat is not None
+                or tariff.max_price_excl_vat is not None
+            ):
+                max_price = (
+                    tariff.max_price_incl_vat
+                    if tariff.max_price_incl_vat is not None
+                    else tariff.max_price_excl_vat
+                )
+                max_price_type = (
+                    "incl. VAT"
+                    if tariff.max_price_incl_vat is not None
+                    else "excl. VAT"
+                )
+                lines.append(f"- **Max Price:** {max_price} ({max_price_type})")
             lines.append(f"- **Last Updated:** {tariff.last_updated or 'N/A'}")
 
             # Tariff Elements

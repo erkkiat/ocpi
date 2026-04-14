@@ -215,3 +215,29 @@ class TestTariffTool:
         assert "# Tariff Information" in result
         assert "## OCPI Tariff (Orphan)" in result
         assert tariff.uid in result
+
+    def test_format_orphan_tariff_with_zero_price(self, setup_data):
+        """Test that 0.0 prices are correctly displayed in orphan tariff markdown"""
+        tariff = setup_data["tariff"]
+        tariff.min_price_incl_vat = 0.0
+        tariff.max_price_excl_vat = 0.0
+        tariff.save()
+
+        result = format_orphan_tariff_as_markdown(tariff)
+
+        # 0.0 prices should be displayed with VAT indication
+        assert "**Min Price:** 0.0 (incl. VAT)" in result
+        assert "**Max Price:** 0.0 (excl. VAT)" in result
+
+    def test_format_tariff_with_zero_price(self, setup_data):
+        """Test that 0.0 prices are correctly displayed in tariff markdown"""
+        solid_tariff = setup_data["solid_tariff"]
+        solid_tariff.ocpi_tariff.min_price_incl_vat = 0.0
+        solid_tariff.ocpi_tariff.max_price_excl_vat = 0.0
+        solid_tariff.ocpi_tariff.save()
+
+        result = format_tariff_as_markdown(solid_tariff)
+
+        # 0.0 prices should be displayed with VAT indication
+        assert "**Min Price:** 0.0 (incl. VAT)" in result
+        assert "**Max Price:** 0.0 (excl. VAT)" in result
