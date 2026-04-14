@@ -25,6 +25,12 @@ from rest_framework.permissions import IsAuthenticated
 
 from .authentication import ApiKeyAuthentication
 from .tools import get_cdr_details, list_cdrs_by_token
+from mcp.types import (
+    INTERNAL_ERROR,
+    INVALID_REQUEST,
+    METHOD_NOT_FOUND,
+    PARSE_ERROR,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +62,7 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {"code": -32700, "message": "Parse error"},
+                    "error": {"code": PARSE_ERROR, "message": "Parse error"},
                     "id": None,
                 },
                 status=400,
@@ -67,7 +73,7 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {"code": -32600, "message": "Invalid Request"},
+                    "error": {"code": INVALID_REQUEST, "message": "Invalid Request"},
                     "id": None,
                 },
                 status=400,
@@ -220,7 +226,7 @@ def mcp_endpoint(request):
                         {
                             "jsonrpc": "2.0",
                             "error": {
-                                "code": -32603,
+                                "code": INTERNAL_ERROR,
                                 "message": f"Error retrieving CDR: {str(e)}",
                             },
                             "id": request_id,
@@ -284,7 +290,7 @@ def mcp_endpoint(request):
                         {
                             "jsonrpc": "2.0",
                             "error": {
-                                "code": -32603,
+                                "code": INTERNAL_ERROR,
                                 "message": f"Error listing CDRs: {str(e)}",
                             },
                             "id": request_id,
@@ -296,7 +302,7 @@ def mcp_endpoint(request):
                     {
                         "jsonrpc": "2.0",
                         "error": {
-                            "code": -32601,
+                            "code": METHOD_NOT_FOUND,
                             "message": f"Unknown tool: {tool_name}",
                         },
                         "id": request_id,
@@ -308,7 +314,10 @@ def mcp_endpoint(request):
             return JsonResponse(
                 {
                     "jsonrpc": "2.0",
-                    "error": {"code": -32601, "message": f"Method not found: {method}"},
+                    "error": {
+                        "code": METHOD_NOT_FOUND,
+                        "message": f"Method not found: {method}",
+                    },
                     "id": request_id,
                 },
                 status=400,
@@ -319,7 +328,10 @@ def mcp_endpoint(request):
         return JsonResponse(
             {
                 "jsonrpc": "2.0",
-                "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
+                "error": {
+                    "code": INTERNAL_ERROR,
+                    "message": f"Internal error: {str(e)}",
+                },
                 "id": data.get("id") if "data" in locals() else None,
             },
             status=500,

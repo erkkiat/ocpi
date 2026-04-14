@@ -14,6 +14,11 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from mcp_servers.mcp_server.models import ApiKey
+from mcp.types import (
+    INVALID_REQUEST,
+    METHOD_NOT_FOUND,
+    PARSE_ERROR,
+)
 
 User = get_user_model()
 
@@ -118,7 +123,7 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == -32700
+        assert data["error"]["code"] == PARSE_ERROR
         assert data["error"]["message"] == "Parse error"
         assert data["id"] is None
 
@@ -140,7 +145,7 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == -32600
+        assert data["error"]["code"] == INVALID_REQUEST
         assert data["error"]["message"] == "Invalid Request"
         assert data["id"] is None
 
@@ -160,7 +165,7 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == -32601
+        assert data["error"]["code"] == METHOD_NOT_FOUND
         assert "Method not found" in data["error"]["message"]
 
     def test_tools_call_unknown_tool_returns_error(self, api_client):
@@ -182,7 +187,7 @@ class TestMCPEndpoint:
         data = response.json()
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
-        assert data["error"]["code"] == -32601
+        assert data["error"]["code"] == METHOD_NOT_FOUND
         assert "Unknown tool" in data["error"]["message"]
 
     def test_authentication_required_returns_403(self):
