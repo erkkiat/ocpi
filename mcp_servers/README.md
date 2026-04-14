@@ -125,8 +125,6 @@ mcp-servers/
 │       ├── __init__.py
 │       ├── test_auth.py
 │       └── test_cdr_tool.py
-├── .env                       # Environment variables
-├── venv/                      # Virtual environment (can be removed)
 └── README.md                  # This file
 ```
 
