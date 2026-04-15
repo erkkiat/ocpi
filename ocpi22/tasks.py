@@ -103,7 +103,7 @@ assert (
     settings.DEBUG or REDIS_URL
 ), f"One of these keys needs to be set at least in the production: {settings.REDIS_KEYS}"
 if "rediss" in REDIS_URL and "ssl_cert_reqs" not in REDIS_URL:
-    REDIS_URL += "?ssl_cert_reqs=CERT_NONE"
+    REDIS_URL += "?ssl_cert_reqs=none"
 
 if REDIS_URL:
     app.conf.update(broker_url=REDIS_URL, result_backend=REDIS_URL)
@@ -399,10 +399,10 @@ def send_hubject_request(
 def send_hubject_evse_full_load(self) -> None:
     from integrations.hubject.services import HubjectService
 
+    our_party = get_our_party(OcpiRolesEnum.CPO)
     try:
-        our_party = get_our_party(OcpiRolesEnum.CPO)
-        service = HubjectService()
         try:
+            service = HubjectService()
             payload = service.get_evse_full_load_payload(our_party)
 
             if payload is None:
