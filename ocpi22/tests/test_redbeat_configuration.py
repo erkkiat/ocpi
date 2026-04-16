@@ -15,8 +15,8 @@ class TestRedbeatConfiguration:
     def test_redbeat_redis_url_is_configured(self, celery_app):
         assert celery_app.conf.redbeat_redis_url is not None
 
-    def test_redbeat_lock_timeout_is_300_seconds(self, celery_app):
-        assert celery_app.conf.redbeat_lock_timeout == 300
+    def test_redbeat_lock_timeout_is_600_seconds(self, celery_app):
+        assert celery_app.conf.redbeat_lock_timeout == 600
 
     def test_redbeat_key_prefix_is_configured(self, celery_app):
         assert celery_app.conf.redbeat_key_prefix == "redbeat:"
