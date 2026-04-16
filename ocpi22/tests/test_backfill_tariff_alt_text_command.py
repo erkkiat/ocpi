@@ -188,7 +188,7 @@ def test_backfill_swaps_connector_tariff_references(operator_fi_cpo):
     assert old_ocpi_tariff not in connector.tariff_ids.all()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_backfill_triggers_location_post_process_for_attached_connector(
     operator_fi_cpo,
 ):
@@ -210,7 +210,7 @@ def test_backfill_triggers_location_post_process_for_attached_connector(
     assert solid_tariff.ocpi_tariff in connector.tariff_ids.all()
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_backfill_calls_post_process_on_new_ocpi_tariff(operator_fi_cpo):
     _solid_tariff(operator_fi_cpo, "T-10", price_per_kwh=0.45)
 
@@ -220,29 +220,32 @@ def test_backfill_calls_post_process_on_new_ocpi_tariff(operator_fi_cpo):
     mock_push.assert_called_once()
 
 
-@pytest.mark.django_db
-def test_backfill_post_process_called_before_connector_swap(operator_fi_cpo):
-    from ocpi22.management.commands.backfill_tariff_alt_text import Command
+@pytest.mark.django_db(transaction=True)
+def test_backfill_tariff_post_process_fires_before_location_post_process(
+    operator_fi_cpo,
+):
+    from ocpi22.models.location import Location
 
-    _solid_tariff(operator_fi_cpo, "T-11", price_per_kwh=0.45)
+    solid_tariff = _solid_tariff(operator_fi_cpo, "T-11", price_per_kwh=0.45)
+    ConnectorFactory(tariff_ids=[solid_tariff.ocpi_tariff])
 
     call_order = []
 
-    def record_post_process(*args, **kwargs):
-        call_order.append("post_process")
-
-    def record_swap(self, old, new):
-        call_order.append("swap")
-
     with (
         patch.object(
-            Tariff, "post_process_after_update_or_create", record_post_process
+            Tariff,
+            "post_process_after_update_or_create",
+            lambda *a, **kw: call_order.append("tariff"),
         ),
-        patch.object(Command, "_swap_connector_tariff_references", record_swap),
+        patch.object(
+            Location,
+            "post_process_after_update_or_create",
+            lambda *a, **kw: call_order.append("location"),
+        ),
     ):
         call_command("backfill_tariff_alt_text")
 
-    assert call_order == ["post_process", "swap"]
+    assert call_order == ["tariff", "location"]
 
 
 @pytest.mark.django_db

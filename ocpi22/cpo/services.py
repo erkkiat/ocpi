@@ -358,9 +358,7 @@ class SolidTariffService:
                 currency=currency,
             )
 
-            ocpi_tariff.post_process_after_update_or_create()
-
-            return SolidTariff.objects.create(
+            solid_tariff = SolidTariff.objects.create(
                 external_id=external_id,
                 currency=currency,
                 price_per_kwh=per_kwh,
@@ -376,6 +374,9 @@ class SolidTariffService:
                 last_updated=last_updated,
                 operator=operator,
             )
+            transaction.on_commit(ocpi_tariff.post_process_after_update_or_create)
+
+        return solid_tariff
 
     def _get_ocpi_uid(self):
         # TODO: MSP specific ocpi tariffs requirement is not satisfied here.
@@ -440,11 +441,15 @@ class SolidTariffService:
             tariff.tariff_alt_text.add(display_text)
 
     def _send_updates_to_attached_connectors(self, old_solid_tariff, new_solid_tariff):
-        for connector in old_solid_tariff.ocpi_tariff.connectors.all():
-            connector.tariff_ids.remove(old_solid_tariff.ocpi_tariff)
-            connector.tariff_ids.add(new_solid_tariff.ocpi_tariff)
-            connector.save()
-            connector.evse.location.post_process_after_update_or_create()
+        with transaction.atomic():
+            affected_locations = []
+            for connector in old_solid_tariff.ocpi_tariff.connectors.all():
+                connector.tariff_ids.remove(old_solid_tariff.ocpi_tariff)
+                connector.tariff_ids.add(new_solid_tariff.ocpi_tariff)
+                connector.save()
+                affected_locations.append(connector.evse.location)
+            for location in affected_locations:
+                transaction.on_commit(location.post_process_after_update_or_create)
 
     def get_solid_tariff_external_id_by_ocpi_tariff_uid(self, ocpi_tariff_uid):
         try:

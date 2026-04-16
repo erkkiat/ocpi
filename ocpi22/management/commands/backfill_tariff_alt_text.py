@@ -163,9 +163,12 @@ class Command(BaseCommand):
             SolidTariff.objects.filter(pk=solid_tariff.pk).update(
                 ocpi_tariff=new_ocpi_tariff
             )
-
-        new_ocpi_tariff.post_process_after_update_or_create()
-        self._swap_connector_tariff_references(old_ocpi_tariff, new_ocpi_tariff)
+            affected_locations = self._swap_connector_tariff_references(
+                old_ocpi_tariff, new_ocpi_tariff
+            )
+            transaction.on_commit(new_ocpi_tariff.post_process_after_update_or_create)
+            for location in affected_locations:
+                transaction.on_commit(location.post_process_after_update_or_create)
 
         solid_tariff.refresh_from_db()
         self._sync_hubject(solid_tariff)
@@ -177,12 +180,14 @@ class Command(BaseCommand):
         return True
 
     @staticmethod
-    def _swap_connector_tariff_references(old_ocpi_tariff, new_ocpi_tariff) -> None:
+    def _swap_connector_tariff_references(old_ocpi_tariff, new_ocpi_tariff) -> list:
+        affected_locations = []
         for connector in old_ocpi_tariff.connectors.all():
             connector.tariff_ids.remove(old_ocpi_tariff)
             connector.tariff_ids.add(new_ocpi_tariff)
             connector.save()
-            connector.evse.location.post_process_after_update_or_create()
+            affected_locations.append(connector.evse.location)
+        return affected_locations
 
     def _sync_hubject(self, solid_tariff: SolidTariff) -> None:
         if not settings.ENABLE_HUBJECT:
