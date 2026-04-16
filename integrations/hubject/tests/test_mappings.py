@@ -417,15 +417,20 @@ class TestMappings:
     def test_convert_to_pricing_product_data_records_when_prices_are_none(
         self,
         smp1_solid_tariff_with_none_prices,
-        pricing_product_data_record_successful_result,
     ):
-        with pytest.raises(
-            ValidationError,
-            match=f"['SolidTariff {smp1_solid_tariff_with_none_prices.external_id} is a free tariff without any price defined.']",
-        ):
-            self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_none_prices
+        with mock.patch(
+            "integrations.solid_to_hubject_converter.logger"
+        ) as mock_logger:
+            result = (
+                self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
+                    smp1_solid_tariff_with_none_prices
+                )
             )
+
+        assert result is None
+        mock_logger.warning.assert_called_once_with(
+            f"['Missing ENERGY, TIME component for SolidTariff {smp1_solid_tariff_with_none_prices.external_id}, Skipping update to Hubject.']"
+        )
 
     @pytest.mark.django_db
     def test_get_provider_ids_for_solid_tariffs_with_msp(
