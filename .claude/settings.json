@@ -5,8 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"IMPORTANT: Before doing any work, you MUST run `make claude-context` in the terminal and then read both `.claude/context.md` and `.claude/context_auto.md`. This is required by the project CLAUDE.md. Do not skip this step.\"}}'",
-            "statusMessage": "Loading project context reminder..."
+            "command": "python3 -c \"import json, os; ctx = open('.claude_context.md').read() if os.path.exists('.claude_context.md') else ''; auto = open('.claude_context_auto.md').read() if os.path.exists('.claude_context_auto.md') else ''; combined = '\\n\\n'.join(filter(None, [ctx, auto])); print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': combined}})) if combined else None\"",
+            "timeout": 10,
+            "statusMessage": "Loading project context..."
           }
         ]
       }

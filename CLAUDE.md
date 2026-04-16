@@ -2,22 +2,30 @@
 
 ## 🚀 Quick Start
 
-Before starting any work session, generate fresh context:
+Before starting any work session, regenerate fresh context:
 
 ```bash
 make claude-context
 ```
 
-Then in Claude chat:
-```
-"Read .claude_context.md and .claude_context_auto.md"
-```
+Context is **automatically injected** at the start of every Claude session via a `SessionStart` hook — no need to ask Claude to read the files manually.
+
+The context is also **auto-regenerated** whenever you switch or create a branch (via `.githooks/post-checkout`).
 
 This gives Claude instant understanding of:
 - Complete project architecture
 - Recent git changes and current state
 - All 32 code flows and their relationships
 - Your strict testing preferences
+
+### First-time local setup
+
+To activate the branch hook, run once after cloning:
+
+```bash
+git config core.hooksPath .githooks
+pre-commit install
+```
 
 **📚 For complete documentation, see:**
 - [.claude/README.md](.claude/README.md) - System overview
@@ -252,31 +260,27 @@ git commit -m "message"               # Runs checks automatically
 
 ### 1. Starting a New Feature
 ```bash
-make claude-context
+make claude-context   # regenerate if not on a fresh branch
 ```
 Then in Claude:
 ```
-"Read .claude_context.md and .claude_context_auto.md"
 "Read .claude/skills/ocpiconnector-standards/SKILL.md"
 "I need to add a new MQTT message type for remote diagnostics. Guide me."
 ```
 
 ### 2. Working on payments/DirectPayment
 ```
-"Read .claude_context.md and .claude_context_auto.md"
 "Read .claude/skills/ocpiconnector-standards/SKILL.md"
 "Read .claude/skills/directpayment-spec/SKILL.md"
 ```
 
 ### 3. Debugging OCPI protocol issues
 ```
-"Read .claude_context.md and .claude_context_auto.md"
 "Read .claude/skills/ocpi-spec/SKILL.md"
 ```
 
 ### 4. Generating Tests
 ```
-"Read .claude_context.md"
 "Read .claude/skills/ocpiconnector-standards/SKILL.md"
 "Read ocpi22/cpo/mqtt/tasks.py"
 "Generate unit tests for process_authorization_request following my test preferences"
@@ -284,7 +288,7 @@ Then in Claude:
 
 ### 5. Debugging Issues
 ```
-"Read .claude_context_auto.md - what changed recently?"
+"What changed recently?" (context is already loaded)
 "The authorization flow is failing. Based on recent changes, what might be wrong?"
 ```
 
@@ -293,7 +297,7 @@ Then in Claude:
 ## Key Reminders for Claude
 
 1. **Always load `ocpiconnector-standards` skill** before writing any code
-2. **Always regenerate context** before starting work: `make claude-context`
+2. **Context is auto-loaded** at session start — run `make claude-context` manually only when starting work on a new branch without switching (context auto-regenerates on branch switch)
 3. **Use flows** instead of reading entire modules
 4. **Follow test preferences** strictly (see `.claude_context.md`)
 5. **Never mock business logic** - only mock boundaries
