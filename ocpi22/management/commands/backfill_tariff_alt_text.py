@@ -133,7 +133,9 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             new_ocpi_tariff = service._create_ocpi_tariff(
-                solid_tariff.operator, solid_tariff.currency, type="AD_HOC_PAYMENT"
+                solid_tariff.operator,
+                solid_tariff.currency,
+                type="AD_HOC_PAYMENT",
             )
             service._create_price_components(
                 new_ocpi_tariff,

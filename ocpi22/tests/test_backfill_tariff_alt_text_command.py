@@ -63,7 +63,8 @@ def test_backfill_new_ocpi_tariff_has_alt_text(operator_fi_cpo):
 
     solid_tariff.refresh_from_db()
     alt_texts = {
-        dt.language: dt.text for dt in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
     }
     assert set(alt_texts.keys()) == {"en", "fr", "nl"}
     assert alt_texts["en"] == "€0.45/kWh + €6.00/h charging"
@@ -138,7 +139,8 @@ def test_backfill_converts_price_per_min_to_hourly(operator_fi_cpo):
 
     solid_tariff.refresh_from_db()
     alt_texts = {
-        dt.language: dt.text for dt in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
     }
     assert alt_texts["en"] == "€6.00/h charging"
 
@@ -154,7 +156,8 @@ def test_backfill_converts_parking_price_per_min_to_hourly(operator_fi_cpo):
 
     solid_tariff.refresh_from_db()
     alt_texts = {
-        dt.language: dt.text for dt in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
     }
     assert alt_texts["en"] == "€0.45/kWh + €3.00/h parking"
 

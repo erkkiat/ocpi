@@ -56,10 +56,12 @@ class TariffAltTextGenerator:
         flat: Optional[float],
         parking_per_hr: Optional[float],
     ) -> bool:
-        return any(v is not None for v in (per_kwh, per_hr, flat, parking_per_hr))
+        return any(
+            price is not None for price in (per_kwh, per_hr, flat, parking_per_hr)
+        )
 
     @classmethod
-    def _fmt_amount(cls, amount: float, currency: str, language: str) -> str:
+    def _format_amount(cls, amount: float, currency: str, language: str) -> str:
         decimal_sep = "." if language == "en" else ","
         formatted = f"{amount:.2f}".replace(".", decimal_sep)
         if currency == "EUR":
@@ -67,8 +69,10 @@ class TariffAltTextGenerator:
         return f"{currency} {formatted}"
 
     @classmethod
-    def _fmt_rate(cls, amount: float, unit: str, currency: str, language: str) -> str:
-        return f"{cls._fmt_amount(amount, currency, language)}/{unit}"
+    def _format_rate(
+        cls, amount: float, unit: str, currency: str, language: str
+    ) -> str:
+        return f"{cls._format_amount(amount, currency, language)}/{unit}"
 
     @classmethod
     def _build_for_language(
@@ -86,29 +90,30 @@ class TariffAltTextGenerator:
         components: List[str] = []
 
         if per_kwh is not None:
-            components.append(cls._fmt_rate(per_kwh, "kWh", currency, language))
+            components.append(cls._format_rate(per_kwh, "kWh", currency, language))
 
         if per_hr is not None:
             components.append(
-                cls._fmt_rate(per_hr, labels["hour_unit"], currency, language)
+                cls._format_rate(per_hr, labels["hour_unit"], currency, language)
                 + labels["time_suffix"]
             )
 
         if flat is not None:
             components.append(
-                cls._fmt_amount(flat, currency, language) + labels["flat_suffix"]
+                cls._format_amount(flat, currency, language) + labels["flat_suffix"]
             )
 
         if parking_per_hr is not None:
-            rate = cls._fmt_rate(
+            parking_rate = cls._format_rate(
                 parking_per_hr, labels["hour_unit"], currency, language
             )
             if parking_grace_minutes and parking_grace_minutes > 0:
                 components.append(
-                    rate + labels["parking_grace"].format(minutes=parking_grace_minutes)
+                    parking_rate
+                    + labels["parking_grace"].format(minutes=parking_grace_minutes)
                 )
             else:
-                components.append(rate + labels["parking_suffix"])
+                components.append(parking_rate + labels["parking_suffix"])
 
         return " + ".join(components)
 
