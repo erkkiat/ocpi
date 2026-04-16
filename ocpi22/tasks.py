@@ -111,7 +111,7 @@ if REDIS_URL:
     app.conf.update(
         beat_scheduler="redbeat.RedBeatScheduler",
         redbeat_redis_url=REDIS_URL,
-        redbeat_lock_timeout=300,
+        redbeat_lock_timeout=600,  # Must be > max_interval (default 300s)
         redbeat_key_prefix="redbeat:",
         broker_connection_retry=True,
         broker_connection_retry_on_startup=True,
