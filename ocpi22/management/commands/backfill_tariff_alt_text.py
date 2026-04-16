@@ -121,6 +121,12 @@ class Command(BaseCommand):
             else self._to_hourly(solid_tariff.parking_price_per_min)
         )
 
+        if solid_tariff.ocpi_tariff is None:
+            self.stdout.write(
+                self.style.WARNING(f"{prefix} — skipped (no ocpi_tariff)")
+            )
+            return False
+
         if not TariffAltTextGenerator.has_price_components(
             per_kwh, per_hr, flat, parking_per_hr
         ):

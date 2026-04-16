@@ -101,6 +101,17 @@ def test_backfill_old_ocpi_tariff_is_not_modified(operator_fi_cpo):
 
 
 @pytest.mark.django_db
+def test_backfill_skips_solid_tariff_with_null_ocpi_tariff(operator_fi_cpo):
+    solid_tariff = _solid_tariff(operator_fi_cpo, "T-4b", price_per_kwh=0.45)
+    SolidTariff.objects.filter(pk=solid_tariff.pk).update(ocpi_tariff=None)
+
+    with patch.object(Tariff, "post_process_after_update_or_create") as mock_push:
+        call_command("backfill_tariff_alt_text")
+
+    mock_push.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_backfill_skips_solid_tariff_with_no_price_components(operator_fi_cpo):
     _solid_tariff(operator_fi_cpo, "T-5")
 

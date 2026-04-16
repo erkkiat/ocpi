@@ -434,7 +434,9 @@ class SolidTariffService:
             currency=currency,
         )
         for language, text in entries:
-            display_text = DisplayText.objects.create(language=language, text=text)
+            display_text, _ = DisplayText.objects.get_or_create(
+                language=language, text=text
+            )
             tariff.tariff_alt_text.add(display_text)
 
     def _send_updates_to_attached_connectors(self, old_solid_tariff, new_solid_tariff):
