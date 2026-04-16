@@ -43,6 +43,7 @@ any code task.
 | Skill | When to load |
 |---|---|
 | `.claude/skills/ocpiconnector-standards/SKILL.md` | **Every code task** — naming, serializer patterns, anti-patterns, test rules, terminal rules, API framework |
+| `.claude/skills/testing/SKILL.md` | **Any task writing or reviewing tests** — mock rules, naming, determinism, assertions, fixtures, API patterns |
 | `.claude/skills/ocpi-spec/SKILL.md` | Any task touching credentials, tokens, sessions, CDRs, locations, commands, hub routing |
 | `.claude/skills/directpayment-spec/SKILL.md` | Any task touching `ocpi22/payments/` — Terminal, FAC, PTP role, wire format |
 
@@ -204,41 +205,9 @@ ocpi22/
 
 ---
 
-## Testing Guidelines (CRITICAL)
+## Testing Guidelines
 
-### Test Types
-- **Unit tests**: Mock external dependencies, test single function/class
-- **Integration tests**: Real DB/Redis/MQTT, minimal mocks
-- **E2E tests**: Full system, minimal mocks
-
-### What to Mock ✅
-- External APIs (OCPI parties, HTTP calls)
-- Email sending
-- Celery `.delay()` calls (in unit tests only)
-- Time and randomness (timezone.now(), uuid, random)
-- Filesystem / I/O
-- MQTT messages (in unit tests)
-
-### What NOT to Mock ❌
-- Business logic
-- Django ORM/models (in integration tests)
-- Message schemas (TokenAuthorizationSchema, etc.)
-- Celery task bodies (test for real)
-- Django views and serializers
-- Middleware and request lifecycle
-
-### Test Matrix
-
-| Component      | Unit Test        | Integration Test | E2E Test      |
-|----------------|------------------|------------------|---------------|
-| External API   | ✅ Mock          | ✅ Mock          | ❌ Real/Mock  |
-| Postgres DB    | ✅ Optional mock | ✅ Real DB       | ✅ Real DB    |
-| Redis          | ✅ Optional mock | ✅ Real Redis    | ✅ Real Redis |
-| MQTT Broker    | ✅ Simulate msgs | ✅ Real broker   | ✅ Real broker|
-| Celery Tasks   | ✅ Mock .delay() | ✅ Real (eager)  | ✅ Real       |
-| Business Logic | ❌ Never mock    | ❌ Never mock    | ❌ Never mock |
-
-**For complete testing guidelines, see `.claude_context.md`**
+See **`.claude/skills/ocpiconnector-standards/SKILL.md`** — the "Testing rules (strict)" section is the single source of truth for test structure, naming, mock boundaries, parametrize rules, and the `OCPIAPIRequestFactory` pattern.
 
 ---
 
@@ -282,6 +251,7 @@ Then in Claude:
 ### 4. Generating Tests
 ```
 "Read .claude/skills/ocpiconnector-standards/SKILL.md"
+"Read .claude/skills/testing/SKILL.md"
 "Read ocpi22/cpo/mqtt/tasks.py"
 "Generate unit tests for process_authorization_request following my test preferences"
 ```
@@ -299,7 +269,7 @@ Then in Claude:
 1. **Always load `ocpiconnector-standards` skill** before writing any code
 2. **Context is auto-loaded** at session start — run `make claude-context` manually only when starting work on a new branch without switching (context auto-regenerates on branch switch)
 3. **Use flows** instead of reading entire modules
-4. **Follow test preferences** strictly (see `.claude_context.md`)
+4. **Follow test preferences** strictly — load `.claude/skills/testing/SKILL.md` for any test task
 5. **Never mock business logic** - only mock boundaries
 6. **Use real DB/Redis/MQTT** in integration tests
 7. **Parametrize tests** - no ifs/loops in test code
