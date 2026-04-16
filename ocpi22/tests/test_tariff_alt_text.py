@@ -159,7 +159,8 @@ def test_create_solid_tariff_populates_ocpi_tariff_alt_text(operator_fi_cpo):
     solid_tariff = service.create(validated_data)
 
     alt_texts = {
-        dt.language: dt.text for dt in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
     }
     assert set(alt_texts.keys()) == {"en", "fr", "nl"}
     assert alt_texts["en"] == (
@@ -193,10 +194,12 @@ def test_updating_solid_tariff_creates_fresh_alt_text_on_new_ocpi_tariff(
     assert first.ocpi_tariff.pk != second.ocpi_tariff.pk
 
     first_texts = {
-        dt.language: dt.text for dt in first.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in first.ocpi_tariff.tariff_alt_text.all()
     }
     second_texts = {
-        dt.language: dt.text for dt in second.ocpi_tariff.tariff_alt_text.all()
+        display_text.language: display_text.text
+        for display_text in second.ocpi_tariff.tariff_alt_text.all()
     }
     assert first_texts["en"] == "€0.45/kWh"
     assert second_texts["en"] == "€0.99/kWh"

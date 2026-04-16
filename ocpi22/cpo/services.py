@@ -49,17 +49,6 @@ class TariffAltTextGenerator:
         },
     }
 
-    @staticmethod
-    def has_price_components(
-        per_kwh: Optional[float],
-        per_hr: Optional[float],
-        flat: Optional[float],
-        parking_per_hr: Optional[float],
-    ) -> bool:
-        return any(
-            price is not None for price in (per_kwh, per_hr, flat, parking_per_hr)
-        )
-
     @classmethod
     def _format_amount(cls, amount: float, currency: str, language: str) -> str:
         decimal_sep = "." if language == "en" else ","
@@ -128,7 +117,9 @@ class TariffAltTextGenerator:
         parking_grace_minutes: Optional[int],
         currency: str,
     ) -> List[Tuple[str, str]]:
-        if not cls.has_price_components(per_kwh, per_hr, flat, parking_per_hr):
+        if not any(
+            price is not None for price in (per_kwh, per_hr, flat, parking_per_hr)
+        ):
             raise ValueError(
                 "At least one price component must be set (per_kwh, per_hr, flat, or parking_per_hr)"
             )
@@ -156,6 +147,17 @@ if typing.TYPE_CHECKING:
 
 class SolidTariffService:
     solid_tariff_repository = SolidTariffRepository()
+
+    @staticmethod
+    def has_price_components(
+        per_kwh: Optional[float],
+        per_hr: Optional[float],
+        flat: Optional[float],
+        parking_per_hr: Optional[float],
+    ) -> bool:
+        return any(
+            price is not None for price in (per_kwh, per_hr, flat, parking_per_hr)
+        )
 
     def get_all_latest_solid_tariffs(self):
         return self.solid_tariff_repository.get_latest_with_unique_external_id_and_msp()
@@ -191,9 +193,7 @@ class SolidTariffService:
         # build from the price fields below. A SolidTariff with no price
         # components would produce an empty alt_text and break the terminal,
         # so reject it here before any DB writes happen.
-        if not TariffAltTextGenerator.has_price_components(
-            per_kwh, per_hr, flat, parking_price_per_hr
-        ):
+        if not self.has_price_components(per_kwh, per_hr, flat, parking_price_per_hr):
             raise ValidationError(
                 "At least one of price_per_kwh, price_per_min/hr, price_flat, "
                 "or parking_price_per_min/hr is required"
@@ -441,6 +441,8 @@ class SolidTariffService:
             tariff.tariff_alt_text.add(display_text)
 
     def _send_updates_to_attached_connectors(self, old_solid_tariff, new_solid_tariff):
+        if old_solid_tariff.ocpi_tariff is None:
+            return
         with transaction.atomic():
             affected_locations = []
             for connector in old_solid_tariff.ocpi_tariff.connectors.all():

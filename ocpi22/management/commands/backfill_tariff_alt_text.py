@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import OuterRef, Subquery
 
-from ocpi22.cpo.services import SolidTariffService, TariffAltTextGenerator
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.tariff import SolidTariff
 
 logger = logging.getLogger(__name__)
@@ -127,9 +127,7 @@ class Command(BaseCommand):
             )
             return False
 
-        if not TariffAltTextGenerator.has_price_components(
-            per_kwh, per_hr, flat, parking_per_hr
-        ):
+        if not service.has_price_components(per_kwh, per_hr, flat, parking_per_hr):
             self.stdout.write(
                 self.style.WARNING(f"{prefix} — skipped (no price components)")
             )
