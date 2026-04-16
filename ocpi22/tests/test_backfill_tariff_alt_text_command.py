@@ -42,6 +42,17 @@ def test_backfill_creates_new_ocpi_tariff_for_solid_tariff(operator_fi_cpo):
 
 
 @pytest.mark.django_db
+def test_backfill_new_ocpi_tariff_has_ad_hoc_payment_type(operator_fi_cpo):
+    solid_tariff = _solid_tariff(operator_fi_cpo, "T-1b", price_per_kwh=0.45)
+
+    with patch.object(Tariff, "post_process_after_update_or_create"):
+        call_command("backfill_tariff_alt_text")
+
+    solid_tariff.refresh_from_db()
+    assert solid_tariff.ocpi_tariff.type == "AD_HOC_PAYMENT"
+
+
+@pytest.mark.django_db
 def test_backfill_new_ocpi_tariff_has_alt_text(operator_fi_cpo):
     solid_tariff = _solid_tariff(
         operator_fi_cpo, "T-2", price_per_kwh=0.45, price_per_hr=6.0

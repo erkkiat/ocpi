@@ -321,6 +321,26 @@ def test_set_missing_fields_handles_all_nullable_model_fields(
 
 
 @pytest.mark.django_db
+def test_create_ocpi_tariff_defaults_to_no_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+    assert tariff.type == ""
+
+
+@pytest.mark.django_db
+def test_create_ocpi_tariff_with_explicit_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR", type="AD_HOC_PAYMENT"
+    )
+    assert tariff.type == "AD_HOC_PAYMENT"
+
+
+@pytest.mark.django_db
 def test_create_price_components_with_zero_prices_creates_price_components(
     solid_tariff_service_instance,
     operator_fi_cpo,

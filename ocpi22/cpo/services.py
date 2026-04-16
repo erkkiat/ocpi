@@ -377,10 +377,13 @@ class SolidTariffService:
         #  check https://github.com/solidroam/ocpiconnector/issues/253 for more details.
         return str(uuid.uuid4())
 
-    def _create_ocpi_tariff(self, operator, currency) -> Tariff:
+    def _create_ocpi_tariff(self, operator, currency, type: str = "") -> Tariff:
         random_ocpi_tariff_id = self._get_ocpi_uid()
         tariff = Tariff.objects.create(
-            uid=random_ocpi_tariff_id, ocpi_master=operator, currency=currency
+            uid=random_ocpi_tariff_id,
+            ocpi_master=operator,
+            currency=currency,
+            type=type,
         )
         return tariff
 
