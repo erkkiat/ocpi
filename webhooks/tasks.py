@@ -2,14 +2,16 @@ import logging
 
 from celery import shared_task
 
-from webhooks.models import WebhookEvent
+from webhooks.models import WebhookEvent, WebhookEventStatus
 from webhooks.services import WebhookExecutionService
 
 logger = logging.getLogger(__name__)
 
+RETRY_BACKOFF_BASE_SECONDS = 60
 
-@shared_task
-def execute_webhook_event(event_id: int) -> None:
+
+@shared_task(bind=True, max_retries=10)
+def execute_webhook_event(self, event_id: int) -> None:
     try:
         event = WebhookEvent.objects.get(id=event_id)
     except WebhookEvent.DoesNotExist:
@@ -17,3 +19,8 @@ def execute_webhook_event(event_id: int) -> None:
         return
 
     WebhookExecutionService().execute_webhook_event(event)
+
+    event.refresh_from_db()
+    if event.status == WebhookEventStatus.FAILED:
+        countdown = (2**event.attempt_count) * RETRY_BACKOFF_BASE_SECONDS
+        raise self.retry(countdown=countdown)

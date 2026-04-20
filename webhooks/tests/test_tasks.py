@@ -1,5 +1,6 @@
 import pytest
 import responses
+from celery.exceptions import Retry
 
 from webhooks.factories import WebhookTerminalFactory, WebhookEventFactory
 from webhooks.models import WebhookEventStatus, WebhookEventType
@@ -25,7 +26,9 @@ class TestExecuteWebhookEventTask:
         assert event.attempt_count == 1
 
     @responses.activate
-    def test_execute_webhook_event_marks_event_failed_when_webhook_returns_500(self):
+    def test_execute_webhook_event_raises_retry_when_webhook_returns_500_and_retries_remain(
+        self,
+    ):
         webhook = WebhookTerminalFactory(max_retries=3)
         event = WebhookEventFactory(
             webhook=webhook,
@@ -34,14 +37,35 @@ class TestExecuteWebhookEventTask:
         )
         responses.add(responses.POST, webhook.url, json={}, status=500)
 
-        execute_webhook_event(event.id)
+        with pytest.raises(Retry):
+            execute_webhook_event(event.id)
 
         event.refresh_from_db()
         assert event.status == WebhookEventStatus.FAILED
         assert event.attempt_count == 1
 
     @responses.activate
-    def test_execute_webhook_event_marks_event_exhausted_when_no_retries_left(self):
+    def test_execute_webhook_event_raises_retry_on_subsequent_failures(self):
+        webhook = WebhookTerminalFactory(max_retries=10)
+        event = WebhookEventFactory(
+            webhook=webhook,
+            event_type=WebhookEventType.TERMINAL_CREATED,
+            payload={"terminal_id": "TERM-001"},
+            attempt_count=2,
+        )
+        responses.add(responses.POST, webhook.url, json={}, status=500)
+
+        with pytest.raises(Retry):
+            execute_webhook_event(event.id)
+
+        event.refresh_from_db()
+        assert event.status == WebhookEventStatus.FAILED
+        assert event.attempt_count == 3
+
+    @responses.activate
+    def test_execute_webhook_event_marks_event_exhausted_and_does_not_retry_when_no_retries_left(
+        self,
+    ):
         webhook = WebhookTerminalFactory(max_retries=0)
         event = WebhookEventFactory(
             webhook=webhook,
