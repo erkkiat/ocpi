@@ -347,6 +347,25 @@ class TestWebhookEventService:
         exhausted_event.refresh_from_db()
         assert exhausted_event.completed_at is not None
 
+    def test_mark_failed_logs_error_when_event_becomes_exhausted(self, caplog):
+        webhook = WebhookFactory(max_retries=3)
+        event = WebhookEventFactory(webhook=webhook, attempt_count=3)
+        caplog.set_level("ERROR", logger="webhooks.services")
+
+        WebhookEventService.mark_failed(event, "Connection timeout")
+
+        assert "exhausted all retries" in caplog.text
+        assert "Connection timeout" in caplog.text
+
+    def test_mark_failed_does_not_log_error_when_event_can_still_retry(self, caplog):
+        webhook = WebhookFactory(max_retries=3)
+        event = WebhookEventFactory(webhook=webhook, attempt_count=1)
+        caplog.set_level("ERROR", logger="webhooks.services")
+
+        WebhookEventService.mark_failed(event, "Connection timeout")
+
+        assert "exhausted all retries" not in caplog.text
+
 
 @pytest.mark.django_db
 class TestWebhookExecutionService:

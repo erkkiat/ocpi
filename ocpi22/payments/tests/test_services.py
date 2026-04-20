@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timezone as dt_timezone
 from django.utils import timezone
+from unittest.mock import patch
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.payments.exceptions import (
@@ -12,7 +13,6 @@ from ocpi22.payments.exceptions import (
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
 from ocpi22.payments.schemas import TerminalIn
-from unittest.mock import patch
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     TerminalFactory,
@@ -20,6 +20,13 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
 )
+from webhooks.factories import (
+    WebhookTerminalFactory,
+    WebhookFACFactory,
+    WebhookInactiveFactory,
+)
+from webhooks.models import WebhookEvent, WebhookEventType, WebhookEventStatus
+from webhooks.choices import WebhookType
 
 
 @pytest.fixture
@@ -167,6 +174,27 @@ class TestTerminalServiceCreate:
             terminal_service.create_terminal(
                 minimal_terminal_data.copy(), other_credentialsrole
             )
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_terminal_dispatches_webhook_task_after_commit_when_terminal_webhook_configured(
+        self, mock_task, terminal_service, credentialsrole, minimal_terminal_data
+    ):
+        WebhookTerminalFactory()
+
+        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+            terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
+        mock_task.delay.assert_called_once_with(event.id)
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_terminal_does_not_dispatch_webhook_task_when_no_terminal_webhook_configured(
+        self, mock_task, terminal_service, credentialsrole, minimal_terminal_data
+    ):
+        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+            terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
+
+        mock_task.delay.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -356,6 +384,27 @@ class TestFACServiceCreate:
             fac_service.create_fac(
                 fac_data, credentialsrole, terminal_id=terminal.terminal_id
             )
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_dispatches_webhook_task_after_commit_when_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        mock_task.delay.assert_called_once_with(event.id)
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_does_not_dispatch_webhook_task_when_no_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        mock_task.delay.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -612,3 +661,198 @@ class TestTerminalServiceUpdate:
         terminal_service._send_to_ptp(terminal, "put", {})
 
         mock_send.apply_async.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestTerminalWebhookEventCreation:
+    FROZEN_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+
+    @pytest.fixture
+    def terminal_service(self):
+        return TerminalService()
+
+    @pytest.fixture
+    def credentialsrole(self, db):
+        return CredentialsRoleFactory(
+            role=OcpiRolesEnum.PTP, party_id="PAY", country_code="NL"
+        )
+
+    @pytest.fixture
+    def terminal(self, credentialsrole):
+        return TerminalFactory(
+            terminal_id="TERM-WH-001",
+            customer_reference="TEST-CUSTOMER-REF",
+            last_updated=self.FROZEN_TIME,
+            credentials=credentialsrole.credentials,
+        )
+
+    def test_create_terminal_webhook_event_returns_none_when_no_terminal_webhook_configured(
+        self, terminal_service, terminal
+    ):
+        result = terminal_service._create_terminal_webhook_event(terminal)
+
+        assert result is None
+
+    def test_create_terminal_webhook_event_returns_none_when_terminal_webhook_is_inactive(
+        self, terminal_service, terminal
+    ):
+        WebhookInactiveFactory(type=WebhookType.TERMINAL, command_type=None)
+
+        result = terminal_service._create_terminal_webhook_event(terminal)
+
+        assert result is None
+
+    def test_create_terminal_webhook_event_persists_event_with_terminal_created_event_type(
+        self, terminal_service, terminal
+    ):
+        WebhookTerminalFactory()
+
+        terminal_service._create_terminal_webhook_event(terminal)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
+        assert event.status == WebhookEventStatus.PENDING
+
+    def test_create_terminal_webhook_event_persists_payload_with_terminal_id_customer_reference_and_last_updated(
+        self, terminal_service, terminal
+    ):
+        WebhookTerminalFactory()
+
+        terminal_service._create_terminal_webhook_event(terminal)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
+        assert event.payload == {
+            "terminal_id": "TERM-WH-001",
+            "customer_reference": "TEST-CUSTOMER-REF",
+            "last_updated": self.FROZEN_TIME.isoformat(),
+        }
+
+    def test_create_terminal_webhook_event_returns_persisted_event(
+        self, terminal_service, terminal
+    ):
+        WebhookTerminalFactory()
+
+        event = terminal_service._create_terminal_webhook_event(terminal)
+
+        assert event is not None
+        assert event.pk is not None
+        assert event.event_type == WebhookEventType.TERMINAL_CREATED
+
+    def test_create_terminal_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
+        self, terminal_service, terminal, caplog
+    ):
+        WebhookTerminalFactory()
+        caplog.set_level("ERROR", logger="ocpi22.payments.services")
+
+        with patch(
+            "ocpi22.payments.services.WebhookEventService.create_event",
+            side_effect=Exception("DB error"),
+        ):
+            result = terminal_service._create_terminal_webhook_event(terminal)
+
+        assert result is None
+        assert (
+            "Failed to create terminal webhook event for terminal TERM-WH-001"
+            in caplog.text
+        )
+
+
+@pytest.mark.django_db
+class TestFACWebhookEventCreation:
+    FROZEN_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+
+    @pytest.fixture
+    def fac_service(self):
+        return FinancialAdviceConfirmationService()
+
+    @pytest.fixture
+    def credentialsrole(self, db):
+        return CredentialsRoleFactory(
+            role=OcpiRolesEnum.PTP, party_id="PAY", country_code="NL"
+        )
+
+    @pytest.fixture
+    def fac(self, credentialsrole):
+        return FinancialAdviceConfirmationFactory(
+            fac_id="FAC-WH-001",
+            authorization_reference="AUTH-REF-001",
+            total_cost_excl_vat=10.50,
+            total_cost_incl_vat=12.60,
+            currency="EUR",
+            eft_data=["Mastercard", "AID: 1234"],
+            capture_status_code="SUCCESS",
+            capture_status_message=None,
+            last_updated=self.FROZEN_TIME,
+            credentials=credentialsrole.credentials,
+        )
+
+    def test_create_fac_webhook_event_returns_none_when_no_fac_webhook_configured(
+        self, fac_service, fac
+    ):
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_returns_none_when_fac_webhook_is_inactive(
+        self, fac_service, fac
+    ):
+        WebhookInactiveFactory(
+            type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, command_type=None
+        )
+
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_persists_event_with_fac_created_event_type(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.status == WebhookEventStatus.PENDING
+
+    def test_create_fac_webhook_event_persists_payload_with_all_fac_fields(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.payload == {
+            "fac_id": "FAC-WH-001",
+            "authorization_reference": "AUTH-REF-001",
+            "total_cost_excl_vat": 10.50,
+            "total_cost_incl_vat": 12.60,
+            "currency": "EUR",
+            "eft_data": ["Mastercard", "AID: 1234"],
+            "capture_status_code": "SUCCESS",
+            "capture_status_message": None,
+            "last_updated": self.FROZEN_TIME.isoformat(),
+        }
+
+    def test_create_fac_webhook_event_returns_persisted_event(self, fac_service, fac):
+        WebhookFACFactory()
+
+        event = fac_service._create_fac_webhook_event(fac)
+
+        assert event is not None
+        assert event.pk is not None
+        assert event.event_type == WebhookEventType.FAC_CREATED
+
+    def test_create_fac_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
+        self, fac_service, fac, caplog
+    ):
+        WebhookFACFactory()
+        caplog.set_level("ERROR", logger="ocpi22.payments.services")
+
+        with patch(
+            "ocpi22.payments.services.WebhookEventService.create_event",
+            side_effect=Exception("DB error"),
+        ):
+            result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+        assert "Failed to create FAC webhook event for fac FAC-WH-001" in caplog.text

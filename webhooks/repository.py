@@ -8,3 +8,13 @@ class WebhookRepository:
         return Webhook.objects.filter(
             type=WebhookType.REMOTE_COMMAND, command_type=command_type
         ).first()
+
+    @staticmethod
+    def get_terminal_webhook() -> Webhook | None:
+        return Webhook.objects.filter(type=WebhookType.TERMINAL, active=True).first()
+
+    @staticmethod
+    def get_fac_webhook() -> Webhook | None:
+        return Webhook.objects.filter(
+            type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, active=True
+        ).first()
