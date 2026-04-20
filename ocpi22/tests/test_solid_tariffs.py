@@ -384,7 +384,7 @@ class TestSolidTariffs:
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_put_solid_tariffs_with_all_valid_records_returns_status_code_200(
         self,
         authenticated_user_client,
