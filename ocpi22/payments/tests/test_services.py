@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timezone as dt_timezone
+from django.db import IntegrityError
 from django.utils import timezone
 from unittest.mock import patch
 
@@ -181,7 +182,10 @@ class TestTerminalServiceCreate:
     ):
         WebhookTerminalFactory()
 
-        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
             terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
 
         event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
@@ -191,9 +195,34 @@ class TestTerminalServiceCreate:
     def test_create_terminal_does_not_dispatch_webhook_task_when_no_terminal_webhook_configured(
         self, mock_task, terminal_service, credentialsrole, minimal_terminal_data
     ):
-        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
             terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
 
+        mock_task.delay.assert_not_called()
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    @patch(
+        "ocpi22.payments.services.WebhookEventService.create_event",
+        side_effect=IntegrityError("unique violation"),
+    )
+    def test_create_terminal_is_saved_when_webhook_event_creation_raises_db_error(
+        self,
+        mock_create_event,
+        mock_task,
+        terminal_service,
+        credentialsrole,
+        minimal_terminal_data,
+    ):
+        WebhookTerminalFactory()
+
+        terminal = terminal_service.create_terminal(
+            minimal_terminal_data, credentialsrole
+        )
+
+        assert Terminal.objects.filter(terminal_id=terminal.terminal_id).exists()
         mock_task.delay.assert_not_called()
 
 
@@ -391,7 +420,10 @@ class TestFACServiceCreate:
     ):
         WebhookFACFactory()
 
-        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
             fac_service.create_fac(fac_data, credentialsrole)
 
         event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
@@ -401,9 +433,27 @@ class TestFACServiceCreate:
     def test_create_fac_does_not_dispatch_webhook_task_when_no_fac_webhook_configured(
         self, mock_task, fac_service, credentialsrole, fac_data
     ):
-        with patch("django.db.transaction.on_commit", side_effect=lambda fn: fn()):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
             fac_service.create_fac(fac_data, credentialsrole)
 
+        mock_task.delay.assert_not_called()
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    @patch(
+        "ocpi22.payments.services.WebhookEventService.create_event",
+        side_effect=IntegrityError("unique violation"),
+    )
+    def test_create_fac_is_saved_when_webhook_event_creation_raises_db_error(
+        self, mock_create_event, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        fac = fac_service.create_fac(fac_data, credentialsrole)
+
+        assert FinancialAdviceConfirmation.objects.filter(fac_id=fac.fac_id).exists()
         mock_task.delay.assert_not_called()
 
 

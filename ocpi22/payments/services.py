@@ -85,11 +85,12 @@ class TerminalService:
         }
 
         try:
-            return WebhookEventService.create_event(
-                webhook=webhook,
-                event_type=WebhookEventType.TERMINAL_CREATED,
-                payload=payload,
-            )
+            with transaction.atomic():
+                return WebhookEventService.create_event(
+                    webhook=webhook,
+                    event_type=WebhookEventType.TERMINAL_CREATED,
+                    payload=payload,
+                )
         except Exception:
             logger.error(
                 "Failed to create terminal webhook event for terminal %s",
@@ -298,11 +299,12 @@ class FinancialAdviceConfirmationService:
         }
 
         try:
-            return WebhookEventService.create_event(
-                webhook=webhook,
-                event_type=WebhookEventType.FAC_CREATED,
-                payload=payload,
-            )
+            with transaction.atomic():
+                return WebhookEventService.create_event(
+                    webhook=webhook,
+                    event_type=WebhookEventType.FAC_CREATED,
+                    payload=payload,
+                )
         except Exception:
             logger.error(
                 "Failed to create FAC webhook event for fac %s",

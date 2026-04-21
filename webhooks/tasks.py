@@ -3,7 +3,7 @@ import logging
 from celery import shared_task
 
 from webhooks.models import WebhookEvent, WebhookEventStatus
-from webhooks.services import WebhookExecutionService
+from webhooks.services import WebhookExecutionService, WebHookExecutionError
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,10 @@ def execute_webhook_event(self, event_id: int) -> None:
         logger.error("WebhookEvent with id %s does not exist", event_id)
         return
 
-    WebhookExecutionService().execute_webhook_event(event)
+    try:
+        WebhookExecutionService().execute_webhook_event(event)
+    except WebHookExecutionError:
+        return
 
     event.refresh_from_db()
     if event.status == WebhookEventStatus.FAILED:

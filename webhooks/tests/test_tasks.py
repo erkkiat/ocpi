@@ -3,7 +3,7 @@ import responses
 from celery.exceptions import Retry
 
 from webhooks.factories import WebhookTerminalFactory, WebhookEventFactory
-from webhooks.models import WebhookEventStatus, WebhookEventType
+from webhooks.models import Webhook, WebhookEventStatus, WebhookEventType
 from webhooks.tasks import execute_webhook_event
 
 
@@ -90,3 +90,19 @@ class TestExecuteWebhookEventTask:
         self,
     ):
         execute_webhook_event(99999)
+
+    def test_execute_webhook_event_returns_without_retry_when_webhook_deactivated_between_creation_and_execution(
+        self,
+    ):
+        webhook = WebhookTerminalFactory()
+        event = WebhookEventFactory(
+            webhook=webhook,
+            event_type=WebhookEventType.TERMINAL_CREATED,
+            payload={"terminal_id": "TERM-001"},
+        )
+        Webhook.objects.filter(pk=webhook.pk).update(active=False)
+
+        execute_webhook_event(event.id)
+
+        event.refresh_from_db()
+        assert event.status == WebhookEventStatus.FAILED
