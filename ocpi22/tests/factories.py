@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import datetime
+from datetime import time as datetime_time
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -46,6 +47,7 @@ from ocpi22.models.cdrtoken import CdrToken
 from ocpi22.models.cdr import Cdr
 from ocpi22.models.credentials import CredentialsRole, Credentials, Endpoint
 from ocpi22.models.image import OCPIImageCategory, OCPIImage
+from ocpi22.models.hours import RegularHours
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, CdrDimension, ChargingPeriod
 from ocpi22.models.tariff import (
@@ -168,6 +170,15 @@ class EndpointFactory(factory.django.DjangoModelFactory):
         model = Endpoint
 
     url = "http://localhost/ocpi/some/endpoint/"
+
+
+class RegularHoursFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RegularHours
+
+    weekday = 1
+    period_begin = datetime_time(0, 0)
+    period_end = datetime_time(0, 0)
 
 
 class LocationFactory(factory.django.DjangoModelFactory):
