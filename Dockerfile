@@ -25,6 +25,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Now copy the rest of the app (this prevents unnecessary invalidation of cache)
 COPY . /app
 
+# Collect static files once at build time — baked into the image.
+# WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
+RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.collectstatic \
+    python manage.py collectstatic --noinput
+
 # Compile Python files and remove unneeded sources
 RUN python -m compileall -b . && \
     find . -name '*.py' ! -name 'manage.py' -delete
