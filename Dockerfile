@@ -29,6 +29,7 @@ COPY . /app
 # WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
 RUN set -a && . ./test.env && set +a && \
     DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
+    ALLOWED_HOSTS=build \
     python manage.py collectstatic --noinput
 
 # Compile Python files and remove unneeded sources
