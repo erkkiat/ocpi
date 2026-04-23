@@ -27,7 +27,7 @@ COPY . /app
 
 # Collect static files once at build time — baked into the image.
 # WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
-RUN set -a && . test.env && set +a && \
+RUN set -a && . ./test.env && set +a && \
     DJANGO_SETTINGS_MODULE=ocpiconnector.settings.base \
     python manage.py collectstatic --noinput
 
