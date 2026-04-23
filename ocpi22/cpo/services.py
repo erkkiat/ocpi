@@ -49,6 +49,10 @@ class TariffAltTextGenerator:
         },
     }
 
+    @staticmethod
+    def _apply_vat(amount: float, vat: float) -> float:
+        return float(amount) * (1 + float(vat) / 100)
+
     @classmethod
     def _format_amount(cls, amount: float, currency: str, language: str) -> str:
         decimal_sep = "." if language == "en" else ","
@@ -74,27 +78,38 @@ class TariffAltTextGenerator:
         parking_per_hr: Optional[float],
         parking_grace_minutes: Optional[int],
         currency: str,
+        vat: float,
     ) -> str:
         labels = cls._LABELS[language]
         components: List[str] = []
 
         if per_kwh is not None:
-            components.append(cls._format_rate(per_kwh, "kWh", currency, language))
+            components.append(
+                cls._format_rate(
+                    cls._apply_vat(per_kwh, vat), "kWh", currency, language
+                )
+            )
 
         if per_hr is not None:
             components.append(
-                cls._format_rate(per_hr, labels["hour_unit"], currency, language)
+                cls._format_rate(
+                    cls._apply_vat(per_hr, vat), labels["hour_unit"], currency, language
+                )
                 + labels["time_suffix"]
             )
 
         if flat is not None:
             components.append(
-                cls._format_amount(flat, currency, language) + labels["flat_suffix"]
+                cls._format_amount(cls._apply_vat(flat, vat), currency, language)
+                + labels["flat_suffix"]
             )
 
         if parking_per_hr is not None:
             parking_rate = cls._format_rate(
-                parking_per_hr, labels["hour_unit"], currency, language
+                cls._apply_vat(parking_per_hr, vat),
+                labels["hour_unit"],
+                currency,
+                language,
             )
             if parking_grace_minutes and parking_grace_minutes > 0:
                 components.append(
@@ -116,6 +131,7 @@ class TariffAltTextGenerator:
         parking_per_hr: Optional[float],
         parking_grace_minutes: Optional[int],
         currency: str,
+        vat: float,
     ) -> List[Tuple[str, str]]:
         if not any(
             price is not None for price in (per_kwh, per_hr, flat, parking_per_hr)
@@ -135,6 +151,7 @@ class TariffAltTextGenerator:
                     parking_per_hr=parking_per_hr,
                     parking_grace_minutes=parking_grace_minutes,
                     currency=currency,
+                    vat=vat,
                 ),
             )
             for language in cls._LANGUAGES
@@ -356,6 +373,7 @@ class SolidTariffService:
                 parking_per_hr=parking_price_per_hr,
                 parking_grace_minutes=grace_period,
                 currency=currency,
+                vat=vat,
             )
 
             solid_tariff = SolidTariff.objects.create(
@@ -425,6 +443,7 @@ class SolidTariffService:
         parking_per_hr: Optional[float],
         parking_grace_minutes: Optional[int],
         currency: str,
+        vat: float,
     ) -> None:
         entries = TariffAltTextGenerator.build(
             per_kwh=per_kwh,
@@ -433,6 +452,7 @@ class SolidTariffService:
             parking_per_hr=parking_per_hr,
             parking_grace_minutes=parking_grace_minutes,
             currency=currency,
+            vat=vat,
         )
         for language, text in entries:
             display_text, _ = DisplayText.objects.get_or_create(

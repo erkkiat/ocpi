@@ -19,7 +19,7 @@ def _solid_tariff(operator, external_id, **pricing):
         parking_price_per_min=None,
         parking_price_per_hr=None,
         parking_grace_period=None,
-        vat_percentage=None,
+        vat_percentage=0.0,
         msp=None,
         operator=operator,
         external_id=external_id,
@@ -296,6 +296,27 @@ def test_backfill_continues_after_failure_and_processes_remaining(operator_fi_cp
     second.refresh_from_db()
     assert second.ocpi_tariff.pk != original_second_pk
     assert second.ocpi_tariff.tariff_alt_text.count() == 3
+
+
+@pytest.mark.django_db
+def test_backfill_new_ocpi_tariff_has_vat_inclusive_alt_text(operator_fi_cpo):
+    solid_tariff = _solid_tariff(
+        operator_fi_cpo,
+        "T-VAT",
+        price_per_kwh=0.45,
+        price_per_hr=6.0,
+        vat_percentage=21.0,
+    )
+
+    with patch.object(Tariff, "post_process_after_update_or_create"):
+        call_command("backfill_tariff_alt_text")
+
+    solid_tariff.refresh_from_db()
+    alt_texts = {
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+    }
+    assert alt_texts["en"] == "€0.54/kWh + €7.26/h charging"
 
 
 @pytest.mark.django_db

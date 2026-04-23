@@ -527,8 +527,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         help_text="The parking grace period in seconds",
     )
     vat_percentage = VatSerializer(
-        required=False,
-        allow_null=True,
+        required=True,
         help_text="The Value Added Tax amount in percentage",
     )
     msp = PartyStrField(
