@@ -27,7 +27,9 @@ COPY . /app
 
 # Collect static files once at build time — baked into the image.
 # WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
-RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.collectstatic \
+RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.base \
+    SECRET_KEY=collectstatic-build-only \
+    HOSTNAME=build \
     python manage.py collectstatic --noinput
 
 # Compile Python files and remove unneeded sources
