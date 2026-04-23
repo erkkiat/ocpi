@@ -78,7 +78,7 @@ HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
 # front of the GKE ingress). WhiteNoise serves on cache miss; CDN caches
 # subsequent requests. No GCS bucket or separate LB needed.
 # ---------------------------------------------------------------------------
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 WHITENOISE_MAX_AGE = 31536000  # 1 year — safe because filenames are hashed
 
 _cdn_url = os.environ.get("STATIC_CDN_URL", "")
