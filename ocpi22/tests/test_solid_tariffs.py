@@ -238,7 +238,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="authenticated_user_can_put_solid_tariff",
             ),
@@ -282,7 +287,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="admin_user_can_put_solid_tariff",
             ),
@@ -326,7 +336,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="super_user_can_put_solid_tariff",
             ),

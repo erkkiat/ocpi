@@ -157,6 +157,7 @@ class Command(BaseCommand):
                 parking_per_hr=parking_per_hr,
                 parking_grace_minutes=solid_tariff.parking_grace_period,
                 currency=solid_tariff.currency,
+                vat=self._to_float(solid_tariff.vat_percentage),
             )
             SolidTariff.objects.filter(pk=solid_tariff.pk).update(
                 ocpi_tariff=new_ocpi_tariff
