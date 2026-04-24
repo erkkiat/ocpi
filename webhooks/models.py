@@ -330,7 +330,6 @@ class WebhookEventType(models.TextChoices):
     REMOTE_STOP_REQUESTED = "remote_command.stop_requested"
     INVOICE_GENERATED = "invoice.generated"
     INVOICE_SENT = "invoice.sent"
-    TERMINAL_CREATED = "terminal.created"
     FAC_CREATED = "fac.created"
 
     @classmethod

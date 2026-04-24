@@ -10,10 +10,6 @@ class WebhookRepository:
         ).first()
 
     @staticmethod
-    def get_terminal_webhook() -> Webhook | None:
-        return Webhook.objects.filter(type=WebhookType.TERMINAL, active=True).first()
-
-    @staticmethod
     def get_fac_webhook() -> Webhook | None:
         return Webhook.objects.filter(
             type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, active=True

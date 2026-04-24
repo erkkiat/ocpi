@@ -2,7 +2,7 @@ import pytest
 import responses
 from celery.exceptions import Retry
 
-from webhooks.factories import WebhookTerminalFactory, WebhookEventFactory
+from webhooks.factories import WebhookFACFactory, WebhookEventFactory
 from webhooks.models import Webhook, WebhookEventStatus, WebhookEventType
 from webhooks.tasks import execute_webhook_event
 
@@ -11,10 +11,10 @@ from webhooks.tasks import execute_webhook_event
 class TestExecuteWebhookEventTask:
     @responses.activate
     def test_execute_webhook_event_marks_event_success_when_webhook_returns_200(self):
-        webhook = WebhookTerminalFactory()
+        webhook = WebhookFACFactory()
         event = WebhookEventFactory(
             webhook=webhook,
-            event_type=WebhookEventType.TERMINAL_CREATED,
+            event_type=WebhookEventType.FAC_CREATED,
             payload={"terminal_id": "TERM-001"},
         )
         responses.add(responses.POST, webhook.url, json={}, status=200)
@@ -29,10 +29,10 @@ class TestExecuteWebhookEventTask:
     def test_execute_webhook_event_raises_retry_when_webhook_returns_500_and_retries_remain(
         self,
     ):
-        webhook = WebhookTerminalFactory(max_retries=3)
+        webhook = WebhookFACFactory(max_retries=3)
         event = WebhookEventFactory(
             webhook=webhook,
-            event_type=WebhookEventType.TERMINAL_CREATED,
+            event_type=WebhookEventType.FAC_CREATED,
             payload={"terminal_id": "TERM-001"},
         )
         responses.add(responses.POST, webhook.url, json={}, status=500)
@@ -46,10 +46,10 @@ class TestExecuteWebhookEventTask:
 
     @responses.activate
     def test_execute_webhook_event_raises_retry_on_subsequent_failures(self):
-        webhook = WebhookTerminalFactory(max_retries=10)
+        webhook = WebhookFACFactory(max_retries=10)
         event = WebhookEventFactory(
             webhook=webhook,
-            event_type=WebhookEventType.TERMINAL_CREATED,
+            event_type=WebhookEventType.FAC_CREATED,
             payload={"terminal_id": "TERM-001"},
             attempt_count=2,
         )
@@ -66,10 +66,10 @@ class TestExecuteWebhookEventTask:
     def test_execute_webhook_event_marks_event_exhausted_and_does_not_retry_when_no_retries_left(
         self,
     ):
-        webhook = WebhookTerminalFactory(max_retries=0)
+        webhook = WebhookFACFactory(max_retries=0)
         event = WebhookEventFactory(
             webhook=webhook,
-            event_type=WebhookEventType.TERMINAL_CREATED,
+            event_type=WebhookEventType.FAC_CREATED,
             payload={"terminal_id": "TERM-001"},
         )
         responses.add(responses.POST, webhook.url, json={}, status=500)
@@ -89,10 +89,10 @@ class TestExecuteWebhookEventTask:
     def test_execute_webhook_event_returns_without_retry_when_webhook_deactivated_between_creation_and_execution(
         self,
     ):
-        webhook = WebhookTerminalFactory()
+        webhook = WebhookFACFactory()
         event = WebhookEventFactory(
             webhook=webhook,
-            event_type=WebhookEventType.TERMINAL_CREATED,
+            event_type=WebhookEventType.FAC_CREATED,
             payload={"terminal_id": "TERM-001"},
         )
         Webhook.objects.filter(pk=webhook.pk).update(active=False)

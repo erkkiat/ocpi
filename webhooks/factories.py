@@ -62,11 +62,6 @@ class WebhookRemoteCommandFactory(WebhookFactory):
     command_type = RemoteCommandType.START_SESSION
 
 
-class WebhookTerminalFactory(WebhookFactory):
-    type = WebhookType.TERMINAL
-    command_type = None
-
-
 class WebhookFACFactory(WebhookFactory):
     type = WebhookType.FINANCIAL_ADVICE_CONFIRMATION
     command_type = None

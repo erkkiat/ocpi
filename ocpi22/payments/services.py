@@ -65,39 +65,7 @@ class TerminalService:
         terminal.credentials = credentialsrole.credentials
         terminal.save()
 
-        event = self._create_terminal_webhook_event(terminal)
-        if event:
-            transaction.on_commit(lambda: execute_webhook_event_task.delay(event.id))
-
         return terminal
-
-    def _create_terminal_webhook_event(
-        self, terminal: Terminal
-    ) -> Optional[WebhookEvent]:
-        webhook = WebhookRepository.get_terminal_webhook()
-        if not webhook:
-            return None
-
-        payload = {
-            "terminal_id": terminal.terminal_id,
-            "customer_reference": terminal.customer_reference,
-            "last_updated": terminal.last_updated,
-        }
-
-        try:
-            with transaction.atomic():
-                return WebhookEventService.create_event(
-                    webhook=webhook,
-                    event_type=WebhookEventType.TERMINAL_CREATED,
-                    payload=payload,
-                )
-        except Exception:
-            logger.error(
-                "Failed to create terminal webhook event for terminal %s",
-                terminal.terminal_id,
-                exc_info=True,
-            )
-            return None
 
     def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
         if payload.customer_reference is not None:

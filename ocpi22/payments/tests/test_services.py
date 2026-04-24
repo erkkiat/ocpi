@@ -22,7 +22,6 @@ from ocpi22.tests.factories import (
     EvseFactory,
 )
 from webhooks.factories import (
-    WebhookTerminalFactory,
     WebhookFACFactory,
     WebhookInactiveFactory,
 )
@@ -175,55 +174,6 @@ class TestTerminalServiceCreate:
             terminal_service.create_terminal(
                 minimal_terminal_data.copy(), other_credentialsrole
             )
-
-    @patch("ocpi22.payments.services.execute_webhook_event_task")
-    def test_create_terminal_dispatches_webhook_task_after_commit_when_terminal_webhook_configured(
-        self, mock_task, terminal_service, credentialsrole, minimal_terminal_data
-    ):
-        WebhookTerminalFactory()
-
-        with patch(
-            "ocpi22.payments.services.transaction.on_commit",
-            side_effect=lambda fn: fn(),
-        ):
-            terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
-
-        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
-        mock_task.delay.assert_called_once_with(event.id)
-
-    @patch("ocpi22.payments.services.execute_webhook_event_task")
-    def test_create_terminal_does_not_dispatch_webhook_task_when_no_terminal_webhook_configured(
-        self, mock_task, terminal_service, credentialsrole, minimal_terminal_data
-    ):
-        with patch(
-            "ocpi22.payments.services.transaction.on_commit",
-            side_effect=lambda fn: fn(),
-        ):
-            terminal_service.create_terminal(minimal_terminal_data, credentialsrole)
-
-        mock_task.delay.assert_not_called()
-
-    @patch("ocpi22.payments.services.execute_webhook_event_task")
-    @patch(
-        "ocpi22.payments.services.WebhookEventService.create_event",
-        side_effect=IntegrityError("unique violation"),
-    )
-    def test_create_terminal_is_saved_when_webhook_event_creation_raises_db_error(
-        self,
-        mock_create_event,
-        mock_task,
-        terminal_service,
-        credentialsrole,
-        minimal_terminal_data,
-    ):
-        WebhookTerminalFactory()
-
-        terminal = terminal_service.create_terminal(
-            minimal_terminal_data, credentialsrole
-        )
-
-        assert Terminal.objects.filter(terminal_id=terminal.terminal_id).exists()
-        mock_task.delay.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -711,99 +661,6 @@ class TestTerminalServiceUpdate:
         terminal_service._send_to_ptp(terminal, "put", {})
 
         mock_send.apply_async.assert_not_called()
-
-
-@pytest.mark.django_db
-class TestTerminalWebhookEventCreation:
-    FROZEN_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
-
-    @pytest.fixture
-    def terminal_service(self):
-        return TerminalService()
-
-    @pytest.fixture
-    def credentialsrole(self, db):
-        return CredentialsRoleFactory(
-            role=OcpiRolesEnum.PTP, party_id="PAY", country_code="NL"
-        )
-
-    @pytest.fixture
-    def terminal(self, credentialsrole):
-        return TerminalFactory(
-            terminal_id="TERM-WH-001",
-            customer_reference="TEST-CUSTOMER-REF",
-            last_updated=self.FROZEN_TIME,
-            credentials=credentialsrole.credentials,
-        )
-
-    def test_create_terminal_webhook_event_returns_none_when_no_terminal_webhook_configured(
-        self, terminal_service, terminal
-    ):
-        result = terminal_service._create_terminal_webhook_event(terminal)
-
-        assert result is None
-
-    def test_create_terminal_webhook_event_returns_none_when_terminal_webhook_is_inactive(
-        self, terminal_service, terminal
-    ):
-        WebhookInactiveFactory(type=WebhookType.TERMINAL, command_type=None)
-
-        result = terminal_service._create_terminal_webhook_event(terminal)
-
-        assert result is None
-
-    def test_create_terminal_webhook_event_persists_event_with_terminal_created_event_type(
-        self, terminal_service, terminal
-    ):
-        WebhookTerminalFactory()
-
-        terminal_service._create_terminal_webhook_event(terminal)
-
-        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
-        assert event.status == WebhookEventStatus.PENDING
-
-    def test_create_terminal_webhook_event_persists_payload_with_terminal_id_customer_reference_and_last_updated(
-        self, terminal_service, terminal
-    ):
-        WebhookTerminalFactory()
-
-        terminal_service._create_terminal_webhook_event(terminal)
-
-        event = WebhookEvent.objects.get(event_type=WebhookEventType.TERMINAL_CREATED)
-        assert event.payload == {
-            "terminal_id": "TERM-WH-001",
-            "customer_reference": "TEST-CUSTOMER-REF",
-            "last_updated": self.FROZEN_TIME.isoformat(),
-        }
-
-    def test_create_terminal_webhook_event_returns_persisted_event(
-        self, terminal_service, terminal
-    ):
-        WebhookTerminalFactory()
-
-        event = terminal_service._create_terminal_webhook_event(terminal)
-
-        assert event is not None
-        assert event.pk is not None
-        assert event.event_type == WebhookEventType.TERMINAL_CREATED
-
-    def test_create_terminal_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
-        self, terminal_service, terminal, caplog
-    ):
-        WebhookTerminalFactory()
-        caplog.set_level("ERROR", logger="ocpi22.payments.services")
-
-        with patch(
-            "ocpi22.payments.services.WebhookEventService.create_event",
-            side_effect=Exception("DB error"),
-        ):
-            result = terminal_service._create_terminal_webhook_event(terminal)
-
-        assert result is None
-        assert (
-            "Failed to create terminal webhook event for terminal TERM-WH-001"
-            in caplog.text
-        )
 
 
 @pytest.mark.django_db
