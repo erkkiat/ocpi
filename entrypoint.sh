@@ -5,12 +5,6 @@ WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
 case "$1" in
     django-app)
-        if [ "${SKIP_COLLECTSTATIC:-false}" != "true" ]; then
-            echo "Running collectstatic...."
-            python manage.py collectstatic --noinput
-        else
-            echo "Skipping collectstatic (SKIP_COLLECTSTATIC=true)..."
-        fi
         echo "Starting Django server..."
         exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --preload
         ;;
