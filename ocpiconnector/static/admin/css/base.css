@@ -2,7 +2,7 @@
     DJANGO Admin styles
 */
 
-/* fonts.css import removed — Django 4.2 inlines font declarations; no separate fonts file exists */
+@import url(fonts.css);
 
 /* VARIABLE DEFINITIONS */
 :root {
