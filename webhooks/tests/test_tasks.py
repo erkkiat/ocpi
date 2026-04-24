@@ -86,11 +86,6 @@ class TestExecuteWebhookEventTask:
 
         assert "WebhookEvent with id 99999 does not exist" in caplog.text
 
-    def test_execute_webhook_event_returns_without_error_when_event_does_not_exist(
-        self,
-    ):
-        execute_webhook_event(99999)
-
     def test_execute_webhook_event_returns_without_retry_when_webhook_deactivated_between_creation_and_execution(
         self,
     ):

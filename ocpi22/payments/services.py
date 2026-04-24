@@ -297,7 +297,6 @@ class FinancialAdviceConfirmationService:
             "capture_status_message": fac.capture_status_message,
             "last_updated": fac.last_updated,
         }
-
         try:
             with transaction.atomic():
                 return WebhookEventService.create_event(
