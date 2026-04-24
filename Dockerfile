@@ -27,9 +27,12 @@ COPY . /app
 
 # Collect static files once at build time — baked into the image.
 # WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
-RUN set -a && . ./test.env && set +a && \
-    DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
+# Only the two env vars that settings.py requires at import time are supplied;
+# no secrets or real credentials are needed for a filesystem-only operation.
+RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
     ALLOWED_HOSTS=build \
+    HOSTNAME=build \
+    REDIS_URL=redis://build \
     python manage.py collectstatic --noinput
 
 # Compile Python files and remove unneeded sources
