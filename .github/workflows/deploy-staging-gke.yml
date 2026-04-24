@@ -60,17 +60,35 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Load Environment Variables from test.env
+        run: |
+          if [ -f test.env ]; then
+            export $(cat test.env | xargs)
+          fi
+
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Pytest in Parallel
         run: pytest -n auto
 
