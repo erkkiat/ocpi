@@ -34,6 +34,7 @@ RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
     HOSTNAME=build \
     REDIS_URL=redis://build \
     DATABASE_URL=postgres://build:build@localhost/build \
+    SECRET_KEY=build-dummy-secret-key-not-used \
     python manage.py collectstatic --noinput
 
 # Compile Python files and remove unneeded sources
