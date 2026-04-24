@@ -27,14 +27,14 @@ COPY . /app
 
 # Collect static files once at build time — baked into the image.
 # WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
-# Only the two env vars that settings.py requires at import time are supplied;
-# no secrets or real credentials are needed for a filesystem-only operation.
+# Dummy values satisfy settings imports; collectstatic never opens a DB or
+# Redis connection so no real credentials are required.
 RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
-    ALLOWED_HOSTS=build \
-    HOSTNAME=build \
-    REDIS_URL=redis://build \
-    DATABASE_URL=postgres://build:build@localhost/build \
-    SECRET_KEY=build-dummy-secret-key-not-used \
+    ALLOWED_HOSTS=localhost \
+    HOSTNAME=localhost \
+    REDIS_URL=redis://localhost:6379 \
+    DATABASE_URL=postgres://username:password@localhost:5432/dbname \
+    SECRET_KEY=this-is-a-dummy-secret-key-used-only-at-build-time \
     python manage.py collectstatic --noinput
 
 # Compile Python files and remove unneeded sources
