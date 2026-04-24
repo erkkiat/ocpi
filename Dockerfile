@@ -25,10 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Now copy the rest of the app (this prevents unnecessary invalidation of cache)
 COPY . /app
 
-# Collect static files once at build time — baked into the image.
-# WhiteNoise serves them at runtime; no collectstatic needed on pod startup.
-# Dummy values satisfy settings imports; collectstatic never opens a DB or
-# Redis connection so no real credentials are required.
+# Collect static files once at build time.
 RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
     ALLOWED_HOSTS=localhost \
     HOSTNAME=localhost \
