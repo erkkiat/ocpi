@@ -66,20 +66,8 @@ DATABASES = configure_database()
 
 HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
 
-# ---------------------------------------------------------------------------
-# Static files — WhiteNoise serves pre-collected files baked into the image.
-#
-# CompressedManifestStaticFilesStorage:
-#   - Hashes filenames for cache-busting (e.g. base.abc123.css)
-#   - Pre-compresses files as .gz and .br at collectstatic time
-#   - Sets long Cache-Control headers so CDN/browsers cache aggressively
-#
-# Optional CDN: set STATIC_CDN_URL to the CDN base URL (e.g. Cloud CDN in
-# front of the GKE ingress). WhiteNoise serves on cache miss; CDN caches
-# subsequent requests. No GCS bucket or separate LB needed.
-# ---------------------------------------------------------------------------
 STATICFILES_STORAGE = "ocpiconnector.storage.LenientManifestStaticFilesStorage"
-WHITENOISE_MAX_AGE = 31536000  # 1 year — safe because filenames are hashed
+WHITENOISE_MAX_AGE = 31536000  # 1 year
 
 _cdn_url = os.environ.get("STATIC_CDN_URL", "")
 if _cdn_url:
