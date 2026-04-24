@@ -323,6 +323,9 @@ class Evse(models.Model, ModelUtilMixin):
 
     updated = models.DateTimeField(auto_now=True, verbose_name=_("Updated"))
     created = models.DateTimeField(auto_now_add=True, verbose_name=_("Created"))
+    physical_reference = models.CharField(
+        null=True, blank=True, max_length=16, verbose_name=_("Physical reference")
+    )
 
     def __str__(self):
         return self.evse_id
