@@ -46,6 +46,9 @@ any code task.
 | `.claude/skills/testing/SKILL.md` | **Any task writing or reviewing tests** — mock rules, naming, determinism, assertions, fixtures, API patterns |
 | `.claude/skills/ocpi-spec/SKILL.md` | Any task touching credentials, tokens, sessions, CDRs, locations, commands, hub routing |
 | `.claude/skills/directpayment-spec/SKILL.md` | Any task touching `ocpi22/payments/` — Terminal, FAC, PTP role, wire format |
+| `.claude/skills/kubernetes-gke/SKILL.md` | Any task touching `kubernetes/` manifests, Kustomize overlays, deployments, migration jobs, secrets, probes, resource limits |
+| `.claude/skills/devops-cicd/SKILL.md` | Any task touching `.github/workflows/`, Docker builds, GCP Artifact Registry, Kustomize deploys, Sentry releases, release tagging |
+| `.claude/skills/secure-code/SKILL.md` | Any task touching credentials, auth tokens, OCPI handshake, payments, webhooks, Celery task args, or secrets management |
 
 ### Terminal rules
 - Terminal is already at project root — **never `cd ocpiconnector`**
