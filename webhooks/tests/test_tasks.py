@@ -1,6 +1,7 @@
 import pytest
 import responses
 from celery.exceptions import Retry
+from unittest.mock import patch
 
 from webhooks.factories import WebhookFACFactory, WebhookEventFactory
 from webhooks.models import Webhook, WebhookEventStatus, WebhookEventType
@@ -113,11 +114,14 @@ class TestExecuteWebhookEventTask:
         )
         responses.add(responses.POST, webhook.url, json={}, status=500)
 
-        with pytest.raises(Retry) as exc_info:
-            execute_webhook_event(event.id)
+        with patch.object(
+            execute_webhook_event, "retry", side_effect=Retry()
+        ) as mock_retry:
+            with pytest.raises(Retry):
+                execute_webhook_event(event.id)
 
         # attempt_count becomes 3 after this attempt, so countdown = 2^3 * 60 = 480
-        assert exc_info.value.args[1]["countdown"] == 480
+        mock_retry.assert_called_once_with(countdown=480)
 
     def test_execute_webhook_event_returns_without_retry_when_webhook_deactivated_between_creation_and_execution(
         self,
