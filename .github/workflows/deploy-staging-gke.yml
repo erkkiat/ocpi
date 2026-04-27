@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - develop
+      - gke/static-files-baked-in-docker-image
   workflow_dispatch:
 
 permissions:

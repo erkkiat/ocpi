@@ -66,7 +66,7 @@ DATABASES = configure_database()
 
 HUBJECT_EMP_ID = os.getenv("HUBJECT_EMP_ID", "DE*ICE")
 
-STATICFILES_STORAGE = "ocpiconnector.storage.LenientManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 WHITENOISE_MAX_AGE = 31536000  # 1 year
 
 _cdn_url = os.environ.get("STATIC_CDN_URL", "")
