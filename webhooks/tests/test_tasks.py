@@ -86,6 +86,39 @@ class TestExecuteWebhookEventTask:
 
         assert "WebhookEvent with id 99999 does not exist" in caplog.text
 
+    @responses.activate
+    def test_execute_webhook_event_does_not_retry_when_webhook_returns_400(self):
+        webhook = WebhookFACFactory(max_retries=5)
+        event = WebhookEventFactory(
+            webhook=webhook,
+            event_type=WebhookEventType.FAC_CREATED,
+            payload={"terminal_id": "TERM-001"},
+        )
+        responses.add(responses.POST, webhook.url, json={}, status=400)
+
+        execute_webhook_event(event.id)
+
+        event.refresh_from_db()
+        assert event.status == WebhookEventStatus.FAILED
+        assert event.attempt_count == 1
+
+    @responses.activate
+    def test_execute_webhook_event_retry_countdown_uses_exponential_backoff(self):
+        webhook = WebhookFACFactory(max_retries=5)
+        event = WebhookEventFactory(
+            webhook=webhook,
+            event_type=WebhookEventType.FAC_CREATED,
+            payload={"terminal_id": "TERM-001"},
+            attempt_count=2,
+        )
+        responses.add(responses.POST, webhook.url, json={}, status=500)
+
+        with pytest.raises(Retry) as exc_info:
+            execute_webhook_event(event.id)
+
+        # attempt_count becomes 3 after this attempt, so countdown = 2^3 * 60 = 480
+        assert exc_info.value.args[1]["countdown"] == 480
+
     def test_execute_webhook_event_returns_without_retry_when_webhook_deactivated_between_creation_and_execution(
         self,
     ):
@@ -101,3 +134,4 @@ class TestExecuteWebhookEventTask:
 
         event.refresh_from_db()
         assert event.status == WebhookEventStatus.FAILED
+        assert event.attempt_count == 0

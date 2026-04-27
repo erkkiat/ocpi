@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 RETRY_BACKOFF_BASE_SECONDS = 60
 
 
-@shared_task(bind=True, max_retries=10)
+@shared_task(bind=True, max_retries=None)
 def execute_webhook_event(self, event_id: int) -> None:
     try:
         event = WebhookEvent.objects.get(id=event_id)
@@ -25,5 +25,7 @@ def execute_webhook_event(self, event_id: int) -> None:
 
     event.refresh_from_db()
     if event.status == WebhookEventStatus.FAILED:
+        if event.response_status_code and 400 <= event.response_status_code < 500:
+            return
         countdown = (2**event.attempt_count) * RETRY_BACKOFF_BASE_SECONDS
         raise self.retry(countdown=countdown)

@@ -14,12 +14,15 @@ from webhooks.services import (
     WebhookExecutionService,
     WebHookExecutionError,
 )
+from webhooks.choices import RemoteCommandType
 from webhooks.models import WebhookEventStatus, WebhookEventType
 from webhooks.factories import (
     WebhookAuthBearerFactory,
     WebhookAuthBasicFactory,
     WebhookAuthApiKeyFactory,
     WebhookFactory,
+    WebhookFACFactory,
+    WebhookRemoteCommandFactory,
     WebhookWithAuthFactory,
     WebhookInactiveFactory,
     WebhookEventFactory,
@@ -27,6 +30,7 @@ from webhooks.factories import (
     WebhookEventFailedFactory,
     WebhookEventExhaustedFactory,
 )
+from webhooks.repository import WebhookRepository
 
 
 @pytest.mark.django_db
@@ -1252,3 +1256,38 @@ class TestWebhookExecutionService:
         result = WebhookExecutionService()._send_webhook(webhook, event)
 
         assert result == {}
+
+
+@pytest.mark.django_db
+class TestWebhookRepository:
+    def test_get_remote_command_webhook_returns_none_when_webhook_is_inactive(self):
+        WebhookRemoteCommandFactory(active=False)
+
+        result = WebhookRepository.get_remote_command_webhook(
+            RemoteCommandType.START_SESSION
+        )
+
+        assert result is None
+
+    def test_get_remote_command_webhook_returns_webhook_when_active(self):
+        webhook = WebhookRemoteCommandFactory()
+
+        result = WebhookRepository.get_remote_command_webhook(
+            RemoteCommandType.START_SESSION
+        )
+
+        assert result == webhook
+
+    def test_get_fac_webhook_returns_none_when_webhook_is_inactive(self):
+        WebhookFACFactory(active=False)
+
+        result = WebhookRepository.get_fac_webhook()
+
+        assert result is None
+
+    def test_get_fac_webhook_returns_webhook_when_active(self):
+        webhook = WebhookFACFactory()
+
+        result = WebhookRepository.get_fac_webhook()
+
+        assert result == webhook
