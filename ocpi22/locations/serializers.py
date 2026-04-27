@@ -182,6 +182,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
             "last_updated",
             "connectors",
             "capabilities",
+            "physical_reference",
         ]
 
     lookup_field = "uid"
