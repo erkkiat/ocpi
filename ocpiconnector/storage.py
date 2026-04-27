@@ -24,12 +24,13 @@ class LenientManifestStaticFilesStorage(CompressedManifestStaticFilesStorage):
     manifest_strict = False
 
     def hashed_name(self, name, content=None, filename=None):
-        try:
-            return super().hashed_name(name, content=content, filename=filename)
-        except ValueError:
-            # Referenced asset does not exist — leave the URL unchanged and log
-            # a warning so it doesn't silently disappear.
-            logger.warning(
-                "Static asset not found, leaving reference unchanged: %s", name
-            )
-            return name
+        super().hashed_name(name, content=content, filename=filename)
+        # try:
+        #     return super().hashed_name(name, content=content, filename=filename)
+        # except ValueError:
+        #     # Referenced asset does not exist — leave the URL unchanged and log
+        #     # a warning so it doesn't silently disappear.
+        #     logger.warning(
+        #         "Static asset not found, leaving reference unchanged: %s", name
+        #     )
+        #     return name
