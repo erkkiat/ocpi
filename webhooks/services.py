@@ -73,6 +73,12 @@ class WebhookEventService:
         else:
             event.status = WebhookEventStatus.EXHAUSTED
             event.completed_at = timezone.now()
+            logger.error(
+                "Webhook event %s for %s exhausted all retries: %s",
+                event.id,
+                event.webhook.url,
+                error_message,
+            )
 
         event.save(
             update_fields=[
