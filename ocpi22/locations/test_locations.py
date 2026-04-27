@@ -79,10 +79,10 @@ def test_evse_serializer_includes_physical_reference():
 
 
 @pytest.mark.django_db
-def test_evse_serializer_physical_reference_is_none_when_not_set():
+def test_evse_serializer_physical_reference_is_omitted_when_not_set():
     evse = EvseFactory(physical_reference=None)
     data = EvseSerializer(evse, context={"request": None}).data
-    assert data["physical_reference"] is None
+    assert "physical_reference" not in data
 
 
 @pytest.mark.django_db
