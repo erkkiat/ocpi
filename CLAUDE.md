@@ -49,6 +49,7 @@ any code task.
 | `.claude/skills/kubernetes-gke/SKILL.md` | Any task touching `kubernetes/` manifests, Kustomize overlays, deployments, migration jobs, secrets, probes, resource limits |
 | `.claude/skills/devops-cicd/SKILL.md` | Any task touching `.github/workflows/`, Docker builds, GCP Artifact Registry, Kustomize deploys, Sentry releases, release tagging |
 | `.claude/skills/secure-code/SKILL.md` | Any task touching credentials, auth tokens, OCPI handshake, payments, webhooks, Celery task args, or secrets management |
+| `.claude/skills/hubject-integration/SKILL.md` | Any task touching `integrations/hubject/` — EVSE data push, pricing, CDRs, remote commands, or OICP↔OCPI conversion |
 
 ### Terminal rules
 - Terminal is already at project root — **never `cd ocpiconnector`**
