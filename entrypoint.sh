@@ -5,10 +5,8 @@ WORKER_HOSTNAME="${WORKER_NAME:-default}@%h"
 
 case "$1" in
     django-app)
-        echo "Running collectstatic..."
-        python manage.py collectstatic --noinput
         echo "Starting Django server..."
-        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120
+        exec gunicorn ocpiconnector.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --preload
         ;;
     celery-django)
         echo "Starting Celery worker for Django tasks with hostname: $WORKER_HOSTNAME and queue: $CELERY_QUEUE_NAME"

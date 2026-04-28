@@ -25,6 +25,15 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Now copy the rest of the app (this prevents unnecessary invalidation of cache)
 COPY . /app
 
+# Collect static files once at build time.
+RUN DJANGO_SETTINGS_MODULE=ocpiconnector.settings.gke \
+    ALLOWED_HOSTS=localhost \
+    HOSTNAME=localhost \
+    REDIS_URL=redis://localhost:6379 \
+    DATABASE_URL=postgres://username:password@localhost:5432/dbname \
+    SECRET_KEY=solidroamsecretkey \
+    python manage.py collectstatic --noinput
+
 # Compile Python files and remove unneeded sources
 RUN python -m compileall -b . && \
     find . -name '*.py' ! -name 'manage.py' -delete
