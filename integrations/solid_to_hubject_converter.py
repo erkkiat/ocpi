@@ -802,7 +802,7 @@ class SolidToHubjectConverter:
             grouped_slots = defaultdict(list)
 
             for rh in regular_hours:
-                time_slot = f"{datetime.strptime(rh.period_begin, '%H:%M').strftime('%H:%M')}-{datetime.strptime(rh.period_end, '%H:%M').strftime('%H:%M')}"
+                time_slot = f"{rh.period_begin.strftime('%H:%M')}-{rh.period_end.strftime('%H:%M')}"
                 grouped_slots[time_slot].append(rh.weekday)
             return dict(grouped_slots)
 

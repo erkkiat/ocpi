@@ -7174,23 +7174,18 @@ html.dark section.section-custom-map section.section {
 }
 
 html.dark .home-concept {
-	background-image: url(../img/home/home-concept-dark.png);
 }
 
 html.dark .home-concept .process-image {
-	background-image: url(../img/home/home-concept-item-dark.png);
 }
 
 html.dark .home-concept .project-image {
-	background-image: url(../img/home/home-concept-item-dark.png);
 }
 
 html.dark .home-concept .sun {
-	background-image: url(../img/home/home-concept-icons-dark.png);
 }
 
 html.dark .home-concept .cloud {
-	background-image: url(../img/home/home-concept-icons-dark.png);
 }
 
 html.dark .page-header {
@@ -7339,7 +7334,6 @@ html.dark .progress {
 }
 
 html.dark .arrow {
-	background-image: url(../img/arrows-dark.png);
 }
 
 html.dark .thumbnail,

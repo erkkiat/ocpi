@@ -25,6 +25,6 @@ repos:
     - id: check-missing-migrations
       name: Checking missing Django migrations
       description: This hook checks if changes has been made into models but not reflected into a migration.
-      entry: sh -c ". .env-local/django-app.env && export DATABASE_URL=postgres://ocpi:ocpiocpi@localhost:5432/ocpi && python manage.py makemigrations --check --dry-run"
+      entry: sh -c ". .env-local/django-app.env && export DATABASE_URL=postgres://ocpi:ocpiocpi@localhost:5432/ocpi && python3 manage.py makemigrations --check --dry-run"
       language: system
       pass_filenames: false

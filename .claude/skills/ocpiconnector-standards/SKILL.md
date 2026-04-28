@@ -171,7 +171,11 @@ If not, keep it simple.
 
 ---
 
-## Testing rules (strict)
+## Testing rules
+
+> **Writing or reviewing tests?** Load `.claude/skills/testing/SKILL.md` — it is the single source of truth for test types, mock rules, naming, determinism, assertions, fixtures, and API patterns.
+
+The rules below are a quick reference. The testing skill takes precedence.
 
 ### Test structure
 ```python
