@@ -128,6 +128,18 @@ def test_evse_schema_valid_data(evse_data):
     assert evse.evse_id == evse_data["evse_id"]
 
 
+def test_evse_schema_physical_reference_is_accepted(evse_data):
+    evse_data["physical_reference"] = "A1"
+    evse = SolidEvse(**evse_data)
+    assert evse.physical_reference == "A1"
+
+
+def test_evse_schema_physical_reference_too_long_raises_validation_error(evse_data):
+    evse_data["physical_reference"] = "A" * 17
+    with pytest.raises(ValidationError):
+        SolidEvse(**evse_data)
+
+
 def test_evse_schema_invalid_status_raises_value_error(evse_data):
     evse_data["status"] = "INVALID"
     with pytest.raises(ValidationError):

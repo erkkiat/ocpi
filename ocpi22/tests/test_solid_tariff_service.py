@@ -462,6 +462,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
         "external_id": "ZERO-PER-MIN-SMP1",
         "currency": "EUR",
         "price_per_min": 0,
+        "vat_percentage": 0.0,
         "ocpi_master": operator_fi_cpo,
         "msp": None,
     }
@@ -492,6 +493,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },
@@ -502,6 +504,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PARKING-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "parking_price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },

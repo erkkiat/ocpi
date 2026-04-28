@@ -154,26 +154,48 @@ serializer validation — never create fake token data.
 
 ## Sessions module
 
-### Lifecycle
-```
-PENDING → ACTIVE → COMPLETED
-```
+> For the full end-to-end flow (plug-in → auth → ACTIVE → CDR, both RFID and remote
+> command paths, Hubject branch), read:
+> `.claude/skills/ocpi-spec/references/session_lifecycle.md`
+> Load it when working on anything touching session creation, auth flow, meter values,
+> stop transaction, CDR trigger, or Hubject session routing.
 
-### Session object (key fields)
-| Field | Type | Card | Notes |
-|---|---|---|---|
-| `id` | CiString[36] | 1 | Session ID |
-| `start_date_time` | DateTime | 1 | |
-| `end_date_time` | DateTime | ? | Set when COMPLETED |
-| `kwh` | number | 1 | Total energy kWh |
-| `cdr_token` | CdrToken | 1 | |
-| `auth_method` | AuthMethod | 1 | `AUTH_REQUEST`, `COMMAND`, `WHITELIST` |
-| `authorization_reference` | CiString[36] | ? | |
-| `location_id` | CiString[36] | 1 | |
-| `evse_uid` | CiString[36] | 1 | |
-| `connector_id` | CiString[36] | 1 | |
-| `status` | SessionStatus | 1 | `ACTIVE`, `COMPLETED`, `INVALID`, `PENDING` |
-| `last_updated` | DateTime | 1 | |
+### Status states
+| Status | Meaning |
+|---|---|
+| `PENDING` | After auth, before charge starts. **Never sent to MSP.** |
+| `ACTIVE` | Charge point confirmed start. First MSP PUT happens here. |
+| `RESERVATION` | Exists due to reservation, not yet charging. |
+| `COMPLETED` | Charge stopped. CDR created atomically in same transaction. |
+| `INVALID` | Declared invalid after the fact. Not a normal transition. |
+
+Sessions are never deleted — only move to COMPLETED or INVALID.
+
+### auth_method (set once, never changed)
+`WHITELIST` — token whitelisted, no MSP call |
+`AUTH_REQUEST` — MSP responded to real-time auth |
+`COMMAND` — session started via MSP START_SESSION command
+
+### PUT vs PATCH
+- **PUT** — full replace. Existing `charging_periods` replaced entirely.
+- **PATCH** — partial. `charging_periods` in PATCH *adds* to existing ones. Omitting it changes nothing. Use PUT to remove/replace periods.
+
+### Key fields
+| Field | M/O | Notes |
+|---|---|---|
+| `id` | M | `session.uid` |
+| `start_date_time` | M | Set when ACTIVE, not at PENDING creation |
+| `end_date_time` | O | Set when COMPLETED |
+| `kwh` | M | `max(stop_kwh - start_kwh, 0)` rounded to 3 dp |
+| `cdr_token` | M | Token that started the session |
+| `auth_method` | M | See above |
+| `authorization_reference` | O | MSP reference — carried into CDR for matching |
+| `evse_uid` / `connector_id` | M | `"#NA"` for reservations |
+| `currency` | M | Derived from connector's first tariff |
+| `charging_periods` | O | Updated on every meter value |
+| `total_cost` | O | `excl_vat` and `incl_vat` variants |
+| `status` | M | |
+| `last_updated` | M | Always include in PATCH |
 
 CPO pushes to eMSP:
 ```

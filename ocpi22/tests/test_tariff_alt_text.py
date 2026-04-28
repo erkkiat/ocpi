@@ -11,6 +11,7 @@ def _build(**overrides):
         parking_per_hr=None,
         parking_grace_minutes=None,
         currency="EUR",
+        vat=0.0,
     )
     defaults.update(overrides)
     return dict(TariffAltTextGenerator.build(**defaults))
@@ -113,6 +114,7 @@ def test_build_tariff_alt_text_raises_when_no_components():
             parking_per_hr=None,
             parking_grace_minutes=None,
             currency="EUR",
+            vat=0.0,
         )
 
 
@@ -125,6 +127,7 @@ def test_build_tariff_alt_text_zero_additives_are_displayed():
             parking_per_hr=None,
             parking_grace_minutes=None,
             currency="EUR",
+            vat=0.0,
         )
     )
     assert result["en"] == "€0.00/h charging"
@@ -152,6 +155,7 @@ def test_create_solid_tariff_populates_ocpi_tariff_alt_text(operator_fi_cpo):
         "price_per_hr": 6.0,
         "parking_price_per_hr": 3.0,
         "parking_grace_period": 15,
+        "vat_percentage": 0.0,
         "ocpi_master": operator_fi_cpo,
         "msp": None,
     }
@@ -183,6 +187,7 @@ def test_updating_solid_tariff_creates_fresh_alt_text_on_new_ocpi_tariff(
         "external_id": "ALT-TEXT-2",
         "currency": "EUR",
         "price_per_kwh": 0.45,
+        "vat_percentage": 0.0,
         "ocpi_master": operator_fi_cpo,
         "msp": None,
     }
@@ -221,3 +226,81 @@ def test_create_solid_tariff_with_no_price_components_is_rejected(
 
     with pytest.raises(ValidationError, match="price"):
         service.create(validated_data)
+
+
+@pytest.mark.parametrize(
+    "kwargs, expected_en, expected_fr, expected_nl",
+    [
+        pytest.param(
+            {"per_kwh": 0.45, "vat": 21.0},
+            "€0.54/kWh",
+            "0,54€/kWh",
+            "€0,54/kWh",
+            id="energy_with_21pct_vat",
+        ),
+        pytest.param(
+            {"per_kwh": 0.45, "per_hr": 6.0, "vat": 10.0},
+            "€0.50/kWh + €6.60/h charging",
+            "0,50€/kWh + 6,60€/h recharge",
+            "€0,50/kWh + €6,60/u opladen",
+            id="energy_and_time_with_10pct_vat",
+        ),
+        pytest.param(
+            {"flat": 2.0, "vat": 20.0},
+            "€2.40 starting fee",
+            "2,40€ frais de démarrage",
+            "€2,40 startkost",
+            id="flat_with_20pct_vat",
+        ),
+        pytest.param(
+            {
+                "per_kwh": 0.38,
+                "parking_per_hr": 3.0,
+                "parking_grace_minutes": 15,
+                "vat": 21.0,
+            },
+            "€0.46/kWh + €3.63/h parking after 15min",
+            "0,46€/kWh + 3,63€/h stationnement après 15min",
+            "€0,46/kWh + €3,63/u parkeren na 15min",
+            id="energy_and_parking_with_21pct_vat",
+        ),
+        pytest.param(
+            {"per_kwh": 0.45, "vat": 0.0},
+            "€0.45/kWh",
+            "0,45€/kWh",
+            "€0,45/kWh",
+            id="zero_vat_leaves_amount_unchanged",
+        ),
+    ],
+)
+def test_build_tariff_alt_text_with_vat(kwargs, expected_en, expected_fr, expected_nl):
+    result = _build(**kwargs)
+    assert result["en"] == expected_en
+    assert result["fr"] == expected_fr
+    assert result["nl"] == expected_nl
+
+
+@pytest.mark.django_db
+def test_create_solid_tariff_with_vat_shows_vat_inclusive_amount_in_alt_text(
+    operator_fi_cpo,
+):
+    service = SolidTariffService()
+    validated_data = {
+        "external_id": "ALT-TEXT-VAT-1",
+        "currency": "EUR",
+        "price_per_kwh": 0.45,
+        "price_per_hr": 6.0,
+        "vat_percentage": 21.0,
+        "ocpi_master": operator_fi_cpo,
+        "msp": None,
+    }
+
+    solid_tariff = service.create(validated_data)
+
+    alt_texts = {
+        display_text.language: display_text.text
+        for display_text in solid_tariff.ocpi_tariff.tariff_alt_text.all()
+    }
+    assert alt_texts["en"] == "€0.54/kWh + €7.26/h charging"
+    assert alt_texts["fr"] == "0,54€/kWh + 7,26€/h recharge"
+    assert alt_texts["nl"] == "€0,54/kWh + €7,26/u opladen"
