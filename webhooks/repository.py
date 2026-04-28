@@ -14,3 +14,7 @@ class WebhookRepository:
         return Webhook.objects.filter(
             type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, active=True
         ).first()
+
+    @staticmethod
+    def get_cdr_webhook() -> Webhook | None:
+        return Webhook.objects.filter(type=WebhookType.INVOICING, active=True).first()
