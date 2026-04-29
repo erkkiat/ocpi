@@ -45,6 +45,62 @@ The only thing that should be mocked in **any** test type is outbound HTTP calls
 - Django views and serializers — use Django test client
 - Middleware and request lifecycle
 - Message decoding schemas (`TokenAuthorizationSchema`, etc.)
+- `transaction.on_commit` — use `@pytest.mark.django_db(transaction=True)` so callbacks fire naturally
+
+---
+
+## Over-Mocking
+
+**Before adding any mock, ask: can I cause this to happen naturally in the test environment?**
+
+A mock that replaces real infrastructure reduces the test to "does this code call the mock correctly?" — it no longer proves the code actually works. Over-mocked tests can pass while the production code is broken.
+
+### Diagnosing over-mocking
+
+Every mock should answer yes to one of these:
+1. It replaces a real outbound network call (the only always-valid reason)
+2. It suppresses a Celery `.delay()` so the test doesn't trigger async work in the caller test (unit tests only)
+3. There is genuinely no way to cause the condition naturally in the test DB
+
+If none of these apply, remove the mock.
+
+### Forcing error paths without mocking business logic
+
+When testing exception handling, cause real failures instead of mocking the service that throws:
+
+```python
+# ❌ Mocking business logic to force an error
+with patch("ocpi22.cpo.services.WebhookEventService.create_event", side_effect=Exception()):
+    result = CdrService._create_cdr_webhook_event(cdr)
+
+# ✅ Cause a real FK violation by monkeypatching only the data-access boundary
+webhook = WebhookInvoicingFactory()
+webhook.delete()  # row is gone from DB
+monkeypatch.setattr(WebhookRepository, "get_invoicing_webhook", lambda: webhook)
+result = CdrService._create_cdr_webhook_event(cdr)  # real IntegrityError from Postgres
+```
+
+### Mocking `on_commit` is a test type smell
+
+If you find yourself patching `transaction.on_commit`, the fix is to use `@pytest.mark.django_db(transaction=True)`. In autocommit mode Django executes `on_commit` callbacks immediately — no patch needed.
+
+```python
+# ❌ Hiding real behavior
+with patch("ocpi22.cpo.services.transaction.on_commit", side_effect=lambda fn: fn()):
+    CdrService._create_cdr(session)
+
+# ✅ Let Django behave as it does in production
+@pytest.mark.django_db(transaction=True)
+def test_create_cdr_dispatches_webhook_task_after_commit_when_invoicing_webhook_configured(
+    self, mock_task, session_with_periods
+):
+    CdrService._create_cdr(session_with_periods)
+    mock_task.delay.assert_called_once_with(...)
+```
+
+### Suppressing side effects in fixture setup
+
+If a fixture needs a mock to suppress a side effect, that's usually a sign the fixture is using the wrong test type. Check whether `on_commit` even fires in a non-`transaction=True` test — if it doesn't, the mock was never doing anything useful.
 
 ---
 
@@ -190,6 +246,14 @@ test_list_facs_returns_200_with_empty_list
 - For OCPI envelope responses always assert: `status_code`, `status_message` (or its absence on lists), `timestamp` presence, and the full `data` payload
 - For write operations: assert both the state change (DB) and the side effect (mock call)
 - For early-exit paths: assert return value AND that downstream calls were not made
+- **Never use `obj.pk is not None` to assert persistence** — this only proves Django assigned a PK in memory, not that the row was written. Use a real DB lookup instead:
+  ```python
+  # ❌ Weak — only checks in-memory state
+  assert event.pk is not None
+
+  # ✅ Strong — proves the row exists in the database
+  assert Model.objects.filter(pk=obj.pk).exists()
+  ```
 - Never assert only on mock call counts — also assert the arguments passed
 - Multiple asserts per test are fine when they belong to the same scenario — do not mix scenarios
 
@@ -291,6 +355,9 @@ Every endpoint must have dedicated tests for:
 - Asserting only mock call counts without asserting arguments
 - Asserting only `status_code` without asserting `response.json()` body
 - Calling `response.json()` multiple times inline — assign to `body` first
+- `obj.pk is not None` to assert persistence — use `Model.objects.filter(pk=obj.pk).exists()`
 
-❌ **Never mock** (see What to Mock above for full rules):
+❌ **Never mock** (see What to Mock and Over-Mocking above for full rules):
 - Django ORM, Redis, task bodies, views, schemas, business logic
+- `transaction.on_commit` — use `@pytest.mark.django_db(transaction=True)` instead
+- A service method just to force it to raise — cause real failures instead (stale FK, bad input, real constraint violation)
