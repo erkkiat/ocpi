@@ -247,7 +247,6 @@ def put_terminal(request, terminal_id: str, payload: TerminalPutIn):
     terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.put_terminal(terminal, payload)
-        service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     except Exception:
@@ -255,6 +254,12 @@ def put_terminal(request, terminal_id: str, payload: TerminalPutIn):
             "Unexpected error in put_terminal for terminal_id=%s", terminal_id
         )
         return 500, Error(message="An unexpected error occurred.")
+    try:
+        service._send_to_ptp(terminal, "put")
+    except Exception:
+        logger.exception(
+            "Failed to notify PTP after put_terminal for terminal_id=%s", terminal_id
+        )
     return 200, terminal
 
 
@@ -264,9 +269,9 @@ def put_terminal(request, terminal_id: str, payload: TerminalPutIn):
 )
 def patch_terminal(request, terminal_id: str, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
+    patch_fields = set(payload.dict(exclude_unset=True).keys())
     try:
         terminal = service.patch_terminal(terminal, payload)
-        service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     except Exception:
@@ -274,4 +279,10 @@ def patch_terminal(request, terminal_id: str, payload: TerminalIn):
             "Unexpected error in patch_terminal for terminal_id=%s", terminal_id
         )
         return 500, Error(message="An unexpected error occurred.")
+    try:
+        service._send_to_ptp(terminal, "patch", patch_fields=patch_fields)
+    except Exception:
+        logger.exception(
+            "Failed to notify PTP after patch_terminal for terminal_id=%s", terminal_id
+        )
     return 200, terminal
