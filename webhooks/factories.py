@@ -67,6 +67,11 @@ class WebhookFACFactory(WebhookFactory):
     command_type = None
 
 
+class WebhookInvoicingFactory(WebhookFactory):
+    type = WebhookType.INVOICING
+    command_type = None
+
+
 class WebhookEventFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = WebhookEvent

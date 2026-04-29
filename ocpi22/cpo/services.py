@@ -13,6 +13,10 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
 
 from ocpi22.cpo.repositories import SolidTariffRepository
+from webhooks.models import WebhookEvent, WebhookEventType
+from webhooks.repository import WebhookRepository
+from webhooks.services import WebhookEventService
+from webhooks.tasks import execute_webhook_event as execute_webhook_event_task
 from ocpi22.models.cdrlocation import CdrLocation
 from ocpi22.models.displaytext import DisplayText
 from ocpi22.models.session import ChargingPeriodSerializer
@@ -556,7 +560,35 @@ class CdrService:
 
         cdr.tariffs.set(cdr_tariffs)
 
+        event = cls._create_cdr_webhook_event(cdr)
+        if event:
+            transaction.on_commit(lambda: execute_webhook_event_task.delay(event.id))
+
         return cdr
+
+    @classmethod
+    def _create_cdr_webhook_event(cls, cdr: "Cdr") -> Optional[WebhookEvent]:
+        from ocpi22.ocpi.serializers import CdrSerializer
+
+        webhook = WebhookRepository.get_invoicing_webhook()
+        if not webhook:
+            return None
+
+        payload = CdrSerializer(cdr).data
+        try:
+            with transaction.atomic():
+                return WebhookEventService.create_event(
+                    webhook=webhook,
+                    event_type=WebhookEventType.CDR_CREATED,
+                    payload=payload,
+                )
+        except Exception:
+            logger.error(
+                "Failed to create CDR webhook event for cdr %s",
+                cdr.uid,
+                exc_info=True,
+            )
+            return None
 
     @classmethod
     def get_or_create_cdr(cls, session: Session) -> Optional["Cdr"]:
