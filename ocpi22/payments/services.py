@@ -71,9 +71,20 @@ class TerminalService:
         return terminal
 
     def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
-        terminal.customer_reference = payload.customer_reference
-        terminal.country_code = payload.country_code
-        terminal.party_id = payload.party_id
+        terminal_fields = {
+            "customer_reference": payload.customer_reference,
+            "country_code": payload.country_code,
+            "party_id": payload.party_id,
+            "address": payload.address,
+            "city": payload.city,
+            "postal_code": payload.postal_code,
+            "state": payload.state,
+            "country": payload.country,
+            "last_updated": payload.last_updated or timezone.now(),
+        }
+        for field, value in terminal_fields.items():
+            setattr(terminal, field, value)
+
         try:
             validate_terminal_party_identification(
                 terminal.customer_reference,
@@ -83,11 +94,7 @@ class TerminalService:
             )
         except DjangoValidationError as e:
             raise TerminalValidationError(e.messages[0]) from e
-        terminal.address = payload.address
-        terminal.city = payload.city
-        terminal.postal_code = payload.postal_code
-        terminal.state = payload.state
-        terminal.country = payload.country
+
         terminal.latitude = (
             str(payload.coordinates.latitude)
             if payload.coordinates is not None
@@ -108,7 +115,6 @@ class TerminalService:
             if payload.invoice_creator is not None
             else None
         )
-        terminal.last_updated = payload.last_updated or timezone.now()
 
         locations, evses = self._resolve_locations_and_evses(
             payload.location_ids, payload.evse_uids
