@@ -69,39 +69,12 @@ class TerminalService:
         return terminal
 
     def put_terminal(self, terminal: Terminal, payload: TerminalPutIn) -> Terminal:
-        terminal_fields = {
-            "country_code": payload.country_code,
-            "party_id": payload.party_id,
-            "address": payload.address,
-            "city": payload.city,
-            "postal_code": payload.postal_code,
-            "state": payload.state,
-            "country": payload.country,
-            "last_updated": payload.last_updated or timezone.now(),
-        }
-        for field, value in terminal_fields.items():
-            setattr(terminal, field, value)
-
-        terminal.latitude = (
-            str(payload.coordinates.latitude)
-            if payload.coordinates is not None
-            else None
-        )
-        terminal.longitude = (
-            str(payload.coordinates.longitude)
-            if payload.coordinates is not None
-            else None
-        )
         terminal.invoice_base_url = (
             str(payload.invoice_base_url).rstrip("/")
             if payload.invoice_base_url is not None
             else None
         )
-        terminal.invoice_creator = (
-            payload.invoice_creator.value
-            if payload.invoice_creator is not None
-            else None
-        )
+        terminal.last_updated = timezone.now()
 
         locations, evses = self._resolve_locations_and_evses(
             payload.location_ids, payload.evse_uids
@@ -118,36 +91,13 @@ class TerminalService:
     def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
         payload_dict = payload.dict(exclude_unset=True)
 
-        terminal_fields = [
-            "country_code",
-            "party_id",
-            "address",
-            "city",
-            "postal_code",
-            "state",
-            "country",
-        ]
-        for field in terminal_fields:
-            if field in payload_dict:
-                setattr(terminal, field, payload_dict[field])
-
-        if "coordinates" in payload_dict:
-            coords = payload_dict["coordinates"]
-            if coords is not None:
-                terminal.latitude = str(coords["latitude"])
-                terminal.longitude = str(coords["longitude"])
-            else:
-                terminal.latitude = None
-                terminal.longitude = None
         if "invoice_base_url" in payload_dict:
             url = payload_dict["invoice_base_url"]
             terminal.invoice_base_url = (
                 str(url).rstrip("/") if url is not None else None
             )
-        if "invoice_creator" in payload_dict:
-            creator = payload_dict["invoice_creator"]
-            terminal.invoice_creator = creator.value if creator is not None else None
-        terminal.last_updated = payload_dict.get("last_updated") or timezone.now()
+
+        terminal.last_updated = timezone.now()
 
         if "location_ids" in payload_dict or "evse_uids" in payload_dict:
             loc_ids = payload_dict.get("location_ids", [])

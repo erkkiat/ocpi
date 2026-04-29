@@ -14,7 +14,6 @@ from ocpi22.payments.exceptions import (
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
 from ocpi22.payments.schemas import TerminalIn, TerminalPutIn
-from ocpi22.cpo.schemas import GeoLocation
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     TerminalFactory,
@@ -587,188 +586,6 @@ class TestTerminalServiceUpdate:
 
         assert "MISSING-EVSE" in str(exc_info.value)
 
-    def test_put_terminal_sets_location_fields_address_city_postal_code_state_country(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-put-addr",
-            credentials=credentialsrole.credentials,
-            address="Old Street 1",
-            city="OldCity",
-        )
-        location = LocationFactory(uid="LOC-ADDR")
-        EvseFactory(uid="EVSE-ADDR", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-put-addr",
-            address="New Street 99",
-            city="Helsinki",
-            postal_code="00100",
-            state="Uusimaa",
-            country="FIN",
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.put_terminal(terminal, payload)
-
-        assert updated.address == "New Street 99"
-        assert updated.city == "Helsinki"
-        assert updated.postal_code == "00100"
-        assert updated.state == "Uusimaa"
-        assert updated.country == "FIN"
-
-    def test_put_terminal_sets_coordinates_from_coordinates_field(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-put-coord", credentials=credentialsrole.credentials
-        )
-        location = LocationFactory(uid="LOC-COORD")
-        EvseFactory(uid="EVSE-COORD", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-put-coord",
-            coordinates=GeoLocation(latitude="60.169857", longitude="24.938379"),
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.put_terminal(terminal, payload)
-
-        assert updated.latitude == "60.169857"
-        assert updated.longitude == "24.938379"
-
-    def test_put_terminal_clears_coordinates_when_not_provided(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-put-clear-coord",
-            credentials=credentialsrole.credentials,
-            latitude="60.169857",
-            longitude="24.938379",
-        )
-        location = LocationFactory(uid="LOC-CLEAR-COORD")
-        EvseFactory(uid="EVSE-CLEAR-COORD", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-put-clear-coord",
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.put_terminal(terminal, payload)
-
-        assert updated.latitude is None
-        assert updated.longitude is None
-
-    def test_put_terminal_clears_location_fields_when_not_provided(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-put-clear-addr",
-            credentials=credentialsrole.credentials,
-            address="Old Street 1",
-            city="OldCity",
-        )
-        location = LocationFactory(uid="LOC-CLEAR-ADDR")
-        EvseFactory(uid="EVSE-CLEAR-ADDR", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-put-clear-addr",
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.put_terminal(terminal, payload)
-
-        assert updated.address is None
-        assert updated.city is None
-
-    def test_patch_terminal_updates_only_address_when_provided(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-patch-addr",
-            credentials=credentialsrole.credentials,
-            address="Old Street 1",
-            city="Helsinki",
-        )
-        location = LocationFactory(uid="LOC-PATCH-ADDR")
-        EvseFactory(uid="EVSE-PATCH-ADDR", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-patch-addr",
-            address="New Street 99",
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.patch_terminal(terminal, payload)
-
-        assert updated.address == "New Street 99"
-        assert updated.city == "Helsinki"
-
-    def test_patch_terminal_updates_coordinates_when_provided(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-patch-coord", credentials=credentialsrole.credentials
-        )
-        location = LocationFactory(uid="LOC-PATCH-COORD")
-        EvseFactory(uid="EVSE-PATCH-COORD", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-patch-coord",
-            coordinates=GeoLocation(latitude="52.372294", longitude="4.898632"),
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.patch_terminal(terminal, payload)
-
-        assert updated.latitude == "52.372294"
-        assert updated.longitude == "4.898632"
-
-    def test_patch_terminal_clears_coordinates_when_null_provided(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-patch-null-coord",
-            credentials=credentialsrole.credentials,
-            latitude="60.169857",
-            longitude="24.938379",
-        )
-        location = LocationFactory(uid="LOC-PATCH-NULL-COORD")
-        EvseFactory(uid="EVSE-PATCH-NULL-COORD", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-patch-null-coord",
-            coordinates=None,
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.patch_terminal(terminal, payload)
-
-        assert updated.latitude is None
-        assert updated.longitude is None
-
-    def test_patch_terminal_does_not_clear_location_fields_when_not_in_payload(
-        self, terminal_service, credentialsrole
-    ):
-        terminal = TerminalFactory(
-            terminal_id="term-patch-keep-addr",
-            credentials=credentialsrole.credentials,
-            address="Preserved Street 1",
-            city="PreservedCity",
-        )
-        location = LocationFactory(uid="LOC-PATCH-KEEP")
-        EvseFactory(uid="EVSE-PATCH-KEEP", location=location)
-
-        payload = TerminalIn(
-            terminal_id="term-patch-keep-addr",
-            location_ids=[location.uid],
-        )
-
-        updated = terminal_service.patch_terminal(terminal, payload)
-
-        assert updated.address == "Preserved Street 1"
-        assert updated.city == "PreservedCity"
-
     @patch("ocpi22.payments.services.send_ocpi_request")
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
@@ -952,56 +769,33 @@ class TestFACWebhookEventCreation:
 
 @pytest.mark.django_db
 class TestTerminalInSchema:
-    def test_terminal_in_last_updated_defaults_to_utc_now_when_not_provided(self):
-        before = datetime.now(dt_timezone.utc)
-        payload = TerminalIn(terminal_id="term-ts", location_ids=["LOC-1"])
-        after = datetime.now(dt_timezone.utc)
-
-        assert payload.last_updated is not None
-        assert before <= payload.last_updated <= after
-        assert payload.last_updated.tzinfo is not None
-
-    def test_terminal_in_last_updated_uses_provided_value_when_given(self):
-        fixed_dt = datetime(2024, 6, 15, 10, 0, 0, tzinfo=dt_timezone.utc)
-        payload = TerminalIn(
-            terminal_id="term-ts-explicit",
-            location_ids=["LOC-1"],
-            last_updated=fixed_dt,
-        )
-
-        assert payload.last_updated == fixed_dt
-
     def test_terminal_put_in_raises_when_neither_location_ids_nor_evse_uids_provided(
         self,
     ):
         import pydantic
 
         with pytest.raises(pydantic.ValidationError):
-            TerminalPutIn(terminal_id="term-no-loc")
+            TerminalPutIn()
 
     def test_terminal_in_allows_no_location_ids_or_evse_uids_for_patch(self):
-        payload = TerminalIn(address="Some Street 1")
+        payload = TerminalIn()
         assert payload.location_ids == []
         assert payload.evse_uids == []
 
     def test_terminal_in_accepts_only_location_ids_without_evse_uids(self):
-        payload = TerminalIn(terminal_id="term-loc-only", location_ids=["LOC-A"])
+        payload = TerminalIn(location_ids=["LOC-A"])
 
         assert payload.location_ids == ["LOC-A"]
         assert payload.evse_uids == []
 
     def test_terminal_in_accepts_only_evse_uids_without_location_ids(self):
-        payload = TerminalIn(terminal_id="term-evse-only", evse_uids=["EVSE-A"])
+        payload = TerminalIn(evse_uids=["EVSE-A"])
 
         assert payload.evse_uids == ["EVSE-A"]
         assert payload.location_ids == []
 
     def test_terminal_in_accepts_both_location_ids_and_evse_uids(self):
-        payload = TerminalIn(
-            terminal_id="term-both",
-            location_ids=["LOC-A"],
-            evse_uids=["EVSE-A"],
-        )
+        payload = TerminalIn(location_ids=["LOC-A"], evse_uids=["EVSE-A"])
 
         assert payload.location_ids == ["LOC-A"]
         assert payload.evse_uids == ["EVSE-A"]
