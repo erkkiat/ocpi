@@ -188,12 +188,30 @@ class TerminalService:
             self._validate_locations_ids_by_evses(location_ids_set, evses)
             return locations, evses
 
-    def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict) -> None:
-        payload = {
-            **payload,
-            "location_ids": list(terminal.locations.values_list("uid", flat=True)),
-            "evse_uids": list(terminal.evses.values_list("uid", flat=True)),
-        }
+    def _send_to_ptp(
+        self,
+        terminal: Terminal,
+        method: str,
+        patch_fields: Optional[set] = None,
+    ) -> None:
+        if patch_fields is None:
+            payload = {
+                "location_ids": list(terminal.locations.values_list("uid", flat=True)),
+                "evse_uids": list(terminal.evses.values_list("uid", flat=True)),
+                "invoice_base_url": terminal.invoice_base_url,
+                "last_updated": terminal.last_updated,
+            }
+        else:
+            payload: dict = {"last_updated": terminal.last_updated}
+            if "location_ids" in patch_fields or "evse_uids" in patch_fields:
+                payload["location_ids"] = list(
+                    terminal.locations.values_list("uid", flat=True)
+                )
+                payload["evse_uids"] = list(
+                    terminal.evses.values_list("uid", flat=True)
+                )
+            if "invoice_base_url" in patch_fields:
+                payload["invoice_base_url"] = terminal.invoice_base_url
         credentials = terminal.credentials
         if not credentials or not credentials.url:
             logger.error(f"Terminal {terminal.terminal_id} has no credentials.")

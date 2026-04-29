@@ -491,7 +491,6 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="terminal-put",
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_ids=[location.uid],
             evse_uids=[evse.uid],
@@ -518,7 +517,6 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="terminal-patch",
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_ids=[location.uid],
         )
@@ -540,7 +538,6 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="term-fail-put",
             location_ids=["NON-EXISTENT-LOC"],
         )
 
@@ -556,9 +553,7 @@ class TestTerminalServiceUpdate:
             terminal_id="term-fail-patch", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
-            terminal_id="term-fail-patch", evse_uids=["NON-EXISTENT-EVSE"]
-        )
+        payload = TerminalIn(evse_uids=["NON-EXISTENT-EVSE"])
 
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service.patch_terminal(terminal, payload)
@@ -589,7 +584,47 @@ class TestTerminalServiceUpdate:
     @patch("ocpi22.payments.services.send_ocpi_request")
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
-    def test_send_to_ptp_calls_send_ocpi_request_with_correct_url_method_and_data(
+    def test_send_to_ptp_put_sends_all_fields(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="terminal001", credentials=credentialsrole.credentials
+        )
+
+        terminal_service._send_to_ptp(terminal, "put")
+
+        mock_send.apply_async.assert_called_once()
+        kwargs = mock_send.apply_async.call_args[1]["kwargs"]
+        assert kwargs["url"] == "https://ptp.com/ocpi/payments/terminals/terminal001"
+        assert kwargs["method"] == "put"
+        assert set(kwargs["data"].keys()) == {
+            "location_ids",
+            "evse_uids",
+            "invoice_base_url",
+            "last_updated",
+        }
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_patch_sends_only_set_fields_but_pairs_location_and_evse(
         self,
         mock_find_endpoints,
         mock_get_party,
@@ -614,16 +649,52 @@ class TestTerminalServiceUpdate:
         )
 
         terminal_service._send_to_ptp(
-            terminal, "patch", {"terminal_id": "terminal001", "location_ids": []}
+            terminal, "patch", patch_fields={"invoice_base_url"}
         )
 
         mock_send.apply_async.assert_called_once()
-        kwargs = mock_send.apply_async.call_args[1]["kwargs"]
-        assert kwargs["url"] == "https://ptp.com/ocpi/payments/terminals/terminal001"
-        assert kwargs["method"] == "patch"
-        assert kwargs["data"]["terminal_id"] == "terminal001"
-        assert kwargs["data"]["location_ids"] == []
-        assert kwargs["data"]["evse_uids"] == []
+        data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert set(data.keys()) == {"invoice_base_url", "last_updated"}
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_patch_includes_both_location_ids_and_evse_uids_when_either_is_set(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        location = LocationFactory(uid="LOC-PAIR")
+        evse = EvseFactory(uid="EVSE-PAIR", location=location)
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="terminal001", credentials=credentialsrole.credentials
+        )
+        terminal.locations.set([location])
+        terminal.evses.set([evse])
+
+        terminal_service._send_to_ptp(terminal, "patch", patch_fields={"location_ids"})
+
+        mock_send.apply_async.assert_called_once()
+        data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert "location_ids" in data
+        assert "evse_uids" in data
+        assert data["location_ids"] == [location.uid]
+        assert data["evse_uids"] == [evse.uid]
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_send_to_ptp_does_not_send_request_when_no_credentials_found(
@@ -633,7 +704,7 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-credentials", credentials=None
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(terminal, "put")
 
         mock_send.apply_async.assert_not_called()
 
@@ -646,7 +717,7 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-role", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(terminal, "put")
 
         mock_send.apply_async.assert_not_called()
 
@@ -660,7 +731,7 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-endpoints", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(terminal, "put")
 
         mock_send.apply_async.assert_not_called()
 
@@ -835,15 +906,7 @@ class TestSendToPtpEnrichment:
         terminal.locations.set([location])
         terminal.evses.set([evse])
 
-        terminal_service._send_to_ptp(
-            terminal,
-            "put",
-            {
-                "terminal_id": "term-state-check",
-                "location_ids": ["STALE"],
-                "evse_uids": ["STALE"],
-            },
-        )
+        terminal_service._send_to_ptp(terminal, "put")
 
         mock_send.apply_async.assert_called_once()
         sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
@@ -877,15 +940,7 @@ class TestSendToPtpEnrichment:
             terminal_id="term-key-check", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(
-            terminal,
-            "put",
-            {
-                "terminal_id": "term-key-check",
-                "location_ids": ["LOC-Y"],
-                "evse_uids": ["EVSE-Y"],
-            },
-        )
+        terminal_service._send_to_ptp(terminal, "put")
 
         mock_send.apply_async.assert_called_once()
         sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
@@ -906,7 +961,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-auto-evse",
             location_ids=[location.uid],
         )
 
@@ -928,7 +982,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-auto-loc",
             evse_uids=[evse.uid],
         )
 
@@ -946,7 +999,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-loc-empty",
             location_ids=[location.uid],
         )
 
@@ -965,7 +1017,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-cross",
             location_ids=[location_a.uid],
             evse_uids=[evse_a.uid, evse_b.uid],
         )
@@ -985,7 +1036,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-uncovered-loc",
             location_ids=[location_a.uid, location_b.uid],
             evse_uids=[evse_a.uid],
         )
@@ -1004,7 +1054,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-evse-1",
             location_ids=[location.uid],
             evse_uids=[evse1.uid],
         )
@@ -1024,7 +1073,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-auto-evse",
             location_ids=[location.uid],
         )
 
@@ -1046,7 +1094,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-auto-loc",
             evse_uids=[evse.uid],
         )
 
@@ -1064,7 +1111,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-loc-empty",
             location_ids=[location.uid],
         )
 
@@ -1083,7 +1129,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-cross",
             location_ids=[location_a.uid],
             evse_uids=[evse_a.uid, evse_b.uid],
         )
@@ -1103,7 +1148,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-uncovered",
             location_ids=[location_a.uid, location_b.uid],
             evse_uids=[evse_a.uid],
         )
@@ -1122,7 +1166,6 @@ class TestResolveLocationsAndEvses:
         )
 
         payload = TerminalIn(
-            terminal_id="term-patch-partial",
             location_ids=[location.uid],
             evse_uids=[evse1.uid],
         )

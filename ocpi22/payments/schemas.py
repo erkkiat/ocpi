@@ -17,6 +17,7 @@ class TerminalIn(Schema):
         Field(default_factory=list)
     )
     invoice_base_url: Optional[HttpUrl] = None
+    last_updated: Optional[datetime] = None
 
 
 class TerminalPutIn(TerminalIn):
