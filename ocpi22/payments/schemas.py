@@ -31,23 +31,15 @@ class TerminalPutIn(TerminalIn):
 class TerminalOut(Schema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    terminal_id: Annotated[str, StringConstraints(min_length=1, max_length=36)]
-    customer_reference: Optional[
-        Annotated[str, StringConstraints(min_length=1, max_length=36)]
-    ] = None
-    party_id: Optional[
-        Annotated[str, StringConstraints(min_length=3, max_length=3)]
-    ] = None
-    country_code: Optional[
-        Annotated[str, StringConstraints(min_length=2, max_length=2)]
-    ] = None
-    address: Optional[Annotated[str, StringConstraints(max_length=45)]] = None
-    city: Optional[Annotated[str, StringConstraints(max_length=45)]] = None
-    postal_code: Optional[Annotated[str, StringConstraints(max_length=10)]] = None
-    state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
-    country: Optional[Annotated[str, StringConstraints(min_length=3, max_length=3)]] = (
-        None
-    )
+    terminal_id: str
+    customer_reference: Optional[str] = None
+    party_id: Optional[str] = None
+    country_code: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
     coordinates: Optional[GeoLocation] = None
     location_ids: List[str] = Field(default_factory=list)
     evse_uids: List[str] = Field(default_factory=list)
