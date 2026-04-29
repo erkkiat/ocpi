@@ -240,10 +240,11 @@ service = TerminalService()
 
 
 @router.put(
-    "/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error}
+    "/terminals/{terminal_id}",
+    response={200: TerminalOut, 404: dict, 422: Error, 500: Error},
 )
-def put_terminal(request, payload: TerminalIn):
-    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+def put_terminal(request, terminal_id: str, payload: TerminalIn):
+    terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.put_terminal(terminal, payload)
         service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
@@ -251,17 +252,18 @@ def put_terminal(request, payload: TerminalIn):
         return 422, Error(message=e.args[0])
     except Exception:
         logger.exception(
-            "Unexpected error in put_terminal for terminal_id=%s", payload.terminal_id
+            "Unexpected error in put_terminal for terminal_id=%s", terminal_id
         )
         return 500, Error(message="An unexpected error occurred.")
     return 200, terminal
 
 
 @router.patch(
-    "/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error}
+    "/terminals/{terminal_id}",
+    response={200: TerminalOut, 404: dict, 422: Error, 500: Error},
 )
-def patch_terminal(request, payload: TerminalIn):
-    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+def patch_terminal(request, terminal_id: str, payload: TerminalIn):
+    terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.patch_terminal(terminal, payload)
         service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
@@ -269,7 +271,7 @@ def patch_terminal(request, payload: TerminalIn):
         return 422, Error(message=e.args[0])
     except Exception:
         logger.exception(
-            "Unexpected error in patch_terminal for terminal_id=%s", payload.terminal_id
+            "Unexpected error in patch_terminal for terminal_id=%s", terminal_id
         )
         return 500, Error(message="An unexpected error occurred.")
     return 200, terminal
