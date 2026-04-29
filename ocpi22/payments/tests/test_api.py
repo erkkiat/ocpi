@@ -1369,43 +1369,45 @@ class TestCPOTerminalAPI:
     ):
         terminal = db_terminal(terminal_id="TERM-AUTH-001")
         payload = {
-            "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "customer_reference": terminal.customer_reference,
+            "location_ids": [location.uid],
             "evse_uids": [location.evses.first().uid],
         }
 
         test_client = request.getfixturevalue(api_client)
-        url = reverse("payments:put_terminal")
+        url = reverse(
+            "payments:put_terminal", kwargs={"terminal_id": terminal.terminal_id}
+        )
         response = test_client.put(url, payload, format="json")
 
         assert response.status_code == expected_status_code
 
     @pytest.mark.parametrize("method", ["put", "patch"])
-    def test_update_terminal_with_no_terminal_id_returns_422(
+    def test_update_terminal_with_nonexistent_terminal_id_returns_404(
         self, authenticated_user_client, method
     ):
-        payload = {
-            "location_uids": ["LOC-123"],
-            "evse_uids": ["EVSE-123"],
-        }
-
-        url = reverse(f"payments:{method}_terminal")
+        payload = {"location_ids": ["LOC-123"]}
+        url = reverse(
+            f"payments:{method}_terminal", kwargs={"terminal_id": "NONEXISTENT"}
+        )
         function = getattr(authenticated_user_client, method.lower(), None)
         response = function(url, payload, format="json")
 
-        assert response.status_code == 422
+        assert response.status_code == 404
 
     @pytest.mark.parametrize("method", ["put", "patch"])
     def test_update_terminal_with_empty_location_or_evse_list_returns_422(
-        self, authenticated_user_client, method
+        self, authenticated_user_client, db_terminal, method
     ):
+        terminal = db_terminal(terminal_id="TERM-EMPTY-001")
         payload = {
-            "terminal_id": "TERM-001",
-            "location_uids": None,
+            "location_ids": None,
             "evse_uids": None,
         }
 
-        url = reverse(f"payments:{method}_terminal")
+        url = reverse(
+            f"payments:{method}_terminal", kwargs={"terminal_id": terminal.terminal_id}
+        )
         function = getattr(authenticated_user_client, method.lower(), None)
         response = function(url, payload, format="json")
 
@@ -1417,12 +1419,14 @@ class TestCPOTerminalAPI:
     ):
         terminal = db_terminal(terminal_id="TERM-INVALID-UIDS")
         payload = {
-            "terminal_id": terminal.terminal_id,
-            "location_uids": ["NON-EXISTENT-LOC"],
+            "customer_reference": terminal.customer_reference,
+            "location_ids": ["NON-EXISTENT-LOC"],
             "evse_uids": ["NON-EXISTENT-EVSE"],
         }
 
-        url = reverse(f"payments:{method}_terminal")
+        url = reverse(
+            f"payments:{method}_terminal", kwargs={"terminal_id": terminal.terminal_id}
+        )
         function = getattr(authenticated_user_client, method.lower(), None)
         response = function(url, payload, format="json")
 
@@ -1441,15 +1445,17 @@ class TestCPOTerminalAPI:
         evse = location.evses.first()
 
         payload = {
-            "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "customer_reference": terminal.customer_reference,
+            "location_ids": [location.uid],
             "evse_uids": [evse.uid],
         }
 
         assert terminal.locations.count() == 0
         assert terminal.evses.count() == 0
 
-        url = reverse("payments:put_terminal")
+        url = reverse(
+            "payments:put_terminal", kwargs={"terminal_id": terminal.terminal_id}
+        )
         response = authenticated_user_client.put(url, payload, format="json")
 
         assert response.status_code == 200
@@ -1467,7 +1473,7 @@ class TestCPOTerminalAPI:
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-001"
         assert kwargs["method"] == "put"
-        assert kwargs["data"]["location_uids"] == [location.uid]
+        assert kwargs["data"]["location_ids"] == [location.uid]
         assert kwargs["to_party_id"] == "PAY"
 
     @patch("ocpi22.payments.services.send_ocpi_request")
@@ -1480,25 +1486,26 @@ class TestCPOTerminalAPI:
         terminal.credentials.refresh_from_db()
 
         payload = {
-            "terminal_id": terminal.terminal_id,
-            "location_uids": [location.uid],
+            "location_ids": [location.uid],
         }
 
-        url = reverse("payments:patch_terminal")
+        url = reverse(
+            "payments:patch_terminal", kwargs={"terminal_id": terminal.terminal_id}
+        )
         response = authenticated_user_client.patch(url, payload, format="json")
 
         assert response.status_code == 200
         data = response.json()
         assert data["location_ids"] == [location.uid]
-        assert data["evse_uids"] == []
+        assert data["evse_uids"] == ["EVSE-123"]
 
         terminal.refresh_from_db()
         assert terminal.locations.count() == 1
         assert terminal.locations.first() == location
-        assert terminal.evses.count() == 0
+        assert terminal.evses.count() == 1
 
         mock_send_ocpi_request.apply_async.assert_called_once()
         kwargs = mock_send_ocpi_request.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://localhost/ocpi/payments/terminals/TERM-002"
         assert kwargs["method"] == "patch"
-        assert kwargs["data"]["location_uids"] == [location.uid]
+        assert kwargs["data"]["location_ids"] == [location.uid]

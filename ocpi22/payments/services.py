@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import Optional
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -20,7 +21,7 @@ from ocpi22.payments.repositories import (
     TerminalRepository,
     FinancialAdviceConfirmationRepository,
 )
-from ocpi22.payments.schemas import TerminalIn
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
 from util import with_trailing_slash
@@ -67,50 +68,53 @@ class TerminalService:
 
         return terminal
 
-    def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
-        if payload.customer_reference is not None:
-            terminal.customer_reference = payload.customer_reference
-        terminal.invoice_base_url = payload.invoice_base_url
-        terminal.last_updated = payload.last_updated or timezone.now()
+    def put_terminal(self, terminal: Terminal, payload: TerminalPutIn) -> Terminal:
+        terminal.invoice_base_url = (
+            str(payload.invoice_base_url) if payload.invoice_base_url else None
+        )
+        terminal.last_updated = payload.last_updated
 
-        locations = self._validate_locations(payload.location_uids)
+        locations, evses = self._resolve_locations_and_evses(
+            payload.location_ids, payload.evse_uids
+        )
         terminal.locations.set(locations)
-
-        evses = self._validate_evses(payload.evse_uids)
         terminal.evses.set(evses)
 
-        terminal.save()
+        try:
+            terminal.save()
+        except DjangoValidationError as e:
+            raise TerminalValidationError(e.messages[0]) from e
         return terminal
 
     def patch_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
         payload_dict = payload.dict(exclude_unset=True)
 
-        if "customer_reference" in payload_dict:
-            terminal.customer_reference = payload_dict["customer_reference"]
         if "invoice_base_url" in payload_dict:
-            terminal.invoice_base_url = payload_dict["invoice_base_url"]
-        terminal.last_updated = payload_dict.get("last_updated") or timezone.now()
+            url = payload_dict["invoice_base_url"]
+            terminal.invoice_base_url = str(url) if url else None
 
-        if "location_uids" in payload_dict:
-            locations = self._validate_locations(payload_dict["location_uids"])
+        terminal.last_updated = timezone.now()
+
+        if "location_ids" in payload_dict or "evse_uids" in payload_dict:
+            loc_ids = payload_dict.get("location_ids", [])
+            evse_uids = payload_dict.get("evse_uids", [])
+            locations, evses = self._resolve_locations_and_evses(loc_ids, evse_uids)
             terminal.locations.set(locations)
-
-        if "evse_uids" in payload_dict:
-            evses = self._validate_evses(payload_dict["evse_uids"])
             terminal.evses.set(evses)
 
-        terminal.save()
+        try:
+            terminal.save()
+        except DjangoValidationError as e:
+            raise TerminalValidationError(e.messages[0]) from e
         return terminal
 
-    def _check_missing_uids(self, uids: list[str], uids_db: set[str]):
+    def _check_missing_uids(self, uids: list[str], uids_db: set[str]) -> None:
         if not uids:
             return
-        uids = set(uids)
-
-        missing_uids = uids - uids_db
+        missing_uids = set(uids) - uids_db
         if missing_uids:
             raise TerminalValidationError(
-                f"uids {', '.join(missing_uids)} are invalid."
+                f"uids {', '.join(sorted(missing_uids))} are invalid."
             )
 
     def _validate_locations(self, uids: list[str]) -> list[Location]:
@@ -120,12 +124,89 @@ class TerminalService:
         return locations
 
     def _validate_evses(self, uids: list[str]) -> list[Evse]:
-        evses = list(Evse.objects.filter(uid__in=uids))
+        evses = list(Evse.objects.filter(uid__in=uids).select_related("location"))
         uid_db = {evse.uid for evse in evses}
         self._check_missing_uids(uids, uid_db)
         return evses
 
-    def _send_to_ptp(self, terminal: Terminal, method: str, payload: dict):
+    def _validate_evses_by_location(
+        self, location_ids: set[str], evses: list[Evse]
+    ) -> list[Evse]:
+        evses_not_related_to_given_locations = sorted(
+            evse.uid for evse in evses if evse.location.uid not in location_ids
+        )
+        if evses_not_related_to_given_locations:
+            raise TerminalValidationError(
+                f"Cannot update terminal, EVSEs {', '.join(evses_not_related_to_given_locations)} do not belong to the given locations."
+            )
+
+    def _validate_locations_ids_by_evses(
+        self, location_ids: set[str], evses: list[Evse]
+    ) -> list[Evse]:
+        location_uids_by_evses = {evse.location.uid for evse in evses}
+        locations_outside_given_evses = sorted(location_ids - location_uids_by_evses)
+        if locations_outside_given_evses:
+            raise TerminalValidationError(
+                f"Cannot update terminal, Location ids {', '.join(locations_outside_given_evses)} are missing according to the given EVSEs."
+            )
+
+    def _resolve_locations_and_evses(
+        self, location_ids: list[str], evse_uids: list[str]
+    ) -> tuple[list[Location], list[Evse]]:
+        if location_ids and not evse_uids:
+            locations = self._validate_locations(location_ids)
+            evses = list(
+                Evse.objects.filter(location__uid__in=location_ids).select_related(
+                    "location"
+                )
+            )
+            loc_uids_with_evses = {evse.location.uid for evse in evses}
+            locations_without_evses = sorted(set(location_ids) - loc_uids_with_evses)
+            if locations_without_evses:
+                raise TerminalValidationError(
+                    f"Cannot assign locations with no EVSEs to the terminal. {', '.join(locations_without_evses)}"
+                )
+            return locations, evses
+
+        elif evse_uids and not location_ids:
+            evses = self._validate_evses(evse_uids)
+            locations = list(
+                {evse.location_id: evse.location for evse in evses}.values()
+            )
+            return locations, evses
+
+        else:
+            locations = self._validate_locations(location_ids)
+            evses = self._validate_evses(evse_uids)
+
+            location_ids_set = set(location_ids)
+            self._validate_evses_by_location(location_ids_set, evses)
+            self._validate_locations_ids_by_evses(location_ids_set, evses)
+            return locations, evses
+
+    def _send_to_ptp(
+        self,
+        terminal: Terminal,
+        method: str,
+        payload: "TerminalIn",
+    ) -> None:
+        if method == "put":
+            data = {
+                "location_ids": list(terminal.locations.values_list("uid", flat=True)),
+                "evse_uids": list(terminal.evses.values_list("uid", flat=True)),
+                "invoice_base_url": terminal.invoice_base_url,
+                "last_updated": terminal.last_updated,
+            }
+        else:
+            fields = payload.model_fields_set
+            data: dict = {"last_updated": terminal.last_updated}
+            if "location_ids" in fields or "evse_uids" in fields:
+                data["location_ids"] = list(
+                    terminal.locations.values_list("uid", flat=True)
+                )
+                data["evse_uids"] = list(terminal.evses.values_list("uid", flat=True))
+            if "invoice_base_url" in fields:
+                data["invoice_base_url"] = terminal.invoice_base_url
         credentials = terminal.credentials
         if not credentials or not credentials.url:
             logger.error(f"Terminal {terminal.terminal_id} has no credentials.")
@@ -165,7 +246,7 @@ class TerminalService:
         url = f"{with_trailing_slash(url)}terminals/{terminal.terminal_id}"
 
         kwargs = {
-            "data": payload,
+            "data": data,
             "method": method.lower(),
             "url": url,
             "token_base64": credentials.theirs_base64(),

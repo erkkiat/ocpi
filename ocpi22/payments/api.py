@@ -39,7 +39,7 @@ from ocpi22.decorators import (
 )
 from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
-from ocpi22.payments.schemas import TerminalIn, TerminalOut
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn, TerminalOut
 from ocpi22.payments.serializers import (
     TerminalSerializer,
     FinancialAdviceConfirmationSerializer,
@@ -239,23 +239,49 @@ payments_ninja_api.add_router("/", router)
 service = TerminalService()
 
 
-@router.put("/terminals", response={200: TerminalOut, 404: dict, 422: Error})
-def put_terminal(request, payload: TerminalIn):
-    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+@router.put(
+    "/terminals/{terminal_id}",
+    response={200: TerminalOut, 404: dict, 422: Error, 500: Error},
+)
+def put_terminal(request, terminal_id: str, payload: TerminalPutIn):
+    terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.put_terminal(terminal, payload)
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
-    service._send_to_ptp(terminal, "put", payload.dict(exclude_unset=False))
+    except Exception:
+        logger.exception(
+            "Unexpected error in put_terminal for terminal_id=%s", terminal_id
+        )
+        return 500, Error(message="An unexpected error occurred.")
+    try:
+        service._send_to_ptp(terminal, "put", payload)
+    except Exception:
+        logger.exception(
+            "Failed to notify PTP after put_terminal for terminal_id=%s", terminal_id
+        )
     return 200, terminal
 
 
-@router.patch("/terminals", response={200: TerminalOut, 404: dict, 422: Error})
-def patch_terminal(request, payload: TerminalIn):
-    terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
+@router.patch(
+    "/terminals/{terminal_id}",
+    response={200: TerminalOut, 404: dict, 422: Error, 500: Error},
+)
+def patch_terminal(request, terminal_id: str, payload: TerminalIn):
+    terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.patch_terminal(terminal, payload)
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
-    service._send_to_ptp(terminal, "patch", payload.dict(exclude_unset=True))
+    except Exception:
+        logger.exception(
+            "Unexpected error in patch_terminal for terminal_id=%s", terminal_id
+        )
+        return 500, Error(message="An unexpected error occurred.")
+    try:
+        service._send_to_ptp(terminal, "patch", payload)
+    except Exception:
+        logger.exception(
+            "Failed to notify PTP after patch_terminal for terminal_id=%s", terminal_id
+        )
     return 200, terminal
