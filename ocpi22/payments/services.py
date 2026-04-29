@@ -195,11 +195,11 @@ class TerminalService:
                 "location_ids": list(terminal.locations.values_list("uid", flat=True)),
                 "evse_uids": list(terminal.evses.values_list("uid", flat=True)),
                 "invoice_base_url": terminal.invoice_base_url,
-                "last_updated": terminal.last_updated,
+                "last_updated": terminal.last_updated.isoformat(),
             }
         else:
             fields = payload.model_fields_set
-            data: dict = {"last_updated": terminal.last_updated}
+            data: dict = {"last_updated": terminal.last_updated.isoformat()}
             if "location_ids" in fields or "evse_uids" in fields:
                 data["location_ids"] = list(
                     terminal.locations.values_list("uid", flat=True)
