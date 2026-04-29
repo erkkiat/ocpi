@@ -70,11 +70,9 @@ class TerminalService:
 
     def put_terminal(self, terminal: Terminal, payload: TerminalPutIn) -> Terminal:
         terminal.invoice_base_url = (
-            str(payload.invoice_base_url).rstrip("/")
-            if payload.invoice_base_url is not None
-            else None
+            str(payload.invoice_base_url) if payload.invoice_base_url else None
         )
-        terminal.last_updated = timezone.now()
+        terminal.last_updated = payload.last_updated
 
         locations, evses = self._resolve_locations_and_evses(
             payload.location_ids, payload.evse_uids
@@ -93,9 +91,7 @@ class TerminalService:
 
         if "invoice_base_url" in payload_dict:
             url = payload_dict["invoice_base_url"]
-            terminal.invoice_base_url = (
-                str(url).rstrip("/") if url is not None else None
-            )
+            terminal.invoice_base_url = str(url) if url else None
 
         terminal.last_updated = timezone.now()
 

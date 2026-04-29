@@ -490,7 +490,7 @@ class TestTerminalServiceUpdate:
             invoice_base_url="https://example-url-for-invoices-old.com",
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_ids=[location.uid],
             evse_uids=[evse.uid],
@@ -500,10 +500,45 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
+
+    def test_put_terminal_uses_provided_last_updated_instead_of_now(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PUT-LU")
+        EvseFactory(uid="EVSE-PUT-LU", location=location)
+        terminal = TerminalFactory(
+            terminal_id="terminal-put-lu", credentials=credentialsrole.credentials
+        )
+        provided_time = datetime(2025, 6, 1, 10, 0, 0, tzinfo=dt_timezone.utc)
+
+        payload = TerminalPutIn(
+            location_ids=[location.uid],
+            last_updated=provided_time,
+        )
+
+        updated_terminal = terminal_service.put_terminal(terminal, payload)
+
+        assert updated_terminal.last_updated == provided_time
+
+    def test_put_terminal_falls_back_to_now_when_last_updated_not_provided(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PUT-NOW")
+        EvseFactory(uid="EVSE-PUT-NOW", location=location)
+        terminal = TerminalFactory(
+            terminal_id="terminal-put-now", credentials=credentialsrole.credentials
+        )
+
+        before = timezone.now()
+        payload = TerminalPutIn(location_ids=[location.uid])
+        updated_terminal = terminal_service.put_terminal(terminal, payload)
+        after = timezone.now()
+
+        assert before <= updated_terminal.last_updated <= after
 
     def test_patch_terminal_updates_invoice_base_url_locations_and_auto_populates_evses_when_only_location_ids_provided(
         self, terminal_service, credentialsrole
@@ -525,7 +560,7 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
@@ -537,7 +572,7 @@ class TestTerminalServiceUpdate:
             terminal_id="term-fail-put", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=["NON-EXISTENT-LOC"],
         )
 
@@ -976,7 +1011,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-auto-evse", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=[location.uid],
         )
 
@@ -997,7 +1032,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-auto-loc", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             evse_uids=[evse.uid],
         )
 
@@ -1014,7 +1049,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-loc-empty", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=[location.uid],
         )
 
@@ -1032,7 +1067,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-cross", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=[location_a.uid],
             evse_uids=[evse_a.uid, evse_b.uid],
         )
@@ -1051,7 +1086,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-uncovered-loc", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=[location_a.uid, location_b.uid],
             evse_uids=[evse_a.uid],
         )
@@ -1069,7 +1104,7 @@ class TestResolveLocationsAndEvses:
             terminal_id="term-evse-1", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
+        payload = TerminalPutIn(
             location_ids=[location.uid],
             evse_uids=[evse1.uid],
         )

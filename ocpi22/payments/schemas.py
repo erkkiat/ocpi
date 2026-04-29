@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Annotated, List, Optional
 
+from django.utils import timezone
 from ninja import Schema
 from pydantic import ConfigDict, Field, StringConstraints, model_validator, HttpUrl
 
@@ -21,6 +22,8 @@ class TerminalIn(Schema):
 
 
 class TerminalPutIn(TerminalIn):
+    last_updated: datetime = Field(default_factory=timezone.now)
+
     @model_validator(mode="after")
     def validate_location(self) -> "TerminalPutIn":
         if not self.location_ids and not self.evse_uids:
@@ -44,6 +47,5 @@ class TerminalOut(Schema):
     location_ids: List[str] = Field(default_factory=list)
     evse_uids: List[str] = Field(default_factory=list)
     last_updated: datetime
-    name: Optional[str] = None
     invoice_base_url: Optional[str] = None
     invoice_creator: Optional[str] = None
