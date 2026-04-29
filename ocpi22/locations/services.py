@@ -28,7 +28,7 @@ class EvseServices:
             case "AVAILABLE":
                 return Evse.AVAILABLE
             case "PREPARING":
-                return Evse.CHARGING
+                return Evse.AVAILABLE
             case "CHARGING":
                 return Evse.CHARGING
             case "SUSPENDEDEV":
@@ -165,7 +165,7 @@ class LocationService:
         raise ValidationError(serializer.errors)
 
     def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
-        for evse in location["evses"]:
+        for evse in location.get("evses") or ():
             for connector in evse["connectors"]:
                 if connector.get("tariff_ids"):
                     solid_tariff_ids = []

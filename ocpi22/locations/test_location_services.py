@@ -107,7 +107,8 @@ class TestLocationServices:
         location_data = {"evses": [{"connectors": [{"tariff_ids": ["ocpi_tariff_1"]}]}]}
 
         with pytest.raises(
-            ValidationError, match="SolidTariff for OCPI tariff 'ocpi_tariff_1' not found"
+            ValidationError,
+            match="SolidTariff for OCPI tariff 'ocpi_tariff_1' not found",
         ):
             location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location_data)
 
@@ -134,3 +135,15 @@ class TestLocationServices:
 
         assert result["evses"][0]["connectors"][0]["tariff_ids"] == ["solid_tariff_1"]
         assert result["evses"][1]["connectors"][0]["tariff_ids"] == ["solid_tariff_2"]
+
+    @pytest.mark.django_db
+    def test_convert_ocpi_tariff_ids_to_solid_tariff_ids_with_no_evses(
+        self, location_service
+    ):
+        location_data = {"uid": "LOC1", "name": "Test"}
+
+        result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
+            location_data
+        )
+
+        assert result == {"uid": "LOC1", "name": "Test"}

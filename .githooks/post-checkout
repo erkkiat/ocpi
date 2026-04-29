@@ -1,0 +1,13 @@
+#!/bin/bash
+# post-checkout: regenerate claude context on branch switch/creation
+# Args: $1=prev HEAD, $2=new HEAD, $3=flag (1=branch checkout, 0=file checkout)
+
+PREV_HEAD=$1
+NEW_HEAD=$2
+IS_BRANCH_CHECKOUT=$3
+
+# Only run on branch checkouts where the branch actually changed
+if [ "$IS_BRANCH_CHECKOUT" = "1" ] && [ "$PREV_HEAD" != "$NEW_HEAD" ]; then
+    echo "Regenerating Claude context for branch: $(git rev-parse --abbrev-ref HEAD)"
+    make claude-context --silent 2>&1 | tail -1
+fi

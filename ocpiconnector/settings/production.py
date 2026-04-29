@@ -16,7 +16,9 @@ DEBUG = strtobool(os.getenv("DEBUG", "False"))
 HUBJECT_URL = os.getenv("HUBJECT_URL", "https://service.hubject.com/api/oicp/")
 HUBJECT_HOSTS = ["18.194.114.107", "35.157.60.250"]
 
-CSRF_TRUSTED_ORIGINS = ["https://solidroam.smappee.net"]
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS", "https://solidroam.smappee.net"
+).split(",")
 ALLOWED_HOSTS = get_allowed_hosts()
 
 USE_X_FORWARDED_PORT = True

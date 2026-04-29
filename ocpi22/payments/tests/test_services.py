@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime, timezone as dt_timezone
+from django.db import IntegrityError
 from django.utils import timezone
+from unittest.mock import patch
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.payments.exceptions import (
@@ -13,7 +15,6 @@ from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
 from ocpi22.payments.schemas import TerminalIn
 from ocpi22.cpo.schemas import GeoLocation
-from unittest.mock import patch
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     TerminalFactory,
@@ -21,6 +22,12 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
 )
+from webhooks.factories import (
+    WebhookFACFactory,
+    WebhookInactiveFactory,
+)
+from webhooks.models import WebhookEvent, WebhookEventType, WebhookEventStatus
+from webhooks.choices import WebhookType
 
 
 @pytest.fixture
@@ -357,6 +364,48 @@ class TestFACServiceCreate:
             fac_service.create_fac(
                 fac_data, credentialsrole, terminal_id=terminal.terminal_id
             )
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_dispatches_webhook_task_after_commit_when_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        mock_task.delay.assert_called_once_with(event.id)
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_does_not_dispatch_webhook_task_when_no_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        mock_task.delay.assert_not_called()
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    @patch(
+        "ocpi22.payments.services.WebhookEventService.create_event",
+        side_effect=IntegrityError("unique violation"),
+    )
+    def test_create_fac_is_saved_when_webhook_event_creation_raises_db_error(
+        self, mock_create_event, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        fac = fac_service.create_fac(fac_data, credentialsrole)
+
+        assert FinancialAdviceConfirmation.objects.filter(fac_id=fac.fac_id).exists()
+        mock_task.delay.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -807,6 +856,108 @@ class TestTerminalServiceUpdate:
 
 
 @pytest.mark.django_db
+class TestFACWebhookEventCreation:
+    FROZEN_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+
+    @pytest.fixture
+    def fac_service(self):
+        return FinancialAdviceConfirmationService()
+
+    @pytest.fixture
+    def credentialsrole(self, db):
+        return CredentialsRoleFactory(
+            role=OcpiRolesEnum.PTP, party_id="PAY", country_code="NL"
+        )
+
+    @pytest.fixture
+    def fac(self, credentialsrole):
+        return FinancialAdviceConfirmationFactory(
+            fac_id="FAC-WH-001",
+            authorization_reference="AUTH-REF-001",
+            total_cost_excl_vat=10.50,
+            total_cost_incl_vat=12.60,
+            currency="EUR",
+            eft_data=["Mastercard", "AID: 1234"],
+            capture_status_code="SUCCESS",
+            capture_status_message=None,
+            last_updated=self.FROZEN_TIME,
+            credentials=credentialsrole.credentials,
+        )
+
+    def test_create_fac_webhook_event_returns_none_when_no_fac_webhook_configured(
+        self, fac_service, fac
+    ):
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_returns_none_when_fac_webhook_is_inactive(
+        self, fac_service, fac
+    ):
+        WebhookInactiveFactory(
+            type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, command_type=None
+        )
+
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_persists_event_with_fac_created_event_type(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.status == WebhookEventStatus.PENDING
+
+    def test_create_fac_webhook_event_persists_payload_with_all_fac_fields(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.payload == {
+            "fac_id": "FAC-WH-001",
+            "authorization_reference": "AUTH-REF-001",
+            "total_cost_excl_vat": 10.50,
+            "total_cost_incl_vat": 12.60,
+            "currency": "EUR",
+            "eft_data": ["Mastercard", "AID: 1234"],
+            "capture_status_code": "SUCCESS",
+            "capture_status_message": None,
+            "last_updated": self.FROZEN_TIME.isoformat(),
+        }
+
+    def test_create_fac_webhook_event_returns_persisted_event(self, fac_service, fac):
+        WebhookFACFactory()
+
+        event = fac_service._create_fac_webhook_event(fac)
+
+        assert event is not None
+        assert event.pk is not None
+        assert event.event_type == WebhookEventType.FAC_CREATED
+
+    def test_create_fac_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
+        self, fac_service, fac, caplog
+    ):
+        WebhookFACFactory()
+        caplog.set_level("ERROR", logger="ocpi22.payments.services")
+
+        with patch(
+            "ocpi22.payments.services.WebhookEventService.create_event",
+            side_effect=Exception("DB error"),
+        ):
+            result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+        assert "Failed to create FAC webhook event for fac FAC-WH-001" in caplog.text
+
+
+@pytest.mark.django_db
 class TestTerminalInSchema:
     def test_terminal_in_last_updated_defaults_to_utc_now_when_not_provided(self):
         before = datetime.now(dt_timezone.utc)
@@ -829,6 +980,7 @@ class TestTerminalInSchema:
 
     def test_terminal_in_raises_when_neither_location_ids_nor_evse_uids_provided(self):
         import pydantic
+
         with pytest.raises(pydantic.ValidationError):
             TerminalIn(terminal_id="term-no-loc")
 
@@ -861,23 +1013,42 @@ class TestSendToPtpEnrichment:
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
     def test_send_to_ptp_sends_location_and_evse_uids_from_terminal_not_from_payload(
-        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
     ):
         location = LocationFactory(uid="LOC-TERMINAL-STATE")
         evse = EvseFactory(uid="EVSE-TERMINAL-STATE", location=location)
 
         mock_find_endpoints.return_value = [
-            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
         ]
         mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
         mock_get_party.return_value = mock_party
 
-        terminal = TerminalFactory(terminal_id="term-state-check", credentials=credentialsrole.credentials)
+        terminal = TerminalFactory(
+            terminal_id="term-state-check", credentials=credentialsrole.credentials
+        )
         terminal.locations.set([location])
         terminal.evses.set([evse])
 
         terminal_service._send_to_ptp(
-            terminal, "put", {"terminal_id": "term-state-check", "location_ids": ["STALE"], "evse_uids": ["STALE"]}
+            terminal,
+            "put",
+            {
+                "terminal_id": "term-state-check",
+                "location_ids": ["STALE"],
+                "evse_uids": ["STALE"],
+            },
         )
 
         mock_send.apply_async.assert_called_once()
@@ -889,20 +1060,37 @@ class TestSendToPtpEnrichment:
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
     def test_send_to_ptp_payload_uses_location_ids_key_not_location_uids(
-        self, mock_find_endpoints, mock_get_party, mock_send, terminal_service, credentialsrole
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
     ):
         mock_find_endpoints.return_value = [
-            ("https://ptp.com/ocpi/payments", None, None, None, credentialsrole.credentials)
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
         ]
         mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
         mock_get_party.return_value = mock_party
 
-        terminal = TerminalFactory(terminal_id="term-key-check", credentials=credentialsrole.credentials)
+        terminal = TerminalFactory(
+            terminal_id="term-key-check", credentials=credentialsrole.credentials
+        )
 
         terminal_service._send_to_ptp(
             terminal,
             "put",
-            {"terminal_id": "term-key-check", "location_ids": ["LOC-Y"], "evse_uids": ["EVSE-Y"]},
+            {
+                "terminal_id": "term-key-check",
+                "location_ids": ["LOC-Y"],
+                "evse_uids": ["EVSE-Y"],
+            },
         )
 
         mock_send.apply_async.assert_called_once()
@@ -931,7 +1119,10 @@ class TestResolveLocationsAndEvses:
 
         updated = terminal_service.put_terminal(terminal, payload)
 
-        assert set(updated.evses.values_list("uid", flat=True)) == {evse1.uid, evse2.uid}
+        assert set(updated.evses.values_list("uid", flat=True)) == {
+            evse1.uid,
+            evse2.uid,
+        }
         assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
 
     def test_put_terminal_auto_populates_locations_when_only_evse_uids_given(
@@ -1051,7 +1242,10 @@ class TestResolveLocationsAndEvses:
 
         updated = terminal_service.patch_terminal(terminal, payload)
 
-        assert set(updated.evses.values_list("uid", flat=True)) == {evse1.uid, evse2.uid}
+        assert set(updated.evses.values_list("uid", flat=True)) == {
+            evse1.uid,
+            evse2.uid,
+        }
         assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
 
     def test_patch_terminal_auto_populates_locations_when_only_evse_uids_given(

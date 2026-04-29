@@ -2,6 +2,7 @@ import os
 import socket
 import uuid
 from logging import getLogger
+from urllib.parse import urlparse
 
 import boto3
 import time
@@ -59,3 +60,22 @@ class CustomJsonFormatter(pythonjsonlogger.json.JsonFormatter):
         super().add_fields(log_record, record, message_dict)
         log_record["docker_id"] = socket.gethostname()
         log_record["event_id"] = str(uuid.uuid4())
+
+
+def configure_database():
+    database_url = os.getenv("DATABASE_URL")
+    assert database_url, "DATABASE_URL must be set in environment variables"
+    parsed_url = urlparse(database_url)
+    return {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed_url.path.lstrip("/"),
+            "USER": parsed_url.username,
+            "PASSWORD": parsed_url.password,
+            "HOST": parsed_url.hostname,
+            "PORT": parsed_url.port or 5432,
+            "CONN_MAX_AGE": 300,
+            "OPTIONS": {"sslmode": "require"},
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }

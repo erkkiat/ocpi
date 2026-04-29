@@ -1,9 +1,11 @@
 import copy
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
 import time_machine
 from django.core.exceptions import ValidationError
+from django.test import override_settings
 
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.cpo.services import SolidTariffService
@@ -99,9 +101,9 @@ def test_set_missing_fields(
 @pytest.mark.parametrize(
     "per_minute_value, expected_result",
     [
-        (0, 0.0),
-        (0.5, 30.0),
-        (1.0, 60.0),
+        (0, Decimal("0")),
+        (0.5, Decimal("30.0")),
+        (1.0, Decimal("60.0")),
         (None, None),
         ("", None),
         (
@@ -318,6 +320,46 @@ def test_set_missing_fields_handles_all_nullable_model_fields(
     )
 
 
+@pytest.mark.parametrize(
+    "per_kwh, per_hr, flat, parking_per_hr, expected",
+    [
+        pytest.param(0.45, None, None, None, True, id="kwh_only"),
+        pytest.param(None, 6.0, None, None, True, id="hr_only"),
+        pytest.param(None, None, 1.0, None, True, id="flat_only"),
+        pytest.param(None, None, None, 3.0, True, id="parking_only"),
+        pytest.param(0.45, 6.0, 1.0, 3.0, True, id="all_components"),
+        pytest.param(None, None, None, None, False, id="no_components"),
+    ],
+)
+def test_has_price_components(
+    solid_tariff_service_instance, per_kwh, per_hr, flat, parking_per_hr, expected
+):
+    result = solid_tariff_service_instance.has_price_components(
+        per_kwh, per_hr, flat, parking_per_hr
+    )
+    assert result == expected
+
+
+@pytest.mark.django_db
+def test_create_ocpi_tariff_defaults_to_no_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+    assert tariff.type == ""
+
+
+@pytest.mark.django_db
+def test_create_ocpi_tariff_with_explicit_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR", type="AD_HOC_PAYMENT"
+    )
+    assert tariff.type == "AD_HOC_PAYMENT"
+
+
 @pytest.mark.django_db
 def test_create_price_components_with_zero_prices_creates_price_components(
     solid_tariff_service_instance,
@@ -336,12 +378,10 @@ def test_create_price_components_with_zero_prices_creates_price_components(
         vat=0,
     )
 
-    price_components = PriceComponent.objects.filter(
-        tariff_element__tariff=tariff
-    )
-    assert price_components.count() == 4, (
-        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
-    )
+    price_components = PriceComponent.objects.filter(tariff_element__tariff=tariff)
+    assert (
+        price_components.count() == 4
+    ), f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
     for component in price_components:
         assert component.price == 0
 
@@ -364,12 +404,10 @@ def test_create_price_components_with_zero_kwh_price_creates_single_price_compon
         vat=0,
     )
 
-    price_components = PriceComponent.objects.filter(
-        tariff_element__tariff=tariff
-    )
-    assert price_components.count() == 1, (
-        f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
-    )
+    price_components = PriceComponent.objects.filter(tariff_element__tariff=tariff)
+    assert (
+        price_components.count() == 1
+    ), f"Expected 1 PriceComponent for zero kWh price only, got {price_components.count()}"
     component = price_components.first()
     assert component.type == "ENERGY"
     assert component.price == 0
@@ -407,9 +445,9 @@ def test_create_solid_tariff_with_zero_prices_creates_price_components(
     price_components = PriceComponent.objects.filter(
         tariff_element__tariff=solid_tariff.ocpi_tariff
     )
-    assert price_components.count() == 4, (
-        f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
-    )
+    assert (
+        price_components.count() == 4
+    ), f"Expected 4 PriceComponents for zero prices, got {price_components.count()}"
     for component in price_components:
         assert component.price == 0
 
@@ -424,6 +462,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
         "external_id": "ZERO-PER-MIN-SMP1",
         "currency": "EUR",
         "price_per_min": 0,
+        "vat_percentage": 0.0,
         "ocpi_master": operator_fi_cpo,
         "msp": None,
     }
@@ -438,9 +477,9 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
         tariff_element__tariff=solid_tariff.ocpi_tariff,
         type="TIME",
     )
-    assert price_components.count() == 1, (
-        f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
-    )
+    assert (
+        price_components.count() == 1
+    ), f"Expected 1 TIME PriceComponent for zero per-minute price, got {price_components.count()}"
     assert price_components.first().price == 0
 
 
@@ -454,6 +493,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },
@@ -464,6 +504,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PARKING-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "parking_price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },
@@ -486,8 +527,55 @@ def test_create_solid_tariff_with_zero_per_min_does_not_create_duplicate_on_seco
     solid_tariff_service_instance.create(data_first)
     solid_tariff_service_instance.create(data_second)
 
-    count = SolidTariff.objects.filter(external_id=validated_data["external_id"]).count()
-    assert count == 1, (
-        f"Expected 1 SolidTariff after two identical requests, got {count}"
-    )
+    count = SolidTariff.objects.filter(
+        external_id=validated_data["external_id"]
+    ).count()
+    assert (
+        count == 1
+    ), f"Expected 1 SolidTariff after two identical requests, got {count}"
 
+
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
+def test_create_solid_tariff_sends_pricing_product_to_hubject_on_new_tariff(
+    solid_tariff_service_instance, smp1_solid_tariff_validated_json
+):
+    with (
+        patch(
+            "integrations.hubject.services.HubjectService.get_pricing_product_insert_payload"
+        ) as mock_get_payload,
+        patch(
+            "integrations.hubject.services.HubjectService.post_pricing_products"
+        ) as mock_post_pricing,
+        patch(
+            "integrations.hubject.services.HubjectService.post_evse_pricing_update_for_tariff"
+        ) as mock_post_evse,
+    ):
+        solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
+
+        mock_get_payload.assert_called_once()
+        mock_post_pricing.assert_called_once_with(mock_get_payload.return_value)
+        mock_post_evse.assert_called_once()
+
+
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=False)
+def test_create_solid_tariff_does_not_send_to_hubject_when_hubject_disabled(
+    solid_tariff_service_instance, smp1_solid_tariff_validated_json
+):
+    with (
+        patch(
+            "integrations.hubject.services.HubjectService.get_pricing_product_insert_payload"
+        ) as mock_get_payload,
+        patch(
+            "integrations.hubject.services.HubjectService.post_pricing_products"
+        ) as mock_post_pricing,
+        patch(
+            "integrations.hubject.services.HubjectService.post_evse_pricing_update_for_tariff"
+        ) as mock_post_evse,
+    ):
+        solid_tariff_service_instance.create(smp1_solid_tariff_validated_json)
+
+        mock_get_payload.assert_not_called()
+        mock_post_pricing.assert_not_called()
+        mock_post_evse.assert_not_called()

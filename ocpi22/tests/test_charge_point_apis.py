@@ -256,7 +256,7 @@ class TestChargePointAPI:
                         allowed_token.ocpi_master.credentials,
                     )
                 ],
-                available_evse.location
+                available_evse.location,
             )
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert response.data["token"] == authorize_token_response.token.uid
@@ -310,7 +310,7 @@ class TestChargePointAPI:
                         never_token.ocpi_master.credentials,
                     )
                 ],
-                available_evse.location
+                available_evse.location,
             )
             assert response.data["allowed"] == AuthorizationEnum.ALLOWED
             assert (
@@ -345,7 +345,7 @@ class TestChargePointAPI:
                         never_token.ocpi_master.credentials,
                     )
                 ],
-                available_evse.location
+                available_evse.location,
             )
             assert response.data["allowed"] == AuthorizationEnum.NOT_ALLOWED
             assert (

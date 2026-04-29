@@ -114,7 +114,7 @@ class TestSaveAndSendEvseStatusUpdates:
         "initial_status, incoming_status",
         [
             ("AVAILABLE", "AVAILABLE"),
-            ("CHARGING", "PREPARING"),
+            ("AVAILABLE", "PREPARING"),
             ("CHARGING", "CHARGING"),
             ("CHARGING", "SUSPENDEDEV"),
             ("CHARGING", "SUSPENDEDEVSE"),

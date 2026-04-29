@@ -101,6 +101,30 @@ class CredentialsRepository:
 
 class EvseRepository:
     @staticmethod
+    def find_evses_by_ocpi_tariff(ocpi_tariff: Tariff) -> QuerySet:
+        return (
+            Evse.objects.filter(connectors__tariff_ids=ocpi_tariff)
+            .prefetch_related(
+                Prefetch(
+                    "connectors",
+                    queryset=Connector.objects.prefetch_related(
+                        Prefetch(
+                            "tariff_ids",
+                            queryset=Tariff.objects.only("uid").prefetch_related(
+                                Prefetch(
+                                    "solid_tariff",
+                                    queryset=SolidTariff.objects.only("external_id"),
+                                )
+                            ),
+                        )
+                    ),
+                    to_attr="connectors_with_tariffs",
+                )
+            )
+            .distinct()
+        )
+
+    @staticmethod
     def iterate_status_by_credentials(our_credentials_role):
         hubject_credentials_role = CredentialsRepository.find_hubject_credentials_role()
         if not hubject_credentials_role or not hubject_credentials_role.credentials:

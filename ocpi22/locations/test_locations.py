@@ -13,7 +13,7 @@ from django.test import Client
 
 from unittest import TestCase
 
-from ocpi22.locations.serializers import LocationSerializer221
+from ocpi22.locations.serializers import LocationSerializer221, EvseSerializer
 from unittest.mock import ANY
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location, Evse
@@ -68,6 +68,21 @@ class TestLocations(TestCase):
         )
         if serializer.is_valid():
             serializer.save()
+
+
+@pytest.mark.django_db
+def test_evse_serializer_includes_physical_reference():
+    evse = EvseFactory(physical_reference="A1")
+    data = EvseSerializer(evse, context={"request": None}).data
+    assert "physical_reference" in data
+    assert data["physical_reference"] == "A1"
+
+
+@pytest.mark.django_db
+def test_evse_serializer_physical_reference_is_omitted_when_not_set():
+    evse = EvseFactory(physical_reference=None)
+    data = EvseSerializer(evse, context={"request": None}).data
+    assert "physical_reference" not in data
 
 
 @pytest.mark.django_db

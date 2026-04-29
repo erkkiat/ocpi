@@ -385,7 +385,7 @@ class FinancialAdviceConfirmation(models.Model):
     last_updated = models.DateTimeField(
         verbose_name=_("Last Updated"),
         help_text=_(
-            "Timestamp when this FAC was last updated (or created). " "Set by the PTP."
+            "Timestamp when this FAC was last updated (or created). Set by the PTP."
         ),
     )
 

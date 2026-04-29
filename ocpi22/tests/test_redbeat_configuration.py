@@ -15,8 +15,8 @@ class TestRedbeatConfiguration:
     def test_redbeat_redis_url_is_configured(self, celery_app):
         assert celery_app.conf.redbeat_redis_url is not None
 
-    def test_redbeat_lock_timeout_is_30_seconds(self, celery_app):
-        assert celery_app.conf.redbeat_lock_timeout == 30
+    def test_redbeat_lock_timeout_is_600_seconds(self, celery_app):
+        assert celery_app.conf.redbeat_lock_timeout == 600
 
     def test_redbeat_key_prefix_is_configured(self, celery_app):
         assert celery_app.conf.redbeat_key_prefix == "redbeat:"
@@ -57,9 +57,7 @@ class TestBeatScheduleConfiguration:
             == "ocpi22.tasks.send_hubject_evse_full_load"
         )
 
-    def test_celery_heartbeat_task_schedule_is_3600_seconds(
-        self, beat_schedule
-    ):
+    def test_celery_heartbeat_task_schedule_is_3600_seconds(self, beat_schedule):
         assert beat_schedule["run-me-every-minute"]["schedule"] == 3600
 
     def test_hubject_evse_full_load_runs_on_sunday(self, beat_schedule):

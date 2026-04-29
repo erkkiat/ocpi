@@ -13,7 +13,7 @@ from django.contrib.auth.models import User
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
 from django.db.models import Subquery, OuterRef
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from nested_admin.nested import (
     NestedModelAdmin,
     NestedStackedInline,
@@ -26,6 +26,7 @@ from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
+from ocpi22.models.displaytext import DisplayText
 from ocpi22.models.token import Token
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.msp.account import Account, Transaction
@@ -110,7 +111,7 @@ class TokenAdmin(SolidModelAdmin):
 
         return format_html(
             f'<a href="{reverse("admin:auth_user_change", args=[obj.customer.pk])}">'
-            f'{obj.customer.first_name} {obj.customer.last_name}</a>'
+            f"{obj.customer.first_name} {obj.customer.last_name}</a>"
         )
 
     fieldsets = [
@@ -404,14 +405,6 @@ class LocationAdmin(SolidNestedModelAdmin):
             obj.update_last_updated()
 
         super().save_model(request, obj, form, change)
-
-
-class EvseAdminForm(forms.ModelForm):
-    def clean_uid(self):
-        # if Evse.objects.filter(uid=self.data['uid']).count():
-        #     # Todo: Recognize if it's the same object, and allow it
-        #     raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
-        return self.cleaned_data["uid"]
 
 
 class EvseAdmin(SolidNestedModelAdmin):
@@ -864,12 +857,14 @@ class TariffAdmin(SolidNestedModelAdmin):
 
     model = Tariff
     if ocpi_platform.is_cpo:
-        list_display = ["uid", "price", "last_update"]
+        list_display = ["uid", "price", "alt_texts", "last_update"]
     else:
-        list_display = ["party_long", "uid", "price", "last_update"]
+        list_display = ["party_long", "uid", "price", "alt_texts", "last_update"]
     list_display_links = ["uid"]
+
     inlines = [ElementsInline]
     search_fields = ["uid"]
+    autocomplete_fields = ["tariff_alt_text"]
     readonly_fields = ("last_updated",)
 
     formfield_overrides = widgets.formfield_overrides
@@ -884,6 +879,7 @@ class TariffAdmin(SolidNestedModelAdmin):
                     ("currency",),
                     ("type",),
                     ("tariff_alt_url",),
+                    ("tariff_alt_text",),
                 )
             ),
         ),
@@ -901,16 +897,36 @@ class TariffAdmin(SolidNestedModelAdmin):
 
     def get_queryset(self, _request):
         # Hide archived
-        return Tariff.objects.exclude(archived=True)
+        return Tariff.objects.exclude(archived=True).prefetch_related("tariff_alt_text")
+
+    @admin.display(description="Alt text")
+    def alt_texts(self, obj: Tariff) -> str:
+        entries = obj.tariff_alt_text.all()
+        if not entries:
+            return "-"
+        return format_html_join(
+            "<br>",
+            "<b>[{}]</b> {}",
+            ((dt.language, dt.text) for dt in entries),
+        )
 
     def get_readonly_fields(self, request, obj=None) -> list:
-        readonly_fields = ["ocpi_master"]
-        if obj:
-            readonly_fields.append("uid")
+        readonly_fields = [
+            "ocpi_master",
+            "uid",
+            "currency",
+            "min_price_excl_vat",
+            "min_price_incl_vat",
+            "max_price_excl_vat",
+            "max_price_incl_vat",
+            "last_updated",
+        ]
+        if not obj:
+            readonly_fields.remove("uid")
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return False
+        return True
 
     def has_add_permission(self, request) -> bool:
         return (
@@ -937,6 +953,23 @@ class TariffAdmin(SolidNestedModelAdmin):
             pass
         obj.last_updated = datetime.now(pytz.utc)
         super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        tariff: Tariff = form.instance
+        if not tariff.tariff_alt_text.exists():
+            generated_text = tariff.price()
+            display_text = DisplayText.objects.create(
+                language="en", text=generated_text
+            )
+            tariff.tariff_alt_text.add(display_text)
+
+
+@admin.register(DisplayText)
+class DisplayTextAdmin(admin.ModelAdmin):
+    model = DisplayText
+    list_display = ["language", "text"]
+    search_fields = ["language", "text"]
 
 
 class CredentialsAdmin(SolidModelAdmin):

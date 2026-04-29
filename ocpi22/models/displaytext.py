@@ -10,3 +10,6 @@ class DisplayText(models.Model):
         verbose_name="Language",
     )
     text = models.CharField(max_length=512, verbose_name="Text")
+
+    def __str__(self):
+        return f"[{self.language}] {self.text}"

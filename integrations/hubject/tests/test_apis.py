@@ -37,6 +37,7 @@ def connector_without_tariff():
 
 @pytest.fixture(autouse=True)
 def hubject_credentials():
+    get_credentialsrole.cache_clear()
     return CredentialsRoleFactory(
         country_code="DE",
         party_id="ICE",
@@ -79,28 +80,29 @@ class TestHubjectApi:
             pytest.param("client", 401, id="Unauthenticated user getting unauthorized"),
             pytest.param(
                 "authenticated_user_client",
-                200,
+                202,
                 id="Authenticated user can access pricing products full load api",
             ),
             pytest.param(
                 "admin_user_client",
-                200,
+                202,
                 id="Admin user can access pricing products full load api",
             ),
             pytest.param(
                 "super_user_client",
-                200,
+                202,
                 id="Super user can access pricing products full load api",
             ),
         ],
     )
     def test_pricing_products_full_load_api_can_be_accessed_with_proper_credentials(
-        self, api_client, expected_status_code, request
+        self, api_client, expected_status_code, smp1_solid_tariff, request
     ):
         url = reverse("hubject-api:hubject-pricing-full-load")
         client = request.getfixturevalue(api_client)
 
-        response = client.post(url)
+        with patch("ocpi22.tasks.send_hubject_request.delay"):
+            response = client.post(url)
         assert response.status_code == expected_status_code
 
     @pytest.mark.django_db
@@ -119,22 +121,16 @@ class TestHubjectApi:
         response = authenticated_user_client.post(url)
         assert response.status_code == 202
 
-    @responses.activate
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_200_OK(
-        self, authenticated_user_client, hubject_successful_response, smp1_solid_tariff
+        self, authenticated_user_client, smp1_solid_tariff
     ):
-        responses.add(
-            responses.POST,
-            f"{settings.HUBJECT_URL}dynamicpricing/v10/operators/FI*CPO/pricing-products",
-            json=hubject_successful_response,
-            status=200,
-        )
-
         url = "/api/hubject/2.3/pricing-products/full-load/"
-        response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == hubject_successful_response
+        with patch("ocpi22.tasks.send_hubject_request.delay"):
+            response = authenticated_user_client.post(url)
+
+        assert response.status_code == 202
+        assert response.json() == {"message": "Pricing product full load is accepted"}
 
     @pytest.mark.django_db
     def test_start_pricing_products_full_load_returns_no_solid_tariffs_found(
@@ -144,11 +140,8 @@ class TestHubjectApi:
 
         url = "/api/hubject/2.3/pricing-products/full-load/"
         response = authenticated_user_client.post(url)
-        assert response.status_code == 200
-        assert response.json() == {
-            "success": False,
-            "message": f"No Solid Tariffs found for {str(party)}",
-        }
+        assert response.status_code == 404
+        assert response.json() == {"message": f"No Solid Tariffs found for {str(party)}"}
 
 
 @pytest.mark.django_db

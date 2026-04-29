@@ -7,12 +7,12 @@ Implements EVRF DirectPayment OCPI 2.2.1 extension specification.
 Reference: DirectPayment_2_2_1___EVRF_version.pdf (March 2024)
 
 URL Structure (CPO-side — inbound from PTP):
-    GET    /2.2.1/cpo/payments/terminals              - List terminals
-    POST   /2.2.1/cpo/payments/terminals              - Create terminal (PTP → CPO)
-    GET    /2.2.1/cpo/payments/terminals/{terminal_id} - Get terminal
-    GET    /2.2.1/cpo/payments/facs                   - List FACs
-    POST   /2.2.1/cpo/payments/facs                   - Create FAC (PTP → CPO)
-    GET    /2.2.1/cpo/payments/facs{fac_id}           - Get FAC
+    GET    /2.2.1/cpo/payments/terminals/               - List terminals
+    POST   /2.2.1/cpo/payments/terminals/               - Create terminal (PTP → CPO)
+    GET    /2.2.1/cpo/payments/terminals/{terminal_id}/ - Get terminal
+    GET    /2.2.1/cpo/payments/facs/                    - List FACs
+    POST   /2.2.1/cpo/payments/facs/                    - Create FAC (PTP → CPO)
+    GET    /2.2.1/cpo/payments/facs/{fac_id}/           - Get FAC
 
 Note: PATCH and PUT for terminals are PTP-side endpoints (Table 5.1).
 SolidRoam calls those outbound on Payter's system to assign locations.
@@ -77,7 +77,7 @@ class TerminalViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self) -> str:
         if hasattr(self, "kwargs") and "terminal_id" in self.kwargs:
-            return f'Terminal {self.kwargs.get("terminal_id")}'
+            return f"Terminal {self.kwargs.get('terminal_id')}"
         return "Payment Terminals"
 
     def get_queryset(self):
@@ -212,8 +212,8 @@ class PaymentsRootView(GenericViewSet):
     This view exists solely to provide a named URL ("payments-list") that can be
     reversed during the OCPI credentials handshake in get_endpoints_dict(). The
     payments module root has no defined behaviour in the EVRF DirectPayment spec —
-    counterparties should use /payments/terminals and
-    /payments/financial-advice-confirmations directly.
+    counterparties should use /payments/terminals/ and
+    /payments/financial-advice-confirmations/ directly.
 
     The queryset is required by DjangoModelPermissions which is applied globally.
     """
@@ -239,7 +239,9 @@ payments_ninja_api.add_router("/", router)
 service = TerminalService()
 
 
-@router.put("/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error})
+@router.put(
+    "/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error}
+)
 def put_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
@@ -248,12 +250,16 @@ def put_terminal(request, payload: TerminalIn):
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     except Exception:
-        logger.exception("Unexpected error in put_terminal for terminal_id=%s", payload.terminal_id)
+        logger.exception(
+            "Unexpected error in put_terminal for terminal_id=%s", payload.terminal_id
+        )
         return 500, Error(message="An unexpected error occurred.")
     return 200, terminal
 
 
-@router.patch("/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error})
+@router.patch(
+    "/terminals", response={200: TerminalOut, 404: dict, 422: Error, 500: Error}
+)
 def patch_terminal(request, payload: TerminalIn):
     terminal = get_object_or_404(Terminal, terminal_id=payload.terminal_id)
     try:
@@ -262,6 +268,8 @@ def patch_terminal(request, payload: TerminalIn):
     except TerminalValidationError as e:
         return 422, Error(message=e.args[0])
     except Exception:
-        logger.exception("Unexpected error in patch_terminal for terminal_id=%s", payload.terminal_id)
+        logger.exception(
+            "Unexpected error in patch_terminal for terminal_id=%s", payload.terminal_id
+        )
         return 500, Error(message="An unexpected error occurred.")
     return 200, terminal

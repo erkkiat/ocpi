@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from django.contrib.auth.models import Permission
@@ -217,7 +217,7 @@ class TestSolidTariffs:
     def test_unauthenticated_user_cannot_delete_solid_tariff_by_external_id_returns_401_unauthorized(
         self, client
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = client.delete(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -238,7 +238,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="authenticated_user_can_put_solid_tariff",
             ),
@@ -264,7 +269,7 @@ class TestSolidTariffs:
     def test_authenticated_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, authenticated_user_client, smp1_solid_tariff_with_all_records_json
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = authenticated_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -282,7 +287,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="admin_user_can_put_solid_tariff",
             ),
@@ -308,7 +318,7 @@ class TestSolidTariffs:
     def test_admin_user_cannot_delete_solid_tariff_by_external_id_403_forbidden(
         self, admin_user_client, smp1_solid_tariff_with_all_records_json
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = admin_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -326,7 +336,12 @@ class TestSolidTariffs:
             ),
             pytest.param(
                 "put",
-                {"external_id": "SMP1", "currency": "EUR", "price_flat": 1.0},
+                {
+                    "external_id": "SMP1",
+                    "currency": "EUR",
+                    "price_flat": 1.0,
+                    "vat_percentage": 0.0,
+                },
                 status.HTTP_200_OK,
                 id="super_user_can_put_solid_tariff",
             ),
@@ -359,7 +374,7 @@ class TestSolidTariffs:
     ):
         permission = Permission.objects.get(codename="delete_solidtariff")
         super_user.user_permissions.set([permission])
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
@@ -369,7 +384,7 @@ class TestSolidTariffs:
         delete_permissions_for_super_user,
         solid_tariff_smp1_msp1,
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
@@ -380,11 +395,11 @@ class TestSolidTariffs:
         solid_tariff_smp1_msp1,
         super_user_with_delete_solid_tariff_permission,
     ):
-        url = f'{reverse("solid-tariff-list")}SMP1/'
+        url = f"{reverse('solid-tariff-list')}SMP1/"
         response = super_user_client.delete(url)
         assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
-    @pytest.mark.django_db
+    @pytest.mark.django_db(transaction=True)
     def test_put_solid_tariffs_with_all_valid_records_returns_status_code_200(
         self,
         authenticated_user_client,
@@ -512,9 +527,21 @@ class TestSolidTariffs:
     @pytest.mark.parametrize(
         "pricing_type, price",
         [
-            pytest.param("price_per_kwh", "9999999.9999999", id="price_per_kwh exceeds 12 max_digits"),
-            pytest.param("price_per_kwh", "0.1234567", id="price_per_kwh exceeds 6 decimal_places"),
-            pytest.param("price_per_min", "0.12345678901", id="price_per_min exceeds 10 decimal_places"),
+            pytest.param(
+                "price_per_kwh",
+                "9999999.9999999",
+                id="price_per_kwh exceeds 12 max_digits",
+            ),
+            pytest.param(
+                "price_per_kwh",
+                "0.1234567",
+                id="price_per_kwh exceeds 6 decimal_places",
+            ),
+            pytest.param(
+                "price_per_min",
+                "0.12345678901",
+                id="price_per_min exceeds 10 decimal_places",
+            ),
         ],
     )
     def test_put_solid_tariff_with_too_many_digits_returns_status_code_400(
@@ -574,7 +601,7 @@ class TestSolidTariffs:
     def test_retrieve_nonexistent_solid_tariff_returns_404(
         self, authenticated_user_client
     ):
-        url = f'{reverse("solid-tariff-list")}NONEXISTENT/'
+        url = f"{reverse('solid-tariff-list')}NONEXISTENT/"
         response = authenticated_user_client.get(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -594,7 +621,7 @@ class TestSolidTariffs:
         invalid_country_code = "ZM"
         invalid_party_id = "SPP"
         url = (
-            f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
+            f"{reverse('solid-tariff-list')}{invalid_country_code}/{invalid_party_id}/"
         )
         response = authenticated_user_client.get(url)
 
@@ -615,7 +642,7 @@ class TestSolidTariffs:
         invalid_country_code = "ZM"
         invalid_party_id = "SPP"
         url = (
-            f'{reverse("solid-tariff-list")}{invalid_country_code}/{invalid_party_id}/'
+            f"{reverse('solid-tariff-list')}{invalid_country_code}/{invalid_party_id}/"
         )
         response = authenticated_user_client.get(url)
 
@@ -871,3 +898,93 @@ class TestSolidTariffs:
             saved_data == expected_json,
             f"Mismatch:\nExpected: {expected_json}\nActual: {saved_data}",
         )
+
+
+@pytest.fixture
+def five_solid_tariffs(operator_fi_cpo):
+    return [
+        SolidTariffFactory(
+            external_id=f"TARIFF-{i:02d}",
+            currency="EUR",
+            price_per_kwh=float(i) * 0.1,
+            operator=operator_fi_cpo,
+            last_updated=datetime(2024, 1, i, tzinfo=timezone.utc),
+        )
+        for i in range(1, 6)
+    ]
+
+
+class TestSolidTariffListPagination:
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_without_limit_returns_all_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url)
+
+        data = response.json()
+        results = data["results"] if "results" in data else data
+        assert response.status_code == status.HTTP_200_OK
+        assert len(results) == 5
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_limit_2_returns_2_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 2})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert len(data["results"]) == 2
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_limit_2_returns_paginated_response_details(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 2})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert "count" in data
+        assert "results" in data
+        assert "next" in data
+        assert "previous" in data
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_offset_3_returns_2_tariffs(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 10, "offset": 3})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert len(data["results"]) == 2
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_page_1_and_page_2_do_not_overlap(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        page1 = authenticated_user_client.get(url, {"limit": 2, "offset": 0}).json()
+        page2 = authenticated_user_client.get(url, {"limit": 2, "offset": 2}).json()
+
+        page1_ids = {r["external_id"] for r in page1["results"]}
+        page2_ids = {r["external_id"] for r in page2["results"]}
+        assert page1_ids.isdisjoint(page2_ids)
+
+    @pytest.mark.django_db
+    def test_list_solid_tariffs_with_offset_beyond_total_returns_empty_results(
+        self, authenticated_user_client, five_solid_tariffs
+    ):
+        url = reverse("solid-tariff-list")
+        response = authenticated_user_client.get(url, {"limit": 10, "offset": 100})
+
+        data = response.json()
+        assert response.status_code == status.HTTP_200_OK
+        assert data["count"] == 5
+        assert data["results"] == []

@@ -419,7 +419,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
 class Endpoint(models.Model, ModelUtilMixin):
     identifier = models.CharField(
-        max_length=13, choices=IDENTIFIER_CHOICES, verbose_name=_("Identifier")
+        max_length=16, choices=IDENTIFIER_CHOICES, verbose_name=_("Identifier")
     )
 
     url = models.URLField(verbose_name=_("URL"))

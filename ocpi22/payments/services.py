@@ -27,6 +27,10 @@ from ocpi22.payments.schemas import TerminalIn
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
 from util import with_trailing_slash
+from webhooks.models import WebhookEvent, WebhookEventType
+from webhooks.repository import WebhookRepository
+from webhooks.services import WebhookEventService
+from webhooks.tasks import execute_webhook_event as execute_webhook_event_task
 
 logger = getLogger(__name__)
 
@@ -84,13 +88,31 @@ class TerminalService:
         terminal.postal_code = payload.postal_code
         terminal.state = payload.state
         terminal.country = payload.country
-        terminal.latitude = str(payload.coordinates.latitude) if payload.coordinates is not None else None
-        terminal.longitude = str(payload.coordinates.longitude) if payload.coordinates is not None else None
-        terminal.invoice_base_url = str(payload.invoice_base_url).rstrip("/") if payload.invoice_base_url is not None else None
-        terminal.invoice_creator = payload.invoice_creator.value if payload.invoice_creator is not None else None
+        terminal.latitude = (
+            str(payload.coordinates.latitude)
+            if payload.coordinates is not None
+            else None
+        )
+        terminal.longitude = (
+            str(payload.coordinates.longitude)
+            if payload.coordinates is not None
+            else None
+        )
+        terminal.invoice_base_url = (
+            str(payload.invoice_base_url).rstrip("/")
+            if payload.invoice_base_url is not None
+            else None
+        )
+        terminal.invoice_creator = (
+            payload.invoice_creator.value
+            if payload.invoice_creator is not None
+            else None
+        )
         terminal.last_updated = payload.last_updated or timezone.now()
 
-        locations, evses = self._resolve_locations_and_evses(payload.location_ids, payload.evse_uids)
+        locations, evses = self._resolve_locations_and_evses(
+            payload.location_ids, payload.evse_uids
+        )
         terminal.locations.set(locations)
         terminal.evses.set(evses)
 
@@ -117,7 +139,10 @@ class TerminalService:
             if field in payload_dict:
                 setattr(terminal, field, payload_dict[field])
 
-        if any(f in payload_dict for f in ("customer_reference", "country_code", "party_id")):
+        if any(
+            f in payload_dict
+            for f in ("customer_reference", "country_code", "party_id")
+        ):
             try:
                 validate_terminal_party_identification(
                     terminal.customer_reference,
@@ -138,7 +163,9 @@ class TerminalService:
                 terminal.longitude = None
         if "invoice_base_url" in payload_dict:
             url = payload_dict["invoice_base_url"]
-            terminal.invoice_base_url = str(url).rstrip("/") if url is not None else None
+            terminal.invoice_base_url = (
+                str(url).rstrip("/") if url is not None else None
+            )
         if "invoice_creator" in payload_dict:
             creator = payload_dict["invoice_creator"]
             terminal.invoice_creator = creator.value if creator is not None else None
@@ -178,7 +205,9 @@ class TerminalService:
         self._check_missing_uids(uids, uid_db)
         return evses
 
-    def _validate_evses_by_location(self, location_ids: set[str], evses: list[Evse]) -> list[Evse]:
+    def _validate_evses_by_location(
+        self, location_ids: set[str], evses: list[Evse]
+    ) -> list[Evse]:
         evses_not_related_to_given_locations = sorted(
             evse.uid for evse in evses if evse.location.uid not in location_ids
         )
@@ -187,7 +216,9 @@ class TerminalService:
                 f"Cannot update terminal, EVSEs {', '.join(evses_not_related_to_given_locations)} do not belong to the given locations."
             )
 
-    def _validate_locations_ids_by_evses(self, location_ids: set[str], evses: list[Evse]) -> list[Evse]:
+    def _validate_locations_ids_by_evses(
+        self, location_ids: set[str], evses: list[Evse]
+    ) -> list[Evse]:
         location_uids_by_evses = {evse.location.uid for evse in evses}
         locations_outside_given_evses = sorted(location_ids - location_uids_by_evses)
         if locations_outside_given_evses:
@@ -201,8 +232,9 @@ class TerminalService:
         if location_ids and not evse_uids:
             locations = self._validate_locations(location_ids)
             evses = list(
-                Evse.objects.filter(location__uid__in=location_ids)
-                .select_related("location")
+                Evse.objects.filter(location__uid__in=location_ids).select_related(
+                    "location"
+                )
             )
             loc_uids_with_evses = {evse.location.uid for evse in evses}
             locations_without_evses = sorted(set(location_ids) - loc_uids_with_evses)
@@ -214,7 +246,9 @@ class TerminalService:
 
         elif evse_uids and not location_ids:
             evses = self._validate_evses(evse_uids)
-            locations = list({evse.location_id: evse.location for evse in evses}.values())
+            locations = list(
+                {evse.location_id: evse.location for evse in evses}.values()
+            )
             return locations, evses
 
         else:
@@ -346,4 +380,42 @@ class FinancialAdviceConfirmationService:
             fac.terminal = self._get_terminal_or_raise(terminal_id, credentialsrole)
 
         fac.save()
+
+        event = self._create_fac_webhook_event(fac)
+        if event:
+            transaction.on_commit(lambda: execute_webhook_event_task.delay(event.id))
+
         return fac
+
+    def _create_fac_webhook_event(
+        self, fac: FinancialAdviceConfirmation
+    ) -> Optional[WebhookEvent]:
+        webhook = WebhookRepository.get_fac_webhook()
+        if not webhook:
+            return None
+
+        payload = {
+            "fac_id": fac.fac_id,
+            "authorization_reference": fac.authorization_reference,
+            "total_cost_excl_vat": fac.total_cost_excl_vat,
+            "total_cost_incl_vat": fac.total_cost_incl_vat,
+            "currency": fac.currency,
+            "eft_data": fac.eft_data,
+            "capture_status_code": fac.capture_status_code,
+            "capture_status_message": fac.capture_status_message,
+            "last_updated": fac.last_updated,
+        }
+        try:
+            with transaction.atomic():
+                return WebhookEventService.create_event(
+                    webhook=webhook,
+                    event_type=WebhookEventType.FAC_CREATED,
+                    payload=payload,
+                )
+        except Exception:
+            logger.error(
+                "Failed to create FAC webhook event for fac %s",
+                fac.fac_id,
+                exc_info=True,
+            )
+            return None

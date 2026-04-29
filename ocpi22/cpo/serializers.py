@@ -163,7 +163,7 @@ class OcppStatusSerializer(fields.ChoiceField):
     def to_internal_value(self, data):
         result = {
             OcppStatusChoices.AVAILABLE: "AVAILABLE",
-            OcppStatusChoices.PREPARING: "CHARGING",
+            OcppStatusChoices.PREPARING: "AVAILABLE",
             OcppStatusChoices.CHARGING: "CHARGING",
             OcppStatusChoices.SUSPENDEDEV: "CHARGING",
             OcppStatusChoices.SUSPENDEDEVSE: "CHARGING",
@@ -527,8 +527,7 @@ class SolidTariffSerializer(SerializerCleanedUp):
         help_text="The parking grace period in seconds",
     )
     vat_percentage = VatSerializer(
-        required=False,
-        allow_null=True,
+        required=True,
         help_text="The Value Added Tax amount in percentage",
     )
     msp = PartyStrField(

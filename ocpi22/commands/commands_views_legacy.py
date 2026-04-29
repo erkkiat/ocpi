@@ -102,7 +102,7 @@ class CommandsViewSetLegacy(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Command {self.kwargs.get("uid")}'
+            return f"Command {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Commands"
@@ -395,8 +395,8 @@ class CommandsViewSetLegacy(GenericViewSet):
             message = serializer.validated_data.get("message")
             session.update(message=message)
             logger.info(
-                f'Received CommandResult {result} and '
-                f'message {message or "N/A"} for command {command} ID {command_id}'
+                f"Received CommandResult {result} and "
+                f"message {message or 'N/A'} for command {command} ID {command_id}"
             )
             # Todo: Embed any error or success text to the Session status response
             return OCPIResponse(
@@ -424,9 +424,9 @@ class CommandsViewSetLegacy(GenericViewSet):
                 unlock_connector=request.build_absolute_uri(
                     reverse("commands-unlock-connector", request=request)
                 ),
-                reserve_now=request.build_absolute_uri(
-                    reverse("commands-reserve-now", request=request)
-                ),
+                # reserve_now=request.build_absolute_uri(
+                #     reverse("commands-reserve-now", request=request)
+                # ),
                 # command_result=request.build_absolute_uri(reverse('commands-command-result')),
             )
         )
