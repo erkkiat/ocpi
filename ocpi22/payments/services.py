@@ -192,26 +192,25 @@ class TerminalService:
         self,
         terminal: Terminal,
         method: str,
-        patch_fields: Optional[set] = None,
+        payload: "TerminalIn",
     ) -> None:
-        if patch_fields is None:
-            payload = {
+        if method == "put":
+            data = {
                 "location_ids": list(terminal.locations.values_list("uid", flat=True)),
                 "evse_uids": list(terminal.evses.values_list("uid", flat=True)),
                 "invoice_base_url": terminal.invoice_base_url,
                 "last_updated": terminal.last_updated,
             }
         else:
-            payload: dict = {"last_updated": terminal.last_updated}
-            if "location_ids" in patch_fields or "evse_uids" in patch_fields:
-                payload["location_ids"] = list(
+            fields = payload.model_fields_set
+            data: dict = {"last_updated": terminal.last_updated}
+            if "location_ids" in fields or "evse_uids" in fields:
+                data["location_ids"] = list(
                     terminal.locations.values_list("uid", flat=True)
                 )
-                payload["evse_uids"] = list(
-                    terminal.evses.values_list("uid", flat=True)
-                )
-            if "invoice_base_url" in patch_fields:
-                payload["invoice_base_url"] = terminal.invoice_base_url
+                data["evse_uids"] = list(terminal.evses.values_list("uid", flat=True))
+            if "invoice_base_url" in fields:
+                data["invoice_base_url"] = terminal.invoice_base_url
         credentials = terminal.credentials
         if not credentials or not credentials.url:
             logger.error(f"Terminal {terminal.terminal_id} has no credentials.")
@@ -251,7 +250,7 @@ class TerminalService:
         url = f"{with_trailing_slash(url)}terminals/{terminal.terminal_id}"
 
         kwargs = {
-            "data": payload,
+            "data": data,
             "method": method.lower(),
             "url": url,
             "token_base64": credentials.theirs_base64(),

@@ -608,7 +608,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal001", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["LOC-X"])
+        )
 
         mock_send.apply_async.assert_called_once()
         kwargs = mock_send.apply_async.call_args[1]["kwargs"]
@@ -649,7 +651,9 @@ class TestTerminalServiceUpdate:
         )
 
         terminal_service._send_to_ptp(
-            terminal, "patch", patch_fields={"invoice_base_url"}
+            terminal,
+            "patch",
+            TerminalIn(invoice_base_url="https://invoices.example.com"),
         )
 
         mock_send.apply_async.assert_called_once()
@@ -687,7 +691,9 @@ class TestTerminalServiceUpdate:
         terminal.locations.set([location])
         terminal.evses.set([evse])
 
-        terminal_service._send_to_ptp(terminal, "patch", patch_fields={"location_ids"})
+        terminal_service._send_to_ptp(
+            terminal, "patch", TerminalIn(location_ids=[location.uid])
+        )
 
         mock_send.apply_async.assert_called_once()
         data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
@@ -704,7 +710,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-credentials", credentials=None
         )
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
 
@@ -717,7 +725,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-role", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
 
@@ -731,7 +741,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-endpoints", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
 
@@ -906,7 +918,9 @@ class TestSendToPtpEnrichment:
         terminal.locations.set([location])
         terminal.evses.set([evse])
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=[location.uid])
+        )
 
         mock_send.apply_async.assert_called_once()
         sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
@@ -940,7 +954,9 @@ class TestSendToPtpEnrichment:
             terminal_id="term-key-check", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put")
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["LOC-Y"])
+        )
 
         mock_send.apply_async.assert_called_once()
         sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
