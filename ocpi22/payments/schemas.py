@@ -46,11 +46,12 @@ class TerminalIn(TerminalBase):
         default_factory=lambda: datetime.now(dt_timezone.utc)
     )
 
+
+class TerminalPutIn(TerminalIn):
     @model_validator(mode="after")
-    def validate_location(self) -> "TerminalIn":
+    def validate_location(self) -> "TerminalPutIn":
         if not self.location_ids and not self.evse_uids:
             raise ValueError("Either location_ids or evse_uids must be provided.")
-
         return self
 
 

@@ -13,7 +13,7 @@ from ocpi22.payments.exceptions import (
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
-from ocpi22.payments.schemas import TerminalIn
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn
 from ocpi22.cpo.schemas import GeoLocation
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
@@ -978,11 +978,18 @@ class TestTerminalInSchema:
 
         assert payload.last_updated == fixed_dt
 
-    def test_terminal_in_raises_when_neither_location_ids_nor_evse_uids_provided(self):
+    def test_terminal_put_in_raises_when_neither_location_ids_nor_evse_uids_provided(
+        self,
+    ):
         import pydantic
 
         with pytest.raises(pydantic.ValidationError):
-            TerminalIn(terminal_id="term-no-loc")
+            TerminalPutIn(terminal_id="term-no-loc")
+
+    def test_terminal_in_allows_no_location_ids_or_evse_uids_for_patch(self):
+        payload = TerminalIn(address="Some Street 1")
+        assert payload.location_ids == []
+        assert payload.evse_uids == []
 
     def test_terminal_in_accepts_only_location_ids_without_evse_uids(self):
         payload = TerminalIn(terminal_id="term-loc-only", location_ids=["LOC-A"])

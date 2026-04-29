@@ -39,7 +39,7 @@ from ocpi22.decorators import (
 )
 from ocpi22.ocpi.auth import NinjaBasicAuth
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
-from ocpi22.payments.schemas import TerminalIn, TerminalOut
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn, TerminalOut
 from ocpi22.payments.serializers import (
     TerminalSerializer,
     FinancialAdviceConfirmationSerializer,
@@ -243,7 +243,7 @@ service = TerminalService()
     "/terminals/{terminal_id}",
     response={200: TerminalOut, 404: dict, 422: Error, 500: Error},
 )
-def put_terminal(request, terminal_id: str, payload: TerminalIn):
+def put_terminal(request, terminal_id: str, payload: TerminalPutIn):
     terminal = get_object_or_404(Terminal, terminal_id=terminal_id)
     try:
         terminal = service.put_terminal(terminal, payload)

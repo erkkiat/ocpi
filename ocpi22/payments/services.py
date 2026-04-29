@@ -23,7 +23,7 @@ from ocpi22.payments.repositories import (
     TerminalRepository,
     FinancialAdviceConfirmationRepository,
 )
-from ocpi22.payments.schemas import TerminalIn
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn
 from ocpi22.tasks import send_ocpi_request
 from ocpiconnector.ocpi_identities import get_our_party
 from util import with_trailing_slash
@@ -70,7 +70,7 @@ class TerminalService:
 
         return terminal
 
-    def put_terminal(self, terminal: Terminal, payload: TerminalIn) -> Terminal:
+    def put_terminal(self, terminal: Terminal, payload: TerminalPutIn) -> Terminal:
         terminal_fields = {
             "customer_reference": payload.customer_reference,
             "country_code": payload.country_code,
