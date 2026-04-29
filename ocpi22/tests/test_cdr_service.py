@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 import time_machine
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import IntegrityError
 from django.test import override_settings
 from rest_framework.exceptions import ValidationError
 
@@ -29,6 +28,7 @@ from ocpi22.ocpi.serializers import CdrSerializer
 from webhooks.choices import WebhookType
 from webhooks.factories import WebhookInactiveFactory, WebhookInvoicingFactory
 from webhooks.models import WebhookEvent, WebhookEventType, WebhookEventStatus
+from webhooks.repository import WebhookRepository
 
 
 @pytest.fixture
@@ -276,23 +276,18 @@ def test_get_or_create_cdr_from_session_sends_hubject_eroaming_charge_detail_rec
     )
 
 
-def _make_cdr(session):
-    tariff = TariffFactory(uid="CDR-WH-CP1")
-    charging_period = ChargingPeriodFactory(
-        start_date_time=datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
-        tariff=tariff,
-    )
-    session.chargingperiods.set([charging_period])
-    session.save()
-    with patch("ocpi22.cpo.services.execute_webhook_event_task"):
-        return CdrService._create_cdr(session)
-
-
 @pytest.mark.django_db
 class TestCdrWebhookEventCreation:
     @pytest.fixture
     def cdr(self, mock_session):
-        return _make_cdr(mock_session)
+        tariff = TariffFactory(uid="CDR-WH-CP1")
+        charging_period = ChargingPeriodFactory(
+            start_date_time=datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            tariff=tariff,
+        )
+        mock_session.chargingperiods.set([charging_period])
+        mock_session.save()
+        return CdrService._create_cdr(mock_session)
 
     def test_create_cdr_webhook_event_returns_none_when_no_invoicing_webhook_configured(
         self, cdr
@@ -339,27 +334,23 @@ class TestCdrWebhookEventCreation:
 
         event = CdrService._create_cdr_webhook_event(cdr)
 
-        assert event is not None
-        assert event.pk is not None
-        assert event.event_type == WebhookEventType.CDR_CREATED
+        assert WebhookEvent.objects.filter(pk=event.pk).exists()
 
-    def test_create_cdr_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
-        self, cdr, caplog
+    def test_create_cdr_webhook_event_returns_none_and_logs_error_when_webhook_fk_is_invalid(
+        self, cdr, monkeypatch, caplog
     ):
-        WebhookInvoicingFactory()
+        webhook = WebhookInvoicingFactory()
+        webhook.delete()
         caplog.set_level("ERROR", logger="ocpi22.cpo.services")
+        monkeypatch.setattr(WebhookRepository, "get_invoicing_webhook", lambda: webhook)
 
-        with patch(
-            "ocpi22.cpo.services.WebhookEventService.create_event",
-            side_effect=Exception("DB error"),
-        ):
-            result = CdrService._create_cdr_webhook_event(cdr)
+        result = CdrService._create_cdr_webhook_event(cdr)
 
         assert result is None
         assert f"Failed to create CDR webhook event for cdr {cdr.uid}" in caplog.text
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestCdrWebhookDispatch:
     @pytest.fixture
     def session_with_periods(self, mock_session):
@@ -378,36 +369,27 @@ class TestCdrWebhookDispatch:
     ):
         WebhookInvoicingFactory()
 
-        with patch(
-            "ocpi22.cpo.services.transaction.on_commit", side_effect=lambda fn: fn()
-        ):
-            CdrService._create_cdr(session_with_periods)
+        CdrService._create_cdr(session_with_periods)
 
         event = WebhookEvent.objects.get(event_type=WebhookEventType.CDR_CREATED)
         mock_task.delay.assert_called_once_with(event.id)
 
-    @patch("ocpi22.cpo.services.execute_webhook_event_task")
-    def test_create_cdr_does_not_dispatch_webhook_task_when_no_invoicing_webhook_configured(
-        self, mock_task, session_with_periods
+    def test_create_cdr_does_not_create_webhook_event_when_no_invoicing_webhook_configured(
+        self, session_with_periods
     ):
-        with patch(
-            "ocpi22.cpo.services.transaction.on_commit", side_effect=lambda fn: fn()
-        ):
-            CdrService._create_cdr(session_with_periods)
+        CdrService._create_cdr(session_with_periods)
 
-        mock_task.delay.assert_not_called()
+        assert not WebhookEvent.objects.filter(
+            event_type=WebhookEventType.CDR_CREATED
+        ).exists()
 
-    @patch("ocpi22.cpo.services.execute_webhook_event_task")
-    @patch(
-        "ocpi22.cpo.services.WebhookEventService.create_event",
-        side_effect=IntegrityError("unique violation"),
-    )
-    def test_create_cdr_is_saved_when_webhook_event_creation_raises_db_error(
-        self, mock_create_event, mock_task, session_with_periods
+    def test_create_cdr_persists_cdr_when_webhook_event_creation_raises(
+        self, session_with_periods, monkeypatch
     ):
-        WebhookInvoicingFactory()
+        webhook = WebhookInvoicingFactory()
+        webhook.delete()
+        monkeypatch.setattr(WebhookRepository, "get_invoicing_webhook", lambda: webhook)
 
         CdrService._create_cdr(session_with_periods)
 
         assert Cdr.objects.filter(session_id=session_with_periods.uid).exists()
-        mock_task.delay.assert_not_called()

@@ -16,5 +16,5 @@ class WebhookRepository:
         ).first()
 
     @staticmethod
-    def get_cdr_webhook() -> Webhook | None:
+    def get_invoicing_webhook() -> Webhook | None:
         return Webhook.objects.filter(type=WebhookType.INVOICING, active=True).first()

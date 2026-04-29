@@ -550,7 +550,7 @@ class CdrService:
     def _create_cdr_webhook_event(cls, cdr: "Cdr") -> Optional[WebhookEvent]:
         from ocpi22.ocpi.serializers import CdrSerializer
 
-        webhook = WebhookRepository.get_cdr_webhook()
+        webhook = WebhookRepository.get_invoicing_webhook()
         if not webhook:
             return None
 
