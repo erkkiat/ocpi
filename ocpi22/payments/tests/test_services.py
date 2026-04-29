@@ -493,7 +493,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="terminal-put",
-            customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_ids=[location.uid],
             evse_uids=[evse.uid],
@@ -521,7 +520,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="terminal-patch",
-            customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
             location_ids=[location.uid],
         )
@@ -544,7 +542,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="term-fail-put",
-            customer_reference=terminal.customer_reference,
             location_ids=["NON-EXISTENT-LOC"],
         )
 
@@ -604,7 +601,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="term-put-addr",
-            customer_reference="TEST-CUSTOMER-REF",
             address="New Street 99",
             city="Helsinki",
             postal_code="00100",
@@ -632,7 +628,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="term-put-coord",
-            customer_reference="TEST-CUSTOMER-REF",
             coordinates=GeoLocation(latitude="60.169857", longitude="24.938379"),
             location_ids=[location.uid],
         )
@@ -656,7 +651,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="term-put-clear-coord",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location.uid],
         )
 
@@ -679,7 +673,6 @@ class TestTerminalServiceUpdate:
 
         payload = TerminalIn(
             terminal_id="term-put-clear-addr",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location.uid],
         )
 
@@ -1120,7 +1113,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-auto-evse",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location.uid],
         )
 
@@ -1143,7 +1135,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-auto-loc",
-            customer_reference="TEST-CUSTOMER-REF",
             evse_uids=[evse.uid],
         )
 
@@ -1162,7 +1153,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-loc-empty",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location.uid],
         )
 
@@ -1182,7 +1172,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-cross",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location_a.uid],
             evse_uids=[evse_a.uid, evse_b.uid],
         )
@@ -1203,7 +1192,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-uncovered-loc",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location_a.uid, location_b.uid],
             evse_uids=[evse_a.uid],
         )
@@ -1223,7 +1211,6 @@ class TestResolveLocationsAndEvses:
 
         payload = TerminalIn(
             terminal_id="term-evse-1",
-            customer_reference="TEST-CUSTOMER-REF",
             location_ids=[location.uid],
             evse_uids=[evse1.uid],
         )

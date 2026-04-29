@@ -11,9 +11,6 @@ from ocpi22.payments.models import InvoiceCreatorEnum
 class TerminalBase(Schema):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    customer_reference: Optional[
-        Annotated[str, StringConstraints(min_length=1, max_length=36)]
-    ] = None
     party_id: Optional[
         Annotated[str, StringConstraints(min_length=3, max_length=3)]
     ] = None
@@ -57,6 +54,9 @@ class TerminalPutIn(TerminalIn):
 
 class TerminalOut(TerminalBase):
     terminal_id: Annotated[str, StringConstraints(min_length=1, max_length=36)]
+    customer_reference: Optional[
+        Annotated[str, StringConstraints(min_length=1, max_length=36)]
+    ] = None
     name: Optional[str] = None
     invoice_base_url: Optional[str] = None
     invoice_creator: Optional[str] = None
