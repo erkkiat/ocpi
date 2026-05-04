@@ -299,6 +299,6 @@ class LocationOut(SolidLocation):
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
 
-    evses: List[EVSEOut] = Field(
-        ..., description="List of EVSEs available at this location"
+    evses: Optional[List[EVSEOut]] = Field(
+        None, description="List of EVSEs available at this location"
     )
