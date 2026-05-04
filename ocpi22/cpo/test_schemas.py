@@ -9,6 +9,7 @@ from ocpi22.cpo.schemas import (
     SolidConnector,
     OpeningTimes,
     RegularHours,
+    LocationOut,
 )
 from ocpi22.test_tariff_location_and_evse import load_example
 
@@ -222,6 +223,21 @@ def test_regular_hours_none_when_twentyfourseven_is_false_raises_validation_erro
 
     error_msg = str(exc_info.value)
     assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_location_out_without_evses_does_not_raise_validation_error(location_data):
+    location_data.pop("evses")
+    location = LocationOut(**location_data)
+    assert location.evses is None
+
+
+def test_location_out_with_evses_does_not_raise_validation_error(
+    location_data, evse_data, connector_data
+):
+    evse_data["connectors"] = [connector_data]
+    location_data["evses"] = [evse_data]
+    location = LocationOut(**location_data)
+    assert len(location.evses) == 1
 
 
 def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_error():
