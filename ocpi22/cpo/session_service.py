@@ -103,12 +103,15 @@ class SessionService:
 
     @staticmethod
     def _clear_token_authorization_cache(session: Session) -> None:
+        from ocpi22.cpo.mqtt.services import _find_token_by_uid
+
         token_uid = session.cdr_token.uid
-        try:
-            token = Token.objects.get(uid=token_uid)
-            token_dto = TokenDto(uid=token_uid, adhoc=False, token=token)
-        except Token.DoesNotExist:
-            token_dto = TokenDto(uid=token_uid, adhoc=True, token=None)
+        token: str | Token = _find_token_by_uid(token_uid) or token_uid
+        token_dto = TokenDto(
+            uid=token.uid if isinstance(token, Token) else token,
+            adhoc=isinstance(token, str),
+            token=token if isinstance(token, Token) else None,
+        )
         _authorize_token.clear_cache_item(
             token_dto,
             session.location,
