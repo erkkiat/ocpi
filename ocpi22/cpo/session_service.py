@@ -116,7 +116,7 @@ class SessionService:
             token_dto,
             session.location,
             request=None,
-            evse_id=session.evse.evse_id if session.evse else None,
+            evse_id=session.evse.evse_id,
         )
 
     @staticmethod
