@@ -547,7 +547,7 @@ class TestStopAndCreateCdrClearsAuthorizeTokenCache:
             connector=connector,
         )
 
-    def test_stop_and_create_cdr_clears_session_token_cache_entry(
+    def test_stop_and_create_cdr_clears_authorize_token_cache_entry(
         self, always_token_dto, location, evse, session
     ):
         _authorize_token(always_token_dto, location, request=None, evse_id=evse.evse_id)
@@ -583,7 +583,7 @@ class TestStopAndCreateCdrClearsAuthorizeTokenCache:
 
         assert _authorize_token.cache_info().hits == hits_before + 1
 
-    def test_stop_and_create_cdr_does_not_clear_session_token_cache_at_different_location(
+    def test_stop_and_create_cdr_does_not_clear_authorize_token_cache_at_different_location(
         self, always_token_dto, evse, session
     ):
         other_location = LocationFactory(name="Other Location")
@@ -604,7 +604,7 @@ class TestStopAndCreateCdrClearsAuthorizeTokenCache:
 
         assert _authorize_token.cache_info().hits == hits_before + 1
 
-    def test_stop_and_create_cdr_does_not_clear_session_token_cache_for_different_evse(
+    def test_stop_and_create_cdr_does_not_clear_authorize_token_cache_for_different_evse(
         self, always_token_dto, location, session
     ):
         other_evse = EvseFactory(location=location, uid="EVSE002")
