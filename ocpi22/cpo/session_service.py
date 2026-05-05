@@ -11,6 +11,7 @@ from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.models.enum import AuthMethodChoices
 from ocpi22.models.location import Connector
 from ocpi22.models.session import Session
+from ocpi22.tokens.auth import _authorize_token
 
 
 class SessionService:
@@ -92,6 +93,7 @@ class SessionService:
 
             CdrService.get_or_create_cdr(session)
 
+        _authorize_token.cache_clear()
         logger.info(
             f"Stopped session {session.uid} at {timestamp} with {session.kwh} kWh and "
             f"cost {session.total_cost_incl_vat} {session.currency}"

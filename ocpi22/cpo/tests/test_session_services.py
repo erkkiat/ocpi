@@ -8,13 +8,19 @@ import time_machine
 
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.routing import find_route
 from ocpi22.tests.factories import (
+    CredentialsRoleFactory,
     OCPISessionFactory,
     ConnectorFactory,
     LocationFactory,
     EvseFactory,
     TariffFactory,
+    TokenFactory,
 )
+from ocpi22.tokens.auth import _authorize_token
+from ocpi22.tokens.dataclasses import TokenDto
 
 
 @pytest.mark.django_db
@@ -487,3 +493,44 @@ class TestSessionServiceUpdateMeterValues:
         assert session.last_updated is not None
         assert session.total_cost_incl_vat is not None
         assert session.total_cost_excl_vat is not None
+
+
+@pytest.fixture(autouse=True)
+def clear_caches():
+    _authorize_token.cache_clear()
+    find_route.cache_clear()
+
+
+@pytest.fixture
+def always_whitelist_token():
+    return TokenFactory(
+        uid="ALWAYS_TOKEN",
+        whitelist=Token.ALWAYS,
+        ocpi_master=CredentialsRoleFactory(
+            country_code="DE", party_id="TST", role="EMSP"
+        ),
+    )
+
+
+@pytest.fixture
+def always_token_dto(always_whitelist_token):
+    return TokenDto(
+        uid=always_whitelist_token.uid, adhoc=False, token=always_whitelist_token
+    )
+
+
+@pytest.mark.django_db
+class TestStopAndCreateCdrClearsAuthorizeTokenCache:
+    def test_stop_and_create_cdr_clears_authorize_token_cache(self, always_token_dto):
+        _authorize_token(always_token_dto)
+        _authorize_token(always_token_dto)
+        assert _authorize_token.cache_info().hits == 1
+
+        session = OCPISessionFactory(
+            status=Session.ACTIVE, start_kwh=10.0, stop_kwh=20.0
+        )
+
+        SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
+
+        assert _authorize_token.cache_info().hits == 0
+        assert _authorize_token.cache_info().misses == 0

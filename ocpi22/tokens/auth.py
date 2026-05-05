@@ -47,14 +47,6 @@ def token_post_save(sender, instance: Token, *_args, raw, **_kwargs):
     _get_authorization_from_sessions.cache_clear()
 
 
-@receiver(post_save, sender=Session)
-def session_post_save(sender, instance: Session, *_args, raw, **_kwargs):
-    if raw:
-        return
-    if instance.status == Session.COMPLETED:
-        _authorize_token.cache_clear()
-
-
 def get_session_by_token_uid(
     token_uid: str, max_age_minutes, statuses=(Session.PENDING, Session.ACTIVE)
 ) -> Optional[Session]:
