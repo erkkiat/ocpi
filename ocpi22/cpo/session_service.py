@@ -11,6 +11,9 @@ from ocpi22.cpo.session_cache import get_cached_session
 from ocpi22.models.enum import AuthMethodChoices
 from ocpi22.models.location import Connector
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.tokens.auth import _authorize_token
+from ocpi22.tokens.dataclasses import TokenDto
 
 
 class SessionService:
@@ -92,9 +95,28 @@ class SessionService:
 
             CdrService.get_or_create_cdr(session)
 
+        self._clear_token_authorization_cache(session)
         logger.info(
             f"Stopped session {session.uid} at {timestamp} with {session.kwh} kWh and "
             f"cost {session.total_cost_incl_vat} {session.currency}"
+        )
+
+    @staticmethod
+    def _clear_token_authorization_cache(session: Session) -> None:
+        from ocpi22.cpo.mqtt.services import _find_token_by_uid
+
+        token_uid = session.cdr_token.uid
+        token: str | Token = _find_token_by_uid(token_uid) or token_uid
+        token_dto = TokenDto(
+            uid=token.uid if isinstance(token, Token) else token,
+            adhoc=isinstance(token, str),
+            token=token if isinstance(token, Token) else None,
+        )
+        _authorize_token.clear_cache_item(
+            token_dto,
+            session.location,
+            request=None,
+            evse_id=session.evse.evse_id,
         )
 
     @staticmethod

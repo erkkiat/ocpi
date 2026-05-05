@@ -8,13 +8,20 @@ import time_machine
 
 from ocpi22.cpo.session_service import SessionService
 from ocpi22.models.session import Session
+from ocpi22.models.token import Token
+from ocpi22.routing import find_route
 from ocpi22.tests.factories import (
+    CdrTokenFactory,
+    CredentialsRoleFactory,
     OCPISessionFactory,
     ConnectorFactory,
     LocationFactory,
     EvseFactory,
     TariffFactory,
+    TokenFactory,
 )
+from ocpi22.tokens.auth import _authorize_token
+from ocpi22.tokens.dataclasses import TokenDto
 
 
 @pytest.mark.django_db
@@ -487,3 +494,186 @@ class TestSessionServiceUpdateMeterValues:
         assert session.last_updated is not None
         assert session.total_cost_incl_vat is not None
         assert session.total_cost_excl_vat is not None
+
+
+@pytest.fixture(autouse=True)
+def clear_caches():
+    _authorize_token.cache_clear()
+    find_route.cache_clear()
+
+
+@pytest.fixture
+def always_whitelist_token():
+    return TokenFactory(
+        uid="ALWAYS_TOKEN",
+        whitelist=Token.ALWAYS,
+        ocpi_master=CredentialsRoleFactory(
+            country_code="DE", party_id="TST", role="EMSP"
+        ),
+    )
+
+
+@pytest.fixture
+def always_token_dto(always_whitelist_token):
+    return TokenDto(
+        uid=always_whitelist_token.uid, adhoc=False, token=always_whitelist_token
+    )
+
+
+@pytest.mark.django_db
+class TestStopAndCreateCdrClearsAuthorizeTokenCache:
+    @pytest.fixture
+    def location(self):
+        return LocationFactory(name="Session Location")
+
+    @pytest.fixture
+    def evse(self, location):
+        return EvseFactory(location=location, uid="EVSE001")
+
+    @pytest.fixture
+    def connector(self, evse):
+        return ConnectorFactory(evse=evse)
+
+    @pytest.fixture
+    def session(self, always_whitelist_token, location, evse, connector):
+        cdr_token = CdrTokenFactory(uid=always_whitelist_token.uid)
+        return OCPISessionFactory(
+            status=Session.ACTIVE,
+            start_kwh=10.0,
+            stop_kwh=20.0,
+            cdr_token=cdr_token,
+            evse=evse,
+            location=location,
+            connector=connector,
+        )
+
+    def test_stop_and_create_cdr_clears_authorize_token_cache_entry(
+        self, always_token_dto, location, evse, session
+    ):
+        _authorize_token(always_token_dto, location, request=None, evse_id=evse.evse_id)
+        _authorize_token(always_token_dto, location, request=None, evse_id=evse.evse_id)
+        assert _authorize_token.cache_info().hits == 1
+
+        SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
+
+        misses_before = _authorize_token.cache_info().misses
+        _authorize_token(always_token_dto, location, request=None, evse_id=evse.evse_id)
+
+        assert _authorize_token.cache_info().misses == misses_before + 1
+
+    def test_stop_and_create_cdr_does_not_clear_other_tokens_cache_entry(
+        self, location, evse, session
+    ):
+        other_token = TokenFactory(
+            uid="OTHER_TOKEN",
+            whitelist=Token.ALWAYS,
+            ocpi_master=CredentialsRoleFactory(
+                country_code="DE", party_id="OTH", role="EMSP"
+            ),
+        )
+        other_token_dto = TokenDto(uid=other_token.uid, adhoc=False, token=other_token)
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+        assert _authorize_token.cache_info().hits == 1
+
+        SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
+
+        hits_before = _authorize_token.cache_info().hits
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+
+        assert _authorize_token.cache_info().hits == hits_before + 1
+
+    def test_stop_and_create_cdr_does_not_clear_authorize_token_cache_at_different_location(
+        self, always_token_dto, evse, session
+    ):
+        other_location = LocationFactory(name="Other Location")
+        _authorize_token(
+            always_token_dto, other_location, request=None, evse_id=evse.evse_id
+        )
+        _authorize_token(
+            always_token_dto, other_location, request=None, evse_id=evse.evse_id
+        )
+        assert _authorize_token.cache_info().hits == 1
+
+        SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
+
+        hits_before = _authorize_token.cache_info().hits
+        _authorize_token(
+            always_token_dto, other_location, request=None, evse_id=evse.evse_id
+        )
+
+        assert _authorize_token.cache_info().hits == hits_before + 1
+
+    def test_stop_and_create_cdr_does_not_clear_authorize_token_cache_for_different_evse(
+        self, always_token_dto, location, session
+    ):
+        other_evse = EvseFactory(location=location, uid="EVSE002")
+        _authorize_token(
+            always_token_dto, location, request=None, evse_id=other_evse.evse_id
+        )
+        _authorize_token(
+            always_token_dto, location, request=None, evse_id=other_evse.evse_id
+        )
+        assert _authorize_token.cache_info().hits == 1
+
+        SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
+
+        hits_before = _authorize_token.cache_info().hits
+        _authorize_token(
+            always_token_dto, location, request=None, evse_id=other_evse.evse_id
+        )
+
+        assert _authorize_token.cache_info().hits == hits_before + 1
+
+    def test_clear_token_authorization_cache_calls_clear_cache_item_with_known_token_dto(
+        self, location, evse, connector
+    ):
+        token = TokenFactory(
+            uid="KNOWN_TOKEN",
+            whitelist=Token.ALWAYS,
+            ocpi_master=CredentialsRoleFactory(
+                country_code="DE", party_id="TST", role="EMSP"
+            ),
+        )
+        cdr_token = CdrTokenFactory(uid=token.uid)
+        session = OCPISessionFactory(
+            status=Session.ACTIVE,
+            cdr_token=cdr_token,
+            evse=evse,
+            location=location,
+            connector=connector,
+        )
+        expected_token_dto = TokenDto(uid=token.uid, adhoc=False, token=token)
+
+        with patch.object(_authorize_token, "clear_cache_item") as mock_clear:
+            SessionService._clear_token_authorization_cache(session)
+
+        mock_clear.assert_called_once_with(
+            expected_token_dto,
+            session.location,
+            request=None,
+            evse_id=session.evse.evse_id,
+        )
+
+    def test_clear_token_authorization_cache_calls_clear_cache_item_with_adhoc_token_dto_when_token_not_found(
+        self, location, evse, connector
+    ):
+        cdr_token = CdrTokenFactory(uid="UNKNOWN_TOKEN_UID")
+        session = OCPISessionFactory(
+            status=Session.ACTIVE,
+            cdr_token=cdr_token,
+            evse=evse,
+            location=location,
+            connector=connector,
+        )
+        expected_token_dto = TokenDto(uid="UNKNOWN_TOKEN_UID", adhoc=True, token=None)
+
+        with patch.object(_authorize_token, "clear_cache_item") as mock_clear:
+            SessionService._clear_token_authorization_cache(session)
+
+        mock_clear.assert_called_once_with(
+            expected_token_dto,
+            session.location,
+            request=None,
+            evse_id=session.evse.evse_id,
+        )
