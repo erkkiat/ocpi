@@ -11,6 +11,7 @@ from ocpi22.models.session import Session
 from ocpi22.models.token import Token
 from ocpi22.routing import find_route
 from ocpi22.tests.factories import (
+    CdrTokenFactory,
     CredentialsRoleFactory,
     OCPISessionFactory,
     ConnectorFactory,
@@ -521,16 +522,54 @@ def always_token_dto(always_whitelist_token):
 
 @pytest.mark.django_db
 class TestStopAndCreateCdrClearsAuthorizeTokenCache:
-    def test_stop_and_create_cdr_clears_authorize_token_cache(self, always_token_dto):
-        _authorize_token(always_token_dto)
-        _authorize_token(always_token_dto)
-        assert _authorize_token.cache_info().hits == 1
+    def test_stop_and_create_cdr_clears_authorize_token_cache_only_for_session_token(
+        self, always_whitelist_token
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        connector = ConnectorFactory(evse=evse)
 
+        other_token = TokenFactory(
+            uid="OTHER_TOKEN",
+            whitelist=Token.ALWAYS,
+            ocpi_master=CredentialsRoleFactory(
+                country_code="DE", party_id="OTH", role="EMSP"
+            ),
+        )
+        session_token_dto = TokenDto(
+            uid=always_whitelist_token.uid, adhoc=False, token=always_whitelist_token
+        )
+        other_token_dto = TokenDto(uid=other_token.uid, adhoc=False, token=other_token)
+
+        _authorize_token(
+            session_token_dto, location, request=None, evse_id=evse.evse_id
+        )
+        _authorize_token(
+            session_token_dto, location, request=None, evse_id=evse.evse_id
+        )
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+        assert _authorize_token.cache_info().hits == 2
+
+        cdr_token = CdrTokenFactory(uid=always_whitelist_token.uid)
         session = OCPISessionFactory(
-            status=Session.ACTIVE, start_kwh=10.0, stop_kwh=20.0
+            status=Session.ACTIVE,
+            start_kwh=10.0,
+            stop_kwh=20.0,
+            cdr_token=cdr_token,
+            evse=evse,
+            location=location,
+            connector=connector,
         )
 
         SessionService().stop_and_create_cdr(session, stop_kwh=30.0)
 
-        assert _authorize_token.cache_info().hits == 0
-        assert _authorize_token.cache_info().misses == 0
+        hits_before = _authorize_token.cache_info().hits
+        misses_before = _authorize_token.cache_info().misses
+        _authorize_token(
+            session_token_dto, location, request=None, evse_id=evse.evse_id
+        )
+        assert _authorize_token.cache_info().misses == misses_before + 1
+
+        _authorize_token(other_token_dto, location, request=None, evse_id=evse.evse_id)
+        assert _authorize_token.cache_info().hits == hits_before + 1
