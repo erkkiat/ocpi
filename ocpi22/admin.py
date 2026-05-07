@@ -986,7 +986,7 @@ class CredentialsAdmin(SolidModelAdmin):
         "valid",
         "responding",
         "last_update",
-        "allowed_locations",
+        "allowed_locations_truncated",
         "meter_value_frequency",
         "auth_priority",
     ]
@@ -1036,6 +1036,16 @@ class CredentialsAdmin(SolidModelAdmin):
     def delete_queryset(self, request, queryset):
         super().delete_queryset(request, queryset)
         CredentialsService.invalidate_all_caches()
+
+    def allowed_locations_truncated(self, obj) -> str:
+        locations = obj.allowed_locations or []
+        if not locations:
+            return "All locations allowed"
+        if len(locations) <= 3:
+            return ", ".join(locations)
+        return f"{', '.join(locations[:3])} (+{len(locations) - 3} more)"
+
+    allowed_locations_truncated.short_description = "Allowed locations"
 
     last_update.admin_order_field = "last_connection"
     last_update.short_description = "Last connection"
