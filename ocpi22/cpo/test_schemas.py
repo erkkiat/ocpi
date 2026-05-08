@@ -261,7 +261,7 @@ def test_empty_evse_capability_raises_validation_error(evse_data):
 
     error_msg = str(exc_info.value)
     assert (
-        "1 validation error for EVSE\ncapabilities\n  List should have at least 1 item after validation, not 0 "
+        "1 validation error for SolidEvse\ncapabilities\n  List should have at least 1 item after validation, not 0 "
         in error_msg
     )
 
@@ -272,4 +272,4 @@ def test_evse_capability_none_raises_validation_error(evse_data):
         SolidEvse(**evse_data)
 
     error_msg = str(exc_info.value)
-    assert "EVSE\ncapabilities\n  Input should be a valid list" in error_msg
+    assert "SolidEvse\ncapabilities\n  Input should be a valid list" in error_msg
