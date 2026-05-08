@@ -1,5 +1,9 @@
 import functools
+from decimal import Decimal, ROUND_UP
+
 import regex
+import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -8,6 +12,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Max
 
+from generic.countries import COUNTRIES_ISO_3
 from integrations.hubject.schemas import (
     OperatorEvseData,
     EvseDataRecord,
@@ -43,14 +48,25 @@ from integrations.hubject.schemas import (
     ProductID,
     RFIDMifareFamilyIdentificationClass,
     EvseStatus as OICPEvseStatus,
+    RemoteIdentification,
+    EvcoID,
+    PeriodItem,
+    OpeningTimes as HubjectOpeningTimes,
+    On,
 )
-from ocpi22.choices import OCPICapability
+from ocpi22 import choices
+from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
+from ocpi22.cpo.schemas import OpeningTimes, RegularHours
+from ocpi22.choices import TokenType
 from ocpi22.cpo.repositories import SolidTariffRepository
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.tariff import SolidTariff
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from ocpi22.models.cdr import Cdr
+    from ocpi22.models.session import Session
 
 
 class SolidToHubjectConverter:
@@ -84,20 +100,23 @@ class SolidToHubjectConverter:
         street, house_number = self.get_address_components(
             location.address, location.country
         )
+        germany = next(
+            (country for country in COUNTRIES_ISO_3 if country[0] == "DEU"), None
+        )
+        germany_code = germany[0] if germany else None
+        if hasattr(location, "opening_times"):
+            hours = location.opening_times
+        else:
+            hours = None
         return EvseDataRecord(
             # todo : deltaType missing in ocpi22
             deltaType=None,
             lastUpdate=evse.last_updated,
             EvseID=self.get_evse_id(evse.evse_id),
-            # todo : ChargingPoolID missing in ocpi22
             ChargingPoolID=None,
-            # todo : ChargingStationID missing in ocpi22
-            ChargingStationId=None,
-            # todo : HardwareManufacturer missing in ocpi22
+            ChargingStationId=location.uid,
             HardwareManufacturer=None,
-            # todo : ChargingStationImage missing in ocpi22
             ChargingStationImage=None,
-            # todo : SubOperatorName missing in ocpi22
             SubOperatorName=None,
             Address=Address(
                 Country=location.country,
@@ -105,10 +124,10 @@ class SolidToHubjectConverter:
                 Street=street,
                 PostalCode=location.postal_code,
                 HouseNum=house_number,
-                # todo : Floor missing in ocpi22,
-                # todo : Region missing in ocpi22,
+                Floor=None,
+                Region=None,
                 ParkingFacility=True if location.parking_type else False,
-                # todo : ParkingSpot missing in ocpi22,
+                ParkingSpot=None,
                 TimeZone=self.get_timezone(location.time_zone),
             ),
             GeoCoordinates=GeoCoordinates(
@@ -122,30 +141,23 @@ class SolidToHubjectConverter:
             Plugs=self.get_distinct_plugs(evse.connectors.all()),
             DynamicPowerLevel=None,
             ChargingFacilities=self.get_charging_facilities(evse.connectors.all()),
-            # todo : RenewableEnergy check with smappee, default to False
             RenewableEnergy=False,
-            # todo : EnergySource missing in ocpi22 location model, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnergySource=None,
-            # todo : EnvironmentalImpact missing in ocpi22, But it can be found in OCPIEnergyMix, is not clearly mapping directly to OICP
             EnvironmentalImpact=None,
-            # todo : CalibrationLawDataAvailability missing in ocpi22, required, defaulted to Local
-            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local,
+            CalibrationLawDataAvailability=CalibrationLawDataAvailability.Local
+            if location.country == germany_code
+            else CalibrationLawDataAvailability.Not_Available,
             AuthenticationModes=self.get_authentication_modes_list(evse.capabilities),
-            # todo : MaxCapacity missing in ocpi22,
             MaxCapacity=None,
-            # todo : PaymentOptions missing in ocpi22,
             PaymentOptions=self.get_payment_options(evse.capabilities),
             ValueAddedServices=self.get_value_added_services_list(evse.capabilities),
-            # todo : Accessibility missing in ocpi22, default to free, discuss with smappee
             Accessibility=Accessibility.Free_publicly_accessible,
             AccessibilityLocation=self.get_accessibility_locations(
                 location.parking_type
             ),
-            # todo : HotlinePhoneNumber missing in ocpi22, we have msp phone not CPO.
             HotlinePhoneNumber=settings.HOTLINE,
-            # todo : AdditionalInfo missing in ocpi22,
-            # todo : ChargingStationLocationReference missing in ocpi22,
-            # todo : ChargingStationNames missing in ocpi22
+            AdditionalInfo=None,
+            ChargingStationLocationReference=None,
             ChargingStationNames=[
                 InfoTextType(lang="en", value=location.name if location.name else "")
             ],
@@ -157,14 +169,16 @@ class SolidToHubjectConverter:
                 ),
                 DegreeMinuteSeconds=None,
             ),
-            # todo : IsOpen24Hours usage of the charging when closed does not directly map to OCIP,
-            IsOpen24Hours=location.charging_when_closed,
-            # todo : OpeningTimes will be implemented later,
-            OpeningTimes=None,
-            # todo : HubOperatorID missing in ocpi22,
-            # todo : ClearinghouseID missing in ocpi22,
-            IsHubjectCompatible=False,
-            DynamicInfoAvailable=DynamicInfoAvailable.false,
+            IsOpen24Hours=hours.twentyfourseven if hours else True,
+            OpeningTimes=self.map_regular_hours_to_opening_times(
+                hours.regular_hours.all()
+            )
+            if hours and not hours.twentyfourseven
+            else None,
+            HubOperatorID=None,
+            ClearinghouseID=None,
+            IsHubjectCompatible=True,
+            DynamicInfoAvailable=DynamicInfoAvailable.true,
         )
 
     def get_evse_id(self, evse_id: str) -> EvseID:
@@ -194,24 +208,25 @@ class SolidToHubjectConverter:
         operator_name: str,
     ) -> PricingProductData:
         return PricingProductData(
-            OperatorID=operator_id,
+            OperatorID=OperatorID(root=operator_id),
             OperatorName=operator_name,
             PricingDefaultPrice=hubject_default_tariff.price,
             PricingDefaultPriceCurrency=CurrencyID(
                 root=hubject_default_tariff.currency
             ),
             PricingDefaultReferenceUnit=ReferenceUnit(
-                root=hubject_default_tariff.price_component
+                root=hubject_default_tariff.price_component.value
             ),
             PricingProductDataRecords=[
                 record
                 for solid_tariff in solid_tariffs
-                for record in self.convert_to_pricing_product_data_records(
-                    solid_tariff, operator_id
+                if (
+                    record := self.convert_to_pricing_product_data_records(solid_tariff)
                 )
+                is not None
             ],
             # todo: Offer to all should not be used in production.
-            ProviderID=self.get_provider_ids(solid_tariffs),
+            ProviderID=ProviderIDAsterisk(root="*"),
         )
 
     def get_provider_ids(self, solid_tariffs: list[SolidTariff]) -> ProviderIDAsterisk:
@@ -220,51 +235,135 @@ class SolidToHubjectConverter:
             return ProviderIDAsterisk(root="*")
         return ProviderIDAsterisk(root=solid_tariffs[0].msp.party_str())
 
+    def _get_primary_price(
+        self, solid_tariff: SolidTariff
+    ) -> tuple[Decimal, HubjectPriceComponent]:
+        if solid_tariff.price_per_kwh is not None:
+            return solid_tariff.price_per_kwh, HubjectPriceComponent.KWH
+        elif solid_tariff.price_per_hr is not None:
+            return solid_tariff.price_per_hr, HubjectPriceComponent.HOUR
+        elif solid_tariff.price_per_min is not None:
+            return solid_tariff.price_per_min, HubjectPriceComponent.MINUTE
+
+        raise ValidationError(
+            f"Missing ENERGY, TIME component for SolidTariff {solid_tariff.external_id}, Skipping update to Hubject."
+        )
+
+    def _get_hourly_price_additional_reference(
+        self,
+        price: Decimal,
+        primary_reference_unit: HubjectPriceComponent,
+    ) -> Optional[AdditionalReference]:
+        if (
+            price is not None
+            and not primary_reference_unit == HubjectPriceComponent.HOUR
+        ):
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+        return None
+
+    def _get_minute_price_additional_reference(
+        self,
+        price: Decimal,
+        primary_reference_unit: HubjectPriceComponent,
+    ) -> Optional[AdditionalReference]:
+        if (
+            price is not None
+            and not primary_reference_unit == HubjectPriceComponent.MINUTE
+        ):
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.PARKING_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.MINUTE.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+        return None
+
+    def _get_flat_price_additional_reference(
+        self,
+        price: Decimal,
+    ) -> Optional[AdditionalReference]:
+        if price is not None:
+            return AdditionalReference(
+                AdditionalReference=AdditionalReferenceChoice.START_FEE,
+                AdditionalReferenceUnit=ReferenceUnit(
+                    root=HubjectPriceComponent.HOUR.value
+                ),
+                PricePerAdditionalReferenceUnit=price.quantize(
+                    Decimal("0.001"), rounding=ROUND_UP
+                ),
+            )
+
+        return None
+
     def convert_to_pricing_product_data_records(
         self,
         solid_tariff: SolidTariff,
-        operator_id: str,
-    ) -> list[PricingProductDataRecord]:
-        conditions = [
-            (
-                HubjectPriceComponent.KWH,
-                solid_tariff.price_per_kwh,
-            ),
-            (
-                HubjectPriceComponent.MINUTE,
-                solid_tariff.price_per_min,
-            ),
-        ]
+    ) -> Optional[PricingProductDataRecord]:
+        try:
+            primary_price, primary_reference_unit = self._get_primary_price(
+                solid_tariff
+            )
+        except ValidationError as e:
+            logger.warning(str(e))
+            return None
 
-        pricing_product_data_records = []
-        for ref_unit, price in conditions:
-            if price is not None:
-                pricing_product_data_records.append(
-                    PricingProductDataRecord(
-                        AdditionalReferences=[
-                            AdditionalReference(
-                                AdditionalReference=AdditionalReferenceChoice.START_FEE,
-                                AdditionalReferenceUnit=ReferenceUnit(
-                                    root=HubjectPriceComponent.HOUR.value
-                                ),
-                                PricePerAdditionalReferenceUnit=solid_tariff.price_flat,
-                            ),
-                        ],
-                        IsValid24hours=True,
-                        MaximumProductChargingPower=self.get_maximum_product_charging_power(),
-                        PricePerReferenceUnit=price,
-                        ProductAvailabilityTimes=[],
-                        ProductID=self.get_pricing_product_id(
-                            solid_tariff.external_id,
-                            ref_unit,
-                            operator_id,
-                            solid_tariff.msp.party_str() if solid_tariff.msp else "",
-                        ),
-                        ProductPriceCurrency=solid_tariff.currency,
-                        ReferenceUnit=ReferenceUnit(root=ref_unit),
-                    )
+        primary_price = primary_price.quantize(Decimal("0.001"), rounding=ROUND_UP)
+
+        pricing_product_base_data_record = PricingProductDataRecord(
+            AdditionalReferences=[],
+            IsValid24hours=True,
+            MaximumProductChargingPower=self.get_maximum_product_charging_power(),
+            PricePerReferenceUnit=primary_price,
+            ProductAvailabilityTimes=[],
+            ProductID=ProductID(
+                root=self.get_pricing_product_id(
+                    solid_tariff.external_id, solid_tariff.ocpi_tariff.uid
                 )
-        return pricing_product_data_records
+            ),
+            ProductPriceCurrency=CurrencyID(root=solid_tariff.currency),
+            ReferenceUnit=ReferenceUnit(root=primary_reference_unit.value),
+        )
+
+        price_flat_additional_reference = self._get_flat_price_additional_reference(
+            solid_tariff.price_flat
+        )
+        if price_flat_additional_reference:
+            pricing_product_base_data_record.AdditionalReferences.append(
+                price_flat_additional_reference
+            )
+
+        price_per_hour_additional_reference = (
+            self._get_hourly_price_additional_reference(
+                solid_tariff.price_per_hr, primary_reference_unit
+            )
+        )
+        if price_per_hour_additional_reference:
+            pricing_product_base_data_record.AdditionalReferences.append(
+                price_per_hour_additional_reference
+            )
+        else:
+            price_per_minute_additional_reference = (
+                self._get_minute_price_additional_reference(
+                    solid_tariff.price_per_min, primary_reference_unit
+                )
+            )
+            if price_per_minute_additional_reference:
+                pricing_product_base_data_record.AdditionalReferences.append(
+                    price_per_minute_additional_reference
+                )
+
+        return pricing_product_base_data_record
 
     def get_maximum_product_charging_power(self):
         return (
@@ -276,16 +375,17 @@ class SolidToHubjectConverter:
 
     def get_pricing_product_id(
         self,
-        solid_tariff_id: str,
-        ref_unit: HubjectPriceComponent,
-        operator_id: str,
-        msp_id: str,
+        external_id: str,
+        ocpi_tariff_uid: str,
     ) -> str:
-        if not operator_id or not solid_tariff_id or not ref_unit:
-            raise ValueError(
-                "Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID."
-            )
-        return f"{operator_id}*{solid_tariff_id}*{ref_unit.value}*{msp_id}"
+        if not external_id or external_id == "":
+            return ocpi_tariff_uid
+        product_id = f"{ocpi_tariff_uid}*{external_id}"
+        if len(product_id) <= 50:
+            return product_id
+
+        truncated = f"{external_id[:6]}_{external_id[-6:]}"
+        return f"{ocpi_tariff_uid}*{truncated}"
 
     def get_plug(self, connector_std: str) -> Plug:
         """
@@ -420,6 +520,7 @@ class SolidToHubjectConverter:
 
         mapping = {
             OCPICapability.RFID_READER: AuthenticationMode.NFC_RFID_Classic,
+            OCPICapability.REMOTE_START_STOP_CAPABLE: AuthenticationMode.REMOTE,
         }
         return mapping.get(capability)
 
@@ -564,6 +665,33 @@ class SolidToHubjectConverter:
         # TODO: No Payment will be determined separately with tariffs
         return payment_options
 
+    @staticmethod
+    def get_identification(session: "Session") -> Identification:
+        token_type = session.cdr_token.token_type
+        identification = Identification(
+            RFIDMifareFamilyIdentification=None,
+            RFIDIdentification=None,
+            QRCodeIdentification=None,
+            PlugAndChargeIdentification=None,
+            RemoteIdentification=None,
+        )
+
+        match token_type:
+            case TokenType.RFID | TokenType.AD_HOC_USER | TokenType.OTHER:
+                identification.RFIDMifareFamilyIdentification = (
+                    RFIDMifareFamilyIdentificationClass(
+                        UID=UID(root=session.cdr_token.uid)
+                    )
+                )
+            case TokenType.APP_USER:
+                identification.RemoteIdentification = RemoteIdentification(
+                    EvcoID=EvcoID(root=session.cdr_token.contract_id)
+                )
+            case _:
+                raise ValidationError(f"Unsupported token type: {token_type}")
+
+        return identification
+
     def convert_cdr_to_eroaming_charging_detail_record(
         self, cdr: "Cdr"
     ) -> ERoamingChargeDetailRecord:
@@ -585,9 +713,7 @@ class SolidToHubjectConverter:
         if solid_tariff:
             partner_product_id = self.get_pricing_product_id(
                 solid_tariff.external_id,
-                HubjectPriceComponent.KWH,
-                operator_party_str,
-                msp_party_str,
+                solid_tariff.ocpi_tariff.uid,
             )
 
         eroaming_cdr = ERoamingChargeDetailRecord(
@@ -598,11 +724,7 @@ class SolidToHubjectConverter:
                 ProductID(root=partner_product_id) if partner_product_id else None
             ),
             evse_id=EvseID(root=cdr.evse_id),
-            identification=Identification(
-                RFIDMifareFamilyIdentification=RFIDMifareFamilyIdentificationClass(
-                    UID=UID(root=session.token_id)
-                ),
-            ),
+            identification=self.get_identification(session),
             charging_start=cdr.start_date_time,
             charging_end=cdr.end_date_time,
             session_start=cdr.start_date_time,
@@ -626,6 +748,9 @@ class SolidToHubjectConverter:
             == CalibrationLawDataAvailability.External
         ):
             if eroaming_cdr.signed_metering_values is None:
+                logger.error(
+                    "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External in ERoamingChargeDetailRecord."
+                )
                 raise ValidationError(
                     "SignedMeteringValues must be provided when CalibrationLawDataAvailability is External."
                 )
@@ -654,3 +779,56 @@ class SolidToHubjectConverter:
                 return OICPEvseStatus.Unknown
             case _:
                 raise ValueError(f"Invalid OCPI status [{status}] found")
+
+    def map_regular_hours_to_opening_times(
+        self, regular_hours: list[RegularHours]
+    ) -> list[OpeningTimes] | None:
+        def _label_from_days(day_list):
+            day_set = set(day_list)
+            if len(day_set) == 1:
+                return WEEKDAY_CHOICES.from_number(day_set.pop()).name
+            if day_set == choices.Everyday:
+                return "Everyday"
+            elif day_set == choices.Workdays:
+                return "Workdays"
+            elif day_set == choices.Weekend:
+                return "Weekend"
+            else:
+                return [WEEKDAY_CHOICES.from_number(d).name for d in sorted(day_set)]
+
+        def _group_the_weekdays_by_time_period(
+            regular_hours: list[RegularHours],
+        ) -> dict[str, list[str]]:
+            grouped_slots = defaultdict(list)
+
+            for rh in regular_hours:
+                time_slot = f"{rh.period_begin.strftime('%H:%M')}-{rh.period_end.strftime('%H:%M')}"
+                grouped_slots[time_slot].append(rh.weekday)
+            return dict(grouped_slots)
+
+        periods_list_per_workday = defaultdict(list)
+        for period, weekdays in _group_the_weekdays_by_time_period(
+            regular_hours
+        ).items():
+            weekday_names = _label_from_days(weekdays)
+            if isinstance(weekday_names, list):
+                for wd in weekday_names:
+                    periods_list_per_workday[wd].append(period)
+            else:
+                periods_list_per_workday[weekday_names].append(period)
+
+        opening_times = []
+        for weekday, periods in periods_list_per_workday.items():
+            opening_hour = HubjectOpeningTimes(
+                Period=[
+                    PeriodItem(
+                        begin=period.split("-")[0],
+                        end=period.split("-")[1],
+                    )
+                    for period in periods
+                ],
+                on=On.get_day_from_str(weekday),
+            )
+            opening_times.append(opening_hour)
+
+        return opening_times

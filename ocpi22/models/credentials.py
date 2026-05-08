@@ -148,6 +148,19 @@ class Credentials(models.Model, ModelUtilMixin, OcpiModule):
     ca_certificate_name = models.CharField(
         max_length=255, blank=True, null=False, default=""
     )
+    meter_value_frequency = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_("Meter value reporting frequency (in seconds)"),
+        help_text=_(
+            "How often meter values should be reported to this partner. Leave empty for default."
+        ),
+    )
+    auth_priority = models.PositiveIntegerField(
+        default=100,
+        verbose_name=_("Auth Priority rank"),
+        help_text=_("Lower numbers indicate higher priority"),
+    )
 
     def soft_delete(self):
         self.valid = False
@@ -406,7 +419,7 @@ class CredentialsRole(models.Model, ModelUtilMixin):
 
 class Endpoint(models.Model, ModelUtilMixin):
     identifier = models.CharField(
-        max_length=13, choices=IDENTIFIER_CHOICES, verbose_name=_("Identifier")
+        max_length=16, choices=IDENTIFIER_CHOICES, verbose_name=_("Identifier")
     )
 
     url = models.URLField(verbose_name=_("URL"))

@@ -1,3 +1,4 @@
+import functools
 import time
 import uuid
 import logging
@@ -60,8 +61,29 @@ class LoggingMiddleware(MiddlewareMixin):
         view_kwargs: Dict[str, Any],
     ) -> Optional[HttpResponse]:
         if not getattr(request, "_skip_logging", False):
-            request.view_name = f"{view_func.__module__}.{view_func.__name__}"
+            request.view_name = self._resolve_view_name(view_func)
         return None
+
+    def _resolve_view_name(self, view_func: Callable) -> str:
+        unwrapped_func = view_func
+
+        while True:
+            if isinstance(unwrapped_func, functools.partial):
+                unwrapped_func = unwrapped_func.func
+            elif hasattr(unwrapped_func, "__wrapped__"):
+                unwrapped_func = unwrapped_func.__wrapped__
+            else:
+                break
+
+        try:
+            module = getattr(unwrapped_func, "__module__", "unknown_module")
+            name = getattr(
+                unwrapped_func, "__name__", unwrapped_func.__class__.__name__
+            )
+
+            return f"{module}.{name}"
+        except Exception:
+            return str(unwrapped_func)
 
     def process_exception(
         self, request: HttpRequest, exception: Exception

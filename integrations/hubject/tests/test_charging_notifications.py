@@ -146,7 +146,13 @@ def test_create_charging_notification_payload_start_successfully():
         "charging_start": "2021-01-01T10:00:00Z",
         "emp_partner_session_id": None,
         "evse_id": session.evse.evse_id,
-        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
         "meter_value_start": 0.0,
         "operator_id": "FI*CPO",
         "partner_product_id": None,
@@ -178,7 +184,13 @@ def test_create_charging_notification_payload_progress_successfully():
         "charging_start": "2021-01-01T10:00:00Z",
         "emp_partner_session_id": None,
         "evse_id": session.evse.evse_id,
-        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
         "meter_value_start": 0.0,
         "charging_duration": hours_to_milliseconds(session.total_time_float),
         "meter_value_in_between": None,
@@ -234,7 +246,13 @@ def test_create_charging_notification_payload_end_successfully():
         "charging_start": "2021-01-01T10:00:00Z",
         "emp_partner_session_id": None,
         "evse_id": session.evse.evse_id,
-        "identification": {"RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"}},
+        "identification": {
+            "RFIDMifareFamilyIdentification": {"UID": "DEADC0DE"},
+            "RemoteIdentification": None,
+            "QRCodeIdentification": None,
+            "RFIDIdentification": None,
+            "PlugAndChargeIdentification": None,
+        },
         "meter_value_start": 0.0,
         "charging_end": "2021-01-01T12:00:00Z",
         "session_end": "2021-01-01T12:00:00Z",
@@ -306,6 +324,17 @@ def test_send_updates_calls_correct_method(
     )
     assert response.status_code == 200
     assert json.loads(response.request.body)["Type"] == notification_type.value
+
+
+@pytest.mark.django_db
+def test_send_progress_update_does_not_send_update_for_kwh_zero():
+    session = OCPISessionFactory(start_kwh=0.0, stop_kwh=0.0)
+    with patch(
+        "integrations.hubject.services.HubjectService.post_charging_notification"
+    ) as mock_post:
+        HubjectService.send_update(session, ChargingNotificationType.Progress)
+
+    assert not mock_post.called
 
 
 @responses.activate

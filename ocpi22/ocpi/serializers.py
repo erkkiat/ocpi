@@ -219,17 +219,16 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
 
     def update(self, instance: Tariff, validated_data: dict) -> Tariff:
         tariff_elements = validated_data.pop("tariff_elements")
-        tariff_alt_text = validated_data.pop("tariff_alt_text", None)
+        tariff_alt_text = validated_data.pop("tariff_alt_text", [])
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
         self._delete_children(instance)
         self._create_children(instance, tariff_elements)
-        if tariff_alt_text:
-            tariff_alt_texts = [
-                DisplayText.objects.get_or_create(**tat) for tat in tariff_alt_text
-            ]
-            instance.tariff_alt_text.set(tariff_alt_texts)
+        tariff_alt_texts = [
+            DisplayText.objects.get_or_create(**tat)[0] for tat in tariff_alt_text or []
+        ]
+        instance.tariff_alt_text.set(tariff_alt_texts)
         return instance
 
     def create(self, validated_data: dict) -> Tariff:
@@ -238,7 +237,7 @@ class TariffSerializer(HyperlinkedModelSerializerCleanedUp):
         tariff = Tariff.objects.create(**validated_data)
         self._create_children(tariff, tariff_elements)
         tariff_alt_texts = [
-            DisplayText.objects.get_or_create(**tat)[0] for tat in tariff_alt_text
+            DisplayText.objects.get_or_create(**tat)[0] for tat in tariff_alt_text or []
         ]
         tariff.tariff_alt_text.set(tariff_alt_texts)
         return tariff
@@ -486,8 +485,8 @@ def update_charging_periods(session, chargingperiods):
         dimensions = chargingperiod.pop("dimensions", None)
         if not dimensions:
             raise ValidationError(
-                f'Chargingperiod {chargingperiod.get("start_date_time", None)} '
-                f'is missing CdrDimensions'
+                f"Chargingperiod {chargingperiod.get('start_date_time', None)} "
+                f"is missing CdrDimensions"
             )
 
         # Do we need to update an existing one?

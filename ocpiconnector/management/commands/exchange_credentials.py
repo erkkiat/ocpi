@@ -158,7 +158,7 @@ class Command(BaseCommand):
             roles = get_our_roles()
             if not roles:
                 raise exceptions.ImproperlyConfigured(
-                    f'CREDENTIALS - You need to set the OCPI roles of this Platform in environment variables, '
+                    f"CREDENTIALS - You need to set the OCPI roles of this Platform in environment variables, "
                     f'e.g. "CPO=NL*EON". The options are: {", ".join(ROLE_OPTIONS)}'
                 )
 

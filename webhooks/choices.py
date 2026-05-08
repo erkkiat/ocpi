@@ -7,6 +7,7 @@ class WebhookType(models.TextChoices):
     TOKEN_AUTHORIZATION = "TOKEN_AUTH", _("Token authorization")
     CHARGEPOINT_STATUS = "CP_STATUS", _("Charge point status")
     REMOTE_COMMAND = "REMOTE_COMMAND", _("Remote command")
+    FINANCIAL_ADVICE_CONFIRMATION = "FAC", _("Financial advice confirmation")
 
 
 class RemoteCommandType(models.TextChoices):

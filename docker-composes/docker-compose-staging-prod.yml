@@ -7,6 +7,7 @@ services:
     container_name: django-migrations
     env_file:
       - ./django-app.env
+    entrypoint: []
     command: [ "python", "manage.py", "migrate", "--noinput" ]
     restart: "no"
 
@@ -24,10 +25,11 @@ services:
     networks:
       - app-network
     depends_on:
-      - migrations
+      migrations:
+        condition: service_completed_successfully
 
   mqtt-subscriber:
-    image: "${MQTT_SUBSCRIBER_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: mqtt-subscriber
     env_file:
       - ./mqtt-subscriber.env
@@ -36,9 +38,12 @@ services:
     command: [ "mqtt-subscriber" ]
     networks:
       - app-network
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
 
   celery-mqtt:
-    image: "${CELERY_MQTT_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: celery-mqtt
     env_file:
       - ./celery-mqtt.env
@@ -47,17 +52,23 @@ services:
     command: [ "celery-mqtt" ]
     networks:
       - app-network
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
 
   celery-django:
-    image: "${CELERY_DJANGO_IMAGE}"
+    image: "${DJANGO_APP_IMAGE}"
     container_name: celery-django
     env_file:
-      - ./celery-mqtt.env
+      - ./celery-django.env
     volumes:
       - celery_logs:/var/log/celery
     command: [ "celery-django" ]
     networks:
       - app-network
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
 
 volumes:
   static_volume:

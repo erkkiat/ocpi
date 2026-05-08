@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: production
+
+resources:
+  - ../../base
+  - namespace.yaml
+  - configmap.yaml
+  - ingress.yaml
+
+images:
+  - name: solidroam-app
+    newName: REGION-docker.pkg.dev/PROJECT_ID/REPO_NAME/solidroam-app
+    newTag: v0.0.0  # replaced by CI with immutable release tag from release-drafter
+
+patches:
+  # ServiceAccount — Workload Identity binding for production GCP SA
+  - target:
+      kind: ServiceAccount
+      name: ocpiconnector-ksa
+    patch: |-
+      - op: replace
+        path: /metadata/annotations
+        value:
+          iam.gke.io/gcp-service-account: ocpiconnector-production@PROJECT_ID.iam.gserviceaccount.com
+
+  # SecretProviderClass — production secrets from GCP Secret Manager
+  - target:
+      kind: SecretProviderClass
+      name: ocpiconnector-secrets
+    patch: |-
+      - op: replace
+        path: /spec/parameters/secrets
+        value: |
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/DATABASE_URL/versions/latest"
+            path: "DATABASE_URL"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/REDIS_URL/versions/latest"
+            path: "REDIS_URL"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SECRET_KEY/versions/latest"
+            path: "SECRET_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/ALLOWED_HOSTS/versions/latest"
+            path: "ALLOWED_HOSTS"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CLIENT_CERTIFICATE/versions/latest"
+            path: "HUBJECT_CLIENT_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_PRIVATE_KEY/versions/latest"
+            path: "HUBJECT_PRIVATE_KEY"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/HUBJECT_CA_CERTIFICATE/versions/latest"
+            path: "HUBJECT_CA_CERTIFICATE"
+          - resourceName: "projects/REPLACE_WITH_PROJECT_NUMBER/secrets/SENTRY_DSN/versions/latest"
+            path: "SENTRY_DSN"
+
+  # django-app — scale up replicas for production
+  - target:
+      kind: Deployment
+      name: django-app
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2

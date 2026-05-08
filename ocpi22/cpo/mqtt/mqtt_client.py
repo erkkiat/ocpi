@@ -4,19 +4,33 @@ import threading
 import time
 import uuid
 from distutils.util import strtobool
+from functools import wraps
 from logging import getLogger
-from typing import Optional
+from typing import Optional, Callable
 
 from paho.mqtt import client as mqtt
+from django.db import close_old_connections
 
-from ocpi22.cpo.mqtt.mqtt_handler import on_connect, on_message
+from ocpiconnector.db_services import ensure_db_connection
+from ocpi22.cpo.mqtt import mqtt_handler
 
 logger = getLogger(__name__)
 
 
 class MQTTClientSingleton:
+    """
+    Thread-safe singleton MQTT client with automatic DB connection management.
+
+    Features:
+    1. Automatically wraps ALL callbacks with:
+       - DB connection lifecycle management (close before/after)
+       - DB error recovery with retry (via ensure_db_connection)
+       - Exception resilience (don't crash subscriber)
+    """
+
     _instance: Optional["MQTTClientSingleton"] = None
     _lock = threading.Lock()
+    _client_id: Optional[str] = None
 
     def __new__(cls) -> "MQTTClientSingleton":
         if cls._instance is None:
@@ -32,7 +46,50 @@ class MQTTClientSingleton:
 
         self.client: Optional[mqtt.Client] = None
         self._initialized = True
-        logger.info("MQTT Client Singleton initialized")
+
+        if not MQTTClientSingleton._client_id:
+            MQTTClientSingleton._client_id = f"ROAMING_{uuid.uuid4()}"
+
+        logger.info(f"MQTT Client Singleton initialized with ID: {self._client_id}")
+
+    def _wrap_db_safe_callback(self, callback: Callable):
+        """
+        Wrap MQTT callback with comprehensive protection:
+
+        1. DB connection lifecycle management:
+           - close_old_connections() before callback
+           - close_old_connections() after callback (always)
+
+        2. DB error recovery (via @ensure_db_connection):
+           - Catches connection errors
+           - Retries once after reconnecting
+
+        3. Exception resilience:
+           - Catches all exceptions
+           - Logs errors
+           - Doesn't crash MQTT subscriber
+
+        This ensures ALL MQTT callbacks are:
+        - Protected from DB connection leaks
+        - Resilient to DB connection errors
+        - Safe from crashing the subscriber
+        """
+
+        @ensure_db_connection
+        @wraps(callback)
+        def safe_callback(client, userdata, *args, **kwargs):
+            close_old_connections()
+            try:
+                return callback(client, userdata, *args, **kwargs)
+            except Exception as e:
+                logger.error(
+                    f"Error in MQTT callback {callback.__name__}: {type(e).__name__}",
+                    exc_info=True,
+                )
+            finally:
+                close_old_connections()
+
+        return safe_callback
 
     def get_client(self):
         if self.client is None:
@@ -40,8 +97,7 @@ class MQTTClientSingleton:
         return self.client
 
     def _create_and_connect_client(self):
-        client_id = f"ROAMING_{uuid.uuid4()}"
-        client = self._configure_client(client_id)
+        client = self._configure_client(self._client_id)
         self._connect_client(client)
         return client
 
@@ -53,8 +109,17 @@ class MQTTClientSingleton:
         client.username_pw_set(username, password)
         if strtobool(os.getenv("MQTT_USE_SSL", "False")):
             client = self._configure_ssl(client)
-        client.on_connect = on_connect
-        client.on_message = on_message
+
+        client.on_connect = self._wrap_db_safe_callback(mqtt_handler.on_connect)
+        client.on_message = self._wrap_db_safe_callback(mqtt_handler.on_message)
+
+        if hasattr(mqtt_handler, "on_disconnect"):
+            client.on_disconnect = self._wrap_db_safe_callback(
+                mqtt_handler.on_disconnect
+            )
+
+        logger.info("MQTT callbacks wrapped with automatic DB connection management")
+
         return client
 
     def _configure_ssl(self, client) -> mqtt.Client:
@@ -68,9 +133,10 @@ class MQTTClientSingleton:
         for attempt in range(retries):
             try:
                 logger.info(
-                    f"Attempting to connect to MQTT broker {broker_url}:{port} (attempt {attempt + 1}/{retries})..."
+                    f"Connecting to MQTT broker {broker_url}:{port} "
+                    f"(attempt {attempt + 1}/{retries})"
                 )
-                client.connect(broker_url, port)
+                client.connect(broker_url, port, keepalive=60)
                 logger.info(
                     f"Connected successfully to the MQTT broker {broker_url}:{port}"
                 )
@@ -97,10 +163,17 @@ class MQTTClientSingleton:
     def reset_client(self):
         with self._lock:
             if self.client:
-                self.client.loop_stop()
-                self.client.disconnect()
-                self.client = None
-                logger.info("MQTT client stopped and disconnected")
+                try:
+                    self.client.loop_stop()
+                    self.client.disconnect()
+                    self.client.on_connect = None
+                    self.client.on_message = None
+                    self.client.on_disconnect = None
+                    close_old_connections()
+                    self.client = None
+                    logger.info("MQTT client stopped, disconnected, and cleaned up")
+                except Exception as e:
+                    logger.exception(f"Error during client reset: {e}")
 
     def is_connected(self):
         return self.client is not None and self.client.is_connected()

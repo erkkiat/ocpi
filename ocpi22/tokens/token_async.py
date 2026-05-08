@@ -1,36 +1,27 @@
 import json
+import time
 from logging import getLogger
-from typing import Union
-from urllib.parse import urljoin
 
 import aiohttp
 import asyncio
 
 from aiohttp import ClientError
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.db import close_old_connections
 from rest_framework import status
 
 from ocpi22.choices import (
-    OcpiRolesEnum,
-    OcpiModuleEnum,
     AuthorizationEnum,
-    EndpointRoleEnum,
 )
-from ocpi22.credentials.util import find_endpoints_by_roles
 from ocpi22.models import enum
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location
-from ocpi22.models.token import Token
 from ocpi22.ocpi.dataclasses import AdhocToken
-from ocpi22.ocpi.headers import make_headers
 from ocpi22.ssl_services import load_ssl_context
 from ocpi22.tasks import get_cert_from_env
-from ocpi22.tokens.util import get_token_id
-from ocpiconnector.ocpi_identities import get_our_party
+from ocpi22.tokens.dataclasses import TokenDto
+from ocpi22.tokens.services import TokenAuthorizationService
 from ocpiconnector.party import Party
-from util import with_trailing_slash
 
 from typing import TYPE_CHECKING
 
@@ -46,44 +37,74 @@ async def post_request(
     headers = headers or {}
     response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
     headers.update({"Content-Type": "application/json", "Accept": "application/json"})
+
+    start_time = time.time()
     try:
-        response = await session.post(url, json=data, headers=headers, ssl=ssl_context)
+        response = await session.post(
+            url, json=data, headers=headers, ssl=ssl_context, timeout=8
+        )
+        duration = time.time() - start_time
         response_status = response.status
         json_data = await response.json()
     except (aiohttp.ContentTypeError, json.JSONDecodeError):
-        logger.error(f"Cannot decode JSON response from url {url}")
+        duration = time.time() - start_time
+        logger.exception(
+            f"Cannot decode JSON response from url {url}",
+            extra={"response_duration": duration, "status_code": response_status},
+        )
         json_data = None
     except ClientError:
-        logger.error(f"Cannot connect to {url} for token authorization")
+        duration = time.time() - start_time
+        logger.exception(
+            f"Cannot connect to {url} for token authorization",
+            extra={"response_duration": duration},
+        )
         return 0, None, None
 
-    logger.info("Response from %s status: %s", url, response_status, extra=json_data)
+    logger.info(
+        "Received authorization from %s with status : %s",
+        url,
+        response_status,
+        extra={**json_data, "response_duration": duration}
+        if json_data
+        else {"response_duration": duration},
+    )
     return response_status, json_data, ocpi_master
 
 
 def process_task_result(successful_task) -> dict | None:
-    # print(f"Response from {successful_task.get_name()} len: {len(successful_task.result())}")
     try:
         status_code, json_data, ocpi_master = successful_task.result()
-        if status_code != 200:
-            return None
-        if isinstance(json_data, dict):
-            json_data = json_data.get("data")
-            # If content is a Token authorize response, then break, otherwise continue
-            if isinstance(json_data, dict) and json_data.get("allowed"):
-                logger.info(f"Received authorization from {successful_task.get_name()}")
-                json_data["responding_party"] = successful_task.get_name()
-                token = json_data.get("token", {})
-                json_data["msp"] = (
-                    f'{token.get("country_code", "")}*{token.get("party_id", "")}'
-                )
-                return json_data
-    except (aiohttp.ContentTypeError, json.JSONDecodeError):
-        # Handle the case where response is not JSON or cannot be decoded
-        logger.error(
-            f"Cannot decode JSON response from party {successful_task.get_name()}"
+    except (TimeoutError, asyncio.TimeoutError) as e:
+        logger.warning(f"Authorization task failed with exception: {e}")
+        return None
+
+    if status_code != 200:
+        logger.warning(
+            f"Authorization failed with status {status_code}, data: {json_data} for {str(ocpi_master)}"
         )
-        pass
+        return None
+
+    if not isinstance(json_data, dict):
+        return None
+
+    response_data = json_data.get("data")
+    task_name = successful_task.get_name()
+    status_code = json_data.get("status_code")
+    if not response_data and isinstance(status_code, int) and status_code >= 2000:
+        logger.warning(
+            f"{task_name} responded OCPI error {json_data.get('status_message')}"
+        )
+        return {
+            "allowed": "NOT_ALLOWED",
+        }
+    if isinstance(response_data, dict) and response_data.get("allowed"):
+        response_data["responding_party"] = task_name
+        token = response_data.get("token", {})
+        response_data["msp"] = (
+            f"{token.get('country_code', '')}*{token.get('party_id', '')}"
+        )
+        return response_data
     return None
 
 
@@ -113,25 +134,23 @@ async def create_ssl_context(credential_id):
     )
 
 
-async def authorize_with_msps(token: Union[str, Token], data, parties):
+async def authorize_with_msps(token_dto: TokenDto, data: dict, parties: list[tuple]):
     """
-    Send authorization request asynchronously to all MSPs and wait for the first properly formatted response.
+    Send authorization request asynchronously to all MSPs and wait for the
+    first ALLOWED response in the adhoc token case. Whenever the token is known, only
+    send the request to the MSP that issued the token.
+    If no MSP allows the token, returns the first denial response with specific reason.
 
-    @param token: token_id as str or Token object
+    @param token: TokenDto representing the token and metadata
     @param data: the data to be sent in the Token authorization request
     @param parties: [(url, token_base64, country_code, party_id, credentials)]
-    @return:
+    @return: dict with authorization response or None if all tasks fail
     """
-    from integrations.hubject.services import HubjectService
 
-    def make_url(base_url, token_id_param):
-        return urljoin(with_trailing_slash(base_url), f"{token_id_param}/authorize")
-
-    # Prefetch credential roles before async operations
     async def prefetch_roles():
+        """Prefetch credential roles before async operations."""
         roles = []
         for _, _, country_code, party_id, credentials in parties:
-            # Prefetch the role in a synchronous context
             role = await sync_to_async(
                 lambda creds, cc, pid: creds.roles.filter(
                     country_code__iexact=cc, party_id__iexact=pid
@@ -141,85 +160,29 @@ async def authorize_with_msps(token: Union[str, Token], data, parties):
             roles.append(role)
         return roles
 
-    result = None
-    pending_tasks = []
-    sender = get_our_party(OcpiRolesEnum.CPO)
-    token_id = get_token_id(token)
-    # (endpoint.url, credentials.theirs_base64(), country_code, party_id, credentials)
+    # Prepare SSL contexts and roles
     ssl_contexts = await asyncio.gather(
         *[create_ssl_context(credentials.id) for _, _, _, _, credentials in parties]
     )
-    # Get all roles up front
     prefetched_roles = await prefetch_roles()
-    hubject_task = []
-    if settings.ENABLE_HUBJECT:
-        hubject_task.append(
-            asyncio.create_task(
-                HubjectService.post_authorize_request(
-                    operator_id=str(sender),
-                    token_id=token_id,
-                ),
-                name=settings.HUBJECT_OPERATOR_ID,
-            )
-        )
 
-    async with aiohttp.ClientSession() as session:
-        tasks = [
-            asyncio.create_task(
-                post_request(
-                    session=session,
-                    ssl_context=ssl_context,
-                    url=make_url(url, token_id),
-                    data=data,
-                    ocpi_master=role,  # Use prefetched role instead of async lookup
-                    headers=make_headers(
-                        token_base64, to=Party(country_code, party_id), sender=sender
-                    ),
-                ),
-                name=f"{country_code}*{party_id}",
-            )
-            for (
-                url,
-                token_base64,
-                country_code,
-                party_id,
-                _,  # credentials not needed anymore
-            ), ssl_context, role in zip(parties, ssl_contexts, prefetched_roles)
+    token_uid = token_dto.uid
+    service = TokenAuthorizationService()
+    party_details = service.build_party_details(
+        parties, ssl_contexts, prefetched_roles, token_uid
+    )
+    if token_dto.adhoc:
+        return await service.authorize_adhoc_token(party_details, data, token_uid)
+
+    else:
+        party_details = [
+            p for p in party_details if p.ocpi_master == token_dto.token.ocpi_master
         ]
-        tasks.extend(hubject_task)
-
-        while tasks:
-            done_tasks, pending_tasks = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_COMPLETED
-            )
-            # print(f'Processing {len(done_tasks)} done_tasks tasks ({len(pending_tasks)} still pending_tasks)...')
-
-            for task in done_tasks:
-                try:
-                    result = process_task_result(task)
-                    if result:
-                        break  # For loop
-                except Exception:
-                    logger.exception(f"Task {task.get_name()} failed")
-
-            if result:
-                break  # While loop
-
-            if not pending_tasks:
-                # No more tasks pending_tasks, break the loop
-                return result
-
-            tasks = set(pending_tasks)
-
-        # Cancel all pending_tasks tasks as we have found our successful task or there are no tasks left
-        for task in pending_tasks:
-            logger.debug(f"Cancelling task {task.get_name()}", task.cancel())
-
-        return result
+        return await service.authorize_known_token(party_details, data, token_uid)
 
 
 def authorize_with_msps_sync(
-    token: str, location: Location = None, parties: list[tuple] = None
+    token_dto: TokenDto, parties: list[tuple], location: Location = None
 ):
     """
     When a Token ID is not known, we need to authorize with all MSPs we have a contract with.
@@ -234,23 +197,15 @@ def authorize_with_msps_sync(
     from ocpi22.tokens.auth import TokenAuthorization
     from ocpi22.ocpi.serializers import AuthorizationInfoSerializer
 
+    token_uid = token_dto.uid
+
     # Todo: Add info texts for TokenNotAuthorized
     TokenNotAuthorized = TokenAuthorization(
         allowed=AuthorizationEnum.NOT_ALLOWED,
         token=AdhocToken(
-            valid=False, type="", uid=token, billed_to=Party(), ocpi_master=None
+            valid=False, type="", uid=token_uid, billed_to=Party(), ocpi_master=None
         ),
     )
-
-    # Todo: Try authorizing through direct connections first, they may be cheaper than hub connections
-
-    if not parties:
-        parties = find_endpoints_by_roles(
-            (OcpiRolesEnum.EMSP.value, OcpiRolesEnum.HUB.value),
-            OcpiModuleEnum.TOKENS,
-            endpoint_role=EndpointRoleEnum.SENDER.value,
-        )
-
     data = (
         {
             "location_id": location.uid,
@@ -264,37 +219,48 @@ def authorize_with_msps_sync(
         f"{country_code}*{party_id}: {url}"
         for url, _token_base64, country_code, party_id, _credentials in parties
     ]
-    logger.info(f"Authorizing token {token} with MSPs {', '.join(formatted_parties)}")
+    logger.info(
+        f"Authorizing token {token_uid} with MSPs {', '.join(formatted_parties)}"
+    )
 
-    response = asyncio.run(authorize_with_msps(token, data, parties))
-    if response:
-        responding_party = response.get(
-            "responding_party", ""
-        )  # See response.token to see who is actually paying the bill
-        if not response:
+    response = asyncio.run(authorize_with_msps(token_dto, data, parties))
+    if not response:
+        return TokenNotAuthorized
+
+    if response.get("allowed") != AuthorizationEnum.ALLOWED:
+        logger.info(
+            f"Token {token_uid} not authorized by {response.get('responding_party', 'N/A')}",
+            extra={"response": response},
+        )
+        return TokenNotAuthorized
+
+    responding_party = response.get("responding_party", "")
+    try:
+        serializer = AuthorizationInfoSerializer(data=response)
+        if serializer.is_valid():
+            token = serializer.validated_data.pop("token", {})
+            msp = response.get("msp")
+            token["billed_to"] = msp
+            token["ocpi_master"] = msp
+            return TokenAuthorization(
+                **serializer.validated_data,
+                token=AdhocToken(**token),
+                responding_party=responding_party,
+                auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
+                billed_to=Party.from_str(msp),
+                msp=msp,
+            )
+        else:
+            logger.error(
+                "Cannot create TokenAuthorization from ALLOWED response from %s",
+                responding_party or "N/A",
+                extra={
+                    "response_data": response,
+                    "validation_errors": serializer.errors,
+                    "responding_party": responding_party,
+                },
+            )
             return TokenNotAuthorized
-        try:
-            serializer = AuthorizationInfoSerializer(data=response)
-            if serializer.is_valid():
-                token = serializer.validated_data.pop("token", {})
-                msp = response.get("msp")
-                token["billed_to"] = msp
-                token["ocpi_master"] = msp
-                return TokenAuthorization(
-                    **serializer.validated_data,
-                    token=AdhocToken(**token),
-                    responding_party=responding_party,
-                    auth_method=enum.AuthMethodChoices.AUTH_REQUEST,
-                    billed_to=Party.from_str(msp),
-                    msp=msp,
-                )
-            else:
-                logger.error(
-                    'Cannot create TokenAuthorization from response from '
-                    f'{serializer.validated_data.get("responding_party", "N/A")}: {serializer.errors}'
-                )
-                return TokenNotAuthorized
-        except TypeError:
-            logger.exception("Cannot create TokenAuthorization from response")
-            return TokenNotAuthorized
-    return TokenNotAuthorized
+    except TypeError:
+        logger.exception("Cannot create TokenAuthorization from ALLOWED response")
+        return TokenNotAuthorized

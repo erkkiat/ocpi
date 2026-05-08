@@ -5,10 +5,8 @@
     {% endif %}
     {% for line in fieldset %}
         <div class="{% if line.fields|length_is:'1' and line.errors %} errors{% endif %}{% if not line.has_visible_field %} hidden{% endif %}{% for field in line %}{% if field.field.name %} field-{{ field.field.name }}{% endif %}{% endfor %}">
-            {% if line.fields|length_is:'1' %}{{ line.errors }}{% endif %}
             {% for field in line %}
                 <div{% if not line.fields|length_is:'1' %} class="{% if field.field.name %} field-{{ field.field.name }}{% endif %}{% if not field.is_readonly and field.errors %} errors{% endif %}{% if field.field.is_hidden %} hidden{% endif %}"{% elif field.is_checkbox %} class="checkbox-row"{% endif %}>
-                    {% if not line.fields|length_is:'1' and not field.is_readonly %}<div class="text-danger mt-4 mb-0 pb-1">{{ field.errors }}</div>{% endif %}
                     {% if field.is_checkbox %}
                         {{ field.field }}{{ field.label_tag }}
                     {% else %}
@@ -22,6 +20,9 @@
                         {% else %}
                         {{ field.field }}
                         {% endif %}
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-danger mt-1 mb-0">{{ field.errors }}</div>
                         {% endif %}
                         {% if field.field.help_text %}
                         <div class="help text-muted text-1">{{ field.field.help_text|safe }}</div>

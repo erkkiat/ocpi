@@ -1,5 +1,5 @@
 import doctest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, time, timezone, timedelta
 from unittest import mock
 from unittest.mock import patch
 
@@ -25,9 +25,11 @@ from integrations.hubject.schemas import (
     HubjectPriceComponent,
     ProviderIDAsterisk,
     HubjectDefaultTariff,
+    On,
+    OpeningTimes,
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
-from ocpi22.choices import OCPICapability
+from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
 from ocpi22.cpo.api import applying_tariff_element
 from ocpi22.models.location import Connector
 from ocpi22.models.session import Session
@@ -35,6 +37,7 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
     OCPISessionFactory,
+    RegularHoursFactory,
     SolidTariffFactory,
 )
 from integrations.hubject.schemas import EvseStatus as OICPEvseStatus
@@ -244,7 +247,9 @@ class TestMappings:
     @pytest.mark.django_db
     def test_map_location_to_eroaming_push_evse_data(self, helsinki2_location):
         evse_id = helsinki2_location.evses.first().evse_id
-        expected_data = self.expected_helsinki_eroaming_push_evse_data(evse_id)
+        expected_data = self.expected_helsinki_eroaming_push_evse_data(
+            evse_id, helsinki2_location.uid
+        )
 
         helsinki_hubject_evse_data = ERoamingPushEvseData(
             ActionType=ActionType.insert,
@@ -270,7 +275,9 @@ class TestMappings:
         assert berlin2_location.evses.count() == 1
         assert (
             berlin_hubject_evse_data.model_dump()
-            == self.expected_berlin_eroaming_push_evse_data(evse_id)
+            == self.expected_berlin_eroaming_push_evse_data(
+                evse_id, berlin2_location.uid
+            )
         ), "The mapped OCPI Location data does not match the expected OICP data."
 
     def test_french_address(self):
@@ -381,47 +388,14 @@ class TestMappings:
         max_power = self._ocpi_to_oicp_converter.get_maximum_product_charging_power()
         assert max_power == 10
 
-    @pytest.mark.parametrize(
-        "solid_tariff_id, ref_unit, operator_id, msp_id, expected",
-        [
-            (
-                "SMP1",
-                HubjectPriceComponent.MINUTE,
-                "BE*SMP",
-                "DE*ICE",
-                "BE*SMP*SMP1*MINUTE*DE*ICE",
-            ),
-            (
-                "SMP2",
-                HubjectPriceComponent.KWH,
-                "NL*CPO",
-                "FR*MSP",
-                "NL*CPO*SMP2*KILOWATT_HOUR*FR*MSP",
-            ),
-            (
-                "SMP3",
-                HubjectPriceComponent.HOUR,
-                "US*CPO",
-                "GB*MSP",
-                "US*CPO*SMP3*HOUR*GB*MSP",
-            ),
-            ("SMP3", HubjectPriceComponent.HOUR, "US*CPO", "", "US*CPO*SMP3*HOUR*"),
-        ],
-    )
-    def test_get_pricing_product_id(
-        self, solid_tariff_id, ref_unit, operator_id, msp_id, expected
-    ):
+    def test_get_pricing_product_id(self):
+        solid_tariff_id = "SD123"
+        ocpi_tariff_uid = "TARIFF456"
         result = self._ocpi_to_oicp_converter.get_pricing_product_id(
-            solid_tariff_id, ref_unit, operator_id, msp_id
+            solid_tariff_id, ocpi_tariff_uid
         )
+        expected = "TARIFF456*SD123"
         assert result == expected, f"Expected {expected}, but got {result}"
-
-    def test_get_pricing_product_id_raises_value_error_when_none_values_provided(self):
-        with pytest.raises(
-            ValueError,
-            match="Missing required fields {operator_id, price_reference, solid_tariff_external_id} for generating pricing product ID.",
-        ):
-            self._ocpi_to_oicp_converter.get_pricing_product_id(None, None, None, "")
 
     @pytest.mark.django_db
     def test_convert_to_pricing_product_data_records_success(
@@ -431,10 +405,9 @@ class TestMappings:
     ):
         pricing_product_data_records = (
             self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_all_records, "FI*CPO"
+                smp1_solid_tariff_with_all_records
             )
         )
-        assert len(pricing_product_data_records) == 2
         assert (
             pricing_product_data_records
             == pricing_product_data_record_successful_result
@@ -444,14 +417,20 @@ class TestMappings:
     def test_convert_to_pricing_product_data_records_when_prices_are_none(
         self,
         smp1_solid_tariff_with_none_prices,
-        pricing_product_data_record_successful_result,
     ):
-        pricing_product_data_records = (
-            self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_none_prices, "FI*CPO"
+        with mock.patch(
+            "integrations.solid_to_hubject_converter.logger"
+        ) as mock_logger:
+            result = (
+                self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
+                    smp1_solid_tariff_with_none_prices
+                )
             )
+
+        assert result is None
+        mock_logger.warning.assert_called_once_with(
+            f"['Missing ENERGY, TIME component for SolidTariff {smp1_solid_tariff_with_none_prices.external_id}, Skipping update to Hubject.']"
         )
-        assert len(pricing_product_data_records) == 0
 
     @pytest.mark.django_db
     def test_get_provider_ids_for_solid_tariffs_with_msp(
@@ -486,7 +465,7 @@ class TestMappings:
         )
         assert result == pricing_product_data_successful_result
 
-    def expected_helsinki_eroaming_push_evse_data(self, evse_id: str):
+    def expected_helsinki_eroaming_push_evse_data(self, evse_id: str, location_id: str):
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -510,7 +489,7 @@ class TestMappings:
                             "TimeZone": get_timezone_offset("Europe/Helsinki"),
                         },
                         "AuthenticationModes": [AuthenticationMode.NFC_RFID_Classic],
-                        "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Local,
+                        "CalibrationLawDataAvailability": CalibrationLawDataAvailability.Not_Available,
                         "ChargingFacilities": [
                             {
                                 "Amperage": 16,
@@ -521,14 +500,14 @@ class TestMappings:
                             }
                         ],
                         "ChargingPoolID": None,
-                        "ChargingStationId": None,
                         "ChargingStationImage": None,
                         "ChargingStationLocationReference": None,
                         "ChargingStationNames": [
                             {"lang": "en", "value": "Helsinki Supercharger"}
                         ],
                         "ClearinghouseID": None,
-                        "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                        "ChargingStationId": location_id,
+                        "DynamicInfoAvailable": DynamicInfoAvailable.true,
                         "DynamicPowerLevel": None,
                         "EnergySource": None,
                         "EnvironmentalImpact": None,
@@ -552,7 +531,7 @@ class TestMappings:
                         "HardwareManufacturer": None,
                         "HotlinePhoneNumber": "+3256380211",
                         "HubOperatorID": None,
-                        "IsHubjectCompatible": False,
+                        "IsHubjectCompatible": True,
                         "IsOpen24Hours": True,
                         "MaxCapacity": None,
                         "OpeningTimes": None,
@@ -570,7 +549,7 @@ class TestMappings:
             },
         }
 
-    def expected_berlin_eroaming_push_evse_data(self, evse_id: str):
+    def expected_berlin_eroaming_push_evse_data(self, evse_id: str, location_id: str):
         return {
             "ActionType": ActionType.insert,
             "OperatorEvseData": {
@@ -607,14 +586,14 @@ class TestMappings:
                             }
                         ],
                         "ChargingPoolID": None,
-                        "ChargingStationId": None,
+                        "ChargingStationId": location_id,
                         "ChargingStationImage": None,
                         "ChargingStationLocationReference": None,
                         "ChargingStationNames": [
                             {"lang": "en", "value": "Berlin Location"}
                         ],
                         "ClearinghouseID": None,
-                        "DynamicInfoAvailable": DynamicInfoAvailable.false,
+                        "DynamicInfoAvailable": DynamicInfoAvailable.true,
                         "DynamicPowerLevel": None,
                         "EnergySource": None,
                         "EnvironmentalImpact": None,
@@ -638,7 +617,7 @@ class TestMappings:
                         "HardwareManufacturer": None,
                         "HotlinePhoneNumber": "+3256380211",
                         "HubOperatorID": None,
-                        "IsHubjectCompatible": False,
+                        "IsHubjectCompatible": True,
                         "IsOpen24Hours": True,
                         "MaxCapacity": None,
                         "OpeningTimes": None,
@@ -845,9 +824,198 @@ class TestConvertOCPICDRToERoamingCDR:
         assert (
             eroaming_cdr.partner_product_id.root
             == self._ocpi_to_oicp_converter.get_pricing_product_id(
-                solid_tariff_id=solid_tariff.external_id,
-                ref_unit=HubjectPriceComponent.KWH,
-                operator_id=solid_tariff.operator.party_str(),
-                msp_id=solid_tariff.msp.party_str(),
+                external_id=solid_tariff.external_id,
+                ocpi_tariff_uid=solid_tariff.ocpi_tariff.uid,
             )
         )
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def weekday_regular_hours():
+    return [
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
+        for weekday in range(1, 6)
+    ]
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def weekend_regular_hours():
+    return [
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
+        for weekday in range(6, 8)
+    ]
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def everyday_regular_hours():
+    return [
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
+        for weekday in range(1, 8)
+    ]
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def monday_to_wednesday_regular_hours():
+    return [
+        RegularHoursFactory(weekday=1, period_begin=time(0, 0), period_end=time(0, 0)),
+        RegularHoursFactory(
+            weekday=2, period_begin=time(10, 30), period_end=time(17, 20)
+        ),
+        RegularHoursFactory(
+            weekday=3, period_begin=time(9, 15), period_end=time(16, 0)
+        ),
+    ]
+
+
+@pytest.fixture
+@pytest.mark.django_db
+def monday_regular_hours():
+    return [
+        RegularHoursFactory(weekday=1, period_begin=time(0, 0), period_end=time(6, 0)),
+        RegularHoursFactory(
+            weekday=1, period_begin=time(6, 30), period_end=time(12, 20)
+        ),
+        RegularHoursFactory(
+            weekday=1, period_begin=time(12, 30), period_end=time(20, 0)
+        ),
+    ]
+
+
+def test_get_weekday_from_number():
+    assert WEEKDAY_CHOICES.from_number(1) == WEEKDAY_CHOICES.Monday
+    assert WEEKDAY_CHOICES.from_number(2) == WEEKDAY_CHOICES.Tuesday
+    assert WEEKDAY_CHOICES.from_number(3) == WEEKDAY_CHOICES.Wednesday
+    assert WEEKDAY_CHOICES.from_number(4) == WEEKDAY_CHOICES.Thursday
+    assert WEEKDAY_CHOICES.from_number(5) == WEEKDAY_CHOICES.Friday
+    assert WEEKDAY_CHOICES.from_number(6) == WEEKDAY_CHOICES.Saturday
+    assert WEEKDAY_CHOICES.from_number(7) == WEEKDAY_CHOICES.Sunday
+    assert WEEKDAY_CHOICES.from_number(8) is None
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "regular_hours_fixture, expected_on, expected_count, description",
+    [
+        ("weekday_regular_hours", On.Workdays, 1, "weekdays"),
+        ("weekend_regular_hours", On.Weekend, 1, "weekends"),
+        ("everyday_regular_hours", On.Everyday, 1, "everyday"),
+    ],
+)
+def test_map_regular_hours_to_opening_times(
+    regular_hours_fixture, expected_on, expected_count, description, request
+):
+    regular_hours = request.getfixturevalue(regular_hours_fixture)
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
+            regular_hours
+        )
+    )
+
+    assert (
+        len(opening_times) == expected_count
+    ), f"There should be just {expected_count} opening times for {description}."
+    assert opening_times[0].on == expected_on
+    assert (
+        opening_times[0].Period[0].begin == "00:00"
+    ), "Period begin should be '00:00'."
+    assert opening_times[0].Period[0].end == "00:00", "Period end should be '00:00'."
+
+
+@pytest.mark.django_db
+def test_map_regular_hours_to_opening_times_from_monday_to_wednesday_returns_3_opening_times(
+    monday_to_wednesday_regular_hours,
+):
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
+            monday_to_wednesday_regular_hours
+        )
+    )
+
+    expected_times = {
+        On.Monday: {"begin": "00:00", "end": "00:00"},
+        On.Tuesday: {"begin": "10:30", "end": "17:20"},
+        On.Wednesday: {"begin": "09:15", "end": "16:00"},
+    }
+
+    assert (
+        len(opening_times) == 3
+    ), "There should be just 3 opening times for Monday to Wednesday."
+
+    for ot in opening_times:
+        assert ot.on in expected_times, f"{ot.on} is not in the expected opening times."
+        expected_begin = expected_times[ot.on]["begin"]
+        expected_end = expected_times[ot.on]["end"]
+
+        assert (
+            ot.Period[0].begin == expected_begin
+        ), f"Period begin for {ot.on} should be '{expected_begin}'."
+        assert (
+            ot.Period[0].end == expected_end
+        ), f"Period end for {ot.on} should be '{expected_end}'."
+
+        del expected_times[ot.on]
+
+    assert not expected_times, "Not all expected opening times were found."
+
+
+@pytest.mark.django_db
+def test_map_regular_hours_with_multiple_periods_for_monday_returns_one_opening_time(
+    monday_regular_hours,
+):
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
+            monday_regular_hours
+        )
+    )
+
+    assert len(opening_times) == 1, "There should be one opening time entry for Monday"
+    assert opening_times[0].on == On.Monday, "The opening time should be for Monday"
+
+    periods = opening_times[0].Period
+    assert len(periods) == 3, "There should be three periods for Monday"
+
+    expected_periods = [
+        {"begin": "00:00", "end": "06:00"},
+        {"begin": "06:30", "end": "12:20"},
+        {"begin": "12:30", "end": "20:00"},
+    ]
+
+    for i, period in enumerate(periods):
+        expected = expected_periods[i]
+        assert (
+            period.begin == expected["begin"]
+        ), f"Period {i} begin should be '{expected['begin']}'"
+        assert (
+            period.end == expected["end"]
+        ), f"Period {i} end should be '{expected['end']}'"
+
+
+@pytest.mark.django_db
+def test_map_regular_hours_to_opening_times_with_time_objects_returns_formatted_period():
+    regular_hours = [
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(8, 0), period_end=time(20, 30)
+        )
+        for weekday in range(1, 6)
+    ]
+
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
+            regular_hours
+        )
+    )
+
+    assert len(opening_times) == 1
+    assert opening_times[0].on == On.Workdays
+    assert opening_times[0].Period[0].begin == "08:00"
+    assert opening_times[0].Period[0].end == "20:30"

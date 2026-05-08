@@ -9,11 +9,11 @@ from gdpr_assist.admin import PersonalDataAdmin, PersonalData
 from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.models import User
-from humanize import naturaltime
 
 import widgets
 from ocpi22.choices import OcpiRolesEnum, OCPIFacility, OCPICapability
-from django.utils.html import format_html
+from django.db.models import Subquery, OuterRef
+from django.utils.html import format_html, format_html_join
 from nested_admin.nested import (
     NestedModelAdmin,
     NestedStackedInline,
@@ -26,20 +26,18 @@ from ocpi22.models.credentials import Credentials, CredentialsRole, Endpoint
 from ocpi22.models.location import Location, Evse, Connector
 from ocpi22.models.session import Session, ChargingPeriod, CdrDimension
 from ocpi22.models.tariff import PriceComponent, TariffElement, Tariff, DefaultTariffs
+from ocpi22.models.displaytext import DisplayText
 from ocpi22.models.token import Token
+from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.msp.account import Account, Transaction
 from ocpi22.msp.models import Authorization
-from ocpi22.ocpi.partners import (
-    invalidate_partner_cache,
-    get_partners_by_party_as_party,
-)
 from ocpi22.pull import admin_pull_all
+from ocpi22.credentials.services import CredentialsService
 from ocpiconnector.ocpi_identities import (
     ocpi_identities,
     ocpi_platform,
     get_our_credentialsrole,
 )
-from ocpiconnector.party import Party
 from payment.models import Payment
 
 admin.site.site_header = "Roaming Admin"
@@ -48,7 +46,7 @@ admin.site.index_title = "Dashboard"
 
 class AdminUtilityMixin:
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -64,7 +62,8 @@ class SolidModelAdmin(admin.ModelAdmin, AdminUtilityMixin):
 class SolidNestedModelAdmin(NestedModelAdmin, AdminUtilityMixin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        obj.post_process_after_update_or_create()
+        if hasattr(obj, "post_process_after_update_or_create"):
+            obj.post_process_after_update_or_create()
 
 
 class TokenAdmin(SolidModelAdmin):
@@ -112,7 +111,7 @@ class TokenAdmin(SolidModelAdmin):
 
         return format_html(
             f'<a href="{reverse("admin:auth_user_change", args=[obj.customer.pk])}">'
-            f'{obj.customer.first_name} {obj.customer.last_name}</a>'
+            f"{obj.customer.first_name} {obj.customer.last_name}</a>"
         )
 
     fieldsets = [
@@ -219,6 +218,9 @@ class ConnectorInline(NestedStackedInline):
             and super().has_change_permission(request, obj)
         )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request)
+
     def has_add_permission(self, request, obj=None) -> bool:
         return (
             Location.ocpi_object_owner in ocpi_identities
@@ -248,6 +250,41 @@ class EvseAdminForm(forms.ModelForm):
     class Meta:
         model = Evse
         fields = "__all__"
+
+
+@admin.action(description="Send background updates to interested parties")
+def send_updates(modeladmin, request, queryset):
+    model_cls = queryset.model
+    if not hasattr(model_cls, "send_updates"):
+        modeladmin.message_user(
+            request,
+            f"{model_cls.__name__} does not have a send_updates method.",
+            level=messages.ERROR,
+        )
+        return
+    count = queryset.count()
+    MAX_OBJECTS = 100
+    WARN_OBJECTS = 50
+    if count > MAX_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Cannot send updates to more than {MAX_OBJECTS} {model_cls.__name__}s at once. Please select fewer {model_cls.__name__}s.",
+            level=messages.ERROR,
+        )
+        return
+    elif count > WARN_OBJECTS:
+        modeladmin.message_user(
+            request,
+            f"Warning: Sending updates to {count} {model_cls.__name__}s may take some time.",
+            level=messages.WARNING,
+        )
+    for obj in queryset:
+        obj.send_updates()
+    modeladmin.message_user(
+        request,
+        f"Updates sent for {count} {model_cls.__name__}s.",
+        level=messages.SUCCESS,
+    )
 
 
 class LocationAdmin(SolidNestedModelAdmin):
@@ -285,8 +322,7 @@ class LocationAdmin(SolidNestedModelAdmin):
     #     def has_change_permission(self, request, obj=None) -> bool:
     #         return obj and obj.is_ours() and super().has_change_permission(request, obj)
     #
-    #     def has_add_permission(self, request, obj=None) -> bool:
-    #         return Location.ocpi_object_owner in ocpi_identities and super().has_add_permission(request, obj)
+    #     def get_queryset(self, request):
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -336,6 +372,7 @@ class LocationAdmin(SolidNestedModelAdmin):
     inlines = [EvseInline]  # [OpeningTimesInline, EvseInline]
     autocomplete_fields = ["publish_allowed_to", "operator", "suboperator", "owner"]
     radio_fields = dict(parking_type=admin.VERTICAL)
+    actions = [send_updates]
 
     def has_change_permission(self, request, obj=None) -> bool:
         return obj and obj.is_ours() and super().has_change_permission(request, obj)
@@ -368,14 +405,6 @@ class LocationAdmin(SolidNestedModelAdmin):
             obj.update_last_updated()
 
         super().save_model(request, obj, form, change)
-
-
-class EvseAdminForm(forms.ModelForm):
-    def clean_uid(self):
-        # if Evse.objects.filter(uid=self.data['uid']).count():
-        #     # Todo: Recognize if it's the same object, and allow it
-        #     raise ValidationError(_('EVSE with this UID already exists in this or another Location'),)
-        return self.cleaned_data["uid"]
 
 
 class EvseAdmin(SolidNestedModelAdmin):
@@ -422,7 +451,7 @@ class EvseAdmin(SolidNestedModelAdmin):
     location_link.short_description = "Location"
 
     def last_update(self, obj):
-        return naturaltime(obj.last_updated)
+        return obj.last_updated
 
     last_update.admin_order_field = "last_updated"
     last_update.short_description = "Last update"
@@ -519,7 +548,8 @@ class CdrAdmin(SolidModelAdmin):
         "cdr_location__country",
         "cdr_token__uid",
         "cdr_token__contract_id",
-        "billed_to",
+        "billed_to__country_code",
+        "billed_to__party_id",
     ]
     autocomplete_fields = ["tariffs"]
 
@@ -544,6 +574,42 @@ class CdrAdmin(SolidModelAdmin):
         )
 
 
+class ViaHubFilter(admin.SimpleListFilter):
+    title = "Via hub"
+    parameter_name = "via_hub"
+
+    def lookups(self, request, model_admin):
+        hubs = (
+            Credentials.objects.filter(roles__role=OcpiRolesEnum.HUB.value)
+            .distinct()
+            .order_by("roles__party_id")
+        )
+        return [(hub.pk, hub.name) for hub in hubs]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(credentials__pk=self.value())
+        return queryset
+
+
+class BilledToFilter(admin.SimpleListFilter):
+    title = "Billed to"
+    parameter_name = "billed_to"
+
+    def lookups(self, request, model_admin):
+        roles = (
+            CredentialsRole.objects.filter(billed_to_sessions__isnull=False)
+            .distinct()
+            .order_by("country_code", "party_id")
+        )
+        return [(role.pk, role.party_str()) for role in roles]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(billed_to__pk=self.value())
+        return queryset
+
+
 class SessionAdmin(SolidNestedModelAdmin):
     class ChargingPeriodInline(NestedStackedInline):
         model = ChargingPeriod
@@ -556,14 +622,20 @@ class SessionAdmin(SolidNestedModelAdmin):
     model = Session
     ordering = ["-updated"]
     list_display = [
-        "success",
-        "status",
+        "session_link",
+        "evse_link",
+        "location_name",
         "party_long",
-        "last_update",  # Todo: Show time in local timezone
-        "location",
+        "via",
+        "billed_to_party",
         "kwh",
         "cost",
+        "last_update",
+        "status",
+        "cdr_link",
     ]
+
+    list_display_links = ["session_link"]
 
     formfield_overrides = widgets.formfield_overrides
 
@@ -595,7 +667,6 @@ class SessionAdmin(SolidNestedModelAdmin):
     )
     # Todo: Show only connectors for the selected evse
 
-    list_display_links = ["status"]
     search_fields = [
         "location__name",
         "location__address",
@@ -614,10 +685,89 @@ class SessionAdmin(SolidNestedModelAdmin):
         "evse",
         "connector",
     ]
-    list_filter = ["status", "last_updated"]
+    list_filter = ["status", "last_updated", ViaHubFilter, BilledToFilter]
+
+    def get_queryset(self, request):
+        cdr_subquery = Cdr.objects.filter(session_id=OuterRef("uid")).values("uid")[:1]
+        cdr_pk_subquery = Cdr.objects.filter(session_id=OuterRef("uid")).values("pk")[
+            :1
+        ]
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                "ocpi_master__business_details",
+                "ocpi_master__credentials",
+                "billed_to",
+                "credentials",
+                "evse",
+                "location",
+            )
+            .annotate(
+                cdr_uid=Subquery(cdr_subquery),
+                cdr_pk=Subquery(cdr_pk_subquery),
+            )
+        )
 
     def has_add_permission(self, request, obj=None) -> bool:
         return False
+
+    @admin.display(description="UID", ordering="uid")
+    def session_link(self, obj: Session) -> str:
+        from util import reverse
+
+        url = reverse("admin:ocpi22_session_change", args=[obj.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.uid)
+
+    @admin.display(description="CDR")
+    def cdr_link(self, obj: Session) -> str:
+        if obj.status != Session.COMPLETED:
+            return "-"
+        if not obj.cdr_pk:
+            return "-"
+        from util import reverse
+
+        url = reverse("admin:ocpi22_cdr_change", args=[obj.cdr_pk])
+        return format_html('<a href="{}">{}</a>', url, obj.cdr_uid)
+
+    @admin.display(description="Location", ordering="location__name")
+    def location_name(self, obj: Session) -> str:
+        from util import reverse
+
+        if not obj.location:
+            return "-"
+        url = reverse("admin:ocpi22_location_change", args=[obj.location.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.location.name)
+
+    @admin.display(description="EVSE", ordering="evse__evse_id")
+    def evse_link(self, obj: Session) -> str:
+        if not obj.evse:
+            return "-"
+        from util import reverse
+
+        url = reverse("admin:ocpi22_evse_change", args=[obj.evse.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.evse.evse_id)
+
+    @admin.display(description="Billed to", ordering="billed_to__party_id")
+    def billed_to_party(self, obj: Session) -> str:
+        if obj.billed_to is None:
+            return "-"
+        return obj.billed_to.party_str()
+
+    @admin.display(description="Via", ordering="credentials__name")
+    def via(self, obj: Session) -> str:
+        if obj.credentials:
+            from util import reverse
+
+            hub_role = obj.credentials.get_party_for_role(OcpiRolesEnum.HUB)
+            hub_party = (
+                f"{hub_role.country_code}*{hub_role.party_id}" if hub_role else ""
+            )
+            url = reverse("admin:ocpi22_credentials_change", args=[obj.credentials.pk])
+            return format_html(
+                '<a href="{}">{} ({})</a>', url, obj.credentials.name, hub_party
+            )
+        return "-"
 
     def response_post_save_change(self, request, obj: Session):
         if obj.kwh:
@@ -665,8 +815,11 @@ class TariffAdmin(SolidNestedModelAdmin):
             def has_add_permission(self, request, obj=None) -> bool:
                 return (
                     Tariff.ocpi_object_owner in ocpi_identities
-                    or super().has_change_permission(request, obj)
+                    and super().has_add_permission(request, obj)
                 )
+
+            def get_queryset(self, request):
+                return super().get_queryset(request)
 
         model = TariffElement
         inlines = [PriceComponentsInline]
@@ -699,14 +852,19 @@ class TariffAdmin(SolidNestedModelAdmin):
                 and super().has_add_permission(request, obj)
             )
 
+        def get_queryset(self, request):
+            return super().get_queryset(request)
+
     model = Tariff
     if ocpi_platform.is_cpo:
-        list_display = ["uid", "price", "last_update"]
+        list_display = ["uid", "price", "alt_texts", "last_update"]
     else:
-        list_display = ["party_long", "uid", "price", "last_update"]
+        list_display = ["party_long", "uid", "price", "alt_texts", "last_update"]
     list_display_links = ["uid"]
+
     inlines = [ElementsInline]
     search_fields = ["uid"]
+    autocomplete_fields = ["tariff_alt_text"]
     readonly_fields = ("last_updated",)
 
     formfield_overrides = widgets.formfield_overrides
@@ -721,6 +879,7 @@ class TariffAdmin(SolidNestedModelAdmin):
                     ("currency",),
                     ("type",),
                     ("tariff_alt_url",),
+                    ("tariff_alt_text",),
                 )
             ),
         ),
@@ -734,19 +893,40 @@ class TariffAdmin(SolidNestedModelAdmin):
             ),
         ),
     ]
+    actions = [send_updates]
 
     def get_queryset(self, _request):
         # Hide archived
-        return Tariff.objects.exclude(archived=True)
+        return Tariff.objects.exclude(archived=True).prefetch_related("tariff_alt_text")
+
+    @admin.display(description="Alt text")
+    def alt_texts(self, obj: Tariff) -> str:
+        entries = obj.tariff_alt_text.all()
+        if not entries:
+            return "-"
+        return format_html_join(
+            "<br>",
+            "<b>[{}]</b> {}",
+            ((dt.language, dt.text) for dt in entries),
+        )
 
     def get_readonly_fields(self, request, obj=None) -> list:
-        readonly_fields = ["ocpi_master"]
-        if obj:
-            readonly_fields.append("uid")
+        readonly_fields = [
+            "ocpi_master",
+            "uid",
+            "currency",
+            "min_price_excl_vat",
+            "min_price_incl_vat",
+            "max_price_excl_vat",
+            "max_price_incl_vat",
+            "last_updated",
+        ]
+        if not obj:
+            readonly_fields.remove("uid")
         return readonly_fields
 
     def has_change_permission(self, request, obj=None) -> bool:
-        return False
+        return True
 
     def has_add_permission(self, request) -> bool:
         return (
@@ -774,6 +954,23 @@ class TariffAdmin(SolidNestedModelAdmin):
         obj.last_updated = datetime.now(pytz.utc)
         super().save_model(request, obj, form, change)
 
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        tariff: Tariff = form.instance
+        if not tariff.tariff_alt_text.exists():
+            generated_text = tariff.price()
+            display_text = DisplayText.objects.create(
+                language="en", text=generated_text
+            )
+            tariff.tariff_alt_text.add(display_text)
+
+
+@admin.register(DisplayText)
+class DisplayTextAdmin(admin.ModelAdmin):
+    model = DisplayText
+    list_display = ["language", "text"]
+    search_fields = ["language", "text"]
+
 
 class CredentialsAdmin(SolidModelAdmin):
     class CredentialRolesInline(admin.TabularInline):
@@ -789,7 +986,9 @@ class CredentialsAdmin(SolidModelAdmin):
         "valid",
         "responding",
         "last_update",
-        "allowed_locations",
+        "allowed_locations_truncated",
+        "meter_value_frequency",
+        "auth_priority",
     ]
     readonly_fields = [
         "theirs_base64",
@@ -817,33 +1016,36 @@ class CredentialsAdmin(SolidModelAdmin):
         return super().has_change_permission(request, obj=obj)
 
     def last_update(self, obj):
-        return naturaltime(obj.last_connection)
+        return obj.last_connection
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        if obj and change:
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_caches()
 
-            def invalidate_current_partners_cache():
-                current_partners: [Party] = list(
-                    map(get_partners_by_party_as_party, roles)
-                )
-                if current_partners:
-                    flattened_set = set.union(*current_partners)
-                    list(map(invalidate_partner_cache, flattened_set))
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        has_inline_changes = any(formset.has_changed() for formset in formsets)
+        if has_inline_changes:
+            CredentialsService.invalidate_all_caches()
 
-            # Todo: The below code is not working fully, there is a n+1 delay in clearing the cache
-            # Now the cache is cleared fully every time to compensate
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_all_caches()
 
-            # List all the roles of the changed Credentials
-            roles = {role.party_str() for role in obj.roles.all()}
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_all_caches()
 
-            # Invalidate the agreed partners cache to enable the new roles and disable the old ones
-            list(map(invalidate_partner_cache, roles))
+    def allowed_locations_truncated(self, obj) -> str:
+        locations = obj.allowed_locations or []
+        if not locations:
+            return "All locations allowed"
+        if len(locations) <= 3:
+            return ", ".join(locations)
+        return f"{', '.join(locations[:3])} (+{len(locations) - 3} more)"
 
-            # Do the same for the partners (this one comes from cache)
-            invalidate_current_partners_cache()
-            # Do the same again, now cache has been reset
-            invalidate_current_partners_cache()
+    allowed_locations_truncated.short_description = "Allowed locations"
 
     last_update.admin_order_field = "last_connection"
     last_update.short_description = "Last connection"
@@ -862,6 +1064,19 @@ class CredentialsRoleAdmin(SolidModelAdmin):
         "agreed_parties__country_code",
         "agreed_parties__party_id",
     ]
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if form.has_changed():
+            CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        CredentialsService.invalidate_credentials_role_caches()
+
+    def delete_queryset(self, request, queryset):
+        super().delete_queryset(request, queryset)
+        CredentialsService.invalidate_credentials_role_caches()
 
 
 @admin.register(DefaultTariffs)
@@ -962,3 +1177,163 @@ admin.site.register(Tariff, TariffAdmin)
 admin.site.register(Cdr, CdrAdmin)
 admin.site.register(Session, SessionAdmin)
 admin.site.register(Credentials, CredentialsAdmin)
+
+
+@admin.register(Terminal)
+class TerminalAdmin(SolidModelAdmin):
+    model = Terminal
+    list_display = [
+        "terminal_id",
+        "customer_reference",
+        "credentials",
+        "city",
+        "country",
+        "invoice_creator",
+        "location_count",
+        "last_updated",
+    ]
+    list_display_links = ["terminal_id"]
+    search_fields = [
+        "terminal_id",
+        "customer_reference",
+        "party_id",
+        "country_code",
+        "city",
+        "address",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "locations", "evses"]
+    list_filter = ["invoice_creator", "country"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "terminal_id",
+                    "customer_reference",
+                    ("country_code", "party_id"),
+                    "credentials",
+                )
+            ),
+        ),
+        (
+            "Location",
+            dict(
+                fields=(
+                    "address",
+                    ("postal_code", "city"),
+                    ("state", "country"),
+                    ("latitude", "longitude"),
+                )
+            ),
+        ),
+        (
+            "Invoice",
+            dict(
+                fields=(
+                    "invoice_base_url",
+                    "invoice_creator",
+                )
+            ),
+        ),
+        (
+            "Assigned Charging Locations",
+            dict(
+                fields=(
+                    "locations",
+                    "evses",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
+
+    def location_count(self, obj):
+        return obj.locations.count()
+
+    location_count.short_description = "Locations"
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)
+
+
+@admin.register(FinancialAdviceConfirmation)
+class FinancialAdviceConfirmationAdmin(SolidModelAdmin):
+    model = FinancialAdviceConfirmation
+    list_display = [
+        "fac_id",
+        "authorization_reference",
+        "terminal",
+        "capture_status_code",
+        "total_cost_incl_vat",
+        "currency",
+        "credentials",
+        "last_updated",
+    ]
+    list_display_links = ["fac_id"]
+    search_fields = [
+        "fac_id",
+        "authorization_reference",
+        "terminal__terminal_id",
+        "terminal__customer_reference",
+        "credentials__roles__business_details__name",
+    ]
+    readonly_fields = ["last_updated", "created", "updated"]
+    autocomplete_fields = ["credentials", "terminal"]
+    list_filter = ["capture_status_code", "currency"]
+    fieldsets = [
+        (
+            "Identification",
+            dict(
+                fields=(
+                    "fac_id",
+                    "authorization_reference",
+                    "credentials",
+                    "terminal",
+                )
+            ),
+        ),
+        (
+            "Payment Details",
+            dict(
+                fields=(
+                    "total_cost_excl_vat",
+                    "total_cost_incl_vat",
+                    "currency",
+                    "eft_data",
+                )
+            ),
+        ),
+        (
+            "Capture Status",
+            dict(
+                fields=(
+                    "capture_status_code",
+                    "capture_status_message",
+                )
+            ),
+        ),
+        (
+            "Dates",
+            dict(fields=(("created", "last_updated"),)),
+        ),
+    ]
+
+    def has_add_permission(self, request):
+        return super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj)

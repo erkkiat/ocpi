@@ -5,11 +5,13 @@ from django.conf import settings
 from django.db.models import QuerySet
 from rest_framework.exceptions import ValidationError
 
+from ocpi22.credentials.services import CredentialsService
+from ocpi22.cpo.services import SolidTariffService
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Evse
 import logging
-from ocpi22.cpo.repositories import SolidTariffRepository
-from ocpi22.cpo.schemas import LocationIn
+from ocpi22.cpo.repositories import SolidTariffRepository, CredentialsRepository
+from ocpi22.cpo.schemas import SolidLocation
 from ocpi22.locations.serializers import LocationSerializer221
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.location import Location
@@ -26,7 +28,7 @@ class EvseServices:
             case "AVAILABLE":
                 return Evse.AVAILABLE
             case "PREPARING":
-                return Evse.CHARGING
+                return Evse.AVAILABLE
             case "CHARGING":
                 return Evse.CHARGING
             case "SUSPENDEDEV":
@@ -63,11 +65,18 @@ class EvseServices:
         )
 
         if settings.ENABLE_HUBJECT:
-            HubjectService.post_eroaming_push_evse_status(evse)
+            role = CredentialsRepository.find_hubject_credentials_role()
+            if not role:
+                logger.error("Hubject credentials role not found")
+                return
+            credentials = role.credentials if role else None
+            if CredentialsService.is_evse_allowed(credentials, evse):
+                HubjectService.post_eroaming_push_evse_status(evse)
 
 
 class LocationService:
     solid_tariff_repository = SolidTariffRepository()
+    solid_tariff_service = SolidTariffService()
 
     @staticmethod
     def get_allowed_locations_queryset(
@@ -77,7 +86,7 @@ class LocationService:
             return queryset.filter(uid__in=credentials.allowed_locations)
         return queryset
 
-    def update_tariff_in_payload(self, location: LocationIn):
+    def update_tariff_in_payload(self, location: SolidLocation):
         for e in location.evses:
             for c in e.connectors:
                 tariffs = []
@@ -97,7 +106,7 @@ class LocationService:
                 c.tariff_ids = tariffs
         return location
 
-    def get_data_from_request_payload(self, location: LocationIn):
+    def get_data_from_request_payload(self, location: SolidLocation):
         location = self.update_tariff_in_payload(location)
 
         data = location.model_dump(by_alias=True, exclude_unset=True)
@@ -109,7 +118,9 @@ class LocationService:
 
         return data
 
-    def create_location(self, location: LocationIn, credentials_role: CredentialsRole):
+    def create_location(
+        self, location: SolidLocation, credentials_role: CredentialsRole
+    ):
         data = self.get_data_from_request_payload(location)
 
         serializer = LocationSerializer221(
@@ -129,7 +140,7 @@ class LocationService:
 
     def update_location(
         self,
-        location: LocationIn,
+        location: SolidLocation,
         credentials_role: CredentialsRole,
         existing_location: Location,
     ):
@@ -152,3 +163,21 @@ class LocationService:
             saved_location.post_process_after_update_or_create()
             return serializer.data
         raise ValidationError(serializer.errors)
+
+    def convert_ocpi_tariff_ids_to_solid_tariff_ids(self, location: dict):
+        for evse in location.get("evses") or ():
+            for connector in evse["connectors"]:
+                if connector.get("tariff_ids"):
+                    solid_tariff_ids = []
+                    for tariff_id in connector["tariff_ids"]:
+                        solid_tariff_external_id = self.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid(
+                            tariff_id.upper()
+                        )
+                        if solid_tariff_external_id:
+                            solid_tariff_ids.append(solid_tariff_external_id)
+                        else:
+                            raise ValidationError(
+                                f"SolidTariff for OCPI tariff '{tariff_id}' not found"
+                            )
+                    connector["tariff_ids"] = solid_tariff_ids
+        return location

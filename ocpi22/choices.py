@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional
 
 import cachetools
@@ -18,6 +18,7 @@ class OcpiRolesEnum(Enum):
     NAP = "NAP"
     NSP = "NSP"
     OTHER = "OTHER"
+    PTP = "PTP"
     SCSP = "SCSP"
     UNKNO = "UNKNO"
 
@@ -46,6 +47,7 @@ ROLE_CHOICES = (
     ("NAP", "National Access Point"),
     ("NSP", "Navigation Service Provider"),
     ("OTHER", "Other"),
+    ("PTP", "Payment Terminal Provider"),
     ("SCSP", "Smart Charging Service Provider"),
     (
         "UNKNO",
@@ -82,10 +84,10 @@ class TokenType(str, Enum):
 
 
 TOKEN_TYPE_CHOICES = [
-    (TokenType.AD_HOC_USER, "Ad-hoc user"),
-    (TokenType.RFID, "RFID"),
-    (TokenType.APP_USER, "Application user"),
-    (TokenType.OTHER, "Other"),
+    (TokenType.AD_HOC_USER.value, "Ad-hoc user"),
+    (TokenType.RFID.value, "RFID"),
+    (TokenType.APP_USER.value, "Application user"),
+    (TokenType.OTHER.value, "Other"),
 ]
 
 
@@ -98,6 +100,8 @@ class OcpiModuleEnum(Enum):
     CDRS = "cdrs"
     SESSIONS = "sessions"
     HUBCLIENTINFO = "hubclientinfo"
+    PAYMENTS = "payments"
+    CHARGINGPROFILES = "chargingprofiles"
 
     def get_owner(self):
         return {
@@ -106,6 +110,7 @@ class OcpiModuleEnum(Enum):
             self.TARIFFS.value: OcpiRolesEnum.CPO,
             self.CDRS.value: OcpiRolesEnum.CPO,
             self.SESSIONS.value: OcpiRolesEnum.CPO,
+            self.PAYMENTS.value: OcpiRolesEnum.PTP,
         }[self.value]
 
     def get_viewset(self):
@@ -122,7 +127,7 @@ IDENTIFIER_CHOICES = list(
     (module.value.lower(), module.value.capitalize()) for module in OcpiModuleEnum
 )
 
-ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "SCSP")
+ROLE_OPTIONS = ("CPO", "EMSP", "HUB", "NSP", "NAP", "PTP", "SCSP")
 
 
 class EndpointRoleEnum(Enum):
@@ -536,3 +541,35 @@ class RoamingProtocol(Enum):
 ROAMING_PROTOCOL_CHOICES = [
     (protocol.name, protocol.value) for protocol in RoamingProtocol
 ]
+
+
+class WEEKDAY_CHOICES(Enum):
+    Monday = auto()
+    Tuesday = auto()
+    Wednesday = auto()
+    Thursday = auto()
+    Friday = auto()
+    Saturday = auto()
+    Sunday = auto()
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def from_number(cls, number: int) -> Optional["WEEKDAY_CHOICES"]:
+        return next((day for day in cls if day.value == number), None)
+
+
+Everyday = {1, 2, 3, 4, 5, 6, 7}
+Workdays = {1, 2, 3, 4, 5}
+Weekend = {6, 7}
+
+
+class ImageCategory(str, Enum):
+    CHARGER = "CHARGER"
+    ENTRANCE = "ENTRANCE"
+    LOCATION = "LOCATION"
+    NETWORK = "NETWORK"
+    OPERATOR = "OPERATOR"
+    OTHER = "OTHER"
+    OWNER = "OWNER"

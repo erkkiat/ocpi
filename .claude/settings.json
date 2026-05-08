@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import json, os; ctx = open('.claude_context.md').read() if os.path.exists('.claude_context.md') else ''; auto = open('.claude_context_auto.md').read() if os.path.exists('.claude_context_auto.md') else ''; combined = '\\n\\n'.join(filter(None, [ctx, auto])); print(json.dumps({'hookSpecificOutput': {'hookEventName': 'SessionStart', 'additionalContext': combined}})) if combined else None\"",
+            "timeout": 10,
+            "statusMessage": "Loading project context..."
+          }
+        ]
+      }
+    ]
+  }
+}

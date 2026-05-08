@@ -13,7 +13,7 @@ from django.test import Client
 
 from unittest import TestCase
 
-from ocpi22.locations.serializers import LocationSerializer221
+from ocpi22.locations.serializers import LocationSerializer221, EvseSerializer
 from unittest.mock import ANY
 from ocpi22.models.credentials import Credentials
 from ocpi22.models.location import Location, Evse
@@ -68,6 +68,21 @@ class TestLocations(TestCase):
         )
         if serializer.is_valid():
             serializer.save()
+
+
+@pytest.mark.django_db
+def test_evse_serializer_includes_physical_reference():
+    evse = EvseFactory(physical_reference="A1")
+    data = EvseSerializer(evse, context={"request": None}).data
+    assert "physical_reference" in data
+    assert data["physical_reference"] == "A1"
+
+
+@pytest.mark.django_db
+def test_evse_serializer_physical_reference_is_omitted_when_not_set():
+    evse = EvseFactory(physical_reference=None)
+    data = EvseSerializer(evse, context={"request": None}).data
+    assert "physical_reference" not in data
 
 
 @pytest.mark.django_db
@@ -261,9 +276,10 @@ class TestEvseMove:
     def test_adding_a_connector_to_an_existing_location_and_evse_succeeds(
         self, super_user_client
     ):
+        role = CredentialsRoleFactory(country_code="FI", party_id="CPO")
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
-            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            role,
             "ocpi22/data/examples/location_example.json",
         )
         assert result.response.status_code == 201
@@ -271,12 +287,12 @@ class TestEvseMove:
 
         result = self.load_and_send_location_and_evse_data(
             super_user_client,
-            CredentialsRoleFactory(country_code="FI", party_id="CPO"),
+            role,
             "ocpi22/data/examples/location_example_added_connector.json",
         )
         assert result.response.status_code == 200
         connectors = result.location.evses.get(uid="3257").connectors.all()
-        assert list(connectors.values_list("uid", flat=True)) == ["1", "2"]
+        assert set(connectors.values_list("uid", flat=True)) == {"1", "2"}
 
     @pytest.mark.django_db
     def test_moving_an_evse_to_an_existing_location_succeeds(self, super_user_client):

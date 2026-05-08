@@ -5,7 +5,6 @@ import pytz
 from django.contrib import admin
 from django.db.models import QuerySet, Sum
 from django.utils.datetime_safe import datetime
-from humanize import naturaltime
 from rest_framework.fields import DateTimeField
 
 import ocpi22.ocpi_logging as logging
@@ -281,10 +280,14 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
     @property
     def route_through_oicp(self):
-        return (
-            str(self.credentials.roles.first().get_party())
-            == settings.HUBJECT_OPERATOR_ID
-        )
+        credentials_role = self.credentials.roles.first() if self.credentials else None
+        if not credentials_role:
+            raise ValidationError(
+                f"Credentials id {self.credentials.id} - url {self.credentials.url} has no roles"
+                if self.credentials
+                else f"Credentials not set for Session {self.uid}"
+            )
+        return str(credentials_role.get_party()) == settings.HUBJECT_OPERATOR_ID
 
     # This is the eMSP that will be billed for this Session
     billed_to = models.ForeignKey(
@@ -345,53 +348,57 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
         """
 
         def _calculate_price(
-            kwh: float, hours: float, start_date_time: DateTimeField, flat_fee: bool
-        ) -> (float, float):
+            kwh: Decimal, hours: Decimal, start_date_time: DateTimeField, flat_fee: bool
+        ) -> (Decimal, Decimal):
             te: TariffElement = applying_tariff_element(self, start_date_time)
             if te:
                 pc: PriceComponent
-                total_excl_vat: float = 0.0
-                total_incl_vat: float = 0.0
+                total_excl_vat: Decimal = Decimal(0.0)
+                total_incl_vat: Decimal = Decimal(0.0)
                 for pc in te.price_components.all():
                     excl_vat = dict(
                         # Todo: Must calculate in Wh, not just when kWh is incremented
-                        ENERGY=lambda x: apply_step_size(
-                            kwh, pc.step_size, divisor=1000
+                        ENERGY=lambda x: Decimal(
+                            apply_step_size(kwh, pc.step_size, divisor=1000)
                         )
                         * x,
-                        TIME=lambda x: apply_step_size(
-                            hours, pc.step_size, divisor=3600
+                        TIME=lambda x: Decimal(
+                            apply_step_size(hours, pc.step_size, divisor=3600)
                         )
                         * x,
-                        FLAT=lambda x: x if flat_fee else 0.0,
-                    ).get(pc.type, lambda x: 0.0)(pc.price)
-                    incl_vat = excl_vat * (1.0 + pc.vat / 100) if pc.vat else excl_vat
+                        FLAT=lambda x: x if flat_fee else Decimal(0.0),
+                    ).get(pc.type, lambda x: Decimal(0.0))(pc.price)
+                    incl_vat = (
+                        excl_vat * (Decimal(1.0) + pc.vat / 100) if pc.vat else excl_vat
+                    )
                     total_incl_vat += incl_vat
                     total_excl_vat += excl_vat
-                return max(total_incl_vat, 0.0), max(total_excl_vat, 0.0)
-            return 0.0, 0.0
+                return max(total_incl_vat, Decimal(0.0)), max(
+                    total_excl_vat, Decimal(0.0)
+                )
+            return Decimal(0.0), Decimal(0.0)
 
         connector: Connector = connector or self.connector
         if connector:
             tariffs = tariffs or connector.get_tariffs()
         if not connector or not tariffs:
-            msg = f'Unable to calculate price for EVSE {connector.evse if connector else "N/A"} connector {connector}.'
+            msg = f"Unable to calculate price for EVSE {connector.evse if connector else 'N/A'} connector {connector}."
             logging.error(msg)
             # Todo: Prevent START_SESSION on a Connector where the price cannot be calculated
             # Todo: Even better, mark the EVSE inoperative, or prevent making it available
             return False
 
-        result_incl_vat: float = 0.0
-        result_excl_vat: float = 0.0
+        result_incl_vat: Decimal = Decimal(0.0)
+        result_excl_vat: Decimal = Decimal(0.0)
 
         from ocpi22.cpo.api import applying_tariff_element
 
         if not self.chargingperiods.count():
             session_hours = self.total_time_float
-            session_kwh: float = float(self.kwh)
-            assert session_kwh >= 0.0, f"Invalid session kwh {session_kwh}"
+            session_kwh: Decimal = self.kwh
+            assert session_kwh >= Decimal(0.0), f"Invalid session kwh {session_kwh}"
             cp_incl_vat, cp_excl_vat = _calculate_price(
-                session_kwh, session_hours, self.start_date_time, flat_fee=True
+                session_kwh, Decimal(session_hours), self.start_date_time, flat_fee=True
             )
             result_incl_vat += cp_incl_vat
             result_excl_vat += cp_excl_vat
@@ -411,22 +418,26 @@ class Session(models.Model, ModelUtilMixin, OcpiModule):
 
         # Apply the minimum and maximum price specified by the Tariff of the first ChargingPeriod
         tariff = tariffs[0]  # Todo: Find min and max price from all applying Tariffs
-        result_incl_vat = apply_min_and_max(
-            result_incl_vat, tariff.min_price_incl_vat, tariff.max_price_incl_vat
+        result_incl_vat = Decimal(
+            apply_min_and_max(
+                result_incl_vat, tariff.min_price_incl_vat, tariff.max_price_incl_vat
+            )
         )
-        result_excl_vat = apply_min_and_max(
-            result_excl_vat, tariff.min_price_excl_vat, tariff.max_price_excl_vat
+        result_excl_vat = Decimal(
+            apply_min_and_max(
+                result_excl_vat, tariff.min_price_excl_vat, tariff.max_price_excl_vat
+            )
         )
 
         self.total_cost_incl_vat = round(
-            result_incl_vat + 0.001, 2
+            result_incl_vat + Decimal(0.0001), 3
         )  # Try round(5.625, 2) without the + 0.001
-        self.total_cost_excl_vat = round(result_excl_vat + 0.001, 2)
+        self.total_cost_excl_vat = round(result_excl_vat + Decimal(0.0001), 3)
         # If we could figure out a price, it's a success, even if the price is 0.0
         return True
 
     def __str__(self):
-        return f"{round(self.kwh, 1)} kWh, updated {naturaltime(self.updated)}"
+        return f"{round(self.kwh, 1)} kWh, updated {self.updated}"
 
     def get_absolute_url(self, version=None):
         return util.reverse(

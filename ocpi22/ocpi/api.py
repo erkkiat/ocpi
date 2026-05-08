@@ -1,6 +1,6 @@
 from logging import getLogger
 from django.conf import settings
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Q
 
 from typing import Optional
 
@@ -19,6 +19,7 @@ from ocpi22.decorators import (
     requires_last_updated,
 )
 from ocpi22.tokens.auth import authorize_token, TokenAuthorization
+from ocpi22.tokens.dataclasses import TokenDto
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from util import reverse
 from rest_framework.viewsets import GenericViewSet
@@ -31,7 +32,7 @@ from ocpi22.choices import (
 )
 from ocpi22.commands.commands import send_stop_command
 from ocpi22.msp.models import Authorization
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpi22.msp.serializers import (
     MSPAuthorizeCallbackSerializer,
     MSPSessionCallbackSerializer,
@@ -118,7 +119,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Token {self.kwargs.get("uid")}'
+            return f"Token {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Tokens"
@@ -168,7 +169,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             created_token = serializer.save(ocpi_master=credentialsrole)
-            logger.info(f'{"Creating" if created else "Updating"} {created_token}')
+            logger.info(f"{'Creating' if created else 'Updating'} {created_token}")
             created_token.post_process_after_update_or_create()
             created_token.send_hub_updates()
             return OCPIResponse(
@@ -227,7 +228,7 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
                     "token_id": token_uid,
                     "location_id": location.uid if location else None,
                 }
-                msp_response = send_to_webhook(
+                msp_response = send_to_webhook_legacy(
                     webhook_data, MSPAuthorizeCallbackSerializer, timeout=28
                 )  # Just under the 30 second limit which is maximum for Heroku requests
                 if msp_response:
@@ -326,8 +327,13 @@ class TokenViewSet(OCPIListModelMixin, GenericViewSet):
         """
         Handle a POST request for a token authorization as a hub. Forward the authorization request.
         """
+        token_dto = TokenDto(
+            uid=token.uid if isinstance(token, Token) else token,
+            adhoc=isinstance(token, str),
+            token=token if isinstance(token, Token) else None,
+        )
         authorization: TokenAuthorization = authorize_token(
-            token, location, request=request
+            token_dto, location, request=request
         )
         return make_ocpi_response(authorization)
 
@@ -351,15 +357,19 @@ class CdrViewSet(OCPIListModelMixin, GenericViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Cdr.objects.all().order_by("created")
-        if hasattr(self.request, "country_code"):
-            return Cdr.objects.filter(
-                ocpi_master=self.request.credentialsrole
-            ).order_by("created")
+
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
+            return Cdr.objects.filter(Q(ocpi_master=role) | Q(billed_to=role)).order_by(
+                "created"
+            )
         return Cdr.objects.none()
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'CDR {self.kwargs.get("uid")}'
+            return f"CDR {self.kwargs.get('uid')}"
         if self.name:
             return f"CDR {self.name.lower()}"
         return "Charge Detail Records"
@@ -550,7 +560,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Tariff {self.kwargs.get("uid")}'
+            return f"Tariff {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Tariffs"
@@ -627,7 +637,7 @@ class TariffViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logger.info(
-                f'{"Creating" if created else "Updating"} Tariff {credentialsrole} - {uid}.'
+                f"{'Creating' if created else 'Updating'} Tariff {credentialsrole} - {uid}."
             )
             created_tariff = serializer.save(ocpi_master=credentialsrole)
             created_tariff.send_hub_updates()
@@ -715,13 +725,25 @@ def update_authorization(request, session: Session) -> None:
 class SessionViewSet(OCPIListModelMixin, GenericViewSet):
     pagination_class = OCPIPaginationAndHeaders
     lookup_field = "uid"
-    queryset = Session.objects.all().order_by("created")
     serializer_class = SessionSerializer
     versioning_class = OCPIVersioning
 
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Session.objects.all().order_by("created")
+
+        role = getattr(self.request, "credentialsrole", None) or getattr(
+            self.request, "ocpi_party", None
+        )
+        if role:
+            return Session.objects.filter(
+                Q(ocpi_master=role) | Q(billed_to=role)
+            ).order_by("created")
+        return Session.objects.none()
+
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Session {self.kwargs.get("uid")}'
+            return f"Session {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Sessions"
@@ -786,7 +808,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
         )
         if serializer.is_valid():
             logger.info(
-                f'{"Creating" if created else "Updating"} Session {country_code}*{party_id} - {uid}.'
+                f"{'Creating' if created else 'Updating'} Session {country_code}*{party_id} - {uid}."
             )
             session = serializer.save(ocpi_master=request.credentialsrole)
             update_authorization(request, session)
@@ -803,7 +825,7 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
                     "exclude_urls": True,
                 },
             ).data
-            send_to_webhook(
+            send_to_webhook_legacy(
                 data, MSPSessionCallbackSerializer, serialized_data=outbound_data
             )
             stop_session_if_money_runs_out(request, session)
@@ -813,8 +835,8 @@ class SessionViewSet(OCPIListModelMixin, GenericViewSet):
             )
 
         logger.error(
-            'Problem with PUT Session from '
-            f'{request.credentials if hasattr(request, "credentials") else "?"}: {serializer.errors}'
+            "Problem with PUT Session from "
+            f"{request.credentials if hasattr(request, 'credentials') else '?'}: {serializer.errors}"
         )
         return OCPIResponse(
             errors=serializer.errors, http_status=status.HTTP_400_BAD_REQUEST
@@ -840,7 +862,7 @@ class ClientInfoViewSet(mixins.ListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "id" in self.kwargs:
-            return f'HubClientInfo {self.kwargs.get("id")}'
+            return f"HubClientInfo {self.kwargs.get('id')}"
         return "HubClientInfo"
 
     def get_queryset(self):

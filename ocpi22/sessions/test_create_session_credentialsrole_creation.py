@@ -16,6 +16,8 @@ from ocpi22.tests.factories import (
 )
 from ocpi22.choices import AuthorizationEnum
 from ocpiconnector.party import Party
+from ocpi22.ocpi.auth import get_credentialsrole
+from ocpiconnector.ocpi_identities import get_our_credentialsrole
 
 
 @pytest.mark.django_db
@@ -47,6 +49,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="NL*EMO",
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         created_credentialsrole = CredentialsRole.objects.get(
@@ -58,6 +61,8 @@ class TestCreateSessionCredentialsRoleCreation:
     def test_create_session_creates_new_credentialsrole_when_billed_to_party_does_not_exist(
         self,
     ):
+        get_our_credentialsrole.cache_clear()
+        get_credentialsrole.cache_clear()
         location = LocationFactory(uid="LOC002")
         evse = EvseFactory(location=location, uid="EVSE002")
         connector = ConnectorFactory(evse=evse, uid="CONN002")
@@ -84,11 +89,12 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=party,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
-        created_credentialsrole = CredentialsRole.objects.get(
+        created_credentialsrole = CredentialsRole.objects.filter(
             country_code="FR", party_id="EDF"
-        )
+        ).first()
         assert created_credentialsrole is not None
         assert session.billed_to == created_credentialsrole
 
@@ -119,6 +125,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="BE*ICE",
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == existing_credentialsrole
@@ -155,6 +162,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=party,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == existing_credentialsrole
@@ -195,6 +203,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to="CH*SWI",
                 credentials=credentials,
                 ad_hoc_token=ad_hoc_token,
+                authorization_method="AUTH_REQUEST",
             )
 
         created_credentialsrole = CredentialsRole.objects.get(
@@ -226,6 +235,7 @@ class TestCreateSessionCredentialsRoleCreation:
                 billed_to=None,
                 credentials=credentials,
                 token_id=token.uid,
+                authorization_method="AUTH_REQUEST",
             )
 
         assert session.billed_to == token_ocpi_master

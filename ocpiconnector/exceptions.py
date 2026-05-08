@@ -1,4 +1,4 @@
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 
 
 class WrongRole(APIException):
@@ -23,7 +23,7 @@ class NoCommonVersion(APIException):
     pass
 
 
-class ConnectorTariffNotFoundError(Exception):
+class ConnectorTariffNotFoundError(ValidationError):
     pass
 
 

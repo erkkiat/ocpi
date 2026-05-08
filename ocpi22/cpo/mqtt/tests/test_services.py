@@ -1,21 +1,20 @@
 import logging
-from collections import OrderedDict
 from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, Mock
 
 import orjson
 import pytest
-import time_machine
+import pytz
 from kombu.exceptions import OperationalError
 
 from ocpi22.choices import AuthorizationEnum
-from ocpi22.cpo.api import process_meter_values
+from ocpi22.cpo.api import process_meter_values, is_meter_value_frequency_within_limit
 from ocpi22.cpo.mqtt.schemas import (
-    MeterValues,
     EvseStatusUpdate,
     TokenAuthorizationMessageIn,
     TokenAuthorizationResponse,
+    CachedSession,
 )
 from ocpi22.cpo.mqtt.services import (
     _decode_message,
@@ -28,6 +27,7 @@ from ocpi22.cpo.mqtt.services import (
 )
 from ocpi22.cpo.mqtt.tasks import save_and_send_evse_status_updates
 from ocpi22.models.session import Session
+from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.ocpi.dataclasses import AdhocToken
 from ocpi22.tests.factories import (
     OCPISessionFactory,
@@ -38,309 +38,475 @@ from ocpi22.tests.factories import (
     TokenFactory,
     CredentialsRoleFactory,
     CredentialsFactory,
+    CdrTokenFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
-from ocpiconnector.party import Party
+from ocpi22.tokens.dataclasses import TokenDto
 
 
-class TestMqttServices:
-    def test_decode_message_success(self, smappee_status_update_message):
-        assert _decode_message(smappee_status_update_message) == (
+class TestDecodeMessage:
+    def test_decode_message_returns_decoded_string_when_valid_utf8(
+        self, smappee_status_update_message
+    ):
+        result = _decode_message(smappee_status_update_message)
+
+        assert result == (
             '{"evse_uid":"D80B60C1-751E-43B5-868B-9A60A41C5456", "status":"AVAILABLE"}'
         )
 
-    def test_decode_message_returns_none_on_unicode_error(
+    def test_decode_message_returns_none_when_unicode_decode_error(
         self, smappee_status_update_message, caplog
     ):
         smappee_status_update_message.payload = b"\x80"
-        assert _decode_message(smappee_status_update_message) is None
+
+        result = _decode_message(smappee_status_update_message)
+
+        assert result is None
         assert any(
-            f"Failed to decode {smappee_status_update_message.topic} message"
+            f"Failed to decode message from topic {smappee_status_update_message.topic}"
             in record.message
             for record in caplog.records
         )
 
-    def test_process_meter_values_data_exits_early_if_decode_message_fails(
+
+@pytest.mark.django_db
+class TestProcessMeterValuesData:
+    def test_process_meter_values_data_exits_early_when_decode_message_fails(
         self, smappee_meter_message
     ):
         smappee_meter_message.payload = b"\x80"
+
         with (
             patch(
                 "ocpi22.cpo.mqtt.services._decode_message", return_value=None
             ) as mock_decode_message,
-            patch("ocpi22.tasks.send_ocpi_request") as mock_process_meter_values_task,
+            patch("ocpi22.cpo.mqtt.services.update_meter_values_async") as mock_task,
         ):
-            assert process_meter_values_data(smappee_meter_message) is None
-        mock_decode_message.assert_called_once_with(smappee_meter_message)
-        mock_process_meter_values_task.assert_not_called()
+            result = process_meter_values_data(smappee_meter_message)
 
-    def test_process_meter_values_update_returns_none_when_data_validation_fails(
+            assert result is None
+            mock_decode_message.assert_called_once_with(smappee_meter_message)
+            mock_task.apply_async.assert_not_called()
+
+    def test_process_meter_values_data_exits_early_when_data_validation_fails(
         self, smappee_meter_message, caplog
     ):
         caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
         smappee_meter_message.payload = b'{"invalid_data": "94f5993d-232a-4916-a801-4e408c24c9cc", "kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
-        assert process_meter_values_data(smappee_meter_message) is None
+
+        result = process_meter_values_data(smappee_meter_message)
+
+        assert result is None
         assert any(
-            f"Failed to validate {smappee_meter_message.topic} message"
+            f"Failed to parse message from topic {smappee_meter_message.topic}"
             in record.message
             for record in caplog.records
         )
 
-    @pytest.mark.skip
-    def test_process_meter_values_update_fails_when_celery_kwargs_not_satisfied(
+    def test_process_meter_values_data_exits_early_when_session_id_missing(
         self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        meter_values.model_dump.return_value = (
-            '{"kw": 1.1, "soc": 1.1, "power": 2.2, timestamp": "2022-02-22T22:22:22"}'
+        caplog.set_level(logging.WARNING, logger="ocpi22.cpo.mqtt.services")
+        smappee_meter_message.payload = orjson.dumps(
+            {
+                "session_id": None,
+                "kwh": 1.1,
+                "soc": 1.1,
+                "power": 2.2,
+                "timestamp": "2022-02-22T22:22:22+00:00",
+            }
         )
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch.object(
-                process_meter_values,
-                "apply_async",
-                side_effect=OperationalError("Some error from celery"),
-            ):
-                assert process_meter_values_data(smappee_meter_message) is None
-                assert any(
-                    "Celery operational error" in record.message
-                    for record in caplog.records
-                )
 
-    @pytest.mark.skip
-    def test_process_meter_values_update_fails_when_unexpected_error_occurs(
+        with patch("ocpi22.cpo.mqtt.services.update_meter_values_async") as mock_task:
+            result = process_meter_values_data(smappee_meter_message)
+
+            assert result is None
+            mock_task.apply_async.assert_not_called()
+            assert any(
+                "Meter values message missing session_id" in record.message
+                for record in caplog.records
+            )
+
+    @pytest.mark.django_db
+    def test_process_meter_values_data_dispatches_task_with_correct_parameters(
+        self, smappee_meter_message
+    ):
+        with patch("ocpi22.cpo.mqtt.services.update_meter_values_async") as mock_task:
+            process_meter_values_data(smappee_meter_message)
+
+            mock_task.apply_async.assert_called_once_with(
+                kwargs={
+                    "session_id": "94f5993d-232a-4916-a801-4e408c24c9cc",
+                    "timestamp": "2022-02-22T22:22:22+00:00",
+                    "kwh": 1.1,
+                    "soc": 1.1,
+                    "power": 2.2,
+                },
+                expires=60,
+            )
+
+    def test_process_meter_values_data_logs_error_when_celery_operational_error_occurs(
         self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        meter_values.model_dump.return_value = '{"a": "b"}'
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch.object(
-                process_meter_values,
-                "apply_async",
-                side_effect=Exception("Some unexpected error"),
-            ):
-                assert process_meter_values_data(smappee_meter_message) is None
-                assert any(
-                    "An unexpected error occurred" in record.message
-                    for record in caplog.records
-                )
+        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
 
-    @time_machine.travel("2025-02-11 09:00:00", tick=False)
-    @pytest.mark.django_db
-    def test_mqtt_meter_values_calls_send_background_update_successfully(
-        self, smappee_meter_message, msp_credentials_with_endpoints
+        with patch(
+            "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async",
+            side_effect=OperationalError("Celery broker unavailable"),
+        ):
+            result = process_meter_values_data(smappee_meter_message)
+
+            assert result is None
+            assert any(
+                "Celery operational error while dispatching meter values task"
+                in record.message
+                for record in caplog.records
+            )
+
+    def test_process_meter_values_data_logs_error_when_unexpected_error_occurs(
+        self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        decoded_message = _decode_message(smappee_meter_message)
-        message_dict = orjson.loads(decoded_message)
-        message_dict["timestamp"] = datetime.fromisoformat(message_dict["timestamp"])
-        meter_values.model_dump.return_value = message_dict
-        location = LocationFactory(uid="LOCATION1")
-        evse = EvseFactory(location=location, uid="EVSE1")
-        tariff = TariffFactory(uid="TARIFF1")
-        connector = ConnectorFactory(uid="1", evse=evse, tariff_ids=[tariff])
-        session = OCPISessionFactory(
-            uid="94f5993d-232a-4916-a801-4e408c24c9cc", start_kwh=0, connector=connector
+        caplog.set_level(logging.ERROR, logger="ocpi22.cpo.mqtt.services")
+
+        with patch(
+            "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async",
+            side_effect=Exception("Unexpected error"),
+        ):
+            result = process_meter_values_data(smappee_meter_message)
+
+            assert result is None
+            assert any(
+                "Unexpected error dispatching meter values task" in record.message
+                for record in caplog.records
+            )
+
+    def test_process_meter_values_data_dispatches_task_with_none_for_optional_fields(
+        self, smappee_meter_topic
+    ):
+        from paho.mqtt.client import MQTTMessage
+
+        OCPISessionFactory(uid="test-session-123")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-123",
+                "kwh": 5.5,
+                "soc": None,
+                "power": None,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
         )
-        with patch.object(
-            MeterValues, "model_validate_json", return_value=meter_values
-        ):
-            with patch(
-                "ocpi22.ocpi.util.OcpiModule.send_background_update"
-            ) as mock_send_background_update:
-                process_meter_values_data(smappee_meter_message)
-                mock_send_background_update.assert_called_once_with(
-                    {
-                        "country_code": "FI",
-                        "party_id": "CPO",
-                        "id": "94f5993d-232a-4916-a801-4e408c24c9cc",
-                        "start_date_time": "2021-01-01T10:00:00Z",
-                        "end_date_time": "2021-01-01T12:00:00Z",
-                        "kwh": 1.1,
-                        "charging_periods": [
-                            {
-                                "start_date_time": "2021-01-01T10:00:00Z",
-                                "tariff_id": "TARIFF1",
-                                "dimensions": [
-                                    {"type": "ENERGY", "volume": "1.1000"},
-                                    {"type": "STATE_OF_CHARGE", "volume": "1.1000"},
-                                    {"type": "POWER", "volume": "2.2000"},
-                                    {"type": "TIME", "volume": "10020.3728"},
-                                ],
-                            }
-                        ],
-                        "cdr_token": OrderedDict(
-                            [
-                                ("country_code", "FI"),
-                                ("party_id", "MSP"),
-                                ("uid", "DEADC0DE"),
-                                ("type", "RFID"),
-                                ("contract_id", "CONTRACT-12345"),
-                            ]
-                        ),
-                        "auth_method": "AUTH_REQUEST",
-                        "authorization_reference": "AUTHORIZATION-12345",
-                        "location_id": "LOCATION1",
-                        "evse_uid": "EVSE1",
-                        "connector_id": "1",
-                        "currency": "EUR",
-                        "total_cost": OrderedDict(
-                            [("excl_vat", 0.8), ("incl_vat", 0.9)]
-                        ),
-                        "status": "ACTIVE",
-                        "last_updated": "2025-02-11T09:00:00Z",
-                    },
-                    "https://localhost/ocpi/sessions/FI/CPO/94f5993d-232a-4916-a801-4e408c24c9cc",
-                    "QUJD",
-                    to=Party(country_code="FI", party_id="MSP"),
-                    sender=Party(country_code="FI", party_id="CPO"),
-                    method="put",
-                    credentials=session.credentials,
-                )
 
-    @pytest.mark.django_db
-    def test_meter_values_update_data_calls_send_ocpi_message_with_put_only(
-        self, smappee_meter_message, msp_credentials_with_endpoints
+        with patch("ocpi22.cpo.mqtt.services.update_meter_values_async") as mock_task:
+            process_meter_values_data(message)
+
+            mock_task.apply_async.assert_called_once_with(
+                kwargs={
+                    "session_id": "test-session-123",
+                    "timestamp": "2023-03-15T10:30:00+00:00",
+                    "kwh": 5.5,
+                    "soc": None,
+                    "power": None,
+                },
+                expires=60,
+            )
+
+    def test_process_meter_values_data_logs_success_when_task_dispatched(
+        self, smappee_meter_message, caplog
     ):
-        meter_values = MagicMock(spec=MeterValues)
-        decoded_message = _decode_message(smappee_meter_message)
-        message_dict = orjson.loads(decoded_message)
-        message_dict["timestamp"] = datetime.fromisoformat(message_dict["timestamp"])
-        meter_values.model_dump.return_value = message_dict
-        OCPISessionFactory(uid="94f5993d-232a-4916-a801-4e408c24c9cc")
+        caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.services")
+
+        with patch("ocpi22.cpo.mqtt.services.update_meter_values_async"):
+            process_meter_values_data(smappee_meter_message)
+
+            assert any(
+                "Dispatched meter values update task for session 94f5993d-232a-4916-a801-4e408c24c9cc"
+                in record.message
+                for record in caplog.records
+            )
+
+    @pytest.mark.parametrize(
+        "kwh,soc,power",
+        [
+            (10.5, 50.0, 22.0),
+            (0.0, 0.0, 0.0),
+            (100.5, 100.0, 50.0),
+            (5.25, None, 11.0),
+            (15.0, 80.0, None),
+        ],
+    )
+    def test_process_meter_values_data_handles_various_meter_value_combinations(
+        self, smappee_meter_topic, kwh, soc, power
+    ):
+        from paho.mqtt.client import MQTTMessage
+
+        OCPISessionFactory(uid="test-session-456")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-456",
+                "kwh": kwh,
+                "soc": soc,
+                "power": power,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
+        )
+
+        with patch("ocpi22.cpo.mqtt.services.update_meter_values_async") as mock_task:
+            process_meter_values_data(message)
+
+            call_kwargs = mock_task.apply_async.call_args[1]["kwargs"]
+            assert call_kwargs["kwh"] == kwh
+            assert call_kwargs["soc"] == soc
+            assert call_kwargs["power"] == power
+
+    def test_process_meter_values_data_exits_early_when_meter_value_frequency_returns_false(
+        self, smappee_meter_topic, caplog
+    ):
+        from paho.mqtt.client import MQTTMessage
+
+        OCPISessionFactory(uid="test-session-456")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-456",
+                "kwh": 14,
+                "soc": 29,
+                "power": 17000,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
+        )
 
         with (
             patch(
-                "ocpi22.ocpi.util.OcpiModule.send_background_update"
-            ) as mock_send_background_update,
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
+            ) as mock_task,
         ):
-            process_meter_values_data(smappee_meter_message)
-            mock_send_background_update.assert_called_once()
-            assert mock_send_background_update.call_args.kwargs["method"] == "put"
+            mock_check_meter_values_frequency.return_value = False
+            process_meter_values_data(message)
 
-    @pytest.mark.django_db
-    def test_meter_values_from_wouter_successfully(
-        self, smappee_meter_message_from_wouter
+            mock_task.assert_not_called()
+            assert (
+                "Skipping meter values update for session test-session-456 due to high frequency"
+                in caplog.text
+            )
+
+    def test_process_meter_values_data_does_not_exits_early_when_meter_value_frequency_returns_false(
+        self, smappee_meter_topic, caplog
     ):
-        decoded_message = _decode_message(smappee_meter_message_from_wouter)
-        message_dict = orjson.loads(decoded_message)
-        session_id = message_dict.get("session_id")
-        OCPISessionFactory(
-            uid=session_id,
-            start_date_time=datetime.fromisoformat(message_dict.get("timestamp"))
-            - timedelta(hours=0.76),
-        )
-        process_meter_values_data(smappee_meter_message_from_wouter)
-        session = Session.objects.get(uid=session_id)
-        assert session.kwh == 125
-        assert list(
-            session.chargingperiods.all()[0].dimensions.values_list("type", "volume")
-        ) == [
-            ("ENERGY", Decimal("125.0000")),
-            ("POWER", Decimal("22.0000")),
-            ("TIME", Decimal("0.7600")),
-        ]
+        from paho.mqtt.client import MQTTMessage
 
-    @patch("ocpi22.cpo.mqtt.services._decode_message", return_value=None)
-    @patch.object(EvseStatusUpdate, attribute="model_validate_json")
-    @patch.object(save_and_send_evse_status_updates, attribute="apply_async")
-    def test_process_status_updates_data_exits_early_if_decode_message_fails(
+        OCPISessionFactory(uid="test-session-456")
+        message = MQTTMessage()
+        message.topic = smappee_meter_topic.encode("utf-8")
+        message.payload = orjson.dumps(
+            {
+                "session_id": "test-session-456",
+                "kwh": 14,
+                "soc": 29,
+                "power": 17000,
+                "timestamp": "2023-03-15T10:30:00+00:00",
+            }
+        )
+
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.mqtt.services.update_meter_values_async.apply_async"
+            ) as mock_task,
+        ):
+            mock_check_meter_values_frequency.return_value = True
+            process_meter_values_data(message)
+
+            mock_task.assert_called_once()
+            assert (
+                "Dispatched meter values update task for session test-session-456"
+                in caplog.text
+            )
+
+
+class TestProcessStatusUpdateData:
+    def test_process_status_update_data_exits_early_when_decode_message_fails(
         self,
-        mock_apply_async,
-        mock_model_validate_json,
-        mock_decode_message,
         smappee_status_update_message,
     ):
         smappee_status_update_message.payload = b"\x80"
-        assert process_status_update_data(smappee_status_update_message) is None
-        mock_decode_message.assert_called_once_with(smappee_status_update_message)
-        mock_model_validate_json.assert_not_called()
-        mock_apply_async.assert_not_called()
 
-    def test_process_status_update_data_returns_none_when_data_validation_fails(
+        with (
+            patch(
+                "ocpi22.cpo.mqtt.services._decode_message", return_value=None
+            ) as mock_decode_message,
+            patch.object(
+                EvseStatusUpdate, attribute="model_validate_json"
+            ) as mock_validate,
+            patch.object(
+                save_and_send_evse_status_updates, attribute="apply_async"
+            ) as mock_apply_async,
+        ):
+            result = process_status_update_data(smappee_status_update_message)
+
+            assert result is None
+            mock_decode_message.assert_called_once_with(smappee_status_update_message)
+            mock_validate.assert_not_called()
+            mock_apply_async.assert_not_called()
+
+    def test_process_status_update_data_exits_early_when_data_validation_fails(
         self, smappee_status_update_message, caplog
     ):
         smappee_status_update_message.payload = b'{"invalid_data": "94f5993d-232a"}'
-        assert process_meter_values_data(smappee_status_update_message) is None
-        # caplog.set_level(logging.INFO, logger="ocpi22.cpo.mqtt.services")
 
+        result = process_status_update_data(smappee_status_update_message)
+
+        assert result is None
         assert any(
-            f"Failed to validate {smappee_status_update_message.topic} message"
+            f"Failed to parse message from topic {smappee_status_update_message.topic}"
             in record.message
             for record in caplog.records
         )
 
-    def test_process_status_update_data_fails_when_celery_kwargs_not_satisfied(
+    def test_process_status_update_data_logs_error_when_celery_operational_error_occurs(
         self, smappee_status_update_message, caplog
     ):
         evse_status = MagicMock(spec=EvseStatusUpdate)
-        evse_status.model_dump.return_value = '{"unknown_field" "d80b60c1-751e-43b5-868b-9a60a41c5456", "status" "AVAILABLE"}'
-        with patch.object(
-            EvseStatusUpdate, "model_validate_json", return_value=evse_status
-        ):
-            with patch.object(
+        evse_status.model_dump.return_value = {
+            "invalid_field": "invalid",
+            "status": "AVAILABLE",
+            "evse_uid": "d80b60c1-751e-43b5-868b-9a60a41c5456",
+        }
+
+        with (
+            patch.object(
+                EvseStatusUpdate, "model_validate_json", return_value=evse_status
+            ),
+            patch.object(
                 save_and_send_evse_status_updates,
                 "apply_async",
                 side_effect=OperationalError("Some error from celery"),
-            ):
-                assert process_status_update_data(smappee_status_update_message) is None
-                assert any(
-                    "Celery operational error" in record.message
-                    for record in caplog.records
-                )
+            ),
+        ):
+            result = process_status_update_data(smappee_status_update_message)
 
-    def test_process_status_update_data_fails_when_unexpected_error_occurs(
+            assert result is None
+            assert any(
+                "Celery operational error" in record.message
+                for record in caplog.records
+            )
+
+    def test_process_status_update_data_logs_error_when_unexpected_error_occurs(
         self, smappee_status_update_message, caplog, db
     ):
         evse_status = MagicMock(spec=EvseStatusUpdate)
-        evse_status.model_dump.return_value = (
-            '{"invalid": "d80b60c1-751e-43b5-868b-9a60a41c5456", "status": "AVAILABLE"}'
-        )
-        with patch.object(
-            EvseStatusUpdate, "model_validate_json", return_value=evse_status
-        ):
-            with patch.object(
+        evse_status.model_dump.return_value = {
+            "evse_uid": "d80b60c1-751e-43b5-868b-9a60a41c5456",
+            "status": "AVAILABLE",
+            "invalid_field": "invalid",
+        }
+
+        with (
+            patch.object(
+                EvseStatusUpdate, "model_validate_json", return_value=evse_status
+            ),
+            patch.object(
                 save_and_send_evse_status_updates,
                 "apply_async",
                 side_effect=Exception("Some unexpected error"),
-            ):
-                assert process_status_update_data(smappee_status_update_message) is None
-                assert any(
-                    "An unexpected error occurred" in record.message
-                    for record in caplog.records
-                )
+            ),
+        ):
+            result = process_status_update_data(smappee_status_update_message)
 
-    def test_process_status_update_data_calls_save_and_send_evse_status_updates_celery_task_successfully(
+            assert result is None
+            assert any(
+                "An unexpected error occurred" in record.message
+                for record in caplog.records
+            )
+
+    def test_process_status_update_data_dispatches_celery_task_with_correct_parameters(
         self, smappee_status_update_message
     ):
         evse_status = MagicMock(spec=EvseStatusUpdate)
         decoded_message = _decode_message(smappee_status_update_message)
         message_dict = orjson.loads(decoded_message)
         evse_status.model_dump.return_value = message_dict
-        with patch.object(
-            EvseStatusUpdate, "model_validate_json", return_value=evse_status
-        ):
-            with patch.object(
+
+        with (
+            patch.object(
+                EvseStatusUpdate, "model_validate_json", return_value=evse_status
+            ),
+            patch.object(
                 save_and_send_evse_status_updates, "apply_async"
-            ) as mock_save_and_send_evse_status_updates_task:
-                process_status_update_data(smappee_status_update_message)
-                mock_save_and_send_evse_status_updates_task.assert_called_once_with(
-                    kwargs=message_dict, expires=35
-                )
+            ) as mock_save_and_send_evse_status_updates_task,
+        ):
+            process_status_update_data(smappee_status_update_message)
+
+            mock_save_and_send_evse_status_updates_task.assert_called_once_with(
+                args=[message_dict["evse_uid"], message_dict["status"]], expires=35
+            )
+
+
+class TestProcessMeterValuesFrequency:
+    @pytest.mark.django_db
+    def test_process_meter_values_allows_update_when_meter_values_received_within_accepted_frequency(
+        self,
+    ):
+        with (
+            patch(
+                "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
+            ) as mock_check_meter_values_frequency,
+            patch(
+                "ocpi22.cpo.session_service.SessionService.update_meter_values"
+            ) as mock_update_meter_values,
+        ):
+            mock_check_meter_values_frequency.return_value = True
+            process_meter_values(
+                request=MagicMock(), kwh=12.5, session=OCPISessionFactory()
+            )
+
+            mock_update_meter_values.assert_called_once()
 
     @pytest.mark.django_db
-    def test_process_meter_values_calculates_kwh_delta_after_decimal_conversion_in_save(
+    def test_process_meter_values_blocks_update_when_insufficient_time_elapsed(
+        self,
+    ):
+        with patch(
+            "ocpi22.cpo.api.is_meter_value_frequency_within_limit"
+        ) as mock_check_meter_values_frequency:
+            mock_check_meter_values_frequency.return_value = False
+            result = process_meter_values(
+                request=MagicMock(), kwh=12.5, session=OCPISessionFactory()
+            )
+
+            assert (
+                result.data.get("status_text")
+                == "Meter values received too frequently, skipping update"
+            )
+
+
+class TestProcessMeterValuesCalculations:
+    @pytest.mark.django_db
+    def test_process_meter_values_calculates_kwh_delta_correctly(
         self,
     ):
         location = LocationFactory()
         evse = EvseFactory(location=location)
         tariff = TariffFactory()
         connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
         session = OCPISessionFactory(
-            connector=connector, status=Session.ACTIVE, start_kwh=10.5
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=10.5,
+            credentials=credentials,
         )
         mock_request = MagicMock()
 
@@ -357,25 +523,55 @@ class TestMqttServices:
             energy_dimension = charging_period.dimensions.filter(type="ENERGY").first()
             assert energy_dimension.volume == Decimal("5.25")
 
+    @pytest.mark.django_db
+    def test_process_meter_values_sets_start_kwh_when_session_start_is_zero(
+        self,
+    ):
+        location = LocationFactory()
+        evse = EvseFactory(location=location)
+        tariff = TariffFactory()
+        connector = ConnectorFactory(evse=evse, tariff_ids=[tariff])
+        credentials = CredentialsFactory(meter_value_frequency=None)
+        CredentialsRoleFactory(
+            country_code="US", party_id="CPO", credentials=credentials
+        )
+        session = OCPISessionFactory(
+            connector=connector,
+            status=Session.ACTIVE,
+            start_kwh=0.0,
+            credentials=credentials,
+        )
+        mock_request = MagicMock()
 
-class TestAuthorizeDataOverMqtt:
+        with patch.object(session, "send_updates"):
+            _ = process_meter_values(request=mock_request, kwh=15.75, session=session)
+
+            session.refresh_from_db()
+            assert session.start_kwh == 15.75
+
+
+class TestFindTokenByUid:
     @pytest.mark.django_db
     def test_find_token_by_uid_returns_none_when_no_token_exists(self):
         result = _find_token_by_uid("NONEXISTENT_TOKEN")
+
         assert result is None
 
     @pytest.mark.django_db
     def test_find_token_by_uid_returns_token_when_exact_match_exists(self):
         token = TokenFactory(uid="RANDOMGIBERISH9898")
+
         result = _find_token_by_uid("RANDOMGIBERISH9898")
+
         assert result == token
 
 
 class TestProcessAuthorizeData:
-    def test_process_authorize_data_exits_early_if_decode_message_fails(
+    def test_process_authorize_data_exits_early_when_decode_message_fails(
         self, auth_request_message
     ):
         auth_request_message.payload = b"\x80"
+
         with (
             patch(
                 "ocpi22.cpo.mqtt.services._decode_message", return_value=None
@@ -386,19 +582,21 @@ class TestProcessAuthorizeData:
         ):
             result = process_authorize_data(auth_request_message)
 
+            assert result is None
             mock_decode_message.assert_called_once_with(auth_request_message)
             mock_authorize_and_publish.assert_not_called()
-            assert result is None
 
-    def test_process_authorize_data_returns_none_when_data_validation_fails(
+    def test_process_authorize_data_exits_early_when_data_validation_fails(
         self, auth_request_message, caplog
     ):
         auth_request_message.payload = b'{"invalid_data": "some_value"}'
+
         result = process_authorize_data(auth_request_message)
 
         assert result is None
         assert any(
-            f"Failed to parse {auth_request_message.topic} message" in record.message
+            f"Failed to parse message from topic {auth_request_message.topic}"
+            in record.message
             for record in caplog.records
         )
 
@@ -420,7 +618,7 @@ class TestProcessAuthorizeData:
             assert call_args[0].token_id == expected_token_auth.token_id
             assert call_args[0].evse_id == expected_token_auth.evse_id
             assert call_args[0].correlation_id == expected_token_auth.correlation_id
-            assert call_args[1] == auth_request_message
+            assert call_args[1] == auth_request_message.topic
             assert result is None
 
 
@@ -439,13 +637,13 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
             ) as mock_publish_not_allowed,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
             )
             assert any(
-                f"Unable to authorize token from MQTT message: EVSE with ID '{token_auth_message.evse_id}' not found"
+                f"Unable to authorize token from MQTT on topic {auth_request_message.topic}: EVSE with ID '{token_auth_message.evse_id}' not found"
                 in record.message
                 for record in caplog.records
             )
@@ -478,7 +676,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.create_and_save_session"
             ) as mock_create_session,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
@@ -507,7 +705,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.create_and_save_session"
             ) as mock_create_session,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
@@ -543,7 +741,7 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services.publish_auth_response"
             ) as mock_publish_auth_response,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_create_session.assert_called_once_with(mock_authorization, evse)
             mock_publish_auth_response.assert_called_once()
@@ -579,10 +777,11 @@ class TestAuthorizeAndPublish:
             ),
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
+            token_dto = TokenDto(uid="TEST_TOKEN_123", adhoc=True, token=None)
             mock_authorize_token.assert_called_once_with(
-                token_auth_message.token_id, evse.location, evse_id=evse.evse_id
+                token_dto, evse.location, evse_id=evse.evse_id
             )
 
     @pytest.mark.django_db
@@ -606,15 +805,115 @@ class TestAuthorizeAndPublish:
                 "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
             ) as mock_publish_not_allowed,
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
 
             mock_publish_not_allowed.assert_called_once_with(
                 token_auth_message.correlation_id
             )
             assert any(
-                "MQTT authorization failed miserably for auth message" in record.message
+                f"MQTT authorization failed on topic {auth_request_message.topic}"
+                in record.message
                 for record in caplog.records
             )
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_active_session_exists_for_same_token_and_evse(
+        self, auth_request_message, caplog
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(cdr_token=cdr_token, evse=evse, status=Session.ACTIVE)
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services.authorize_token") as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            mock_authorize_token.assert_not_called()
+            assert any(
+                f"Token {token_auth_message.token_id} already has an active session "
+                f"at EVSE {evse.uid}" in record.message
+                for record in caplog.records
+            )
+
+    @pytest.mark.parametrize("session_status", [Session.COMPLETED, Session.PENDING])
+    @pytest.mark.django_db
+    def test_authorize_and_publish_proceeds_to_authorize_when_non_active_session_exists_for_same_token_and_evse(
+        self, auth_request_message, session_status
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(cdr_token=cdr_token, evse=evse, status=session_status)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+        session = Session(uid="test-session-789")
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ),
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_authorize_token.assert_called_once()
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_proceeds_to_authorize_when_active_session_exists_for_different_evse(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        different_evse = EvseFactory(location=location, uid="DIFFERENT_EVSE_999")
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(
+            cdr_token=cdr_token, evse=different_evse, status=Session.ACTIVE
+        )
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+        session = Session(uid="test-session-diff-evse")
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ),
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_authorize_token.assert_called_once()
 
 
 class TestPublishNotAllowedAuthResponse:
@@ -639,6 +938,7 @@ class TestCreateAndSaveSession:
     def test_create_and_save_session_creates_session_with_token_dict_authorization(
         self,
     ):
+        get_credentialsrole.cache_clear()
         location = LocationFactory()
         evse = EvseFactory(location=location)
         msp_credentialsrole = CredentialsRoleFactory(country_code="FI", party_id="MSP")
@@ -656,7 +956,7 @@ class TestCreateAndSaveSession:
 
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=AdhocToken(**token_dict),
+            token=token_dict,
             responding_party="FI*MSP",
             authorization_reference="auth-ref-789",
             auth_method="AUTH_REQUEST",
@@ -696,7 +996,7 @@ class TestCreateAndSaveSession:
 
         authorization = TokenAuthorization(
             allowed=AuthorizationEnum.ALLOWED,
-            token=AdhocToken(**token_dict),
+            token=token_dict,
             responding_party="DE*EMO",
             authorization_reference="auth-ref-123",
             auth_method="WHITELIST",
@@ -823,7 +1123,6 @@ class TestCreateAndSaveSession:
 
         assert isinstance(result, Session)
         assert result.uid is not None
-        assert len(result.uid) > 0
 
     def test_create_and_save_session_with_explicit_billed_to_parameter(self):
         location = LocationFactory()
@@ -979,7 +1278,60 @@ class TestCreateAndSaveSession:
             ) as mock_authorize_token,
             patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
         ):
-            _authorize_and_publish(token_auth_message, auth_request_message)
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+            token_dto = TokenDto(uid=token.uid, adhoc=False, token=token)
             mock_authorize_token.assert_called_once_with(
-                token, evse.location, evse_id=evse.evse_id
+                token_dto, evse.location, evse_id=evse.evse_id
             )
+
+
+@pytest.mark.django_db
+class TestCheckMeterValuesFrequency:
+    @pytest.fixture
+    def session(self):
+        return OCPISessionFactory(
+            uid="meter-value-frequency-test-session",
+            credentials=CredentialsFactory(meter_value_frequency=60),
+        )
+
+    def test_returns_true_when_meter_value_frequency_none(self, session):
+        session.credentials.meter_value_frequency = None
+        session.credentials.save()
+        assert is_meter_value_frequency_within_limit(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_no_cached_session(self, mock_get_cached, session):
+        mock_get_cached.return_value = None
+        assert is_meter_value_frequency_within_limit(session, datetime.now()) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_false_when_elapsed_time_less_than_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=30)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=10)
+        assert is_meter_value_frequency_within_limit(session, now) is False
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_returns_true_when_elapsed_time_exceeds_frequency(
+        self, mock_get_cached, session
+    ):
+        last_update = datetime.now(pytz.utc) - timedelta(seconds=120)
+        cached = Mock(model=CachedSession)
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = last_update + timedelta(seconds=121)
+        assert is_meter_value_frequency_within_limit(session, now) is True
+
+    @patch("ocpi22.cpo.api.get_cached_session")
+    def test_naive_datetime_is_localized_to_utc(self, mock_get_cached, session):
+        last_update = datetime(2024, 1, 1, 12, 0, 0, tzinfo=pytz.utc)
+        cached = Mock()
+        cached.meter_value_update_date_time = last_update
+        mock_get_cached.return_value = cached
+        now = datetime(2024, 1, 1, 12, 0, 30)
+        session.credentials.meter_value_frequency = 60
+        assert is_meter_value_frequency_within_limit(session, now) is False

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.template.defaultfilters import truncatechars
+from django.utils.html import format_html, escape
 from django.urls import reverse
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -80,7 +81,8 @@ class WebhookEventInline(admin.TabularInline):
 @admin.register(Webhook)
 class WebhookAdmin(admin.ModelAdmin):
     list_display = [
-        "url",
+        "id",
+        "short_url",
         "type",
         "command_type",
         "active",
@@ -119,6 +121,14 @@ class WebhookAdmin(admin.ModelAdmin):
         "test_webhooks",
         "retry_failed_events",
     ]
+
+    @admin.display(description="URL")
+    def short_url(self, obj):
+        return format_html(
+            '<a href="{}" target="_blank">{}</a>',
+            obj.url,
+            truncatechars(obj.url, 13),
+        )
 
     def get_queryset(self, request):
         return (
@@ -232,7 +242,7 @@ class WebhookAdmin(admin.ModelAdmin):
                 event = WebhookEventService.create_event(
                     webhook=webhook, event_type="admin.test", payload=test_payload
                 )
-                WebhookExecutionService.execute_webhook_event(event)
+                WebhookExecutionService().execute_webhook_event(event)
                 total_events += 1
             except Exception as e:
                 messages.error(request, f"Failed to test {webhook.url}: {e}")
@@ -284,26 +294,21 @@ class WebhookEventAdmin(admin.ModelAdmin):
         "response_status_code",
     ]
     search_fields = ["webhook__url", "event_type", "error_message"]
+    date_hierarchy = "created_at"
+
     readonly_fields = [
         "webhook",
         "event_type",
-        "payload_formatted",
+        "payload_pretty",
         "created_at",
         "last_attempted_at",
         "completed_at",
         "response_time_ms",
     ]
-    date_hierarchy = "created_at"
 
     fieldsets = [
-        (None, {"fields": ["webhook", "event_type", "status"]}),
-        (
-            "Payload",
-            {
-                "fields": ["payload_formatted"],
-                "classes": ["collapse"],
-            },
-        ),
+        ("Event", {"fields": ["webhook", "event_type", "status"]}),
+        ("Timestamps", {"fields": ["created_at", "last_attempted_at", "completed_at"]}),
         (
             "Delivery Info",
             {
@@ -315,7 +320,12 @@ class WebhookEventAdmin(admin.ModelAdmin):
                 ]
             },
         ),
-        ("Timestamps", {"fields": ["created_at", "last_attempted_at", "completed_at"]}),
+        (
+            "Payload",
+            {
+                "fields": ["payload_pretty"],
+            },
+        ),
     ]
 
     actions = ["retry_events", "mark_as_success", "cancel_events"]
@@ -330,25 +340,26 @@ class WebhookEventAdmin(admin.ModelAdmin):
     webhook_url.short_description = "Webhook URL"
     webhook_url.admin_order_field = "webhook__url"
 
-    def payload_formatted(self, obj):
-        if obj.payload:
-            try:
-                formatted = json.dumps(obj.payload, indent=2, ensure_ascii=False)
-                return format_html(
-                    '<pre style="background: #f8f8f8; padding: 10px; border-radius: 4px;">{}</pre>',
-                    formatted,
-                )
-            except (TypeError, ValueError):
-                return str(obj.payload)
-        return "No payload"
+    def payload_pretty(self, obj):
+        if not getattr(obj, "payload", None):
+            return "-"
+        try:
+            pretty = json.dumps(obj.payload, indent=2, ensure_ascii=False)
+        except Exception:
+            pretty = str(obj.payload)
 
-    payload_formatted.short_description = "Payload (JSON)"
+        # Use textarea instead of div for better user experience
+        return format_html(
+            '<textarea readonly rows="20" cols="150" '
+            'style="font-family: monospace; font-size: 12px; background-color: #f8f8f8; width: 100%;">{}</textarea>',
+            escape(pretty),
+        )
 
     def retry_events(self, request, queryset):
         retried = 0
         for event in queryset.filter(status=WebhookEventStatus.FAILED):
             if event.can_retry:
-                WebhookExecutionService.execute_webhook_event(event)
+                WebhookExecutionService().execute_webhook_event(event)
                 retried += 1
 
         if retried > 0:

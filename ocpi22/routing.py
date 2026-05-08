@@ -61,27 +61,6 @@ def get_hub_credentials() -> QuerySet:
     return Credentials.objects.filter(roles__role="HUB")
 
 
-# TODO: Credential typing issue because of circular import
-def find_credentials(party: Party) -> Optional["Credentials"]:  # noqa
-    from ocpi22.models.credentials import CredentialsRole
-
-    roles = CredentialsRole.objects.filter(
-        country_code=party.country_code.upper(), party_id=party.party_id.upper()
-    ).select_related("credentials")
-    roles_count = roles.count()
-    if roles_count:
-        # We found a direct connection
-        if roles_count > 1:
-            logger.error(
-                f"{settings.HOSTNAME}: Multiple Credentials for {str(party)} in the database"
-            )
-        role = roles.first()
-        if not role or not role.credentials or not role.credentials.valid:
-            # We may have found Credentials for a direct route, but they are not active
-            return None
-        return role.credentials
-
-
 def find_route_from_credentials(
     credentials,
     ocpi_module: OcpiModuleEnum,
@@ -156,6 +135,7 @@ def find_route(
     if not to:
         return None
     from ocpi22.models.credentials import Credentials
+    from ocpi22.credentials.services import CredentialsService
 
     assert isinstance(
         to, (Party, Credentials)
@@ -164,7 +144,7 @@ def find_route(
         ocpi_module, OcpiModuleEnum
     ), f"find_route() expected OcpiModuleEnum, got {type(ocpi_module)}"
     if isinstance(to, Party):
-        credentials: CredentialsType = find_credentials(to)
+        credentials: CredentialsType = CredentialsService.find_credentials(to)
     else:
         credentials: CredentialsType = to
 

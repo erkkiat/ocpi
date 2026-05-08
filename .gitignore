@@ -14,3 +14,10 @@ env.sh
 /htmlcov
 .coverage
 **/.coverage
+
+# Claude context auto-generated file
+.claude/context_auto.md
+
+# Python bytecode
+__pycache__/
+*.py[cod]

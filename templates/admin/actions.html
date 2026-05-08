@@ -1,15 +1,15 @@
 {% load i18n %}
-<div class="actions">
+<div class="actions d-inline-flex align-items-center gap-2 mb-0">
   {% block actions %}
     {% block actions-form %}
-    {% for field in action_form %}{% if field.label %}<label>{{ field.label }} {% endif %}{{ field }}{% if field.label %}</label>{% endif %}{% endfor %}
+    {% for field in action_form %}{% if field.label %}<label class="mb-0 me-1">{{ field.label }}</label>{% endif %}{{ field }}{% endfor %}
     {% endblock %}
     {% block actions-submit %}
-    <button type="submit" class="btn btn-light" title="{% translate "Run the selected action" %}" name="index" value="{{ action_index|default:0 }}">{% translate "Go" %}</button>
+    <button type="submit" class="btn btn-light btn-sm ms-1" title="{% translate "Run the selected action" %}" name="index" value="{{ action_index|default:0 }}">{% translate "Go" %}</button>
     {% endblock %}
     {% block actions-counter %}
     {% if actions_selection_counter %}
-        <span class="action-counter" data-actions-icnt="{{ cl.result_list|length }}">{{ selection_note }}</span>
+        <span class="action-counter text-nowrap small ms-2" data-actions-icnt="{{ cl.result_list|length }}">{{ selection_note }}</span>
         {% if cl.result_count != cl.result_list|length %}
         <span class="all hidden">{{ selection_note_all }}</span>
         <span class="question hidden">

@@ -7,6 +7,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 
 logger = getLogger("__name__")
 
+
 def before_send(event, hint):
     request = event.get("request", {})
     url = request.get("url", "")

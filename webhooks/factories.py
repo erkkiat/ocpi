@@ -42,6 +42,7 @@ class WebhookFactory(factory.django.DjangoModelFactory):
         model = Webhook
 
     type = WebhookType.CHARGEPOINT_STATUS
+    command_type = RemoteCommandType.START_SESSION
     url = factory.Sequence(lambda n: f"https://example.com/webhook/{n}")
     max_retries = 3
     timeout_seconds = 30
@@ -59,6 +60,16 @@ class WebhookInactiveFactory(WebhookFactory):
 class WebhookRemoteCommandFactory(WebhookFactory):
     type = WebhookType.REMOTE_COMMAND
     command_type = RemoteCommandType.START_SESSION
+
+
+class WebhookFACFactory(WebhookFactory):
+    type = WebhookType.FINANCIAL_ADVICE_CONFIRMATION
+    command_type = None
+
+
+class WebhookInvoicingFactory(WebhookFactory):
+    type = WebhookType.INVOICING
+    command_type = None
 
 
 class WebhookEventFactory(factory.django.DjangoModelFactory):

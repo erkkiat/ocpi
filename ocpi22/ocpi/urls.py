@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 
 from ocpi22.ocpi.api import CdrViewSet, TokenViewSet, TariffViewSet, SessionViewSet
 
@@ -48,4 +48,6 @@ urlpatterns = [
         SessionViewSet.as_view({"get": "get", "put": "put", "patch": "patch"}),
         name="session-by-id",
     ),
+    # Payments (EVRF DirectPayment Module)
+    path("payments/", include("ocpi22.payments.urls")),
 ]

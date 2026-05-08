@@ -1,7 +1,10 @@
+import logging
+
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
 import util
 
 from ocpi22.choices import OcpiModuleEnum, TOKEN_TYPE_CHOICES
@@ -13,6 +16,8 @@ from ocpi22.util import format_cost, hours_minutes, ModelUtilMixin, CURRENCY_CHO
 from ocpi22.ocpi.util import OcpiModule, Ocpi
 
 from django.utils.translation import gettext_lazy as _
+
+logger = logging.getLogger(__name__)
 
 
 class Cdr(models.Model, ModelUtilMixin, OcpiModule):
@@ -257,9 +262,9 @@ class Cdr(models.Model, ModelUtilMixin, OcpiModule):
 
     def total_cost(self):
         return (
-            f'{"-" if self.credit else ""}'
-            f'{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}'
-            f'{" (credited)" if self.credit else ""}'
+            f"{'-' if self.credit else ''}"
+            f"{format_cost(self.total_cost_incl_vat, self.total_cost_excl_vat, self.currency)}"
+            f"{' (credited)' if self.credit else ''}"
         )
 
     def total_session_time(self):

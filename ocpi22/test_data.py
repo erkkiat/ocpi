@@ -38,6 +38,7 @@ class CredentialsData:
         "last_updated": datetime(2022, 1, 13, 18, 57, 11, 300000, tzinfo=timezone.utc),
         "ours": "12345",
         "theirs": "9e80a9c4-28be-11e9-b210-d663bd873d93",
+        "meter_value_frequency": None,
         "token_a": "",
         "updated": datetime(2022, 1, 1, 12, 0, tzinfo=timezone.utc),
         "url": "https://localhost/versions/",
@@ -47,6 +48,7 @@ class CredentialsData:
         "client_certificate_name": "",
         "private_key_name": "",
         "ca_certificate_name": "",
+        "auth_priority": 100,
     }
 
     expected_versions_response = {
@@ -850,8 +852,7 @@ expected_get_headers = {
         "Content-Length": "835",
         "Content-Language": "en",
         "Content-Type": "application/json",
-        "Link": "<http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3; "
-        'rel="next">',
+        "Link": '<http://testserver/ocpi/2.2.1/tariffs/?limit=3&offset=3; rel="next">',
         "Vary": "Accept, Accept-Language, Cookie, origin",
         "X-Frame-Options": "DENY",
         "X-Limit": "50",
@@ -1439,7 +1440,7 @@ class StopTransactionResponses:
                 [
                     ("id", "HELSINKI-1"),
                     ("address", "Helsinki 12"),
-                    ("name", "Helsinki " "Supercharger"),
+                    ("name", "Helsinki Supercharger"),
                     ("city", "Helsinki"),
                     ("postal_code", "-"),
                     ("country", "FIN"),
@@ -1551,7 +1552,7 @@ class StopTransactionResponses:
                 [
                     ("id", "HELSINKI-1"),
                     ("address", "Helsinki 12"),
-                    ("name", "Helsinki " "Supercharger"),
+                    ("name", "Helsinki Supercharger"),
                     ("city", "Helsinki"),
                     ("postal_code", "-"),
                     ("country", "FIN"),

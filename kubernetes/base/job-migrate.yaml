@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: django-migrate
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: ocpiconnector-ksa
+      restartPolicy: Never
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store-gke.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: ocpiconnector-secrets
+      containers:
+        - name: migrate
+          image: solidroam-app
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+          envFrom:
+            - configMapRef:
+                name: ocpiconnector-config
+            - secretRef:
+                name: ocpiconnector-env
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

@@ -12,10 +12,16 @@ from pydantic import (
     AfterValidator,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.coordinate import Latitude, Longitude
+from pydantic_extra_types.phone_numbers import PhoneNumber
 from typing_extensions import Annotated
 
 from generic import countries
+from integrations.hubject.schemas import (
+    CalibrationLawDataAvailability,
+    Accessibility,
+)
 from ocpi22.choices import (
     OCPICapability,
     OCPIFacility,
@@ -25,12 +31,15 @@ from ocpi22.choices import (
     EnvironmentalImpactCategory,
     EnergySourceCategory,
     TokenType,
+    ImageCategory,
 )
 from ocpi22.ocpi.util import Ocpi
 
 
 class BaseSchema(Schema):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, from_attributes=True
+    )
 
 
 class StatusSchedule(BaseSchema):
@@ -81,10 +90,10 @@ class OCPIImage(BaseSchema):
     thumbnail: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
     ] = None
-    category: Annotated[str, StringConstraints(min_length=1, max_length=20)]
+    category: ImageCategory
     type: Annotated[str, StringConstraints(min_length=1, max_length=20)]
-    width: NonNegativeInt
-    height: NonNegativeInt
+    width: Optional[NonNegativeInt] = None
+    height: Optional[NonNegativeInt] = None
 
 
 class BusinessDetails(BaseSchema):
@@ -92,9 +101,7 @@ class BusinessDetails(BaseSchema):
     website: Optional[
         Annotated[str, StringConstraints(min_length=1, max_length=255)]
     ] = None
-    logo: Optional[Annotated[str, StringConstraints(min_length=1, max_length=20)]] = (
-        None
-    )
+    logo: Optional[OCPIImage] = None
 
 
 class RegularHours(BaseSchema):
@@ -127,7 +134,7 @@ class GeoLocation(BaseSchema):
     longitude: Longitude
 
 
-class Connector(BaseSchema):
+class SolidConnector(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
@@ -142,7 +149,7 @@ class Connector(BaseSchema):
     terms_and_conditions: Optional[str] = None
 
 
-class EVSE(BaseSchema):
+class SolidEvse(BaseSchema):
     uid: Annotated[
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ]
@@ -150,22 +157,28 @@ class EVSE(BaseSchema):
         Annotated[str, StringConstraints(min_length=7, max_length=48)]
     ] = None
     status: EVSEStatus
-    status_schedule: Optional[List[StatusSchedule]] = None
+    status_schedule: SkipJsonSchema[Optional[List[StatusSchedule]]] = None
     capabilities: List[OCPICapability] = Field(..., min_length=1)
-    connectors: List[Connector] = Field(
+    connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
-    floor_level: Optional[Annotated[str, StringConstraints(max_length=4)]] = None
-    coordinates: Optional[GeoLocation] = None
+    floor_level: SkipJsonSchema[
+        Optional[Annotated[str, StringConstraints(max_length=4)]]
+    ] = None
+    coordinates: SkipJsonSchema[Optional[GeoLocation]] = None
     physical_reference: Optional[Annotated[str, StringConstraints(max_length=16)]] = (
         None
     )
-    directions: Optional[List[DisplayText]] = None
-    parking_restrictions: Optional[List[ParkingRestriction]] = None
-    images: Optional[List[OCPIImage]] = None
+    directions: SkipJsonSchema[Optional[List[DisplayText]]] = None
+    parking_restrictions: SkipJsonSchema[Optional[List[ParkingRestriction]]] = None
+    images: SkipJsonSchema[Optional[List[OCPIImage]]] = None
     last_updated: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when this Evse was last updated",
+    )
+    is_dynamic_info_available: SkipJsonSchema[Optional[bool]] = Field(
+        False,
+        description="Indicates whether dynamic information is available from this EVSE.",
     )
 
 
@@ -183,7 +196,7 @@ def validate_time_zone(value):
     return value
 
 
-class LocationIn(BaseSchema):
+class SolidLocation(BaseSchema):
     country_code: Annotated[str, StringConstraints(min_length=2, max_length=2)] = Field(
         ...
     )
@@ -192,7 +205,7 @@ class LocationIn(BaseSchema):
         str, StringConstraints(min_length=1, max_length=settings.OCPI_22_MAX_UID_LENGTH)
     ] = Field(..., alias="id")
     publish: bool
-    publish_allowed_to: Optional[List[PublishTokenType]] = None
+    publish_allowed_to: SkipJsonSchema[Optional[List[PublishTokenType]]] = None
     name: Optional[Annotated[str, StringConstraints(min_length=1, max_length=255)]] = (
         None
     )
@@ -210,21 +223,23 @@ class LocationIn(BaseSchema):
     state: Optional[Annotated[str, StringConstraints(max_length=20)]] = None
     country: Annotated[str, AfterValidator(validate_country)]
     coordinates: GeoLocation = Field(..., description="Geographical coordinates")
-    related_locations: Optional[List[AdditionalGeoLocation]] = None
+    related_locations: SkipJsonSchema[Optional[List[AdditionalGeoLocation]]] = None
     parking_type: Optional[ParkingChoices] = None
-    evses: Optional[List[EVSE]] = Field(
+    evses: Optional[List[SolidEvse]] = Field(
         None, description="List of EVSEs available at this location"
     )
-    directions: Optional[List[DisplayText]] = None
+    directions: SkipJsonSchema[Optional[List[DisplayText]]] = None
+
     operator: Optional[BusinessDetails] = None
     suboperator: Optional[BusinessDetails] = None
     owner: Optional[BusinessDetails] = None
+
     facilities: Optional[List[OCPIFacility]] = None
     time_zone: Annotated[str, AfterValidator(validate_time_zone)]
     opening_times: Optional[OpeningTimes] = None
     charging_when_closed: Optional[bool] = False
-    images: Optional[List[OCPIImage]] = None
-    energy_mix: Optional[List[EnergyMix]] = None
+    images: SkipJsonSchema[Optional[List[OCPIImage]]] = None
+    energy_mix: SkipJsonSchema[Optional[List[EnergyMix]]] = None
     last_updated: Optional[datetime] = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when this Location was last updated",
@@ -233,7 +248,57 @@ class LocationIn(BaseSchema):
         True,
         description="Indicates whether to share the location with roaming partners",
     )
+    is_green_energy: SkipJsonSchema[Optional[bool]] = Field(
+        False,
+        description="Indicates whether the location only uses renewable energy sources.",
+    )
+    calibration_law_data_availability: SkipJsonSchema[
+        Optional[CalibrationLawDataAvailability]
+    ] = Field(CalibrationLawDataAvailability.Local)
+    # payment_options: Optional[List[PaymentOption]] = Field(
+    #     None, description="List of payment options available at this location."
+    # )
+    accessibility: SkipJsonSchema[Optional[List[Accessibility]]] = Field(
+        None, description="Specifies how the charging station can be accessed."
+    )
+    hotline_phone_number: SkipJsonSchema[Optional[PhoneNumber]] = None
+    is_hubject_compatible: SkipJsonSchema[Optional[bool]] = Field(
+        False, description="Indicates whether the location is compatible with Hubject."
+    )
 
 
 class Error(Schema):
     message: str
+
+
+class StatusScheduleOut(BaseSchema):
+    period_begin: datetime
+    period_end: datetime
+    status: str
+
+
+class ConnectorOut(SolidConnector):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+
+class EVSEOut(SolidEvse):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+    status_schedule: Optional[List[StatusScheduleOut]] = None
+    connectors: List[ConnectorOut] = Field(
+        ..., description="List of connectors for this EVSE"
+    )
+
+
+class LocationOut(SolidLocation):
+    model_config = ConfigDict(
+        extra="forbid", populate_by_name=True, use_enum_values=True
+    )
+
+    evses: Optional[List[EVSEOut]] = Field(
+        None, description="List of EVSEs available at this location"
+    )

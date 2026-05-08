@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  migrations:
+    image: "${DJANGO_APP_BASE_IMAGE}"
+    container_name: django-migrations
+    env_file:
+      - ./django-app.env
+    entrypoint: []
+    command: [ "python", "manage.py", "migrate", "--noinput" ]
+    restart: "no"
+
+  django-app:
+    image: "${DJANGO_APP_BASE_IMAGE}"
+    container_name: django-app
+    env_file:
+      - ./django-app.env
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/mediafiles
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+    command: [ "django-app" ]
+    networks:
+      - app-network
+    depends_on:
+      - migrations
+
+  celery-django:
+    image: "${DJANGO_APP_BASE_IMAGE}"
+    container_name: celery-django
+    env_file:
+      - ./celery-django.env
+    volumes:
+      - celery_logs:/var/log/celery
+    command: [ "celery-django" ]
+    networks:
+      - app-network
+    depends_on:
+      - migrations
+
+volumes:
+  static_volume:
+  media_volume:
+  celery_logs:
+  mqtt_logs:
+
+networks:
+  app-network:

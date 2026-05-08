@@ -1,10 +1,11 @@
 from base64 import b64encode
 
 import pytest
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from rest_framework.test import APIClient
 
-from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum
+from ocpi22.choices import OcpiModuleEnum, EndpointRoleEnum, OcpiRolesEnum
 from ocpi22.models.credentials import Credentials
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
@@ -20,6 +21,7 @@ from ocpi22.tests.factories import (
     StaffUserFactory,
 )
 from ocpiconnector.party import Party
+from integrations.hubject.services import HubjectService
 
 
 @pytest.fixture
@@ -135,9 +137,52 @@ def hubject_credentials() -> Credentials:
     get_credentialsrole.cache_clear()
     party = Party.from_str(settings.HUBJECT_OPERATOR_ID)
 
+    credentials = CredentialsFactory(
+        auth_priority=2,
+        url="https://hubjectfixture.com/ocpi/hubject",
+    )
+
     return CredentialsRoleFactory(
         country_code=party.country_code,
         party_id=party.party_id,
         role="HUB",
         business_details__name="Hubject",
+        credentials=credentials,
     ).credentials
+
+
+@pytest.fixture
+async def hubject_credentials_async():
+    HubjectService._get_hubject_credentials_id.cache_clear()
+    creds_role = await sync_to_async(CredentialsRoleFactory)(
+        country_code="DE",
+        party_id="ICE",
+        role=OcpiRolesEnum.HUB.value,
+        business_details__name="Hubject",
+        credentials__auth_priority=2,
+    )
+    yield creds_role
+    await sync_to_async(creds_role.credentials.delete)()
+
+
+@pytest.fixture
+def clear_hubject_credentials_role():
+    from ocpi22.ocpi.auth import find_credentials
+    from ocpi22.choices import OcpiRolesEnum
+    from ocpi22.models.credentials import CredentialsRole
+
+    HubjectService._get_hubject_credentials_id.cache_clear()
+    get_our_credentialsrole.cache_clear()
+    get_credentialsrole.cache_clear()
+    find_credentials.cache_clear()
+
+    country_code, party_id = settings.HUBJECT_OPERATOR_ID.split("*", 1)
+
+    roles = CredentialsRole.objects.filter(
+        country_code=country_code, party_id=party_id, role=OcpiRolesEnum.HUB
+    )
+
+    for role in roles:
+        if role.credentials:
+            role.credentials.delete()
+        role.delete()

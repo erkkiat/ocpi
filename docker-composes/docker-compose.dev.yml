@@ -9,6 +9,7 @@ services:
       DJANGO_COLLECT_STATIC: "true"
       DJANGO_MIGRATE: "true"
       ENV: development
+      GUNICORN_CMD_ARGS: "--reload"
     env_file:
       - ../.env-local/django-app.env
     volumes:
@@ -97,14 +98,15 @@ services:
       - backend-network
 
   db:
-    image: postgres:latest
+    image: postgres:18
     container_name: ocpi-postgres
     environment:
       POSTGRES_USER: ocpi
       POSTGRES_PASSWORD: ocpiocpi
       POSTGRES_DB: ocpi
+      PGDATA: /var/lib/postgresql/18/data
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ../init.sql:/docker-entrypoint-initdb.d/init.sql  # Adjusted path
     ports:
       - "5432:5432"

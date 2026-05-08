@@ -12,6 +12,7 @@ from ocpiconnector.settings.infra_services import (
 ENV = os.getenv("ENV", "staging").lower()
 DEBUG = strtobool(os.getenv("DEBUG", "False"))
 
+HUBJECT_HOSTS = ["18.195.149.69", "18.195.61.108"]
 ALLOWED_HOSTS = get_allowed_hosts()
 USE_X_FORWARDED_PORT = True
 USE_X_FORWARDED_HOST = True
@@ -34,7 +35,9 @@ MQTT_USERNAME = os.getenv("MQTT_USERNAME")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 MQTT_USE_SSL = os.getenv("MQTT_USE_SSL", False)
 
-CSRF_TRUSTED_ORIGINS = ["https://solidroam.f3-smappee.net"]
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS", "https://solidroam.f3-smappee.net"
+).split(",")
 
 SMAPPEE_STATUS_UPDATE_TOPIC = os.getenv(
     "SMAPPEE_STATUS_UPDATE_TOPIC", "$share/session_group/session/+/statusupdates"
@@ -61,8 +64,9 @@ DATABASES = {
         "PASSWORD": db_token,
         "HOST": db_url,
         "PORT": "3306",
+        "CONN_MAX_AGE": 200,
         "OPTIONS": {"ssl_mode": "REQUIRED"},
-        "CONN_MAX_AGE": 300,
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 

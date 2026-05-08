@@ -6,7 +6,11 @@ from datetime import datetime
 from unittest.mock import Mock, patch
 
 import time_machine
+from django.core.exceptions import ObjectDoesNotExist
+from django.test import override_settings
+from rest_framework.exceptions import ValidationError
 
+from ocpi22.models.cdr import Cdr
 from ocpi22.models.session import ChargingPeriod, ChargingPeriodSerializer
 from ocpi22.cpo.services import CdrService
 from ocpi22.tests.factories import (
@@ -15,7 +19,16 @@ from ocpi22.tests.factories import (
     TariffFactory,
     DefaultTariffsFactory,
     CdrTokenFactory,
+    CredentialsFactory,
+    CredentialsRoleFactory,
 )
+import orjson
+from json_encoders import serialize_datetime_and_enum_to_string
+from ocpi22.ocpi.serializers import CdrSerializer
+from webhooks.choices import WebhookType
+from webhooks.factories import WebhookInactiveFactory, WebhookInvoicingFactory
+from webhooks.models import WebhookEvent, WebhookEventType, WebhookEventStatus
+from webhooks.repository import WebhookRepository
 
 
 @pytest.fixture
@@ -95,7 +108,7 @@ def test_get_cdr_tariffs_returns_a_list_of_tariffs_from_charging_periods():
 
 
 @pytest.mark.django_db
-def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
+def test_get_cdr_tariffs_raises_does_not_exists_error_when_nonexistent_tariffs(caplog):
     caplog.set_level(logging.WARNING)
     tariff1 = TariffFactory(uid="CP1")
     tariff2 = TariffFactory(uid="CP2")
@@ -111,9 +124,10 @@ def test_get_cdr_tariffs_skips_nonexistent_tariffs(caplog):
 
     standard = "IEC_62196_T2"
 
-    CdrService._get_cdr_tariffs(charging_periods, standard)
-
-    assert "Tariff with uid CP2 not found." in caplog.text
+    with pytest.raises(
+        ObjectDoesNotExist, match="Tariff with UID CP2 doesn't exist in the database"
+    ):
+        CdrService._get_cdr_tariffs(charging_periods, standard)
 
 
 @pytest.mark.django_db
@@ -129,6 +143,19 @@ def test_get_cdr_tariffs_uses_default_tariffs_when_no_tariffs_found():
     result = CdrService._get_cdr_tariffs(charging_periods, standard)
 
     assert result[0] == tariff
+
+
+@pytest.mark.django_db
+def test_get_cdr_tariffs_raises_validation_error_when_duplicate_tariffs_exist_in_database():
+    tariff1 = TariffFactory(uid="CP1")
+    tariff2 = TariffFactory(uid="CP1")
+    charging_periods = ChargingPeriodSerializer(
+        [ChargingPeriodFactory(tariff=tariff1), ChargingPeriodFactory(tariff=tariff2)],
+        many=True,
+    ).data
+
+    with pytest.raises(ValidationError):
+        CdrService._get_cdr_tariffs(charging_periods, "IEC_62196_T2")
 
 
 @pytest.mark.django_db
@@ -217,3 +244,152 @@ def test_get_or_create_cdr_from_session_sends_updates_after_creation(mock_sessio
 
     assert result == mock_cdr
     mock_cdr.send_updates.assert_called_once()
+
+
+@pytest.mark.django_db
+@override_settings(ENABLE_HUBJECT=True)
+def test_get_or_create_cdr_from_session_sends_hubject_eroaming_charge_detail_record(
+    mock_session,
+):
+    mock_cdr = Mock()
+    mock_cdr.ocpi_master = Mock()
+    mock_cdr.ocpi_master.party_str.return_value = "DE*ICE"
+
+    role = CredentialsRoleFactory(
+        credentials=CredentialsFactory(), country_code="DE", party_id="ICE"
+    )
+    mock_session.credentials = role.credentials
+
+    with (
+        patch("ocpi22.cpo.services.CdrService._get_cdr", return_value=None),
+        patch("ocpi22.cpo.services.CdrService._create_cdr", return_value=mock_cdr),
+        patch(
+            "integrations.hubject.services.HubjectService.post_eroaming_charge_detail_record"
+        ) as mock_eroaming_cdr,
+    ):
+        result = CdrService.get_or_create_cdr(mock_session)
+
+    assert result == mock_cdr
+    mock_cdr.send_updates.assert_not_called()
+    mock_eroaming_cdr.assert_called_once_with(
+        mock_cdr.ocpi_master.party_str(), mock_cdr
+    )
+
+
+@pytest.mark.django_db
+class TestCdrWebhookEventCreation:
+    @pytest.fixture
+    def cdr(self, mock_session):
+        tariff = TariffFactory(uid="CDR-WH-CP1")
+        charging_period = ChargingPeriodFactory(
+            start_date_time=datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            tariff=tariff,
+        )
+        mock_session.chargingperiods.set([charging_period])
+        mock_session.save()
+        return CdrService._create_cdr(mock_session)
+
+    def test_create_cdr_webhook_event_returns_none_when_no_invoicing_webhook_configured(
+        self, cdr
+    ):
+        result = CdrService._create_cdr_webhook_event(cdr)
+
+        assert result is None
+
+    def test_create_cdr_webhook_event_returns_none_when_invoicing_webhook_is_inactive(
+        self, cdr
+    ):
+        WebhookInactiveFactory(type=WebhookType.INVOICING, command_type=None)
+
+        result = CdrService._create_cdr_webhook_event(cdr)
+
+        assert result is None
+
+    def test_create_cdr_webhook_event_persists_event_with_cdr_created_event_type(
+        self, cdr
+    ):
+        WebhookInvoicingFactory()
+
+        CdrService._create_cdr_webhook_event(cdr)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.CDR_CREATED)
+        assert event.status == WebhookEventStatus.PENDING
+
+    def test_create_cdr_webhook_event_persists_full_cdr_serializer_payload(self, cdr):
+        WebhookInvoicingFactory()
+
+        CdrService._create_cdr_webhook_event(cdr)
+
+        expected_payload = orjson.loads(
+            orjson.dumps(
+                CdrSerializer(cdr).data,
+                default=serialize_datetime_and_enum_to_string,
+            )
+        )
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.CDR_CREATED)
+        assert event.payload == expected_payload
+
+    def test_create_cdr_webhook_event_returns_persisted_event(self, cdr):
+        WebhookInvoicingFactory()
+
+        event = CdrService._create_cdr_webhook_event(cdr)
+
+        assert WebhookEvent.objects.filter(pk=event.pk).exists()
+
+    def test_create_cdr_webhook_event_returns_none_and_logs_error_when_webhook_fk_is_invalid(
+        self, cdr, monkeypatch, caplog
+    ):
+        webhook = WebhookInvoicingFactory()
+        webhook.delete()
+        caplog.set_level("ERROR", logger="ocpi22.cpo.services")
+        monkeypatch.setattr(WebhookRepository, "get_invoicing_webhook", lambda: webhook)
+
+        result = CdrService._create_cdr_webhook_event(cdr)
+
+        assert result is None
+        assert f"Failed to create CDR webhook event for cdr {cdr.uid}" in caplog.text
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCdrWebhookDispatch:
+    @pytest.fixture
+    def session_with_periods(self, mock_session):
+        tariff = TariffFactory(uid="CDR-DISP-CP1")
+        charging_period = ChargingPeriodFactory(
+            start_date_time=datetime(2023, 1, 1, 12, 0, 0, tzinfo=pytz.UTC),
+            tariff=tariff,
+        )
+        mock_session.chargingperiods.set([charging_period])
+        mock_session.save()
+        return mock_session
+
+    @patch("ocpi22.cpo.services.execute_webhook_event_task")
+    def test_create_cdr_dispatches_webhook_task_after_commit_when_invoicing_webhook_configured(
+        self, mock_task, session_with_periods
+    ):
+        WebhookInvoicingFactory()
+
+        CdrService._create_cdr(session_with_periods)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.CDR_CREATED)
+        mock_task.delay.assert_called_once_with(event.id)
+
+    def test_create_cdr_does_not_create_webhook_event_when_no_invoicing_webhook_configured(
+        self, session_with_periods
+    ):
+        CdrService._create_cdr(session_with_periods)
+
+        assert not WebhookEvent.objects.filter(
+            event_type=WebhookEventType.CDR_CREATED
+        ).exists()
+
+    def test_create_cdr_persists_cdr_when_webhook_event_creation_raises(
+        self, session_with_periods, monkeypatch
+    ):
+        webhook = WebhookInvoicingFactory()
+        webhook.delete()
+        monkeypatch.setattr(WebhookRepository, "get_invoicing_webhook", lambda: webhook)
+
+        CdrService._create_cdr(session_with_periods)
+
+        assert Cdr.objects.filter(session_id=session_with_periods.uid).exists()

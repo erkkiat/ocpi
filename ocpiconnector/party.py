@@ -36,4 +36,4 @@ class Party:
 
     @classmethod
     def from_str(cls, party_str):
-        return cls(*party_str.split('*'))
+        return cls(*party_str.split("*"))

@@ -1,0 +1,40 @@
+name: Auto-label Production Update PRs
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+    branches:
+      - develop
+
+jobs:
+  auto-label:
+    name: Add skip-changelog label
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check if PR title contains "Production Update"
+        id: check_title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if echo "$PR_TITLE" | grep -qi "production update"; then
+            echo "match=true" >> $GITHUB_OUTPUT
+          else
+            echo "match=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add skip-changelog label
+        if: steps.check_title.outputs.match == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['skip-changelog']
+            });
+            console.log('✅ Added skip-changelog label to Production Update PR');

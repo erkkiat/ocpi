@@ -29,7 +29,7 @@ from ocpi22.ocpi.util import (
 # Todo: PATCH & PUT Connector
 # Todo: DELETE Tariff
 
-from ocpi22.webhooks import send_to_webhook
+from ocpi22.legacy_webhooks import send_to_webhook_legacy
 from ocpiconnector.exception_handler import ocpi_exception_handler
 from ocpiconnector.ocpi_identities import ocpi_platform
 from util import OCPIVersion
@@ -51,7 +51,7 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Location {self.kwargs.get("uid")}'
+            return f"Location {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Locations"
@@ -169,15 +169,17 @@ class LocationViewSet(OCPIListModelMixin, GenericViewSet):
         if serializer.is_valid():
             created = bool(not existing_location)
             logger.info(
-                f'{"Creating" if created else "Updating"}'
-                f' Location {credentialsrole} - {uid}.'
+                f"{'Creating' if created else 'Updating'}"
+                f" Location {credentialsrole} - {uid}."
             )
             saved_location = serializer.save(ocpi_master=credentialsrole)
             saved_location.send_hub_updates()
             Location.objects.prefetch_related(
                 "evses", "evses__connectors", "evses__connectors__tariff_ids"
             ).get(pk=saved_location.pk)
-            send_to_webhook(saved_location, MSPChargePointStatusCallbackSerializer)
+            send_to_webhook_legacy(
+                saved_location, MSPChargePointStatusCallbackSerializer
+            )
             http_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
 
             # Was Location posted from the CPO backend using OCPI Locations endpoint, not from a roaming partner?
@@ -217,7 +219,7 @@ class ConnectorViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Connector {self.kwargs.get("uid")}'
+            return f"Connector {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Connectors"
@@ -312,7 +314,7 @@ class EvseViewSet(GenericViewSet):
 
     def get_view_name(self):
         if hasattr(self, "kwargs") and "uid" in self.kwargs:
-            return f'Evse {self.kwargs.get("uid")}'
+            return f"Evse {self.kwargs.get('uid')}"
         if self.name:
             return f"{self.name.capitalize()}"
         return "Evse"
@@ -379,7 +381,7 @@ class EvseViewSet(GenericViewSet):
                 "status": evse.status,
             }
             if ocpi_platform.is_emsp:
-                send_to_webhook(
+                send_to_webhook_legacy(
                     data,
                     MSPChargePointStatusCallbackSerializer,
                     ocpi_master=credentialsrole,

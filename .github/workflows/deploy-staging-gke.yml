@@ -1,0 +1,298 @@
+name: Deploy to Staging (GKE)
+
+on:
+  pull_request:
+    branches:
+      - develop
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  lint:
+    name: Lint Code
+    environment: staging
+    runs-on: ubuntu-latest-m
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff Linting
+        run: ruff check .
+
+  test:
+    name: Run Tests
+    environment: staging
+    runs-on: ubuntu-latest-m
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping || exit 1" --health-interval 10s --health-timeout 5s --health-retries 3
+      postgres:
+        image: postgres:13
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U test_user"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Load Environment Variables from test.env
+        run: |
+          if [ -f test.env ]; then
+            export $(cat test.env | xargs)
+          fi
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest in Parallel
+        run: pytest -n auto
+
+  build-staging-gke:
+    name: Build and Push Docker Image to GCP Artifact Registry
+    environment: staging
+    runs-on: ubuntu-latest-m
+    needs: [lint, test]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Derive Image Tag
+        id: set_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH_NAME=$(echo "${{ github.ref_name }}" | sed 's/refs\/heads\///' | tr '/' '-')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          IMAGE_TAG="${BRANCH_NAME}-${COMMIT_HASH}"
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and Push Image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE_TAG="${{ steps.set_tag.outputs.image_tag }}"
+
+          docker buildx build \
+            --platform linux/amd64 \
+            --cache-from=type=gha,scope=gke-staging-build \
+            --cache-to=type=gha,mode=max,scope=gke-staging-build \
+            -f ./Dockerfile \
+            -t "${IMAGE_REPO}:${IMAGE_TAG}" \
+            --push .
+
+          echo "✅ Pushed ${IMAGE_REPO}:${IMAGE_TAG}"
+
+  migrate-staging-gke:
+    name: Run Django Migrations on GKE
+    environment: staging
+    runs-on: ubuntu-latest-m
+    needs: build-staging-gke
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    outputs:
+      image_tag: ${{ needs.build-staging-gke.outputs.image_tag }}
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+      IMAGE_TAG: ${{ needs.build-staging-gke.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --location=${{ secrets.GKE_CLUSTER_LOCATION }} \
+            --project="${GCP_PROJECT_ID}" \
+            --quiet
+
+      - name: Set up Kustomize
+        run: |
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+
+      - name: Run Migration Job
+        env:
+          HOSTNAME: ${{ vars.HOSTNAME }}
+          BUSINESS_NAME: ${{ vars.BUSINESS_NAME }}
+          CPO: ${{ vars.CPO }}
+          EMSP: ${{ vars.EMSP }}
+          SIMULATOR: ${{ vars.SIMULATOR }}
+          BACKGROUND_SEND: ${{ vars.BACKGROUND_SEND }}
+          LOCAL_STATIC: ${{ vars.LOCAL_STATIC }}
+          REFRESH_RDS_TOKEN_FOR_TASKS: ${{ vars.REFRESH_RDS_TOKEN_FOR_TASKS }}
+          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+          CELERY_QUEUE_NAME: ${{ vars.CELERY_QUEUE_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Delete previous migration job if it's still around (TTL may not have expired)
+          kubectl delete job django-migrate --namespace=staging --ignore-not-found=true
+
+          # Apply all base resources with the correct image (includes job-migrate.yaml)
+          cd kubernetes/overlays/staging
+          envsubst < configmap.yaml > configmap.yaml.tmp && mv configmap.yaml.tmp configmap.yaml
+          kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
+          kustomize build . | kubectl apply -f -
+
+          echo "Waiting for migration job django-migrate to complete..."
+          kubectl wait job/django-migrate \
+            --for=condition=complete \
+            --timeout=300s \
+            --namespace=staging
+
+          echo "✅ Migrations complete ✅"
+
+  deploy-staging-gke:
+    name: Deploy to GKE Staging
+    environment: staging
+    runs-on: ubuntu-latest-m
+    needs: migrate-staging-gke
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    env:
+      GCP_REGION: ${{ secrets.GCP_REGION }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO_NAME }}/solidroam-app
+      IMAGE_TAG: ${{ needs.migrate-staging-gke.outputs.image_tag }}
+      NAMESPACE: staging
+      OVERLAY: kubernetes/overlays/staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Get GKE Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ secrets.GKE_CLUSTER_NAME }} \
+            --location=${{ secrets.GKE_CLUSTER_LOCATION }} \
+            --project="${GCP_PROJECT_ID}" \
+            --quiet
+
+      - name: Set up Kustomize
+        run: |
+          curl -sfLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+
+      - name: Deploy
+        env:
+          HOSTNAME: ${{ vars.HOSTNAME }}
+          BUSINESS_NAME: ${{ vars.BUSINESS_NAME }}
+          CPO: ${{ vars.CPO }}
+          EMSP: ${{ vars.EMSP }}
+          SIMULATOR: ${{ vars.SIMULATOR }}
+          BACKGROUND_SEND: ${{ vars.BACKGROUND_SEND }}
+          LOCAL_STATIC: ${{ vars.LOCAL_STATIC }}
+          REFRESH_RDS_TOKEN_FOR_TASKS: ${{ vars.REFRESH_RDS_TOKEN_FOR_TASKS }}
+          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+          CELERY_QUEUE_NAME: ${{ vars.CELERY_QUEUE_NAME }}
+        run: |
+          cd $OVERLAY
+          envsubst < configmap.yaml > configmap.yaml.tmp && mv configmap.yaml.tmp configmap.yaml
+          kustomize edit set image solidroam-app="${IMAGE_REPO}:${IMAGE_TAG}"
+          kubectl apply -k .
+          kubectl rollout status deployment -n $NAMESPACE --timeout=300s
+
+      - name: Create Sentry Release (staging)
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: staging
+          release: ${{ env.IMAGE_TAG }}
+          set_commits: auto
+          finalize: true

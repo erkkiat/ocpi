@@ -14,6 +14,42 @@ from ocpi22.util import matching_operator
 from ocpiconnector.party import Party
 
 
+def resolve_sender_identity(
+    country_code: str,
+    party_id: str,
+    payload: dict,
+    sender_party: "Party",
+    ocpi_party=None,
+) -> tuple[str, str]:
+    """
+    Resolve the (country_code, party_id) identity of the sender.
+
+    Priority for PTP senders (who may omit OCPI routing headers entirely):
+      1. URL kwargs
+      2. OCPI routing headers (sender_party)
+      3. Authenticated CredentialsRole (ocpi_party) — PTP fallback
+
+    Priority for all other senders:
+      1. URL kwargs
+      2. Request body data
+      3. OCPI routing headers (sender_party)
+    """
+    sender_is_ptp = ocpi_party is not None and ocpi_party.role == OcpiRolesEnum.PTP
+
+    if sender_is_ptp:
+        country_code = (
+            country_code or sender_party.country_code or ocpi_party.country_code
+        )
+        party_id = party_id or sender_party.party_id or ocpi_party.party_id
+    else:
+        country_code = country_code or payload.get(
+            "country_code", sender_party.country_code
+        )
+        party_id = party_id or payload.get("party_id", sender_party.party_id)
+
+    return country_code, party_id
+
+
 def certify_check_ocpi_headers(headers):
     # Todo: add the X-identifier checks
     sender_party = get_sender_party(headers)
@@ -71,11 +107,12 @@ def requires_sender_role(roles: Union[OcpiRolesEnum, list[OcpiRolesEnum]] = None
                     bool(kwargs.get("country_code") and kwargs.get("party_id")),
                 )
 
-            country_code = kwargs.get(
-                "country_code", data.get("country_code", sender_party.country_code)
-            )
-            party_id = kwargs.get(
-                "party_id", data.get("party_id", sender_party.party_id)
+            country_code, party_id = resolve_sender_identity(
+                country_code=kwargs.get("country_code"),
+                party_id=kwargs.get("party_id"),
+                payload=data,
+                sender_party=sender_party,
+                ocpi_party=getattr(request, "ocpi_party", None),
             )
             if not country_code or not party_id:
                 return OCPIBadRequestResponse("Country code and party ID are required")

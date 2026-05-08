@@ -4,7 +4,12 @@ import pytest
 import pytz
 
 from ocpi22.choices import EVSEStatus, OCPICapability
-from ocpi22.cpo.schemas import LocationIn, GeoLocation, EVSE, Connector as ConnectorIn
+from ocpi22.cpo.schemas import (
+    SolidLocation,
+    GeoLocation,
+    SolidEvse,
+    SolidConnector as ConnectorIn,
+)
 from ocpiconnector.ocpi_identities import get_our_credentialsrole
 from ocpi22.ocpi.auth import get_credentialsrole
 from ocpi22.models.session import Session
@@ -74,7 +79,7 @@ def connector_in():
 
 @pytest.fixture()
 def rome_location_in(connector_in):
-    evse = EVSE(
+    evse = SolidEvse(
         uid="ROME01EVSE01",
         evse_id="FI*CPO*EROME01EVSE01",
         status=EVSEStatus.AVAILABLE,
@@ -85,7 +90,7 @@ def rome_location_in(connector_in):
 
     evse.connectors.append(connector_in)
 
-    location = LocationIn(
+    location = SolidLocation(
         country_code="IT",
         party_id="CPO",
         id="ROME01",
