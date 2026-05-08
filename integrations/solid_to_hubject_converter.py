@@ -75,8 +75,9 @@ class SolidToHubjectConverter:
         self.ocpi_version = ocpi_version
         self.address_pattern = regex.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
+        _apos = chr(0x27) + chr(0x2018) + chr(0x2019)
         self.general_address_pattern = regex.compile(
-            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
+            rf"^\s*(?P<street>[{_apos}]?\p{{L}}[\p{{L}}\d\s.{_apos}\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
             regex.IGNORECASE,
         )
         self.france_pattern = regex.compile(
