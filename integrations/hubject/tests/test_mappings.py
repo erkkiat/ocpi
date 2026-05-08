@@ -337,6 +337,24 @@ class TestMappings:
             ),
             pytest.param("", "NLD", ("-", "-"), id="empty-address-nld"),
             pytest.param("", "FRA", ("-", "-"), id="empty-address-fra"),
+            pytest.param(
+                "’t Hoge 4",
+                "NLD",
+                ("’t Hoge", "4"),
+                id="dutch-apostrophe-prefix-right-quote",
+            ),
+            pytest.param(
+                "‘t Hoge 4",
+                "NLD",
+                ("‘t Hoge", "4"),
+                id="dutch-apostrophe-prefix-left-quote",
+            ),
+            pytest.param(
+                "'t Hoge 4",
+                "NLD",
+                ("'t Hoge", "4"),
+                id="dutch-apostrophe-prefix-straight-quote",
+            ),
         ],
     )
     def test_get_address_components(self, address, country, expected):
