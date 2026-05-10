@@ -11,7 +11,7 @@ This security review analyzes the OCPI Connector codebase for common security vu
 #### 1.1 Environment Variable Usage
 - **File**: `ocpiconnector/settings/base.py`
 - **Issue**: Multiple sensitive environment variables used without validation
-  - `SECRET_KEY` - Critical for JWT signing
+  - `SECRET_KEY` - Critical for JWT signing, could be exposed in logs
   - `SENTRY_DSN` - Error tracking credentials
   - `DATABASE_URL` - Database connection string
   - `HOSTNAME` - Required without default
@@ -21,6 +21,7 @@ This security review analyzes the OCPI Connector codebase for common security vu
   - Implement secret rotation policies for production
   - Add validation for sensitive environment variables at startup
   - Never commit `.env` files to version control
+  - Add logging filters to prevent SECRET_KEY from appearing in logs
 
 #### 1.2 Sentry Configuration
 - **File**: `ocpiconnector/settings/configure_sentry.py`
@@ -31,6 +32,7 @@ This security review analyzes the OCPI Connector codebase for common security vu
   - Use environment variables for all sensitive configuration
   - Implement Sentry secret key rotation
   - Add logging for Sentry initialization failures
+  - Review `before_send` to ensure security events are not dropped
 
 #### 1.3 Database Token Management
 - **File**: `ocpiconnector/settings/infra_services.py`
