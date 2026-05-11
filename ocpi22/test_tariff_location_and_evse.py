@@ -4291,7 +4291,7 @@ class TestConvertOcpiTariffIdsToSolidTariffIds:
             ]
         }
 
-    def test_unknown_tariff_falls_back_to_ocpi_id_and_logs_warning(self, caplog):
+    def test_unknown_tariff_raises_validation_error_and_logs_error(self, caplog):
         location_service = LocationService()
         location_service.solid_tariff_service = MagicMock()
         location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.return_value = None
@@ -4300,15 +4300,13 @@ class TestConvertOcpiTariffIdsToSolidTariffIds:
 
         import logging
 
-        with caplog.at_level(logging.WARNING, logger="ocpi22.locations.services"):
-            result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
-                location
-            )
+        with caplog.at_level(logging.ERROR, logger="ocpi22.locations.services"):
+            with pytest.raises(ValidationError):
+                location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
 
-        assert result["evses"][0]["connectors"][0]["tariff_ids"] == ["UNKNOWN_OCPI_UID"]
         assert any("UNKNOWN_OCPI_UID" in msg for msg in caplog.messages)
 
-    def test_mixed_tariffs_returns_solid_id_and_fallback_ocpi_id(self):
+    def test_mixed_tariffs_raises_on_first_unknown(self):
         location_service = LocationService()
         location_service.solid_tariff_service = MagicMock()
         location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.side_effect = (
@@ -4316,12 +4314,9 @@ class TestConvertOcpiTariffIdsToSolidTariffIds:
         )
 
         location = self._make_location_dict(["KNOWN_UID", "UNKNOWN_UID"])
-        result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
 
-        assert result["evses"][0]["connectors"][0]["tariff_ids"] == [
-            "SOLID_EXT_1",
-            "UNKNOWN_UID",
-        ]
+        with pytest.raises(ValidationError):
+            location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
 
     def test_all_tariffs_found_returns_solid_ids(self):
         location_service = LocationService()
