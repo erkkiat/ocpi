@@ -158,7 +158,7 @@ class SolidEvse(BaseSchema):
     ] = None
     status: EVSEStatus
     status_schedule: SkipJsonSchema[Optional[List[StatusSchedule]]] = None
-    capabilities: Optional[List[OCPICapability]] = None
+    capabilities: List[OCPICapability] = Field(..., min_length=1)
     connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
