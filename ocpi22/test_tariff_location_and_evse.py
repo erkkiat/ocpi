@@ -4277,3 +4277,73 @@ class TestSolidLocation:
             response.json()["evses"][0]["evse_id"]
             == f"{country_code}*{party_id}*E{uid}"
         )
+
+
+class TestConvertOcpiTariffIdsToSolidTariffIds:
+    def _make_location_dict(self, tariff_ids: list) -> dict:
+        return {
+            "evses": [
+                {
+                    "connectors": [
+                        {"tariff_ids": tariff_ids},
+                    ]
+                }
+            ]
+        }
+
+    def test_unknown_tariff_falls_back_to_ocpi_id_and_logs_warning(self, caplog):
+        location_service = LocationService()
+        location_service.solid_tariff_service = MagicMock()
+        location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.return_value = None
+
+        location = self._make_location_dict(["UNKNOWN_OCPI_UID"])
+
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="ocpi22.locations.services"):
+            result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(
+                location
+            )
+
+        assert result["evses"][0]["connectors"][0]["tariff_ids"] == ["UNKNOWN_OCPI_UID"]
+        assert any("UNKNOWN_OCPI_UID" in msg for msg in caplog.messages)
+
+    def test_mixed_tariffs_returns_solid_id_and_fallback_ocpi_id(self):
+        location_service = LocationService()
+        location_service.solid_tariff_service = MagicMock()
+        location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.side_effect = (
+            lambda uid: "SOLID_EXT_1" if uid == "KNOWN_UID" else None
+        )
+
+        location = self._make_location_dict(["KNOWN_UID", "UNKNOWN_UID"])
+        result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
+
+        assert result["evses"][0]["connectors"][0]["tariff_ids"] == [
+            "SOLID_EXT_1",
+            "UNKNOWN_UID",
+        ]
+
+    def test_all_tariffs_found_returns_solid_ids(self):
+        location_service = LocationService()
+        location_service.solid_tariff_service = MagicMock()
+        location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.side_effect = (
+            lambda uid: f"SOLID_{uid}"
+        )
+
+        location = self._make_location_dict(["TARIFF_A", "TARIFF_B"])
+        result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
+
+        assert result["evses"][0]["connectors"][0]["tariff_ids"] == [
+            "SOLID_TARIFF_A",
+            "SOLID_TARIFF_B",
+        ]
+
+    def test_no_tariff_ids_on_connector_skips_conversion(self):
+        location_service = LocationService()
+        location_service.solid_tariff_service = MagicMock()
+
+        location = self._make_location_dict([])
+        result = location_service.convert_ocpi_tariff_ids_to_solid_tariff_ids(location)
+
+        location_service.solid_tariff_service.get_solid_tariff_external_id_by_ocpi_tariff_uid.assert_not_called()
+        assert result["evses"][0]["connectors"][0]["tariff_ids"] == []

@@ -176,8 +176,10 @@ class LocationService:
                         if solid_tariff_external_id:
                             solid_tariff_ids.append(solid_tariff_external_id)
                         else:
-                            raise ValidationError(
-                                f"SolidTariff for OCPI tariff '{tariff_id}' not found"
+                            logger.warning(
+                                "SolidTariff for OCPI tariff '%s' not found — returning OCPI tariff ID",
+                                tariff_id,
                             )
+                            solid_tariff_ids.append(tariff_id)
                     connector["tariff_ids"] = solid_tariff_ids
         return location
