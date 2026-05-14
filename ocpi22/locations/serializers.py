@@ -182,6 +182,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
             "last_updated",
             "connectors",
             "capabilities",
+            "physical_reference",
         ]
 
     lookup_field = "uid"
@@ -224,9 +225,7 @@ class EvseSerializer(HyperlinkedModelSerializerCleanedUp, UpdateMixin):
 
     def create(self, validated_data):
         connectors = validated_data.pop("connectors", [])
-        capabilities = validated_data.pop("capabilities", [])
         evse = Evse.objects.create(**validated_data)
-        evse.capabilities.set(capabilities)
         self.process_connectors(evse, connectors)
         return evse
 

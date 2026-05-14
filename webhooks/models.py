@@ -330,6 +330,8 @@ class WebhookEventType(models.TextChoices):
     REMOTE_STOP_REQUESTED = "remote_command.stop_requested"
     INVOICE_GENERATED = "invoice.generated"
     INVOICE_SENT = "invoice.sent"
+    FAC_CREATED = "fac.created"
+    CDR_CREATED = "cdr.created"
 
     @classmethod
     def is_standard_type(cls, event_type):

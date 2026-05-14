@@ -38,6 +38,7 @@ from ocpi22.tests.factories import (
     TokenFactory,
     CredentialsRoleFactory,
     CredentialsFactory,
+    CdrTokenFactory,
 )
 from ocpi22.tokens.auth import TokenAuthorization
 from ocpi22.tokens.dataclasses import TokenDto
@@ -814,6 +815,105 @@ class TestAuthorizeAndPublish:
                 in record.message
                 for record in caplog.records
             )
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_publishes_not_allowed_when_active_session_exists_for_same_token_and_evse(
+        self, auth_request_message, caplog
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(cdr_token=cdr_token, evse=evse, status=Session.ACTIVE)
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services.authorize_token") as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services._publish_not_allowed_auth_response"
+            ) as mock_publish_not_allowed,
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_publish_not_allowed.assert_called_once_with(
+                token_auth_message.correlation_id
+            )
+            mock_authorize_token.assert_not_called()
+            assert any(
+                f"Token {token_auth_message.token_id} already has an active session "
+                f"at EVSE {evse.uid}" in record.message
+                for record in caplog.records
+            )
+
+    @pytest.mark.parametrize("session_status", [Session.COMPLETED, Session.PENDING])
+    @pytest.mark.django_db
+    def test_authorize_and_publish_proceeds_to_authorize_when_non_active_session_exists_for_same_token_and_evse(
+        self, auth_request_message, session_status
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(cdr_token=cdr_token, evse=evse, status=session_status)
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+        session = Session(uid="test-session-789")
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ),
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_authorize_token.assert_called_once()
+
+    @pytest.mark.django_db
+    def test_authorize_and_publish_proceeds_to_authorize_when_active_session_exists_for_different_evse(
+        self, auth_request_message
+    ):
+        decoded_message = orjson.loads(auth_request_message.payload)
+        token_auth_message = TokenAuthorizationMessageIn.model_validate(decoded_message)
+
+        location = LocationFactory()
+        evse = EvseFactory(location=location, uid=token_auth_message.evse_id)
+        different_evse = EvseFactory(location=location, uid="DIFFERENT_EVSE_999")
+        cdr_token = CdrTokenFactory(uid=token_auth_message.token_id)
+        OCPISessionFactory(
+            cdr_token=cdr_token, evse=different_evse, status=Session.ACTIVE
+        )
+
+        mock_authorization = MagicMock(spec=TokenAuthorization)
+        mock_authorization.allowed = AuthorizationEnum.ALLOWED
+        session = Session(uid="test-session-diff-evse")
+
+        with (
+            patch("ocpi22.cpo.mqtt.services.find_our_evse", return_value=evse),
+            patch("ocpi22.cpo.mqtt.services._find_token_by_uid", return_value=None),
+            patch(
+                "ocpi22.cpo.mqtt.services.authorize_token",
+                return_value=mock_authorization,
+            ) as mock_authorize_token,
+            patch(
+                "ocpi22.cpo.mqtt.services.create_and_save_session", return_value=session
+            ),
+            patch("ocpi22.cpo.mqtt.services.publish_auth_response"),
+        ):
+            _authorize_and_publish(token_auth_message, auth_request_message.topic)
+
+            mock_authorize_token.assert_called_once()
 
 
 class TestPublishNotAllowedAuthResponse:

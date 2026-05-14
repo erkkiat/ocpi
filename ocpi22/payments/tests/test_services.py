@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime, timezone as dt_timezone
+from django.db import IntegrityError
 from django.utils import timezone
+from unittest.mock import patch
 
 from ocpi22.choices import OcpiRolesEnum
 from ocpi22.payments.exceptions import (
@@ -11,8 +13,7 @@ from ocpi22.payments.exceptions import (
 )
 from ocpi22.payments.models import Terminal, FinancialAdviceConfirmation
 from ocpi22.payments.services import TerminalService, FinancialAdviceConfirmationService
-from ocpi22.payments.schemas import TerminalIn
-from unittest.mock import patch
+from ocpi22.payments.schemas import TerminalIn, TerminalPutIn
 from ocpi22.tests.factories import (
     CredentialsRoleFactory,
     TerminalFactory,
@@ -20,6 +21,12 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
 )
+from webhooks.factories import (
+    WebhookFACFactory,
+    WebhookInactiveFactory,
+)
+from webhooks.models import WebhookEvent, WebhookEventType, WebhookEventStatus
+from webhooks.choices import WebhookType
 
 
 @pytest.fixture
@@ -357,6 +364,48 @@ class TestFACServiceCreate:
                 fac_data, credentialsrole, terminal_id=terminal.terminal_id
             )
 
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_dispatches_webhook_task_after_commit_when_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        mock_task.delay.assert_called_once_with(event.id)
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    def test_create_fac_does_not_dispatch_webhook_task_when_no_fac_webhook_configured(
+        self, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        with patch(
+            "ocpi22.payments.services.transaction.on_commit",
+            side_effect=lambda fn: fn(),
+        ):
+            fac_service.create_fac(fac_data, credentialsrole)
+
+        mock_task.delay.assert_not_called()
+
+    @patch("ocpi22.payments.services.execute_webhook_event_task")
+    @patch(
+        "ocpi22.payments.services.WebhookEventService.create_event",
+        side_effect=IntegrityError("unique violation"),
+    )
+    def test_create_fac_is_saved_when_webhook_event_creation_raises_db_error(
+        self, mock_create_event, mock_task, fac_service, credentialsrole, fac_data
+    ):
+        WebhookFACFactory()
+
+        fac = fac_service.create_fac(fac_data, credentialsrole)
+
+        assert FinancialAdviceConfirmation.objects.filter(fac_id=fac.fac_id).exists()
+        mock_task.delay.assert_not_called()
+
 
 @pytest.mark.django_db
 class TestFACServiceGet:
@@ -441,11 +490,9 @@ class TestTerminalServiceUpdate:
             invoice_base_url="https://example-url-for-invoices-old.com",
         )
 
-        payload = TerminalIn(
-            terminal_id="terminal-put",
-            customer_reference="TEST-CUSTOMER-REF",
+        payload = TerminalPutIn(
             invoice_base_url="https://example-url-for-invoices-new.com",
-            location_uids=[location.uid],
+            location_ids=[location.uid],
             evse_uids=[evse.uid],
         )
 
@@ -453,15 +500,51 @@ class TestTerminalServiceUpdate:
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
         assert list(updated_terminal.evses.all()) == [evse]
 
-    def test_patch_terminal_updates_only_invoice_base_url_and_locations_when_provided(
+    def test_put_terminal_uses_provided_last_updated_instead_of_now(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PUT-LU")
+        EvseFactory(uid="EVSE-PUT-LU", location=location)
+        terminal = TerminalFactory(
+            terminal_id="terminal-put-lu", credentials=credentialsrole.credentials
+        )
+        provided_time = datetime(2025, 6, 1, 10, 0, 0, tzinfo=dt_timezone.utc)
+
+        payload = TerminalPutIn(
+            location_ids=[location.uid],
+            last_updated=provided_time,
+        )
+
+        updated_terminal = terminal_service.put_terminal(terminal, payload)
+
+        assert updated_terminal.last_updated == provided_time
+
+    def test_put_terminal_falls_back_to_now_when_last_updated_not_provided(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PUT-NOW")
+        EvseFactory(uid="EVSE-PUT-NOW", location=location)
+        terminal = TerminalFactory(
+            terminal_id="terminal-put-now", credentials=credentialsrole.credentials
+        )
+
+        before = timezone.now()
+        payload = TerminalPutIn(location_ids=[location.uid])
+        updated_terminal = terminal_service.put_terminal(terminal, payload)
+        after = timezone.now()
+
+        assert before <= updated_terminal.last_updated <= after
+
+    def test_patch_terminal_updates_invoice_base_url_locations_and_auto_populates_evses_when_only_location_ids_provided(
         self, terminal_service, credentialsrole
     ):
         location = LocationFactory(uid="LOC-PATCH")
+        evse = EvseFactory(uid="EVSE-PATCH", location=location)
         terminal = TerminalFactory(
             terminal_id="terminal-patch",
             credentials=credentialsrole.credentials,
@@ -469,20 +552,18 @@ class TestTerminalServiceUpdate:
         )
 
         payload = TerminalIn(
-            terminal_id="terminal-patch",
-            customer_reference="TEST-CUSTOMER-REF",
             invoice_base_url="https://example-url-for-invoices-new.com",
-            location_uids=[location.uid],
+            location_ids=[location.uid],
         )
 
         updated_terminal = terminal_service.patch_terminal(terminal, payload)
 
         assert (
             updated_terminal.invoice_base_url
-            == "https://example-url-for-invoices-new.com"
+            == "https://example-url-for-invoices-new.com/"
         )
         assert list(updated_terminal.locations.all()) == [location]
-        assert list(updated_terminal.evses.all()) == []
+        assert list(updated_terminal.evses.all()) == [evse]
 
     def test_put_terminal_raises_terminal_validation_error_when_location_uid_does_not_exist_in_database(
         self, terminal_service, credentialsrole
@@ -491,8 +572,8 @@ class TestTerminalServiceUpdate:
             terminal_id="term-fail-put", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
-            terminal_id="term-fail-put", location_uids=["NON-EXISTENT-LOC"]
+        payload = TerminalPutIn(
+            location_ids=["NON-EXISTENT-LOC"],
         )
 
         with pytest.raises(TerminalValidationError) as exc_info:
@@ -507,9 +588,7 @@ class TestTerminalServiceUpdate:
             terminal_id="term-fail-patch", credentials=credentialsrole.credentials
         )
 
-        payload = TerminalIn(
-            terminal_id="term-fail-patch", evse_uids=["NON-EXISTENT-EVSE"]
-        )
+        payload = TerminalIn(evse_uids=["NON-EXISTENT-EVSE"])
 
         with pytest.raises(TerminalValidationError) as exc_info:
             terminal_service.patch_terminal(terminal, payload)
@@ -540,7 +619,7 @@ class TestTerminalServiceUpdate:
     @patch("ocpi22.payments.services.send_ocpi_request")
     @patch("ocpi22.payments.services.get_our_party")
     @patch("ocpi22.payments.services.find_endpoints_by_roles")
-    def test_send_to_ptp_calls_send_ocpi_request_with_correct_url_method_and_data(
+    def test_send_to_ptp_put_sends_all_fields(
         self,
         mock_find_endpoints,
         mock_get_party,
@@ -565,14 +644,98 @@ class TestTerminalServiceUpdate:
         )
 
         terminal_service._send_to_ptp(
-            terminal, "patch", {"terminal_id": "terminal001", "location_ids": []}
+            terminal, "put", TerminalPutIn(location_ids=["LOC-X"])
         )
 
         mock_send.apply_async.assert_called_once()
         kwargs = mock_send.apply_async.call_args[1]["kwargs"]
         assert kwargs["url"] == "https://ptp.com/ocpi/payments/terminals/terminal001"
-        assert kwargs["method"] == "patch"
-        assert kwargs["data"] == {"terminal_id": "terminal001", "location_ids": []}
+        assert kwargs["method"] == "put"
+        assert set(kwargs["data"].keys()) == {
+            "location_ids",
+            "evse_uids",
+            "invoice_base_url",
+            "last_updated",
+        }
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_patch_sends_only_set_fields_but_pairs_location_and_evse(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="terminal001", credentials=credentialsrole.credentials
+        )
+
+        terminal_service._send_to_ptp(
+            terminal,
+            "patch",
+            TerminalIn(invoice_base_url="https://invoices.example.com"),
+        )
+
+        mock_send.apply_async.assert_called_once()
+        data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert set(data.keys()) == {"invoice_base_url", "last_updated"}
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_patch_includes_both_location_ids_and_evse_uids_when_either_is_set(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        location = LocationFactory(uid="LOC-PAIR")
+        evse = EvseFactory(uid="EVSE-PAIR", location=location)
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="terminal001", credentials=credentialsrole.credentials
+        )
+        terminal.locations.set([location])
+        terminal.evses.set([evse])
+
+        terminal_service._send_to_ptp(
+            terminal, "patch", TerminalIn(location_ids=[location.uid])
+        )
+
+        mock_send.apply_async.assert_called_once()
+        data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert "location_ids" in data
+        assert "evse_uids" in data
+        assert data["location_ids"] == [location.uid]
+        assert data["evse_uids"] == [evse.uid]
 
     @patch("ocpi22.payments.services.send_ocpi_request")
     def test_send_to_ptp_does_not_send_request_when_no_credentials_found(
@@ -582,7 +745,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-credentials", credentials=None
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
 
@@ -595,7 +760,9 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-role", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
 
@@ -609,6 +776,451 @@ class TestTerminalServiceUpdate:
             terminal_id="terminal-no-endpoints", credentials=credentialsrole.credentials
         )
 
-        terminal_service._send_to_ptp(terminal, "put", {})
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["x"])
+        )
 
         mock_send.apply_async.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestFACWebhookEventCreation:
+    FROZEN_TIME = datetime(2026, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+
+    @pytest.fixture
+    def fac_service(self):
+        return FinancialAdviceConfirmationService()
+
+    @pytest.fixture
+    def credentialsrole(self, db):
+        return CredentialsRoleFactory(
+            role=OcpiRolesEnum.PTP, party_id="PAY", country_code="NL"
+        )
+
+    @pytest.fixture
+    def fac(self, credentialsrole):
+        return FinancialAdviceConfirmationFactory(
+            fac_id="FAC-WH-001",
+            authorization_reference="AUTH-REF-001",
+            total_cost_excl_vat=10.50,
+            total_cost_incl_vat=12.60,
+            currency="EUR",
+            eft_data=["Mastercard", "AID: 1234"],
+            capture_status_code="SUCCESS",
+            capture_status_message=None,
+            last_updated=self.FROZEN_TIME,
+            credentials=credentialsrole.credentials,
+        )
+
+    def test_create_fac_webhook_event_returns_none_when_no_fac_webhook_configured(
+        self, fac_service, fac
+    ):
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_returns_none_when_fac_webhook_is_inactive(
+        self, fac_service, fac
+    ):
+        WebhookInactiveFactory(
+            type=WebhookType.FINANCIAL_ADVICE_CONFIRMATION, command_type=None
+        )
+
+        result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+
+    def test_create_fac_webhook_event_persists_event_with_fac_created_event_type(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.status == WebhookEventStatus.PENDING
+
+    def test_create_fac_webhook_event_persists_payload_with_all_fac_fields(
+        self, fac_service, fac
+    ):
+        WebhookFACFactory()
+
+        fac_service._create_fac_webhook_event(fac)
+
+        event = WebhookEvent.objects.get(event_type=WebhookEventType.FAC_CREATED)
+        assert event.payload == {
+            "fac_id": "FAC-WH-001",
+            "authorization_reference": "AUTH-REF-001",
+            "total_cost_excl_vat": 10.50,
+            "total_cost_incl_vat": 12.60,
+            "currency": "EUR",
+            "eft_data": ["Mastercard", "AID: 1234"],
+            "capture_status_code": "SUCCESS",
+            "capture_status_message": None,
+            "last_updated": self.FROZEN_TIME.isoformat(),
+        }
+
+    def test_create_fac_webhook_event_returns_persisted_event(self, fac_service, fac):
+        WebhookFACFactory()
+
+        event = fac_service._create_fac_webhook_event(fac)
+
+        assert event is not None
+        assert event.pk is not None
+        assert event.event_type == WebhookEventType.FAC_CREATED
+
+    def test_create_fac_webhook_event_returns_none_and_logs_error_when_event_creation_fails(
+        self, fac_service, fac, caplog
+    ):
+        WebhookFACFactory()
+        caplog.set_level("ERROR", logger="ocpi22.payments.services")
+
+        with patch(
+            "ocpi22.payments.services.WebhookEventService.create_event",
+            side_effect=Exception("DB error"),
+        ):
+            result = fac_service._create_fac_webhook_event(fac)
+
+        assert result is None
+        assert "Failed to create FAC webhook event for fac FAC-WH-001" in caplog.text
+
+
+@pytest.mark.django_db
+class TestTerminalInSchema:
+    def test_terminal_put_in_raises_when_neither_location_ids_nor_evse_uids_provided(
+        self,
+    ):
+        import pydantic
+
+        with pytest.raises(pydantic.ValidationError):
+            TerminalPutIn()
+
+    def test_terminal_in_allows_no_location_ids_or_evse_uids_for_patch(self):
+        payload = TerminalIn()
+        assert payload.location_ids == []
+        assert payload.evse_uids == []
+
+    def test_terminal_in_accepts_only_location_ids_without_evse_uids(self):
+        payload = TerminalIn(location_ids=["LOC-A"])
+
+        assert payload.location_ids == ["LOC-A"]
+        assert payload.evse_uids == []
+
+    def test_terminal_in_accepts_only_evse_uids_without_location_ids(self):
+        payload = TerminalIn(evse_uids=["EVSE-A"])
+
+        assert payload.evse_uids == ["EVSE-A"]
+        assert payload.location_ids == []
+
+    def test_terminal_in_accepts_both_location_ids_and_evse_uids(self):
+        payload = TerminalIn(location_ids=["LOC-A"], evse_uids=["EVSE-A"])
+
+        assert payload.location_ids == ["LOC-A"]
+        assert payload.evse_uids == ["EVSE-A"]
+
+
+@pytest.mark.django_db
+class TestSendToPtpEnrichment:
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_sends_location_and_evse_uids_from_terminal_not_from_payload(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        location = LocationFactory(uid="LOC-TERMINAL-STATE")
+        evse = EvseFactory(uid="EVSE-TERMINAL-STATE", location=location)
+
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="term-state-check", credentials=credentialsrole.credentials
+        )
+        terminal.locations.set([location])
+        terminal.evses.set([evse])
+
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=[location.uid])
+        )
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert sent_data["location_ids"] == [location.uid]
+        assert sent_data["evse_uids"] == [evse.uid]
+
+    @patch("ocpi22.payments.services.send_ocpi_request")
+    @patch("ocpi22.payments.services.get_our_party")
+    @patch("ocpi22.payments.services.find_endpoints_by_roles")
+    def test_send_to_ptp_payload_uses_location_ids_key_not_location_uids(
+        self,
+        mock_find_endpoints,
+        mock_get_party,
+        mock_send,
+        terminal_service,
+        credentialsrole,
+    ):
+        mock_find_endpoints.return_value = [
+            (
+                "https://ptp.com/ocpi/payments",
+                None,
+                None,
+                None,
+                credentialsrole.credentials,
+            )
+        ]
+        mock_party = type("OurParty", (), {"country_code": "FI", "party_id": "CPO"})
+        mock_get_party.return_value = mock_party
+
+        terminal = TerminalFactory(
+            terminal_id="term-key-check", credentials=credentialsrole.credentials
+        )
+
+        terminal_service._send_to_ptp(
+            terminal, "put", TerminalPutIn(location_ids=["LOC-Y"])
+        )
+
+        mock_send.apply_async.assert_called_once()
+        sent_data = mock_send.apply_async.call_args[1]["kwargs"]["data"]
+        assert "location_ids" in sent_data
+        assert "location_uids" not in sent_data
+
+
+@pytest.mark.django_db
+class TestResolveLocationsAndEvses:
+    def test_put_terminal_auto_populates_evses_when_only_location_ids_given(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-AUTO-EVSE")
+        evse1 = EvseFactory(uid="EVSE-AUTO-1", location=location)
+        evse2 = EvseFactory(uid="EVSE-AUTO-2", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-auto-evse", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert set(updated.evses.values_list("uid", flat=True)) == {
+            evse1.uid,
+            evse2.uid,
+        }
+        assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
+
+    def test_put_terminal_auto_populates_locations_when_only_evse_uids_given(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-AUTO-LOC")
+        evse = EvseFactory(uid="EVSE-AUTO-LOC", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-auto-loc", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            evse_uids=[evse.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert list(updated.evses.values_list("uid", flat=True)) == [evse.uid]
+        assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
+
+    def test_put_terminal_raises_terminal_validation_error_when_location_has_no_evses_in_database(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-EMPTY")
+        terminal = TerminalFactory(
+            terminal_id="term-loc-empty", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            location_ids=[location.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="LOC-EMPTY"):
+            terminal_service.put_terminal(terminal, payload)
+
+    def test_put_terminal_raises_when_evse_does_not_belong_to_given_location(
+        self, terminal_service, credentialsrole
+    ):
+        location_a = LocationFactory(uid="LOC-A-CROSS")
+        location_b = LocationFactory(uid="LOC-B-CROSS")
+        evse_a = EvseFactory(uid="EVSE-A-CROSS", location=location_a)
+        evse_b = EvseFactory(uid="EVSE-B-CROSS", location=location_b)
+        terminal = TerminalFactory(
+            terminal_id="term-cross", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            location_ids=[location_a.uid],
+            evse_uids=[evse_a.uid, evse_b.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="EVSE-B-CROSS"):
+            terminal_service.put_terminal(terminal, payload)
+
+    def test_put_terminal_raises_terminal_validation_error_when_location_has_no_evse_in_given_evse_list(
+        self, terminal_service, credentialsrole
+    ):
+        location_a = LocationFactory(uid="LOC-COVERED")
+        location_b = LocationFactory(uid="LOC-UNCOVERED")
+        evse_a = EvseFactory(uid="EVSE-COVERED", location=location_a)
+        EvseFactory(uid="EVSE-UNCOVERED", location=location_b)
+        terminal = TerminalFactory(
+            terminal_id="term-uncovered-loc", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            location_ids=[location_a.uid, location_b.uid],
+            evse_uids=[evse_a.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="LOC-UNCOVERED"):
+            terminal_service.put_terminal(terminal, payload)
+
+    def test_put_terminal_allows_partial_evse_selection_within_locations(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PARTIAL")
+        evse1 = EvseFactory(uid="EVSE-1", location=location)
+        EvseFactory(uid="EVSE-2", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-evse-1", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalPutIn(
+            location_ids=[location.uid],
+            evse_uids=[evse1.uid],
+        )
+
+        updated = terminal_service.put_terminal(terminal, payload)
+
+        assert list(updated.evses.values_list("uid", flat=True)) == [evse1.uid]
+
+    def test_patch_terminal_auto_populates_evses_when_only_location_ids_given(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PATCH-AUTO")
+        evse1 = EvseFactory(uid="EVSE-PATCH-AUTO-1", location=location)
+        evse2 = EvseFactory(uid="EVSE-PATCH-AUTO-2", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-patch-auto-evse", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            location_ids=[location.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert set(updated.evses.values_list("uid", flat=True)) == {
+            evse1.uid,
+            evse2.uid,
+        }
+        assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
+
+    def test_patch_terminal_auto_populates_locations_when_only_evse_uids_given(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PATCH-AUTO-LOC")
+        evse = EvseFactory(uid="EVSE-PATCH-AUTO-LOC", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-patch-auto-loc", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            evse_uids=[evse.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert list(updated.evses.values_list("uid", flat=True)) == [evse.uid]
+        assert list(updated.locations.values_list("uid", flat=True)) == [location.uid]
+
+    def test_patch_terminal_raises_terminal_validation_error_when_location_has_no_evses_in_database(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PATCH-EMPTY")
+        terminal = TerminalFactory(
+            terminal_id="term-patch-loc-empty", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            location_ids=[location.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="LOC-PATCH-EMPTY"):
+            terminal_service.patch_terminal(terminal, payload)
+
+    def test_patch_terminal_raises_terminal_validation_error_when_evse_does_not_belong_to_given_location(
+        self, terminal_service, credentialsrole
+    ):
+        location_a = LocationFactory(uid="LOC-A-PATCH-CROSS")
+        location_b = LocationFactory(uid="LOC-B-PATCH-CROSS")
+        evse_a = EvseFactory(uid="EVSE-A-PATCH-CROSS", location=location_a)
+        evse_b = EvseFactory(uid="EVSE-B-PATCH-CROSS", location=location_b)
+        terminal = TerminalFactory(
+            terminal_id="term-patch-cross", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            location_ids=[location_a.uid],
+            evse_uids=[evse_a.uid, evse_b.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="EVSE-B-PATCH-CROSS"):
+            terminal_service.patch_terminal(terminal, payload)
+
+    def test_patch_terminal_raises_terminal_validation_error_when_location_has_no_evse_in_given_evse_list(
+        self, terminal_service, credentialsrole
+    ):
+        location_a = LocationFactory(uid="LOC-P-COVERED")
+        location_b = LocationFactory(uid="LOC-P-UNCOVERED")
+        evse_a = EvseFactory(uid="EVSE-P-COVERED", location=location_a)
+        EvseFactory(uid="EVSE-P-UNCOVERED", location=location_b)
+        terminal = TerminalFactory(
+            terminal_id="term-patch-uncovered", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            location_ids=[location_a.uid, location_b.uid],
+            evse_uids=[evse_a.uid],
+        )
+
+        with pytest.raises(TerminalValidationError, match="LOC-P-UNCOVERED"):
+            terminal_service.patch_terminal(terminal, payload)
+
+    def test_patch_terminal_allows_partial_evse_selection_within_locations(
+        self, terminal_service, credentialsrole
+    ):
+        location = LocationFactory(uid="LOC-PATCH-PARTIAL")
+        evse1 = EvseFactory(uid="EVSE-PATCH-PARTIAL-1", location=location)
+        EvseFactory(uid="EVSE-PATCH-PARTIAL-2", location=location)
+        terminal = TerminalFactory(
+            terminal_id="term-patch-partial", credentials=credentialsrole.credentials
+        )
+
+        payload = TerminalIn(
+            location_ids=[location.uid],
+            evse_uids=[evse1.uid],
+        )
+
+        updated = terminal_service.patch_terminal(terminal, payload)
+
+        assert list(updated.evses.values_list("uid", flat=True)) == [evse1.uid]

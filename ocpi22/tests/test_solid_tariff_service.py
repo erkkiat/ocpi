@@ -320,6 +320,46 @@ def test_set_missing_fields_handles_all_nullable_model_fields(
     )
 
 
+@pytest.mark.parametrize(
+    "per_kwh, per_hr, flat, parking_per_hr, expected",
+    [
+        pytest.param(0.45, None, None, None, True, id="kwh_only"),
+        pytest.param(None, 6.0, None, None, True, id="hr_only"),
+        pytest.param(None, None, 1.0, None, True, id="flat_only"),
+        pytest.param(None, None, None, 3.0, True, id="parking_only"),
+        pytest.param(0.45, 6.0, 1.0, 3.0, True, id="all_components"),
+        pytest.param(None, None, None, None, False, id="no_components"),
+    ],
+)
+def test_has_price_components(
+    solid_tariff_service_instance, per_kwh, per_hr, flat, parking_per_hr, expected
+):
+    result = solid_tariff_service_instance.has_price_components(
+        per_kwh, per_hr, flat, parking_per_hr
+    )
+    assert result == expected
+
+
+@pytest.mark.django_db
+def test_create_ocpi_tariff_defaults_to_no_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR"
+    )
+    assert tariff.type == ""
+
+
+@pytest.mark.django_db
+def test_create_ocpi_tariff_with_explicit_type(
+    solid_tariff_service_instance, operator_fi_cpo
+):
+    tariff = solid_tariff_service_instance._create_ocpi_tariff(
+        operator=operator_fi_cpo, currency="EUR", type="AD_HOC_PAYMENT"
+    )
+    assert tariff.type == "AD_HOC_PAYMENT"
+
+
 @pytest.mark.django_db
 def test_create_price_components_with_zero_prices_creates_price_components(
     solid_tariff_service_instance,
@@ -422,6 +462,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
         "external_id": "ZERO-PER-MIN-SMP1",
         "currency": "EUR",
         "price_per_min": 0,
+        "vat_percentage": 0.0,
         "ocpi_master": operator_fi_cpo,
         "msp": None,
     }
@@ -452,6 +493,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },
@@ -462,6 +504,7 @@ def test_create_solid_tariff_with_zero_per_min_creates_time_price_component(
                 "external_id": "ZERO-PARKING-PER-MIN-DEDUP-SMP1",
                 "currency": "EUR",
                 "parking_price_per_min": 0,
+                "vat_percentage": 0.0,
                 "msp": None,
                 "last_updated": "2024-10-10T12:00:00Z",
             },

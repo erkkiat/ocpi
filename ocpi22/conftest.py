@@ -3,6 +3,7 @@ from datetime import datetime
 import pytest
 import pytz
 
+from ocpi22.choices import EVSEStatus, OCPICapability
 from ocpi22.cpo.schemas import (
     SolidLocation,
     GeoLocation,
@@ -81,9 +82,10 @@ def rome_location_in(connector_in):
     evse = SolidEvse(
         uid="ROME01EVSE01",
         evse_id="FI*CPO*EROME01EVSE01",
-        status="AVAILABLE",
+        status=EVSEStatus.AVAILABLE,
         connectors=[],
         last_updated=datetime.now(pytz.utc),
+        capabilities=[OCPICapability.RFID_READER],
     )
 
     evse.connectors.append(connector_in)
@@ -119,6 +121,9 @@ def location_example(ocpi_master):
         }
     )
 
+    data["evses"][0].update({"capabilities": ["RFID_READER"]})
+    data["evses"][1].update({"capabilities": ["RFID_READER"]})
+
     return data
 
 
@@ -130,6 +135,7 @@ def location_example_with_evse_evse_id_none(location_example):
                 {
                     "uid": "EVSE-1",
                     "status": "AVAILABLE",
+                    "capabilities": ["RFID_READER"],
                     "connectors": [
                         {
                             "id": "1",

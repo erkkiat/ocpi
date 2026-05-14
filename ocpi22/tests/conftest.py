@@ -118,6 +118,7 @@ def smp1_solid_tariff_minimal_records_json():
         "external_id": "SMP1",
         "currency": "EUR",
         "price_flat": 1.0,
+        "vat_percentage": 0.0,
     }
 
 
@@ -150,7 +151,7 @@ def smp1_solid_tariff_with_minimal_records_response():
         "price_per_kwh": None,
         "price_per_min": None,
         "price_per_hr": None,
-        "vat_percentage": None,
+        "vat_percentage": "0.0",
         "last_updated": "2024-09-22T12:30:30Z",
     }
 

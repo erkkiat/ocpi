@@ -168,6 +168,18 @@ def _authorize_and_publish(token_auth_message: TokenAuthorizationMessageIn, topi
         _publish_not_allowed_auth_response(token_auth_message.correlation_id)
         return
 
+    if Session.objects.filter(
+        cdr_token__uid=token_auth_message.token_id,
+        evse=evse,
+        status=Session.ACTIVE,
+    ).exists():
+        logger.warning(
+            f"Token {token_auth_message.token_id} already has an active session "
+            f"at EVSE {evse.uid} — rejecting duplicate authorization"
+        )
+        _publish_not_allowed_auth_response(token_auth_message.correlation_id)
+        return
+
     token: str | Token = (
         _find_token_by_uid(token_auth_message.token_id) or token_auth_message.token_id
     )

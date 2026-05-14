@@ -62,6 +62,16 @@ class WebhookRemoteCommandFactory(WebhookFactory):
     command_type = RemoteCommandType.START_SESSION
 
 
+class WebhookFACFactory(WebhookFactory):
+    type = WebhookType.FINANCIAL_ADVICE_CONFIRMATION
+    command_type = None
+
+
+class WebhookInvoicingFactory(WebhookFactory):
+    type = WebhookType.INVOICING
+    command_type = None
+
+
 class WebhookEventFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = WebhookEvent

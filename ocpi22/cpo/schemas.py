@@ -158,7 +158,7 @@ class SolidEvse(BaseSchema):
     ] = None
     status: EVSEStatus
     status_schedule: SkipJsonSchema[Optional[List[StatusSchedule]]] = None
-    capabilities: Optional[List[OCPICapability]] = None
+    capabilities: List[OCPICapability] = Field(..., min_length=1)
     connectors: List[SolidConnector] = Field(
         ..., description="List of connectors for this EVSE"
     )
@@ -166,9 +166,9 @@ class SolidEvse(BaseSchema):
         Optional[Annotated[str, StringConstraints(max_length=4)]]
     ] = None
     coordinates: SkipJsonSchema[Optional[GeoLocation]] = None
-    physical_reference: SkipJsonSchema[
-        Optional[Annotated[str, StringConstraints(max_length=16)]]
-    ] = None
+    physical_reference: Optional[Annotated[str, StringConstraints(max_length=16)]] = (
+        None
+    )
     directions: SkipJsonSchema[Optional[List[DisplayText]]] = None
     parking_restrictions: SkipJsonSchema[Optional[List[ParkingRestriction]]] = None
     images: SkipJsonSchema[Optional[List[OCPIImage]]] = None
@@ -299,6 +299,6 @@ class LocationOut(SolidLocation):
         extra="forbid", populate_by_name=True, use_enum_values=True
     )
 
-    evses: List[EVSEOut] = Field(
-        ..., description="List of EVSEs available at this location"
+    evses: Optional[List[EVSEOut]] = Field(
+        None, description="List of EVSEs available at this location"
     )

@@ -9,6 +9,7 @@ from ocpi22.cpo.schemas import (
     SolidConnector,
     OpeningTimes,
     RegularHours,
+    LocationOut,
 )
 from ocpi22.test_tariff_location_and_evse import load_example
 
@@ -56,7 +57,7 @@ def evse_data(connector_data):
         "status": "AVAILABLE",
         "last_updated": datetime(2023, 10, 1, 12, 0),
         "connectors": [],
-        "capabilities": None,
+        "capabilities": ["RFID_READER"],
     }
 
 
@@ -96,6 +97,7 @@ def test_location_in_schema_valid_data_with_opening_hours_does_not_raise_validat
     data = load_example(
         "data/examples/location_example_parking_garage_opening_hours.json"
     )
+    data.get("evses", [])[0]["capabilities"] = ["RFID_READER"]
     location = SolidLocation(**data)
     assert location.country == "SWE"
 
@@ -126,6 +128,18 @@ def test_location_in_roaming_enabled_field_is_optional(location_data):
 def test_evse_schema_valid_data(evse_data):
     evse = SolidEvse(**evse_data)
     assert evse.evse_id == evse_data["evse_id"]
+
+
+def test_evse_schema_physical_reference_is_accepted(evse_data):
+    evse_data["physical_reference"] = "A1"
+    evse = SolidEvse(**evse_data)
+    assert evse.physical_reference == "A1"
+
+
+def test_evse_schema_physical_reference_too_long_raises_validation_error(evse_data):
+    evse_data["physical_reference"] = "A" * 17
+    with pytest.raises(ValidationError):
+        SolidEvse(**evse_data)
 
 
 def test_evse_schema_invalid_status_raises_value_error(evse_data):
@@ -212,6 +226,21 @@ def test_regular_hours_none_when_twentyfourseven_is_false_raises_validation_erro
     assert "regular_hours is required when twentyfourseven is False" in error_msg
 
 
+def test_location_out_without_evses_does_not_raise_validation_error(location_data):
+    location_data.pop("evses")
+    location = LocationOut(**location_data)
+    assert location.evses is None
+
+
+def test_location_out_with_evses_does_not_raise_validation_error(
+    location_data, evse_data, connector_data
+):
+    evse_data["connectors"] = [connector_data]
+    location_data["evses"] = [evse_data]
+    location = LocationOut(**location_data)
+    assert len(location.evses) == 1
+
+
 def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_error():
     with pytest.raises(ValidationError) as exc_info:
         OpeningTimes(
@@ -223,3 +252,24 @@ def test_regular_hours_empty_when_twentyfourseven_is_false_raises_validation_err
 
     error_msg = str(exc_info.value)
     assert "regular_hours is required when twentyfourseven is False" in error_msg
+
+
+def test_empty_evse_capability_raises_validation_error(evse_data):
+    evse_data["capabilities"] = []
+    with pytest.raises(ValidationError) as exc_info:
+        SolidEvse(**evse_data)
+
+    error_msg = str(exc_info.value)
+    assert (
+        "1 validation error for SolidEvse\ncapabilities\n  List should have at least 1 item after validation, not 0 "
+        in error_msg
+    )
+
+
+def test_evse_capability_none_raises_validation_error(evse_data):
+    evse_data["capabilities"] = None
+    with pytest.raises(ValidationError) as exc_info:
+        SolidEvse(**evse_data)
+
+    error_msg = str(exc_info.value)
+    assert "SolidEvse\ncapabilities\n  Input should be a valid list" in error_msg

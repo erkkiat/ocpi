@@ -1,5 +1,5 @@
 import doctest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, time, timezone, timedelta
 from unittest import mock
 from unittest.mock import patch
 
@@ -30,7 +30,6 @@ from integrations.hubject.schemas import (
 )
 from integrations.solid_to_hubject_converter import SolidToHubjectConverter
 from ocpi22.choices import OCPICapability, WEEKDAY_CHOICES
-from ocpi22.cpo.schemas import RegularHours
 from ocpi22.cpo.api import applying_tariff_element
 from ocpi22.models.location import Connector
 from ocpi22.models.session import Session
@@ -38,6 +37,7 @@ from ocpi22.tests.factories import (
     LocationFactory,
     EvseFactory,
     OCPISessionFactory,
+    RegularHoursFactory,
     SolidTariffFactory,
 )
 from integrations.hubject.schemas import EvseStatus as OICPEvseStatus
@@ -337,6 +337,24 @@ class TestMappings:
             ),
             pytest.param("", "NLD", ("-", "-"), id="empty-address-nld"),
             pytest.param("", "FRA", ("-", "-"), id="empty-address-fra"),
+            pytest.param(
+                "’t Hoge 4",
+                "NLD",
+                ("’t Hoge", "4"),
+                id="dutch-apostrophe-prefix-right-quote",
+            ),
+            pytest.param(
+                "‘t Hoge 4",
+                "NLD",
+                ("‘t Hoge", "4"),
+                id="dutch-apostrophe-prefix-left-quote",
+            ),
+            pytest.param(
+                "'t Hoge 4",
+                "NLD",
+                ("'t Hoge", "4"),
+                id="dutch-apostrophe-prefix-straight-quote",
+            ),
         ],
     )
     def test_get_address_components(self, address, country, expected):
@@ -417,15 +435,20 @@ class TestMappings:
     def test_convert_to_pricing_product_data_records_when_prices_are_none(
         self,
         smp1_solid_tariff_with_none_prices,
-        pricing_product_data_record_successful_result,
     ):
-        with pytest.raises(
-            ValidationError,
-            match=f"['SolidTariff {smp1_solid_tariff_with_none_prices.external_id} is a free tariff without any price defined.']",
-        ):
-            self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
-                smp1_solid_tariff_with_none_prices
+        with mock.patch(
+            "integrations.solid_to_hubject_converter.logger"
+        ) as mock_logger:
+            result = (
+                self._ocpi_to_oicp_converter.convert_to_pricing_product_data_records(
+                    smp1_solid_tariff_with_none_prices
+                )
             )
+
+        assert result is None
+        mock_logger.warning.assert_called_once_with(
+            f"['Missing ENERGY, TIME component for SolidTariff {smp1_solid_tariff_with_none_prices.external_id}, Skipping update to Hubject.']"
+        )
 
     @pytest.mark.django_db
     def test_get_provider_ids_for_solid_tariffs_with_msp(
@@ -826,44 +849,63 @@ class TestConvertOCPICDRToERoamingCDR:
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def weekday_regular_hours():
     return [
-        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
         for weekday in range(1, 6)
     ]
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def weekend_regular_hours():
     return [
-        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
         for weekday in range(6, 8)
     ]
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def everyday_regular_hours():
     return [
-        RegularHours(weekday=weekday, period_begin="00:00", period_end="00:00")
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(0, 0), period_end=time(0, 0)
+        )
         for weekday in range(1, 8)
     ]
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def monday_to_wednesday_regular_hours():
     return [
-        RegularHours(weekday=1, period_begin="00:00", period_end="00:00"),
-        RegularHours(weekday=2, period_begin="10:30", period_end="17:20"),
-        RegularHours(weekday=3, period_begin="09:15", period_end="16:00"),
+        RegularHoursFactory(weekday=1, period_begin=time(0, 0), period_end=time(0, 0)),
+        RegularHoursFactory(
+            weekday=2, period_begin=time(10, 30), period_end=time(17, 20)
+        ),
+        RegularHoursFactory(
+            weekday=3, period_begin=time(9, 15), period_end=time(16, 0)
+        ),
     ]
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def monday_regular_hours():
     return [
-        RegularHours(weekday=1, period_begin="00:00", period_end="06:00"),
-        RegularHours(weekday=1, period_begin="06:30", period_end="12:20"),
-        RegularHours(weekday=1, period_begin="12:30", period_end="20:00"),
+        RegularHoursFactory(weekday=1, period_begin=time(0, 0), period_end=time(6, 0)),
+        RegularHoursFactory(
+            weekday=1, period_begin=time(6, 30), period_end=time(12, 20)
+        ),
+        RegularHoursFactory(
+            weekday=1, period_begin=time(12, 30), period_end=time(20, 0)
+        ),
     ]
 
 
@@ -878,6 +920,7 @@ def test_get_weekday_from_number():
     assert WEEKDAY_CHOICES.from_number(8) is None
 
 
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "regular_hours_fixture, expected_on, expected_count, description",
     [
@@ -906,6 +949,7 @@ def test_map_regular_hours_to_opening_times(
     assert opening_times[0].Period[0].end == "00:00", "Period end should be '00:00'."
 
 
+@pytest.mark.django_db
 def test_map_regular_hours_to_opening_times_from_monday_to_wednesday_returns_3_opening_times(
     monday_to_wednesday_regular_hours,
 ):
@@ -942,6 +986,7 @@ def test_map_regular_hours_to_opening_times_from_monday_to_wednesday_returns_3_o
     assert not expected_times, "Not all expected opening times were found."
 
 
+@pytest.mark.django_db
 def test_map_regular_hours_with_multiple_periods_for_monday_returns_one_opening_time(
     monday_regular_hours,
 ):
@@ -971,3 +1016,24 @@ def test_map_regular_hours_with_multiple_periods_for_monday_returns_one_opening_
         assert (
             period.end == expected["end"]
         ), f"Period {i} end should be '{expected['end']}'"
+
+
+@pytest.mark.django_db
+def test_map_regular_hours_to_opening_times_with_time_objects_returns_formatted_period():
+    regular_hours = [
+        RegularHoursFactory(
+            weekday=weekday, period_begin=time(8, 0), period_end=time(20, 30)
+        )
+        for weekday in range(1, 6)
+    ]
+
+    opening_times: list[OpeningTimes] = (
+        TestMappings._ocpi_to_oicp_converter.map_regular_hours_to_opening_times(
+            regular_hours
+        )
+    )
+
+    assert len(opening_times) == 1
+    assert opening_times[0].on == On.Workdays
+    assert opening_times[0].Period[0].begin == "08:00"
+    assert opening_times[0].Period[0].end == "20:30"

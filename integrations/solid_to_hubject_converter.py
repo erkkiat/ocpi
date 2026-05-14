@@ -75,8 +75,9 @@ class SolidToHubjectConverter:
         self.ocpi_version = ocpi_version
         self.address_pattern = regex.compile(r"(?P<street>[^\d]+)\s(?P<house>\d+)")
 
+        _apos = chr(0x27) + chr(0x2018) + chr(0x2019)
         self.general_address_pattern = regex.compile(
-            r"^\s*(?P<street>\p{L}[\p{L}\d\s.'’\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
+            rf"^\s*(?P<street>[{_apos}]?\p{{L}}[\p{{L}}\d\s.{_apos}\-]*?)\s*(?:,\s*|\s+)\s*(?P<house>\d+\w*(?:-\d+)?)\b",
             regex.IGNORECASE,
         )
         self.france_pattern = regex.compile(
@@ -218,8 +219,12 @@ class SolidToHubjectConverter:
                 root=hubject_default_tariff.price_component.value
             ),
             PricingProductDataRecords=[
-                self.convert_to_pricing_product_data_records(solid_tariff)
+                record
                 for solid_tariff in solid_tariffs
+                if (
+                    record := self.convert_to_pricing_product_data_records(solid_tariff)
+                )
+                is not None
             ],
             # todo: Offer to all should not be used in production.
             ProviderID=ProviderIDAsterisk(root="*"),
@@ -242,7 +247,7 @@ class SolidToHubjectConverter:
             return solid_tariff.price_per_min, HubjectPriceComponent.MINUTE
 
         raise ValidationError(
-            f"SolidTariff {solid_tariff.external_id} is a free tariff without any price defined."
+            f"Missing ENERGY, TIME component for SolidTariff {solid_tariff.external_id}, Skipping update to Hubject."
         )
 
     def _get_hourly_price_additional_reference(
@@ -305,8 +310,14 @@ class SolidToHubjectConverter:
     def convert_to_pricing_product_data_records(
         self,
         solid_tariff: SolidTariff,
-    ) -> PricingProductDataRecord:
-        primary_price, primary_reference_unit = self._get_primary_price(solid_tariff)
+    ) -> Optional[PricingProductDataRecord]:
+        try:
+            primary_price, primary_reference_unit = self._get_primary_price(
+                solid_tariff
+            )
+        except ValidationError as e:
+            logger.warning(str(e))
+            return None
 
         primary_price = primary_price.quantize(Decimal("0.001"), rounding=ROUND_UP)
 
@@ -792,7 +803,7 @@ class SolidToHubjectConverter:
             grouped_slots = defaultdict(list)
 
             for rh in regular_hours:
-                time_slot = f"{datetime.strptime(rh.period_begin, '%H:%M').strftime('%H:%M')}-{datetime.strptime(rh.period_end, '%H:%M').strftime('%H:%M')}"
+                time_slot = f"{rh.period_begin.strftime('%H:%M')}-{rh.period_end.strftime('%H:%M')}"
                 grouped_slots[time_slot].append(rh.weekday)
             return dict(grouped_slots)
 
