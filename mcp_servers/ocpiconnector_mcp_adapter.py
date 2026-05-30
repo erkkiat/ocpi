@@ -22,6 +22,16 @@ from mcp.server.fastmcp import FastMCP
 API_KEY = os.getenv("OCPICONNECTOR_API_KEY", "")
 BASE_URL = os.getenv("OCPICONNECTOR_BASE_URL", "http://localhost:8000/mcp/")
 
+# Enforce HTTPS for remote endpoints to prevent plaintext credential transmission
+if BASE_URL.startswith("http://") and not any(
+    host in BASE_URL for host in ["localhost", "127.0.0.1"]
+):
+    print(
+        "Error: OCPICONNECTOR_BASE_URL must use HTTPS for remote endpoints.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
 if not API_KEY:
     print(
         "Warning: OCPICONNECTOR_API_KEY not set. Authentication may fail.",
