@@ -1,21 +1,19 @@
 """
 MCP Server View Integration
 
-This module handles JSON-RPC 2.0 protocol in the mcp_endpoint view following the implementation principles:
+This module handles JSON-RPC 2.0 protocol in the mcp_endpoint view:
 - Support methods: initialize, ping, notifications/initialized, tools/list, tools/call
-- In tools/list, return tool schema matching server.py registration
+- In tools/list, return tool schema from schemas.py
 - In tools/call, extract tool name and arguments, call implementation function
 - Return JSON-RPC 2.0 formatted responses with jsonrpc: "2.0" and id from request
 - Use appropriate HTTP status codes (400 for client errors, 500 for server errors)
 - Return errors in JSON-RPC format: {"error": {"code": -32601, "message": "..."}}
-
-Note: Tools are added in separate PRs. This foundation provides the infrastructure
-for tool handling without any specific tool implementations.
 """
 
+# Standard library
 import json
 import logging
-from django.conf import settings
+
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -27,13 +25,9 @@ from rest_framework.decorators import (
 from rest_framework.permissions import IsAuthenticated
 
 from .authentication import ApiKeyAuthentication
+from .schemas import list_all_tools
 from .tools import get_cdr_details, list_cdrs_by_token, get_tariff_details
-from mcp.types import (
-    INTERNAL_ERROR,
-    INVALID_REQUEST,
-    METHOD_NOT_FOUND,
-    PARSE_ERROR,
-)
+from mcp.types import INTERNAL_ERROR
 
 logger = logging.getLogger(__name__)
 
@@ -113,53 +107,14 @@ def mcp_endpoint(request):
             return HttpResponse(status=204)
 
         elif method == "tools/list":
-            # Return the available tools
+            # Return the available tools from schemas.py
             tools = [
                 {
-                    "name": "get_cdr",
-                    "description": "Retrieve Charge Detail Record (CDR) information by UID or session ID. Returns detailed information including timing, token details, location, EVSE, session data, costs, and associated tariffs in human/AI-readable markdown format.",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "uid": {
-                                "type": "string",
-                                "description": "The unique identifier of the CDR (optional if session_id is provided)",
-                            },
-                            "session_id": {
-                                "type": "string",
-                                "description": "The session ID (optional if uid is provided)",
-                            },
-                        },
-                    },
-                },
-                {
-                    "name": "list_cdrs_by_token",
-                    "description": f"List Charge Detail Records (CDRs) filtered by RFID token with server-side paging (page size {settings.MCP_SERVER_PAGE_SIZE}). Returns a paginated list of CDRs ordered by start_date_time with the exact query string for the next page if more results exist.",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Pipe-separated parameters: 'rfid_token|last_cdr_uid'. Example: 'TOKEN001' for first page, 'TOKEN001|CDR-005' for next page.",
-                            },
-                        },
-                        "required": ["query"],
-                    },
-                },
-                {
-                    "name": "get_tariff",
-                    "description": "Retrieve tariff information by SolidTariff external_id or OCPI Tariff uid. Returns both the SolidTariff (master data from CPMS) and the corresponding OCPI Tariff with clear labeling to distinguish the data sources. Auto-detects the ID type.",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "id": {
-                                "type": "string",
-                                "description": "Either SolidTariff external_id or OCPI Tariff uid",
-                            },
-                        },
-                        "required": ["id"],
-                    },
-                },
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": tool.input_schema,
+                }
+                for tool in list_all_tools()
             ]
             return JsonResponse(
                 {"jsonrpc": "2.0", "result": {"tools": tools}, "id": request_id}
@@ -170,201 +125,11 @@ def mcp_endpoint(request):
             tool_args = params.get("arguments", {})
 
             if tool_name == "get_cdr":
-                try:
-                    # Support both direct uid/session_id params and legacy query param
-                    uid = tool_args.get("uid")
-                    session_id = tool_args.get("session_id")
-
-                    # Fallback to legacy query param parsing
-                    if not uid and not session_id:
-                        query = tool_args.get("query", "")
-                        if query.startswith("uid:"):
-                            uid = query[4:]
-                        elif query.startswith("session_id:"):
-                            session_id = query[11:]
-                        else:
-                            # Try to parse as pipe-separated values
-                            parts = query.split("|")
-                            if len(parts) == 2:
-                                uid = parts[0] if parts[0] else None
-                                session_id = parts[1] if parts[1] else None
-
-                    result = get_cdr_details(uid=uid, session_id=session_id)
-
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {"content": [{"type": "text", "text": result}]},
-                            "id": request_id,
-                        }
-                    )
-                except ValueError as e:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {"type": "text", "text": f"Error: {str(e)}"}
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except ObjectDoesNotExist:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {"type": "text", "text": "Error: CDR not found"}
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except MultipleObjectsReturned:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
-                                    }
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except Exception as e:
-                    logger.exception("Error in get_cdr tool")
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "error": {
-                                "code": INTERNAL_ERROR,
-                                "message": f"Error retrieving CDR: {str(e)}",
-                            },
-                            "id": request_id,
-                        },
-                        status=500,
-                    )
+                return _handle_get_cdr(tool_args, request_id)
             elif tool_name == "list_cdrs_by_token":
-                try:
-                    query = tool_args.get("query", "")
-                    result = list_cdrs_by_token(query=query)
-
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {"content": [{"type": "text", "text": result}]},
-                            "id": request_id,
-                        }
-                    )
-                except ValueError as e:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {"type": "text", "text": f"Error: {str(e)}"}
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except ObjectDoesNotExist:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {"type": "text", "text": "Error: CDR not found"}
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except MultipleObjectsReturned:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
-                                    }
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except Exception as e:
-                    logger.exception("Error in list_cdrs_by_token tool")
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "error": {
-                                "code": INTERNAL_ERROR,
-                                "message": f"Error listing CDRs: {str(e)}",
-                            },
-                            "id": request_id,
-                        },
-                        status=500,
-                    )
+                return _handle_list_cdrs_by_token(tool_args, request_id)
             elif tool_name == "get_tariff":
-                try:
-                    tariff_id = tool_args.get("id")
-                    result = get_tariff_details(id=tariff_id)
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {"content": [{"type": "text", "text": result}]},
-                            "id": request_id,
-                        }
-                    )
-                except ValueError as e:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {"type": "text", "text": f"Error: {str(e)}"}
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except ObjectDoesNotExist:
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "result": {
-                                "content": [
-                                    {
-                                        "type": "text",
-                                        "text": "Error: Tariff not found with the provided ID",
-                                    }
-                                ]
-                            },
-                            "id": request_id,
-                        }
-                    )
-                except Exception as e:
-                    logger.exception("Error in get_tariff tool")
-                    return JsonResponse(
-                        {
-                            "jsonrpc": "2.0",
-                            "error": {
-                                "code": -32603,
-                                "message": f"Error retrieving tariff: {str(e)}",
-                            },
-                            "id": request_id,
-                        },
-                        status=500,
-                    )
+                return _handle_get_tariff(tool_args, request_id)
             else:
                 return JsonResponse(
                     {
@@ -395,6 +160,195 @@ def mcp_endpoint(request):
                 "jsonrpc": "2.0",
                 "error": {"code": -32603, "message": f"Internal error: {str(e)}"},
                 "id": data.get("id") if "data" in locals() else None,
+            },
+            status=500,
+        )
+
+
+def _handle_get_cdr(tool_args: dict, request_id):
+    """Handle get_cdr tool call."""
+    try:
+        # Support both direct uid/session_id params and legacy query param
+        uid = tool_args.get("uid")
+        session_id = tool_args.get("session_id")
+
+        # Fallback to legacy query param parsing
+        if not uid and not session_id:
+            query = tool_args.get("query", "")
+            if query.startswith("uid:"):
+                uid = query[4:]
+            elif query.startswith("session_id:"):
+                session_id = query[11:]
+            else:
+                # Try to parse as pipe-separated values
+                parts = query.split("|")
+                if len(parts) == 2:
+                    uid = parts[0] if parts[0] else None
+                    session_id = parts[1] if parts[1] else None
+
+        result = get_cdr_details(uid=uid, session_id=session_id)
+
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": result}]},
+                "id": request_id,
+            }
+        )
+    except ValueError as e:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]},
+                "id": request_id,
+            }
+        )
+    except ObjectDoesNotExist:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [{"type": "text", "text": "Error: CDR not found"}]
+                },
+                "id": request_id,
+            }
+        )
+    except MultipleObjectsReturned:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
+                        }
+                    ]
+                },
+                "id": request_id,
+            }
+        )
+    except Exception as e:
+        logger.exception("Error in get_cdr tool")
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": INTERNAL_ERROR,
+                    "message": f"Error retrieving CDR: {str(e)}",
+                },
+                "id": request_id,
+            },
+            status=500,
+        )
+
+
+def _handle_list_cdrs_by_token(tool_args: dict, request_id):
+    """Handle list_cdrs_by_token tool call."""
+    try:
+        query = tool_args.get("query", "")
+        result = list_cdrs_by_token(query=query)
+
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": result}]},
+                "id": request_id,
+            }
+        )
+    except ValueError as e:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]},
+                "id": request_id,
+            }
+        )
+    except ObjectDoesNotExist:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [{"type": "text", "text": "Error: CDR not found"}]
+                },
+                "id": request_id,
+            }
+        )
+    except MultipleObjectsReturned:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Error: Multiple CDRs found with the same UID - data integrity issue",
+                        }
+                    ]
+                },
+                "id": request_id,
+            }
+        )
+    except Exception as e:
+        logger.exception("Error in list_cdrs_by_token tool")
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": INTERNAL_ERROR,
+                    "message": f"Error listing CDRs: {str(e)}",
+                },
+                "id": request_id,
+            },
+            status=500,
+        )
+
+
+def _handle_get_tariff(tool_args: dict, request_id):
+    """Handle get_tariff tool call."""
+    try:
+        tariff_id = tool_args.get("id")
+        result = get_tariff_details(id=tariff_id)
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": result}]},
+                "id": request_id,
+            }
+        )
+    except ValueError as e:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {"content": [{"type": "text", "text": f"Error: {str(e)}"}]},
+                "id": request_id,
+            }
+        )
+    except ObjectDoesNotExist:
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Error: Tariff not found with the provided ID",
+                        }
+                    ]
+                },
+                "id": request_id,
+            }
+        )
+    except Exception as e:
+        logger.exception("Error in get_tariff tool")
+        return JsonResponse(
+            {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32603,
+                    "message": f"Error retrieving tariff: {str(e)}",
+                },
+                "id": request_id,
             },
             status=500,
         )

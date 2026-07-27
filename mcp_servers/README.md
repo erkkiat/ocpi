@@ -113,7 +113,7 @@ mcp-servers/
 │   ├── apps.py                # Django app configuration
 │   ├── models.py              # ApiKey model
 │   ├── authentication.py      # API key authentication class
-│   ├── server.py              # MCP server implementation
+│   ├── schemas.py              # Single source of truth for tool definitions
 │   ├── tools.py               # CDR tool implementation
 │   ├── views.py               # Django view for MCP endpoint
 │   ├── urls.py                # URL routing

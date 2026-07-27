@@ -14,11 +14,6 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from mcp_servers.mcp_server.models import ApiKey
-from mcp.types import (
-    INVALID_REQUEST,
-    METHOD_NOT_FOUND,
-    PARSE_ERROR,
-)
 from ocpi22.models.credentials import CredentialsRole
 from ocpi22.models.tariff import SolidTariff, Tariff
 from ocpi22.models.business_details import BusinessDetails
@@ -171,7 +166,7 @@ class TestMCPEndpoint:
         assert "Method not found" in data["error"]["message"]
 
     def test_tools_call_unknown_tool(self, api_client):
-        """Test tools/call returns error in foundation branch (no tools)"""
+        """Test tools/call returns error for unknown tool name"""
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
@@ -190,7 +185,7 @@ class TestMCPEndpoint:
         assert data["jsonrpc"] == "2.0"
         assert "error" in data
         assert data["error"]["code"] == -32601
-        assert "No tools available in foundation branch" in data["error"]["message"]
+        assert "Unknown tool: any_tool" in data["error"]["message"]
 
     def test_authentication_required(self):
         """Test that authentication is required"""
