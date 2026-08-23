@@ -1,0 +1,86 @@
+services:
+  django-app-msp:
+    build:
+      context: ../
+    container_name: django-app-msp
+    environment:
+      DJANGO_COLLECT_STATIC: "true"
+      DJANGO_MIGRATE: "true"
+      ENV: development
+      GUNICORN_CMD_ARGS: "--reload"
+    env_file:
+      - ../.env-8002
+    volumes:
+      - ../:/app
+      - static_volume_msp:/app/staticfiles
+      - media_volume_msp:/app/mediafiles
+      - xlm_models_msp:/root/.cache/huggingface
+    ports:
+      - "8002:8000"
+    command: django-app
+    networks:
+      - backend-network
+      - db-network
+
+  mqtt-subscriber-msp:
+    build:
+      context: ../
+    container_name: mqtt-subscriber-msp
+    environment:
+      ENV: development
+    env_file:
+      - ../.env-8002
+    volumes:
+      - ../:/app
+    command: mqtt-subscriber
+    networks:
+      - backend-network
+      - db-network
+
+  celery-mqtt-tasks-msp:
+    build:
+      context: ../
+    container_name: celery-mqtt-msp
+    environment:
+      ENV: development
+    env_file:
+      - ../.env-8002
+    volumes:
+      - ../:/app
+      - celery_logs_msp:/var/log/celery
+    command: celery-mqtt
+    networks:
+      - backend-network
+      - db-network
+
+  celery-django-tasks-msp:
+    build:
+      context: ../
+    container_name: celery-django-msp
+    environment:
+      ENV: development
+      CELERY_QUEUE_NAME: localhost8002
+      WORKER_HOSTNAME: msp_worker
+    env_file:
+      - ../.env-8002
+    volumes:
+      - ../:/app
+      - celery_logs_msp:/var/log/celery
+    command: celery-django
+    networks:
+      - backend-network
+      - db-network
+
+volumes:
+  static_volume_msp:
+  media_volume_msp:
+  celery_logs_msp:
+  xlm_models_msp:
+
+networks:
+  backend-network:
+    name: docker-composes_backend-network
+    external: true
+  db-network:
+    name: docker-composes_db-network
+    external: true
