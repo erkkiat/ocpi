@@ -7,3 +7,8 @@ releases/OCPI*.pdf
 /OCPI.iml
 releases/*/.bookmarks.txt
 releases/*/.references.txt
+
+# solidai
+__pycache__/
+*.pyc
+*.db
